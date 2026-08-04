@@ -152,6 +152,28 @@ function sessionCookieFromHeaders(headers) {
   return null
 }
 
+async function waitForBackend({ timeoutMs = 30000 } = {}) {
+  const healthUrl = GRAPHQL_URL.replace(/\/graphql$/, '/healthz')
+  const deadline = Date.now() + timeoutMs
+
+  while (Date.now() < deadline) {
+    try {
+      const response = await fetch(healthUrl)
+      if (response.ok) {
+        return
+      }
+    } catch {
+      // Backend may still be compiling or starting in CI.
+    }
+
+    await new Promise((resolve) => {
+      setTimeout(resolve, 500)
+    })
+  }
+
+  throw new Error(`Backend not reachable at ${healthUrl}`)
+}
+
 async function nodeGraphqlRequest(query, variables = {}, sessionCookie = '') {
   const headers = { 'Content-Type': 'application/json' }
   if (sessionCookie) {
@@ -177,6 +199,7 @@ async function nodeGraphqlRequest(query, variables = {}, sessionCookie = '') {
 }
 
 async function requestSignInEmail(email) {
+  await waitForBackend()
   const { data } = await nodeGraphqlRequest(REQUEST_SIGN_IN, { email })
   if (data.requestSignIn !== true) {
     throw new Error('requestSignIn returned false')

@@ -206,7 +206,8 @@ jobs:
         mkdir -p tmp
         : > tmp/e2e-backend.log
         cd backend
-        go run server.go >> ../tmp/e2e-backend.log 2>&1 &
+        go build -o ../tmp/lobby-backend server.go
+        ../tmp/lobby-backend >> ../tmp/e2e-backend.log 2>&1 &
         echo $! > ../backend.pid
 
     - name: Start frontend dev server
@@ -218,13 +219,14 @@ jobs:
     - name: Wait for auth E2E stack
       run: |
         for i in {1..120}; do
-          if curl -sf http://127.0.0.1:8080/healthz >/dev/null && curl -sf http://127.0.0.1:5173 >/dev/null 2>&1 || curl -sf http://localhost:5173 >/dev/null; then
+          if curl -sf http://127.0.0.1:8080/healthz >/dev/null && { curl -sf http://127.0.0.1:5173 >/dev/null 2>&1 || curl -sf http://localhost:5173 >/dev/null; }; then
             echo "Auth E2E stack is ready"
             exit 0
           fi
           sleep 1
         done
         echo "Auth E2E stack failed to become ready"
+        tail -n 50 tmp/e2e-backend.log || true
         exit 1
 
     - name: Run auth and game loop E2E tests
