@@ -78,15 +78,37 @@ That merges MCP into Claude Desktop's config (macOS / Windows / Linux). Fully qu
 
 Or paste manually via **Settings → Developer → Edit Config** (same `mcpServers` JSON as other stdio clients, `args`: `["-y", "@joinquest/mcp-integration"]`).
 
+### Gemini CLI
+
+From your **game repo root**:
+
+```bash
+JOINQUEST_API_KEY=lq_dev_PASTE_HERE npx joinquest install gemini
+```
+
+That adds `.agents/skills/joinquest-integration/` and runs `gemini mcp add` (project scope) — or writes `.gemini/settings.json` if the CLI is unavailable.
+
+**Manual MCP only:**
+
+```bash
+gemini mcp add -s project -t stdio \
+  -e JOINQUEST_API_KEY=lq_dev_PASTE_HERE \
+  joinquest-integration npx -y @joinquest/mcp-integration
+```
+
+Start a new Gemini CLI session in your game repo. Run `/mcp list` to confirm `joinquest-integration` is connected.
+
+Browser Gemini / AI Studio does not support local stdio MCP — use the [manual browser registration](https://joinquest.cc/developers?path=manual) flow instead.
+
 ### GitHub Copilot, Roo Code, Windsurf, Cline
 
 From your **game repo root** — dashboard tab for your editor, or:
 
 ```bash
-JOINQUEST_API_KEY=lq_dev_PASTE_HERE curl -fsSL https://raw.githubusercontent.com/scruffyprodigy/playhub/main/scripts/install-joinquest-dev.sh | sh -s -- --copilot
+JOINQUEST_API_KEY=lq_dev_PASTE_HERE npx joinquest install copilot
 ```
 
-Flags: `--copilot`, `--roo`, `--windsurf`, `--cline`. Each adds `.agents/skills/joinquest-integration/`, platform rules, and MCP config.
+Platforms: `copilot`, `roo`, `windsurf`, `cline`. Each adds `.agents/skills/joinquest-integration/`, platform rules, and MCP config.
 
 | Platform | MCP config | Notes |
 |----------|------------|-------|
@@ -94,6 +116,7 @@ Flags: `--copilot`, `--roo`, `--windsurf`, `--cline`. Each adds `.agents/skills/
 | **Roo** | `.roo/mcp.json` (committable) | Rules at `.roo/rules/joinquest-integration/` |
 | **Windsurf** | `~/.codeium/windsurf/mcp_config.json` | Global only; export `JOINQUEST_API_KEY` before launch |
 | **Cline** | Cline MCP settings (VS Code globalStorage) | Rules at `.cline/rules/joinquest-integration/` + `.clinerules` |
+| **Gemini CLI** | `.gemini/settings.json` (project scope) | `gemini mcp add` or manual JSON; browser Gemini not supported |
 
 Restart the editor / agent panel after install.
 
@@ -126,10 +149,10 @@ JOINQUEST_API_KEY=lq_dev_... bash install-joinquest-dev.sh --copilot
 **Quick install:**
 
 ```bash
-JOINQUEST_API_KEY=lq_dev_... curl -fsSL https://raw.githubusercontent.com/scruffyprodigy/playhub/main/scripts/install-joinquest-dev.sh | sh -s -- --roo
+JOINQUEST_API_KEY=lq_dev_... npx joinquest install roo
 ```
 
-Flags: `--cursor`, `--claude`, `--claude-desktop`, `--copilot`, `--roo`, `--windsurf`, `--cline`, `--all` (Cursor + Claude Code), `--skill-only`.
+Platforms: `cursor`, `claude`, `claude-desktop`, `copilot`, `roo`, `windsurf`, `cline`, `gemini`, `skill`.
 
 **Plugins (no game-repo changes):** Cursor and Claude Code — use `install-joinquest-cursor-plugin.sh` or `install-joinquest-claude-plugin.sh` instead.
 
