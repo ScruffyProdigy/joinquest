@@ -125,20 +125,27 @@ async function pollForValue(readValue, label, { timeoutMs = 10000 } = {}) {
 }
 
 async function graphqlRequest(page, query, variables = {}) {
-  const response = await page.request.post('/graphql', {
-    data: { query, variables },
-  })
+  return page.evaluate(
+    async ({ query: gqlQuery, variables: gqlVariables }) => {
+      const response = await fetch('/graphql', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ query: gqlQuery, variables: gqlVariables }),
+      })
 
-  if (!response.ok()) {
-    throw new Error(`GraphQL request failed with HTTP ${response.status()}`)
-  }
+      const payload = await response.json()
+      if (!response.ok) {
+        throw new Error(payload.errors?.[0]?.message || `API request failed (${response.status})`)
+      }
+      if (payload.errors?.length) {
+        throw new Error(payload.errors[0]?.message || 'GraphQL request failed')
+      }
 
-  const payload = await response.json()
-  if (payload.errors?.length) {
-    throw new Error(payload.errors[0]?.message || 'GraphQL request failed')
-  }
-
-  return payload.data
+      return payload.data
+    },
+    { query, variables },
+  )
 }
 
 export function setUserDisplayName(email, displayName, { avatarKey = 'compass' } = {}) {
