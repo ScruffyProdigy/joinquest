@@ -7,6 +7,24 @@ import { expect } from '@playwright/test'
 const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../../../..')
 const E2E_BACKEND_LOG = path.join(repoRoot, 'tmp/e2e-backend.log')
 
+const COMPLETE_SIGN_IN_WITH_LINK = `
+  mutation CompleteSignInWithLink($token: ID!) {
+    completeSignInWithLink(token: $token) {
+      id
+      email
+    }
+  }
+`
+
+const COMPLETE_SIGN_IN_WITH_CODE = `
+  mutation CompleteSignInWithCode($email: String!, $code: String!) {
+    completeSignInWithCode(email: $email, code: $code) {
+      id
+      email
+    }
+  }
+`
+
 function psqlAvailable() {
   try {
     execSync('command -v psql', { stdio: 'ignore' })
@@ -106,6 +124,23 @@ async function pollForValue(readValue, label, { timeoutMs = 10000 } = {}) {
   throw new Error(`Timed out waiting for ${label}`)
 }
 
+async function graphqlRequest(page, query, variables = {}) {
+  const response = await page.request.post('/graphql', {
+    data: { query, variables },
+  })
+
+  if (!response.ok()) {
+    throw new Error(`GraphQL request failed with HTTP ${response.status()}`)
+  }
+
+  const payload = await response.json()
+  if (payload.errors?.length) {
+    throw new Error(payload.errors[0]?.message || 'GraphQL request failed')
+  }
+
+  return payload.data
+}
+
 export function setUserDisplayName(email, displayName, { avatarKey = 'compass' } = {}) {
   const normalizedEmail = email.trim().toLowerCase().replace(/'/g, "''")
   const escapedName = displayName.replace(/'/g, "''")
@@ -124,7 +159,13 @@ async function submitSignInEmail(page, email) {
   await expect(emailInput).toBeEnabled()
   await emailInput.fill(email)
   await page.getByRole('button', { name: 'Continue with email' }).click()
+  await expect(page.getByRole('heading', { name: 'Enter your code' })).toBeVisible({ timeout: 20000 })
   await pollForValue(() => latestLoginCodeFromLog(email), `sign-in email for ${email}`, { timeoutMs: 20000 })
+}
+
+async function refreshSignedInUi(page) {
+  await page.goto('/')
+  await expectSignedIn(page)
 }
 
 export async function signInWithEmailLink(page, email) {
@@ -135,15 +176,8 @@ export async function signInWithEmailLink(page, email) {
   })
   expect(token).toBeTruthy()
 
-  await Promise.all([
-    page.waitForResponse(
-      (res) => res.url().includes('/graphql') && (res.request().postData() ?? '').includes('completeSignInWithLink'),
-      { timeout: 30000 },
-    ),
-    page.goto(`/auth/complete?token=${encodeURIComponent(token)}`),
-  ])
-  await page.waitForURL((url) => url.pathname === '/', { timeout: 30000 })
-  await expectSignedIn(page)
+  await graphqlRequest(page, COMPLETE_SIGN_IN_WITH_LINK, { token })
+  await refreshSignedInUi(page)
 }
 
 export async function signInWithEmailCode(page, email) {
@@ -152,14 +186,7 @@ export async function signInWithEmailCode(page, email) {
   const code = await pollForValue(() => latestLoginCodeFromLog(email), `sign-in code for ${email}`, {
     timeoutMs: 15000,
   })
-  const codeInput = page.getByLabel('Sign-in code')
-  await expect(codeInput).toBeVisible({ timeout: 15000 })
-  await Promise.all([
-    page.waitForResponse(
-      (res) => res.url().includes('/graphql') && (res.request().postData() ?? '').includes('completeSignInWithCode'),
-      { timeout: 30000 },
-    ),
-    codeInput.fill(code),
-  ])
-  await expectSignedIn(page)
+
+  await graphqlRequest(page, COMPLETE_SIGN_IN_WITH_CODE, { email, code })
+  await refreshSignedInUi(page)
 }
