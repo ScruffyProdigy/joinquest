@@ -6,6 +6,14 @@ import { expect } from '@playwright/test'
 
 const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../../../..')
 const E2E_BACKEND_LOG = path.join(repoRoot, 'tmp/e2e-backend.log')
+const GRAPHQL_URL = process.env.E2E_GRAPHQL_URL || 'http://127.0.0.1:8080/graphql'
+const SESSION_COOKIE_NAME = 'lobby_session'
+
+const REQUEST_SIGN_IN = `
+  mutation RequestSignIn($email: String!) {
+    requestSignIn(email: $email)
+  }
+`
 
 const COMPLETE_SIGN_IN_WITH_LINK = `
   mutation CompleteSignInWithLink($token: ID!) {
@@ -124,36 +132,73 @@ async function pollForValue(readValue, label, { timeoutMs = 10000 } = {}) {
   throw new Error(`Timed out waiting for ${label}`)
 }
 
-async function graphqlRequest(page, query, variables = {}) {
-  return page.evaluate(
-    async ({ query: gqlQuery, variables: gqlVariables }) => {
-      const controller = new AbortController()
-      const timeoutId = window.setTimeout(() => controller.abort(), 15000)
+function sessionCookieFromHeaders(headers) {
+  const rawCookies =
+    typeof headers.getSetCookie === 'function'
+      ? headers.getSetCookie()
+      : [headers.get('set-cookie')].filter(Boolean)
 
-      try {
-        const response = await fetch('/graphql', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          credentials: 'include',
-          body: JSON.stringify({ query: gqlQuery, variables: gqlVariables }),
-          signal: controller.signal,
-        })
+  for (const header of rawCookies) {
+    if (!header) continue
+    const [pair] = header.split(';')
+    const eq = pair.indexOf('=')
+    if (eq === -1) continue
+    const name = pair.slice(0, eq).trim()
+    if (name === SESSION_COOKIE_NAME) {
+      return pair.slice(eq + 1)
+    }
+  }
 
-        const payload = await response.json()
-        if (!response.ok) {
-          throw new Error(payload.errors?.[0]?.message || `API request failed (${response.status})`)
-        }
-        if (payload.errors?.length) {
-          throw new Error(payload.errors[0]?.message || 'GraphQL request failed')
-        }
+  return null
+}
 
-        return payload.data
-      } finally {
-        window.clearTimeout(timeoutId)
-      }
+async function nodeGraphqlRequest(query, variables = {}, sessionCookie = '') {
+  const headers = { 'Content-Type': 'application/json' }
+  if (sessionCookie) {
+    headers.Cookie = `${SESSION_COOKIE_NAME}=${sessionCookie}`
+  }
+
+  const response = await fetch(GRAPHQL_URL, {
+    method: 'POST',
+    headers,
+    body: JSON.stringify({ query, variables }),
+  })
+
+  const payload = await response.json()
+  if (!response.ok || payload.errors?.length) {
+    throw new Error(payload.errors?.[0]?.message || `GraphQL failed (${response.status})`)
+  }
+
+  const newSession = sessionCookieFromHeaders(response.headers)
+  return {
+    data: payload.data,
+    sessionCookie: newSession || sessionCookie,
+  }
+}
+
+async function requestSignInEmail(email) {
+  const { data } = await nodeGraphqlRequest(REQUEST_SIGN_IN, { email })
+  if (data.requestSignIn !== true) {
+    throw new Error('requestSignIn returned false')
+  }
+
+  await pollForValue(() => latestLoginCodeFromLog(email), `sign-in email for ${email}`, { timeoutMs: 30000 })
+}
+
+async function applySessionCookie(page, sessionCookie) {
+  const baseURL = process.env.BASE_URL || 'http://127.0.0.1:5173'
+  const { hostname } = new URL(baseURL)
+
+  await page.context().addCookies([
+    {
+      name: SESSION_COOKIE_NAME,
+      value: sessionCookie,
+      domain: hostname,
+      path: '/',
+      httpOnly: true,
+      sameSite: 'Lax',
     },
-    { query, variables },
-  )
+  ])
 }
 
 export function setUserDisplayName(email, displayName, { avatarKey = 'compass' } = {}) {
@@ -168,38 +213,40 @@ async function expectSignedIn(page) {
   await expect(page.getByRole('button', { name: 'Log out' })).toBeVisible({ timeout: 15000 })
 }
 
-async function submitSignInEmail(page, email) {
-  const emailInput = page.getByRole('textbox', { name: 'Email' })
-  await expect(emailInput).toBeVisible({ timeout: 15000 })
-  await emailInput.fill(email)
-  await page.getByRole('button', { name: 'Continue with email' }).click()
-  await pollForValue(() => latestLoginCodeFromLog(email), `sign-in email for ${email}`, { timeoutMs: 30000 })
-}
-
 async function refreshSignedInUi(page) {
   await page.goto('/')
   await expectSignedIn(page)
 }
 
 export async function signInWithEmailLink(page, email) {
-  await submitSignInEmail(page, email)
+  await requestSignInEmail(email)
 
   const token = await pollForValue(() => latestMagicLinkTokenFromLog(email), `magic link for ${email}`, {
     timeoutMs: 15000,
   })
   expect(token).toBeTruthy()
 
-  await graphqlRequest(page, COMPLETE_SIGN_IN_WITH_LINK, { token })
+  const { sessionCookie } = await nodeGraphqlRequest(COMPLETE_SIGN_IN_WITH_LINK, { token })
+  if (!sessionCookie) {
+    throw new Error('No session cookie returned from completeSignInWithLink')
+  }
+
+  await applySessionCookie(page, sessionCookie)
   await refreshSignedInUi(page)
 }
 
 export async function signInWithEmailCode(page, email) {
-  await submitSignInEmail(page, email)
+  await requestSignInEmail(email)
 
   const code = await pollForValue(() => latestLoginCodeFromLog(email), `sign-in code for ${email}`, {
     timeoutMs: 15000,
   })
 
-  await graphqlRequest(page, COMPLETE_SIGN_IN_WITH_CODE, { email, code })
+  const { sessionCookie } = await nodeGraphqlRequest(COMPLETE_SIGN_IN_WITH_CODE, { email, code })
+  if (!sessionCookie) {
+    throw new Error('No session cookie returned from completeSignInWithCode')
+  }
+
+  await applySessionCookie(page, sessionCookie)
   await refreshSignedInUi(page)
 }
