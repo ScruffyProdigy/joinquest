@@ -146,6 +146,7 @@ jobs:
       BASE_URL: http://127.0.0.1:5173
       MAGIC_LINK_BASE_URL: http://127.0.0.1:5173/auth/complete?token=
       CORS_ALLOWED_ORIGINS: http://127.0.0.1:5173,http://localhost:5173
+      E2E_SIGNIN_LOG_PATH: tmp/e2e-sign-in.log
 
     services:
       postgres:
@@ -205,9 +206,10 @@ jobs:
       run: |
         mkdir -p tmp
         : > tmp/e2e-backend.log
+        : > tmp/e2e-sign-in.log
         cd backend
         go build -o ../tmp/lobby-backend server.go
-        ../tmp/lobby-backend >> ../tmp/e2e-backend.log 2>&1 &
+        stdbuf -oL -eL ../tmp/lobby-backend >> ../tmp/e2e-backend.log 2>&1 &
         echo $! > ../backend.pid
 
     - name: Start frontend dev server

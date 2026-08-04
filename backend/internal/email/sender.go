@@ -82,25 +82,40 @@ func SenderFromEnv() (Sender, error) {
 	if err != nil {
 		return nil, err
 	}
+
+	var sender Sender
 	if !ok {
-		return LogSender{}, nil
+		sender = LogSender{}
+	} else if strings.EqualFold(strings.TrimSpace(os.Getenv("RESEND_USE_SMTP")), "true") {
+		sender, err = NewSMTPSender(cfg)
+		if err != nil {
+			return nil, err
+		}
+	} else {
+		apiKey := strings.TrimSpace(os.Getenv("RESEND_API_KEY"))
+		if apiKey == "" {
+			apiKey = strings.TrimSpace(cfg.Password)
+		}
+		if apiKey != "" {
+			sender, err = NewResendSender(ResendConfig{
+				APIKey:   apiKey,
+				From:     cfg.From,
+				FromName: cfg.FromName,
+			})
+			if err != nil {
+				return nil, err
+			}
+		} else {
+			sender, err = NewSMTPSender(cfg)
+			if err != nil {
+				return nil, err
+			}
+		}
 	}
 
-	if strings.EqualFold(strings.TrimSpace(os.Getenv("RESEND_USE_SMTP")), "true") {
-		return NewSMTPSender(cfg)
+	if path := strings.TrimSpace(os.Getenv("E2E_SIGNIN_LOG_PATH")); path != "" {
+		return E2ESignInLog{Path: path, Inner: sender}, nil
 	}
 
-	apiKey := strings.TrimSpace(os.Getenv("RESEND_API_KEY"))
-	if apiKey == "" {
-		apiKey = strings.TrimSpace(cfg.Password)
-	}
-	if apiKey != "" {
-		return NewResendSender(ResendConfig{
-			APIKey:   apiKey,
-			From:     cfg.From,
-			FromName: cfg.FromName,
-		})
-	}
-
-	return NewSMTPSender(cfg)
+	return sender, nil
 }

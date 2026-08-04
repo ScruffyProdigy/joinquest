@@ -18,6 +18,7 @@ trap cleanup EXIT INT TERM
 export DATABASE_URL="${DATABASE_URL:-postgres://app:app-pass@127.0.0.1:5432/playhub?sslmode=disable}"
 export MAGIC_LINK_BASE_URL="${MAGIC_LINK_BASE_URL:-http://127.0.0.1:5173/auth/complete?token=}"
 export CORS_ALLOWED_ORIGINS="${CORS_ALLOWED_ORIGINS:-http://127.0.0.1:5173,http://localhost:5173}"
+export E2E_SIGNIN_LOG_PATH="${E2E_SIGNIN_LOG_PATH:-$ROOT/tmp/e2e-sign-in.log}"
 
 postgres_ready() {
   if command -v psql >/dev/null 2>&1; then
@@ -76,6 +77,7 @@ if [[ -z "${BACKEND_PID:-}" ]]; then
   echo "Starting backend for auth E2E..."
   mkdir -p "$ROOT/tmp"
   : > "$ROOT/tmp/e2e-backend.log"
+  : > "$ROOT/tmp/e2e-sign-in.log"
   (
     cd backend
     go run server.go

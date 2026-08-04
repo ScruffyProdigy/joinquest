@@ -8,6 +8,7 @@ import (
 
 func TestSenderFromEnvDefaultsToLogSender(t *testing.T) {
 	t.Setenv("SMTP_HOST", "")
+	t.Setenv("E2E_SIGNIN_LOG_PATH", "")
 
 	sender, err := SenderFromEnv()
 	if err != nil {
@@ -15,6 +16,19 @@ func TestSenderFromEnvDefaultsToLogSender(t *testing.T) {
 	}
 	if _, ok := sender.(LogSender); !ok {
 		t.Fatalf("expected LogSender, got %T", sender)
+	}
+}
+
+func TestSenderFromEnvWrapsE2ESignInLog(t *testing.T) {
+	t.Setenv("SMTP_HOST", "")
+	t.Setenv("E2E_SIGNIN_LOG_PATH", t.TempDir()+"/sign-in.log")
+
+	sender, err := SenderFromEnv()
+	if err != nil {
+		t.Fatalf("SenderFromEnv() error: %v", err)
+	}
+	if _, ok := sender.(E2ESignInLog); !ok {
+		t.Fatalf("expected E2ESignInLog, got %T", sender)
 	}
 }
 
