@@ -121,23 +121,10 @@ async function expectSignedIn(page) {
 async function submitSignInEmail(page, email) {
   const emailInput = page.getByRole('textbox', { name: 'Email' })
   await expect(emailInput).toBeVisible({ timeout: 15000 })
+  await expect(emailInput).toBeEnabled()
   await emailInput.fill(email)
-
-  const [response] = await Promise.all([
-    page.waitForResponse(
-      (res) => res.url().includes('/graphql') && res.ok() && (res.request().postData() ?? '').includes('requestSignIn'),
-      { timeout: 15000 },
-    ),
-    page.getByRole('button', { name: 'Continue with email' }).click(),
-  ])
-
-  const payload = await response.json()
-  if (payload.errors?.length) {
-    throw new Error(payload.errors[0]?.message || 'requestSignIn failed')
-  }
-  if (payload.data?.requestSignIn !== true) {
-    throw new Error('requestSignIn returned false')
-  }
+  await page.getByRole('button', { name: 'Continue with email' }).click()
+  await pollForValue(() => latestLoginCodeFromLog(email), `sign-in email for ${email}`, { timeoutMs: 20000 })
 }
 
 export async function signInWithEmailLink(page, email) {
@@ -149,9 +136,13 @@ export async function signInWithEmailLink(page, email) {
   expect(token).toBeTruthy()
 
   await Promise.all([
-    page.waitForURL((url) => url.pathname === '/', { timeout: 30000 }),
+    page.waitForResponse(
+      (res) => res.url().includes('/graphql') && (res.request().postData() ?? '').includes('completeSignInWithLink'),
+      { timeout: 30000 },
+    ),
     page.goto(`/auth/complete?token=${encodeURIComponent(token)}`),
   ])
+  await page.waitForURL((url) => url.pathname === '/', { timeout: 30000 })
   await expectSignedIn(page)
 }
 
@@ -161,7 +152,14 @@ export async function signInWithEmailCode(page, email) {
   const code = await pollForValue(() => latestLoginCodeFromLog(email), `sign-in code for ${email}`, {
     timeoutMs: 15000,
   })
-  await expect(page.getByLabel('Sign-in code')).toBeVisible({ timeout: 15000 })
-  await page.getByLabel('Sign-in code').fill(code)
+  const codeInput = page.getByLabel('Sign-in code')
+  await expect(codeInput).toBeVisible({ timeout: 15000 })
+  await Promise.all([
+    page.waitForResponse(
+      (res) => res.url().includes('/graphql') && (res.request().postData() ?? '').includes('completeSignInWithCode'),
+      { timeout: 30000 },
+    ),
+    codeInput.fill(code),
+  ])
   await expectSignedIn(page)
 }
