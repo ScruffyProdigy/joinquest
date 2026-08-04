@@ -11,9 +11,7 @@ const E2E_SIGNIN_LOG = process.env.E2E_SIGNIN_LOG_PATH
     ? process.env.E2E_SIGNIN_LOG_PATH
     : path.join(repoRoot, process.env.E2E_SIGNIN_LOG_PATH)
   : E2E_BACKEND_LOG
-const GRAPHQL_URL =
-  process.env.E2E_GRAPHQL_URL ||
-  `${process.env.BASE_URL || 'http://127.0.0.1:5173'}/graphql`
+const GRAPHQL_URL = process.env.E2E_GRAPHQL_URL || 'http://127.0.0.1:8080/graphql'
 const SESSION_COOKIE_NAME = 'lobby_session'
 const GRAPHQL_TIMEOUT_MS = 15000
 
