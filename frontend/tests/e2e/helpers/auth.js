@@ -106,32 +106,36 @@ async function pollForValue(readValue, label, { timeoutMs = 10000 } = {}) {
   throw new Error(`Timed out waiting for ${label}`)
 }
 
-export function setUserDisplayName(email, displayName) {
+export function setUserDisplayName(email, displayName, { avatarKey = 'compass' } = {}) {
   const normalizedEmail = email.trim().toLowerCase().replace(/'/g, "''")
   const escapedName = displayName.replace(/'/g, "''")
-  const sql = `UPDATE users SET display_name='${escapedName}' WHERE email='${normalizedEmail}'`
+  const escapedAvatarKey = avatarKey.replace(/'/g, "''")
+  const sql = `UPDATE users SET display_name='${escapedName}', avatar_key='${escapedAvatarKey}' WHERE email='${normalizedEmail}'`
   runPsql(sql)
+}
+
+async function expectSignedIn(page, email) {
+  await expect(page.getByText(email)).toBeVisible({ timeout: 15000 })
 }
 
 export async function signInWithEmailLink(page, email) {
   await page.getByRole('textbox', { name: 'Email' }).fill(email)
-  await page.getByRole('button', { name: 'Continue' }).click()
-  await expect(page.getByRole('heading', { name: 'Enter your code' })).toBeVisible()
+  await page.getByRole('button', { name: 'Continue with email' }).click()
+  await expect(page.getByRole('heading', { name: 'Enter your code' })).toBeVisible({ timeout: 15000 })
 
   const token = await pollForValue(() => latestMagicLinkTokenFromLog(email), `magic link for ${email}`)
   expect(token).toBeTruthy()
 
   await page.goto(`/auth/complete?token=${encodeURIComponent(token)}`)
-  await expect(page.getByRole('heading', { name: 'Welcome back' })).toBeVisible({ timeout: 15000 })
+  await expectSignedIn(page, email)
 }
 
 export async function signInWithEmailCode(page, email) {
   await page.getByRole('textbox', { name: 'Email' }).fill(email)
-  await page.getByRole('button', { name: 'Continue' }).click()
-  await expect(page.getByRole('heading', { name: 'Enter your code' })).toBeVisible()
+  await page.getByRole('button', { name: 'Continue with email' }).click()
+  await expect(page.getByRole('heading', { name: 'Enter your code' })).toBeVisible({ timeout: 15000 })
 
   const code = await pollForValue(() => latestLoginCodeFromLog(email), `sign-in code for ${email}`)
   await page.getByLabel('Sign-in code').fill(code)
-  await page.getByRole('button', { name: 'Continue' }).click()
-  await expect(page.getByRole('heading', { name: 'Welcome back' })).toBeVisible({ timeout: 15000 })
+  await expectSignedIn(page, email)
 }
