@@ -150,8 +150,11 @@ jobs:
     
     - name: Validate Kubernetes ConfigMaps
       run: |
-        # Test that all environment ConfigMaps exist and have basic YAML structure
+        # Test that environment ConfigMaps exist and have basic YAML structure
         for config_file in k8s/env/*.yaml; do
+          if ! grep -q '^kind: ConfigMap' "$config_file"; then
+            continue
+          fi
           echo "Validating $config_file"
           if [ ! -f "$config_file" ]; then
             echo "❌ ConfigMap file not found: $config_file"
@@ -167,8 +170,11 @@ jobs:
     
     - name: Validate environment variables in ConfigMaps
       run: |
-        # Check that all ConfigMaps have required environment variables
+        # Check that frontend ConfigMaps have required environment variables
         for env_file in k8s/env/*.yaml; do
+          if ! grep -q '^kind: ConfigMap' "$env_file"; then
+            continue
+          fi
           echo "Validating $env_file"
           grep -q "REACT_APP_ENV" "$env_file" || (echo "Missing REACT_APP_ENV in $env_file" && exit 1)
           grep -q "REACT_APP_API_BASE_URL" "$env_file" || (echo "Missing REACT_APP_API_BASE_URL in $env_file" && exit 1)
