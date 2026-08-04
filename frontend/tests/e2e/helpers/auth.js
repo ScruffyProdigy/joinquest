@@ -118,14 +118,30 @@ async function expectSignedIn(page) {
   await expect(page.getByRole('button', { name: 'Log out' })).toBeVisible({ timeout: 15000 })
 }
 
-async function waitForSignInEmailSent(page) {
-  await expect(page.getByText(/We sent a 6-digit code/i)).toBeVisible({ timeout: 15000 })
+async function submitSignInEmail(page, email) {
+  const emailInput = page.getByRole('textbox', { name: 'Email' })
+  await expect(emailInput).toBeVisible({ timeout: 15000 })
+  await emailInput.fill(email)
+
+  const [response] = await Promise.all([
+    page.waitForResponse(
+      (res) => res.url().includes('/graphql') && res.ok() && (res.request().postData() ?? '').includes('requestSignIn'),
+      { timeout: 15000 },
+    ),
+    page.getByRole('button', { name: 'Continue with email' }).click(),
+  ])
+
+  const payload = await response.json()
+  if (payload.errors?.length) {
+    throw new Error(payload.errors[0]?.message || 'requestSignIn failed')
+  }
+  if (payload.data?.requestSignIn !== true) {
+    throw new Error('requestSignIn returned false')
+  }
 }
 
 export async function signInWithEmailLink(page, email) {
-  await page.getByRole('textbox', { name: 'Email' }).fill(email)
-  await page.getByRole('button', { name: 'Continue with email' }).click()
-  await waitForSignInEmailSent(page)
+  await submitSignInEmail(page, email)
 
   const token = await pollForValue(() => latestMagicLinkTokenFromLog(email), `magic link for ${email}`, {
     timeoutMs: 15000,
@@ -140,13 +156,12 @@ export async function signInWithEmailLink(page, email) {
 }
 
 export async function signInWithEmailCode(page, email) {
-  await page.getByRole('textbox', { name: 'Email' }).fill(email)
-  await page.getByRole('button', { name: 'Continue with email' }).click()
-  await waitForSignInEmailSent(page)
+  await submitSignInEmail(page, email)
 
   const code = await pollForValue(() => latestLoginCodeFromLog(email), `sign-in code for ${email}`, {
     timeoutMs: 15000,
   })
+  await expect(page.getByLabel('Sign-in code')).toBeVisible({ timeout: 15000 })
   await page.getByLabel('Sign-in code').fill(code)
   await expectSignedIn(page)
 }
