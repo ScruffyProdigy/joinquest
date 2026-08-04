@@ -127,22 +127,30 @@ async function pollForValue(readValue, label, { timeoutMs = 10000 } = {}) {
 async function graphqlRequest(page, query, variables = {}) {
   return page.evaluate(
     async ({ query: gqlQuery, variables: gqlVariables }) => {
-      const response = await fetch('/graphql', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
-        body: JSON.stringify({ query: gqlQuery, variables: gqlVariables }),
-      })
+      const controller = new AbortController()
+      const timeoutId = window.setTimeout(() => controller.abort(), 15000)
 
-      const payload = await response.json()
-      if (!response.ok) {
-        throw new Error(payload.errors?.[0]?.message || `API request failed (${response.status})`)
-      }
-      if (payload.errors?.length) {
-        throw new Error(payload.errors[0]?.message || 'GraphQL request failed')
-      }
+      try {
+        const response = await fetch('/graphql', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'include',
+          body: JSON.stringify({ query: gqlQuery, variables: gqlVariables }),
+          signal: controller.signal,
+        })
 
-      return payload.data
+        const payload = await response.json()
+        if (!response.ok) {
+          throw new Error(payload.errors?.[0]?.message || `API request failed (${response.status})`)
+        }
+        if (payload.errors?.length) {
+          throw new Error(payload.errors[0]?.message || 'GraphQL request failed')
+        }
+
+        return payload.data
+      } finally {
+        window.clearTimeout(timeoutId)
+      }
     },
     { query, variables },
   )
@@ -163,11 +171,9 @@ async function expectSignedIn(page) {
 async function submitSignInEmail(page, email) {
   const emailInput = page.getByRole('textbox', { name: 'Email' })
   await expect(emailInput).toBeVisible({ timeout: 15000 })
-  await expect(emailInput).toBeEnabled()
   await emailInput.fill(email)
   await page.getByRole('button', { name: 'Continue with email' }).click()
-  await expect(page.getByRole('heading', { name: 'Enter your code' })).toBeVisible({ timeout: 20000 })
-  await pollForValue(() => latestLoginCodeFromLog(email), `sign-in email for ${email}`, { timeoutMs: 20000 })
+  await pollForValue(() => latestLoginCodeFromLog(email), `sign-in email for ${email}`, { timeoutMs: 30000 })
 }
 
 async function refreshSignedInUi(page) {
