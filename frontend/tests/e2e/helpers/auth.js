@@ -114,28 +114,32 @@ export function setUserDisplayName(email, displayName, { avatarKey = 'compass' }
   runPsql(sql)
 }
 
-async function expectSignedIn(page, email) {
-  await expect(page.getByText(email)).toBeVisible({ timeout: 15000 })
+async function expectSignedIn(page) {
+  await expect(page.getByRole('button', { name: 'Log out' })).toBeVisible({ timeout: 15000 })
 }
 
 export async function signInWithEmailLink(page, email) {
   await page.getByRole('textbox', { name: 'Email' }).fill(email)
   await page.getByRole('button', { name: 'Continue with email' }).click()
-  await expect(page.getByRole('heading', { name: 'Enter your code' })).toBeVisible({ timeout: 15000 })
 
-  const token = await pollForValue(() => latestMagicLinkTokenFromLog(email), `magic link for ${email}`)
+  const token = await pollForValue(() => latestMagicLinkTokenFromLog(email), `magic link for ${email}`, {
+    timeoutMs: 15000,
+  })
   expect(token).toBeTruthy()
 
   await page.goto(`/auth/complete?token=${encodeURIComponent(token)}`)
-  await expectSignedIn(page, email)
+  await page.waitForURL((url) => url.pathname === '/', { timeout: 15000 })
+  await expectSignedIn(page)
 }
 
 export async function signInWithEmailCode(page, email) {
   await page.getByRole('textbox', { name: 'Email' }).fill(email)
   await page.getByRole('button', { name: 'Continue with email' }).click()
-  await expect(page.getByRole('heading', { name: 'Enter your code' })).toBeVisible({ timeout: 15000 })
 
-  const code = await pollForValue(() => latestLoginCodeFromLog(email), `sign-in code for ${email}`)
+  const code = await pollForValue(() => latestLoginCodeFromLog(email), `sign-in code for ${email}`, {
+    timeoutMs: 15000,
+  })
+  await expect(page.getByLabel('Sign-in code')).toBeVisible({ timeout: 15000 })
   await page.getByLabel('Sign-in code').fill(code)
-  await expectSignedIn(page, email)
+  await expectSignedIn(page)
 }

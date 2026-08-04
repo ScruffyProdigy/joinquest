@@ -11,8 +11,9 @@ test.describe('Auth flow', () => {
 
     await signInWithEmailLink(page, email)
 
+    await expect(page.getByRole('heading', { name: 'Set up your display' })).toBeVisible()
     await expect(page.getByText(email)).toBeVisible()
-    await expect(page.getByText(`${email.split('@')[0]} (new)`)).toBeVisible()
+    await expect(page.getByLabel('Display name')).toHaveValue(email.split('@')[0])
 
     await page.getByRole('button', { name: 'Log out' }).click()
     await expect(page.getByRole('heading', { name: SIGN_IN_HEADING })).toBeVisible()
@@ -25,8 +26,9 @@ test.describe('Auth flow', () => {
     await page.goto('/')
     await signInWithEmailCode(page, email)
 
+    await expect(page.getByRole('heading', { name: 'Set up your display' })).toBeVisible()
     await expect(page.getByText(email)).toBeVisible()
-    await expect(page.getByText(`${email.split('@')[0]} (new)`)).toBeVisible()
+    await expect(page.getByLabel('Display name')).toHaveValue(email.split('@')[0])
   })
 
   test('keeps an existing display name when a returning user signs in again', async ({ page }) => {
@@ -43,7 +45,7 @@ test.describe('Auth flow', () => {
 
     await signInWithEmailLink(page, email)
 
+    await expect(page.getByRole('heading', { name: 'Welcome back' })).toBeVisible()
     await expect(page.getByText(customDisplayName)).toBeVisible()
-    await expect(page.getByText(`${email.split('@')[0]} (new)`)).not.toBeVisible()
   })
 })
