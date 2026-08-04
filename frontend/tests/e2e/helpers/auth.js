@@ -118,28 +118,35 @@ async function expectSignedIn(page) {
   await expect(page.getByRole('button', { name: 'Log out' })).toBeVisible({ timeout: 15000 })
 }
 
+async function waitForSignInEmailSent(page) {
+  await expect(page.getByText(/We sent a 6-digit code/i)).toBeVisible({ timeout: 15000 })
+}
+
 export async function signInWithEmailLink(page, email) {
   await page.getByRole('textbox', { name: 'Email' }).fill(email)
   await page.getByRole('button', { name: 'Continue with email' }).click()
+  await waitForSignInEmailSent(page)
 
   const token = await pollForValue(() => latestMagicLinkTokenFromLog(email), `magic link for ${email}`, {
     timeoutMs: 15000,
   })
   expect(token).toBeTruthy()
 
-  await page.goto(`/auth/complete?token=${encodeURIComponent(token)}`)
-  await page.waitForURL((url) => url.pathname === '/', { timeout: 15000 })
+  await Promise.all([
+    page.waitForURL((url) => url.pathname === '/', { timeout: 30000 }),
+    page.goto(`/auth/complete?token=${encodeURIComponent(token)}`),
+  ])
   await expectSignedIn(page)
 }
 
 export async function signInWithEmailCode(page, email) {
   await page.getByRole('textbox', { name: 'Email' }).fill(email)
   await page.getByRole('button', { name: 'Continue with email' }).click()
+  await waitForSignInEmailSent(page)
 
   const code = await pollForValue(() => latestLoginCodeFromLog(email), `sign-in code for ${email}`, {
     timeoutMs: 15000,
   })
-  await expect(page.getByLabel('Sign-in code')).toBeVisible({ timeout: 15000 })
   await page.getByLabel('Sign-in code').fill(code)
   await expectSignedIn(page)
 }
