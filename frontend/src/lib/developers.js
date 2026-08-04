@@ -530,6 +530,8 @@ function joinquestInstallPlatform(client) {
       return 'windsurf'
     case 'cline':
       return 'cline'
+    case 'gemini':
+      return 'gemini'
     case 'skill-only':
       return 'skill'
     default:
@@ -606,6 +608,13 @@ export function buildClaudeMcpAddCommand({ apiKey }) {
   return `claude mcp add --scope project --transport stdio \\
   --env JOINQUEST_API_KEY=${key} \\
   joinquest-integration -- npx -y ${MCP_NPX_PACKAGE}`
+}
+
+export function buildGeminiMcpAddCommand({ apiKey }) {
+  const key = apiKey || 'lq_dev_PASTE_HERE'
+  return `gemini mcp add -s project -t stdio \\
+  -e JOINQUEST_API_KEY=${key} \\
+  joinquest-integration npx -y ${MCP_NPX_PACKAGE}`
 }
 
 export function buildMcpServerConfig({ apiKey, clientId = 'cursor' }) {

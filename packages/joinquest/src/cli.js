@@ -8,7 +8,7 @@ Usage:
   npm create joinquest@latest -- --cursor
 
 Platforms:
-  cursor, claude, claude-desktop, copilot, roo, windsurf, cline, skill
+  cursor, claude, claude-desktop, copilot, roo, windsurf, cline, gemini, skill
 
 Options:
   --dry-run           Show planned actions without writing files

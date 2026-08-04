@@ -42,6 +42,9 @@ vi.mock('../../lib/developers', () => ({
   buildClaudeMcpAddCommand: vi.fn(
     ({ apiKey }) => `claude mcp add --env JOINQUEST_API_KEY=${apiKey} ...`,
   ),
+  buildGeminiMcpAddCommand: vi.fn(
+    ({ apiKey }) => `gemini mcp add --env JOINQUEST_API_KEY=${apiKey} ...`,
+  ),
   buildInstallCursorPluginCommand: vi.fn(
     ({ apiKey }) =>
       `JOINQUEST_API_KEY=${apiKey || 'lq_dev_PASTE_YOUR_KEY'}\nnpx -y joinquest install cursor --plugin`,

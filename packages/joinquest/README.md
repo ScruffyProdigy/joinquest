@@ -26,6 +26,7 @@ npx joinquest install copilot
 npx joinquest install roo
 npx joinquest install windsurf
 npx joinquest install cline
+npx joinquest install gemini
 npx joinquest install skill          # skill only, no MCP
 ```
 

@@ -43,3 +43,9 @@ export function claudeMcpAddCommand(apiKey) {
   --env JOINQUEST_API_KEY=${apiKey} \\
   ${MCP_SERVER_NAME} -- npx -y ${MCP_PACKAGE}`
 }
+
+export function geminiMcpAddCommand(apiKey) {
+  return `gemini mcp add -s project -t stdio \\
+  -e JOINQUEST_API_KEY=${apiKey} \\
+  ${MCP_SERVER_NAME} npx -y ${MCP_PACKAGE}`
+}

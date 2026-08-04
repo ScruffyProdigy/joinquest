@@ -38,7 +38,7 @@
   },
   "scripts": {
     "sync-assets": "node scripts/sync-assets.mjs",
-    "test": "node --test test/*.test.js",
+    "test": "node --test --test-concurrency=1 test/*.test.js",
     "prepublishOnly": "npm run sync-assets && npm test"
   },
   "engines": {

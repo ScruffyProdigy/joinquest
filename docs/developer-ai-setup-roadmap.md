@@ -8,7 +8,7 @@ Track simplifying JoinQuest integration for game developers using Cursor, Claude
 |----------|-----------|
 | **Cursor** | Dashboard → copy config → Cmd+Q → Agent chat → verify MCP → “I want to create a game on JoinQuest” |
 | **Claude Code** | Dashboard → copy `claude mcp add …` → new session → approve MCP → same prompt |
-| **Copilot / Roo / Windsurf / Cline** | Dashboard → copy `install-joinquest-dev.sh --<platform>` from game repo |
+| **Copilot / Roo / Windsurf / Cline / Gemini CLI** | Dashboard → copy `npx joinquest install <platform>` from game repo |
 | **ChatGPT** | Not supported for MCP — use [Register in the browser](https://joinquest.cc/developers?path=manual) in ChatGPT’s browser |
 | **Everyone** | Agent skill installed in game repo (`.agents/skills/` + platform rules) |
 
@@ -39,7 +39,7 @@ Production only for game devs: `JOINQUEST_API_KEY` in MCP env (no URL). Lobby co
 | # | Item | Status | Notes |
 |---|------|--------|-------|
 | 9 | **npx-first docs everywhere** | In progress | After npm publish, install script = fallback only |
-| 10 | **Claude Desktop / Copilot / Roo / Windsurf / Cline** | Done | `--claude-desktop`, `--copilot`, `--roo`, `--windsurf`, `--cline` on install script + dashboard tabs |
+| 10 | **Claude Desktop / Copilot / Roo / Windsurf / Cline / Gemini CLI** | Done | `npx joinquest install <platform>` + dashboard tabs |
 | 11 | **ChatGPT connector** | Pending | Requires hosted HTTPS MCP + OAuth; manual browser flow documented |
 | 12 | **Dashboard API key management UX** | Pending | Clear list/revoke/regenerate for MCP |
 

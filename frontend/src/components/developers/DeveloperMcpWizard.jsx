@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import {
   buildClaudeMcpAddCommand,
+  buildGeminiMcpAddCommand,
   buildInstallClaudePluginCommand,
   buildInstallCursorPluginCommand,
   buildInstallDevCommand,
@@ -64,6 +65,12 @@ const CLIENTS = [
     configPath: 'Cline → MCP Servers → Configure (VS Code globalStorage)',
   },
   {
+    id: 'gemini',
+    label: 'Gemini CLI',
+    installClient: 'gemini',
+    configPath: '.gemini/settings.json in your game repo',
+  },
+  {
     id: 'chatgpt',
     label: 'ChatGPT',
     unsupported: true,
@@ -120,6 +127,12 @@ const RESTART_STEPS = {
     `Ask: “${AGENT_VERIFY_PROMPT}”`,
     `Then: “${AGENT_START_PROMPT}”`,
   ],
+  gemini: [
+    'Start a new Gemini CLI session in your game repo (or run /mcp list to confirm the server).',
+    'Approve joinquest-integration when prompted.',
+    `Ask: “${AGENT_VERIFY_PROMPT}”`,
+    `Then: “${AGENT_START_PROMPT}”`,
+  ],
 }
 
 const PLATFORM_INSTALL_NOTES = {
@@ -143,6 +156,10 @@ const PLATFORM_INSTALL_NOTES = {
   'claude-desktop': [
     'Adds .agents/skills/joinquest-integration/ — step-by-step instructions for your agent.',
     'Merges MCP into Claude Desktop’s config (macOS, Windows, or Linux).',
+  ],
+  gemini: [
+    'Adds .agents/skills/joinquest-integration/ to your game repo.',
+    'Runs gemini mcp add (project scope) or writes .gemini/settings.json.',
   ],
 }
 
@@ -232,6 +249,14 @@ export default function DeveloperMcpWizard({ defaultExpanded = false, alwaysExpa
   const claudeAddCommand = useMemo(
     () =>
       buildClaudeMcpAddCommand({
+        apiKey: activeKey ?? '<paste-api-key-here>',
+      }),
+    [activeKey],
+  )
+
+  const geminiAddCommand = useMemo(
+    () =>
+      buildGeminiMcpAddCommand({
         apiKey: activeKey ?? '<paste-api-key-here>',
       }),
     [activeKey],
@@ -670,6 +695,28 @@ export default function DeveloperMcpWizard({ defaultExpanded = false, alwaysExpa
                         onClick={() => void handleCopy(configText, 'config-manual')}
                       >
                         {copied === 'config-manual' ? 'Copied' : 'Copy .mcp.json'}
+                      </button>
+                    </details>
+                  </>
+                ) : clientId === 'gemini' ? (
+                  <>
+                    <pre className="developer-mcp__config">{geminiAddCommand}</pre>
+                    <button
+                      type="button"
+                      className="button-secondary"
+                      onClick={() => void handleCopy(geminiAddCommand, 'gemini-add')}
+                    >
+                      {copied === 'gemini-add' ? 'Copied' : 'Copy Gemini command'}
+                    </button>
+                    <details className="developer-mcp__details">
+                      <summary>Manual settings.json instead</summary>
+                      <pre className="developer-mcp__config">{configText}</pre>
+                      <button
+                        type="button"
+                        className="button-secondary"
+                        onClick={() => void handleCopy(configText, 'config-manual')}
+                      >
+                        {copied === 'config-manual' ? 'Copied' : 'Copy settings.json'}
                       </button>
                     </details>
                   </>

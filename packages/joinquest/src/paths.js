@@ -1,45 +1,54 @@
 import { homedir } from 'node:os'
 import { join } from 'node:path'
 
+/** Override with JOINQUEST_INSTALL_TEST_HOME in tests (isolated fake $HOME). */
+export function userHome() {
+  return process.env.JOINQUEST_INSTALL_TEST_HOME || homedir()
+}
+
 export function claudeDesktopConfigPath() {
   switch (process.platform) {
     case 'darwin':
-      return join(homedir(), 'Library/Application Support/Claude/claude_desktop_config.json')
+      return join(userHome(), 'Library/Application Support/Claude/claude_desktop_config.json')
     case 'win32':
-      return join(process.env.APPDATA || join(homedir(), 'AppData/Roaming'), 'Claude/claude_desktop_config.json')
+      return join(process.env.APPDATA || join(userHome(), 'AppData/Roaming'), 'Claude/claude_desktop_config.json')
     default:
-      return join(process.env.XDG_CONFIG_HOME || join(homedir(), '.config'), 'Claude/claude_desktop_config.json')
+      return join(process.env.XDG_CONFIG_HOME || join(userHome(), '.config'), 'Claude/claude_desktop_config.json')
   }
 }
 
 export function windsurfMcpConfigPath() {
-  return join(homedir(), '.codeium/windsurf/mcp_config.json')
+  return join(userHome(), '.codeium/windsurf/mcp_config.json')
 }
 
 export function clineMcpConfigPath() {
   switch (process.platform) {
     case 'darwin':
       return join(
-        homedir(),
+        userHome(),
         'Library/Application Support/Code/User/globalStorage/saoudrizwan.claude-dev/settings/cline_mcp_settings.json',
       )
     case 'win32':
       return join(
-        process.env.APPDATA || join(homedir(), 'AppData/Roaming'),
+        process.env.APPDATA || join(userHome(), 'AppData/Roaming'),
         'Code/User/globalStorage/saoudrizwan.claude-dev/settings/cline_mcp_settings.json',
       )
     default:
       return join(
-        process.env.XDG_CONFIG_HOME || join(homedir(), '.config'),
+        process.env.XDG_CONFIG_HOME || join(userHome(), '.config'),
         'Code/User/globalStorage/saoudrizwan.claude-dev/settings/cline_mcp_settings.json',
       )
   }
 }
 
 export function cursorPluginDir() {
-  return join(homedir(), '.cursor/plugins/local/joinquest')
+  return join(userHome(), '.cursor/plugins/local/joinquest')
 }
 
 export function claudePluginDir() {
-  return join(homedir(), '.claude/skills/joinquest-integration')
+  return join(userHome(), '.claude/skills/joinquest-integration')
+}
+
+export function geminiProjectSettingsPath(cwd) {
+  return join(cwd, '.gemini/settings.json')
 }

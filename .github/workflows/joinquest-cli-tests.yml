@@ -1,0 +1,62 @@
+name: JoinQuest CLI Tests
+
+on:
+  push:
+    branches: [ main, develop ]
+    paths:
+      - 'packages/joinquest/**'
+      - 'packages/create-joinquest/**'
+      - 'scripts/check-install-platform-parity.mjs'
+      - 'scripts/install-joinquest-*.sh'
+      - 'frontend/src/lib/developers.js'
+      - 'frontend/src/lib/developers.test.js'
+      - 'frontend/src/components/developers/DeveloperMcpWizard.jsx'
+      - 'frontend/src/components/developers/DeveloperMcpWizard.test.jsx'
+      - '.github/workflows/joinquest-cli-tests.yml'
+  pull_request:
+    branches: [ main, develop ]
+    paths:
+      - 'packages/joinquest/**'
+      - 'packages/create-joinquest/**'
+      - 'scripts/check-install-platform-parity.mjs'
+      - 'scripts/install-joinquest-*.sh'
+      - 'frontend/src/lib/developers.js'
+      - 'frontend/src/lib/developers.test.js'
+      - 'frontend/src/components/developers/DeveloperMcpWizard.jsx'
+      - 'frontend/src/components/developers/DeveloperMcpWizard.test.jsx'
+      - '.github/workflows/joinquest-cli-tests.yml'
+
+jobs:
+  joinquest-cli:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Sync assets and run joinquest tests
+        working-directory: packages/joinquest
+        run: |
+          npm run sync-assets
+          npm test
+
+      - name: Verify install platform parity
+        run: node scripts/check-install-platform-parity.mjs
+
+      - name: Smoke test joinquest dry-run
+        run: JOINQUEST_API_KEY=lq_dev_test node packages/joinquest/bin/joinquest.js install cursor --dry-run
+
+      - name: Validate install shell wrappers
+        run: |
+          bash -n scripts/install-joinquest-dev.sh
+          bash -n scripts/install-joinquest-cursor-plugin.sh
+          bash -n scripts/install-joinquest-claude-plugin.sh
+
+      - name: Run frontend developer install command tests
+        run: |
+          cd frontend
+          npm ci
+          npm run test:run -- src/lib/developers.test.js src/components/developers/DeveloperMcpWizard.test.jsx

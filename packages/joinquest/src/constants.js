@@ -9,6 +9,7 @@ export const PLATFORMS = [
   'roo',
   'windsurf',
   'cline',
+  'gemini',
   'skill',
 ]
 

@@ -47,6 +47,17 @@ describe('buildInstallDevCommand', () => {
     const { buildInstallDevCommand } = await import('./developers')
     expect(buildInstallDevCommand({ apiKey: 'k', client: 'copilot' })).toContain('install copilot')
     expect(buildInstallDevCommand({ apiKey: 'k', client: 'roo' })).toContain('install roo')
+    expect(buildInstallDevCommand({ apiKey: 'k', client: 'gemini' })).toContain('install gemini')
+  })
+})
+
+describe('buildGeminiMcpAddCommand', () => {
+  it('uses gemini mcp add with project scope', async () => {
+    const { buildGeminiMcpAddCommand } = await import('./developers')
+    const cmd = buildGeminiMcpAddCommand({ apiKey: 'lq_dev_test' })
+    expect(cmd).toContain('gemini mcp add -s project -t stdio')
+    expect(cmd).toContain('JOINQUEST_API_KEY=lq_dev_test')
+    expect(cmd).toContain('joinquest-integration')
   })
 })
 

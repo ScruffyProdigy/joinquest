@@ -30,6 +30,7 @@ while [ $# -gt 0 ]; do
     --roo) PLATFORM=roo ;;
     --windsurf) PLATFORM=windsurf ;;
     --cline) PLATFORM=cline ;;
+    --gemini) PLATFORM=gemini ;;
     --skill-only) PLATFORM=skill ;;
     --all)
       echo "→ npx joinquest install cursor && npx joinquest install claude"

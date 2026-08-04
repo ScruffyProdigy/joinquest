@@ -1,7 +1,7 @@
-import { spawnSync } from 'node:child_process'
+import { spawnSync as defaultSpawnSync } from 'node:child_process'
 import { join } from 'node:path'
-import { PLUGIN_PLATFORMS } from './constants.js'
-import { buildStdioMcpServer, claudeMcpAddCommand, mergeMcpConfig } from './mcp-config.js'
+import { PLUGIN_PLATFORMS, MCP_PACKAGE, MCP_SERVER_NAME } from './constants.js'
+import { buildStdioMcpServer, claudeMcpAddCommand, geminiMcpAddCommand, mergeMcpConfig } from './mcp-config.js'
 import {
   installClineArtifacts,
   installCopilotArtifacts,
@@ -9,7 +9,7 @@ import {
   installWindsurfArtifacts,
 } from './platforms.js'
 import { installClaudePlugin, installCursorPlugin } from './plugin.js'
-import { claudeDesktopConfigPath, clineMcpConfigPath, windsurfMcpConfigPath } from './paths.js'
+import { claudeDesktopConfigPath, clineMcpConfigPath, geminiProjectSettingsPath, windsurfMcpConfigPath } from './paths.js'
 import { installAgentSkill } from './skill.js'
 
 function requireApiKey(apiKey, platform, { plugin = false, skillOnly = false }) {
@@ -76,6 +76,9 @@ export function dryRunPlan(platform, options = {}) {
       actions.push('Install .cline/rules/joinquest-integration/ + .clinerules')
       actions.push('Write MCP config → Cline globalStorage settings')
       break
+    case 'gemini':
+      actions.push('Run gemini mcp add for this project (or write .gemini/settings.json)')
+      break
     default:
       actions.push(`Unknown platform: ${platform}`)
   }
@@ -93,6 +96,7 @@ export async function runInstall(platform, options = {}) {
     dryRun = false,
     plugin = false,
     apiKey = process.env.JOINQUEST_API_KEY || '',
+    spawnSync: spawn = defaultSpawnSync,
   } = options
 
   const normalized = platform.toLowerCase()
@@ -144,7 +148,7 @@ export async function runInstall(platform, options = {}) {
     }
     case 'claude': {
       const cmd = claudeMcpAddCommand(key)
-      const result = spawnSync('claude', ['mcp', 'add', '--scope', 'project', '--transport', 'stdio', '--env', `JOINQUEST_API_KEY=${key}`, 'joinquest-integration', '--', 'npx', '-y', '@joinquest/mcp-integration'], {
+      const result = spawn('claude', ['mcp', 'add', '--scope', 'project', '--transport', 'stdio', '--env', `JOINQUEST_API_KEY=${key}`, 'joinquest-integration', '--', 'npx', '-y', '@joinquest/mcp-integration'], {
         cwd,
         stdio: 'inherit',
       })
@@ -185,6 +189,40 @@ export async function runInstall(platform, options = {}) {
       installClineArtifacts(cwd, { dryRun })
       mergeMcpConfig(clineMcpConfigPath(), 'mcpServers', buildStdioMcpServer({ apiKey: key }))
       console.log('Reload the Cline panel in VS Code and approve joinquest-integration when prompted.')
+      break
+    }
+    case 'gemini': {
+      const settingsPath = geminiProjectSettingsPath(cwd)
+      const result = spawn(
+        'gemini',
+        [
+          'mcp',
+          'add',
+          '-s',
+          'project',
+          '-t',
+          'stdio',
+          '-e',
+          `JOINQUEST_API_KEY=${key}`,
+          MCP_SERVER_NAME,
+          'npx',
+          '-y',
+          MCP_PACKAGE,
+        ],
+        { cwd, stdio: 'inherit' },
+      )
+      if (result.status !== 0) {
+        mergeMcpConfig(settingsPath, 'mcpServers', buildStdioMcpServer({ apiKey: key }))
+        console.log(`Wrote MCP config → ${settingsPath}`)
+        if (result.error?.code === 'ENOENT') {
+          console.error('gemini CLI not found. Install: https://github.com/google-gemini/gemini-cli')
+        }
+        console.error('gemini mcp add failed — run manually:\n')
+        console.error(geminiMcpAddCommand(key))
+      } else {
+        console.log('Added joinquest-integration to .gemini/settings.json (project scope).')
+      }
+      console.log('Start a new Gemini CLI session in this project directory.')
       break
     }
     default:

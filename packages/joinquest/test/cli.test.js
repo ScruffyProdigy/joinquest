@@ -39,6 +39,12 @@ test('dryRunPlan lists skill install for copilot', () => {
   assert.ok(actions.some((a) => a.includes('.vscode/mcp.json')))
 })
 
+test('dryRunPlan lists gemini mcp add', () => {
+  const actions = dryRunPlan('gemini', { apiKey: 'k' })
+  assert.ok(actions.some((a) => a.includes('.agents/skills')))
+  assert.ok(actions.some((a) => a.includes('gemini mcp add')))
+})
+
 test('runCli install skill dry-run exits 0', async () => {
   const code = await runCli(['install', 'skill', '--dry-run'])
   assert.equal(code, 0)
