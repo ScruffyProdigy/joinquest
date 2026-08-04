@@ -537,12 +537,6 @@ function joinquestInstallPlatform(client) {
   }
 }
 
-/** @deprecated Use joinquestInstallPlatform */
-function joinquestInstallDevFlag(client) {
-  const platform = joinquestInstallPlatform(client)
-  return platform === 'skill' ? '--skill-only' : `--${platform}`
-}
-
 function joinquestInstallEnvPrefix(apiKey) {
   const key = apiKey || 'lq_dev_PASTE_YOUR_KEY'
   return `JOINQUEST_API_KEY=${key}`
@@ -596,7 +590,6 @@ export function buildInstallDevDryRunCommand({ client = 'cursor' }) {
 }
 
 export function buildInstallDevInspectCommand({ apiKey, client = 'cursor' }) {
-  const platform = joinquestInstallPlatform(client)
   const dryRun = buildInstallDevDryRunCommand({ client })
   const install = buildJoinquestInstallCommand({ apiKey, client })
   return `# Preview planned actions (no writes):

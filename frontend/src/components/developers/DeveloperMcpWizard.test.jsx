@@ -3,13 +3,11 @@ import userEvent from '@testing-library/user-event'
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import DeveloperMcpWizard from './DeveloperMcpWizard'
 import {
-  buildClaudeMcpAddCommand,
   buildInstallClaudePluginCommand,
   buildInstallCursorPluginCommand,
   buildInstallDevCommand,
   buildMcpServerConfig,
   createDeveloperApiKey,
-  fetchMyDeveloperApiKeys,
 } from '../../lib/developers'
 
 vi.mock('../../lib/developers', () => ({

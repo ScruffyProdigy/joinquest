@@ -4,7 +4,6 @@ import {
   fetchStarterAvatars,
   hasExistingAvatar,
   needsProfileSetup,
-  resolveUserAvatarUrl,
   updatePlayerProfile,
 } from '../../lib/avatars'
 import { useAuth } from '../auth/AuthProvider'

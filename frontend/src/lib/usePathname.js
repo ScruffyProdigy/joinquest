@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useEffect, useState } from 'react'
 
 export function usePathname() {
   const [pathname, setPathname] = useState(() => window.location.pathname)

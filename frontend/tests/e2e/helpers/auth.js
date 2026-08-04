@@ -87,7 +87,7 @@ export function setUserDisplayName(email, displayName) {
 }
 
 export async function signInWithEmailLink(page, email) {
-  await page.getByLabel('Email').fill(email)
+  await page.getByRole('textbox', { name: 'Email' }).fill(email)
   await page.getByRole('button', { name: 'Continue' }).click()
   await expect(page.getByRole('heading', { name: 'Enter your code' })).toBeVisible()
 
@@ -99,7 +99,7 @@ export async function signInWithEmailLink(page, email) {
 }
 
 export async function signInWithEmailCode(page, email) {
-  await page.getByLabel('Email').fill(email)
+  await page.getByRole('textbox', { name: 'Email' }).fill(email)
   await page.getByRole('button', { name: 'Continue' }).click()
   await expect(page.getByRole('heading', { name: 'Enter your code' })).toBeVisible()
 
