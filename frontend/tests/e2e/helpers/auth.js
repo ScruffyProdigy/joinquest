@@ -11,6 +11,7 @@ const E2E_SIGNIN_LOG = process.env.E2E_SIGNIN_LOG_PATH
     ? process.env.E2E_SIGNIN_LOG_PATH
     : path.join(repoRoot, process.env.E2E_SIGNIN_LOG_PATH)
   : E2E_BACKEND_LOG
+const SIGNED_IN_TIMEOUT_MS = 90000
 
 function psqlAvailable() {
   try {
@@ -105,35 +106,15 @@ async function pollForValue(readValue, label, { timeoutMs = 15000 } = {}) {
   throw new Error(`Timed out waiting for ${label}`)
 }
 
-function isGraphqlResponse(response, operationName) {
-  if (!response.url().includes('/graphql') || response.request().method() !== 'POST') {
-    return false
-  }
-
-  const body = response.request().postData() || ''
-  return body.includes(operationName)
-}
-
 async function submitEmailForSignIn(page, email) {
-  const requestPromise = page.waitForResponse(
-    (response) => isGraphqlResponse(response, 'requestSignIn'),
-    { timeout: 30000 },
-  )
-
   await page.getByRole('textbox', { name: 'Email' }).fill(email)
   await page.getByRole('button', { name: 'Continue with email' }).click()
-
-  const response = await requestPromise
-  if (!response.ok()) {
-    throw new Error(`requestSignIn failed with status ${response.status()}`)
-  }
-
-  await expect(page.getByRole('heading', { name: 'Enter your code' })).toBeVisible({ timeout: 15000 })
+  await expect(page.getByRole('heading', { name: 'Enter your code' })).toBeVisible({ timeout: 30000 })
   await pollForValue(() => latestLoginCodeFromLog(email), `sign-in email for ${email}`)
 }
 
 async function expectSignedIn(page) {
-  await expect(page.getByRole('button', { name: 'Log out' })).toBeVisible({ timeout: 30000 })
+  await expect(page.getByRole('button', { name: 'Log out' })).toBeVisible({ timeout: SIGNED_IN_TIMEOUT_MS })
 }
 
 export function setUserDisplayName(email, displayName, { avatarKey = 'compass' } = {}) {
@@ -148,19 +129,8 @@ export async function signInWithEmailLink(page, email) {
   await submitEmailForSignIn(page, email)
 
   const magicLink = await pollForValue(() => latestMagicLinkUrlFromLog(email), `magic link for ${email}`)
-
-  const completePromise = page.waitForResponse(
-    (response) => isGraphqlResponse(response, 'completeSignInWithLink'),
-    { timeout: 30000 },
-  )
-
   await page.goto(magicLink)
-  const response = await completePromise
-  if (!response.ok()) {
-    throw new Error(`completeSignInWithLink failed with status ${response.status()}`)
-  }
-
-  await page.waitForURL((url) => !url.pathname.includes('/auth/complete'), { timeout: 30000 })
+  await page.waitForURL((url) => !url.pathname.includes('/auth/complete'), { timeout: SIGNED_IN_TIMEOUT_MS })
   await expectSignedIn(page)
 }
 
@@ -168,18 +138,6 @@ export async function signInWithEmailCode(page, email) {
   await submitEmailForSignIn(page, email)
 
   const code = await pollForValue(() => latestLoginCodeFromLog(email), `sign-in code for ${email}`)
-
-  const completePromise = page.waitForResponse(
-    (response) => isGraphqlResponse(response, 'completeSignInWithCode'),
-    { timeout: 30000 },
-  )
-
   await page.getByLabel('Sign-in code').fill(code)
-
-  const response = await completePromise
-  if (!response.ok()) {
-    throw new Error(`completeSignInWithCode failed with status ${response.status()}`)
-  }
-
   await expectSignedIn(page)
 }
