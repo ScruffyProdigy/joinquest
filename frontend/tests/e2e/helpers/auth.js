@@ -120,7 +120,7 @@ async function submitEmailForSignIn(page, email) {
     { timeout: 30000 },
   )
 
-  await page.getByLabel('Email').fill(email)
+  await page.getByRole('textbox', { name: 'Email' }).fill(email)
   await page.getByRole('button', { name: 'Continue with email' }).click()
 
   const response = await requestPromise
