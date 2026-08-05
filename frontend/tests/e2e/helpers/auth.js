@@ -11,7 +11,33 @@ const E2E_SIGNIN_LOG = process.env.E2E_SIGNIN_LOG_PATH
     ? process.env.E2E_SIGNIN_LOG_PATH
     : path.join(repoRoot, process.env.E2E_SIGNIN_LOG_PATH)
   : E2E_BACKEND_LOG
-const SIGNED_IN_TIMEOUT_MS = 90000
+const GRAPHQL_URL = process.env.E2E_GRAPHQL_URL || 'http://127.0.0.1:8080/graphql'
+const SESSION_COOKIE_NAME = 'lobby_session'
+const CURL_TIMEOUT_SEC = 30
+
+const REQUEST_SIGN_IN = `
+  mutation RequestSignIn($email: String!) {
+    requestSignIn(email: $email)
+  }
+`
+
+const COMPLETE_SIGN_IN_WITH_LINK = `
+  mutation CompleteSignInWithLink($token: ID!) {
+    completeSignInWithLink(token: $token) {
+      id
+      email
+    }
+  }
+`
+
+const COMPLETE_SIGN_IN_WITH_CODE = `
+  mutation CompleteSignInWithCode($email: String!, $code: String!) {
+    completeSignInWithCode(email: $email, code: $code) {
+      id
+      email
+    }
+  }
+`
 
 function psqlAvailable() {
   try {
@@ -47,7 +73,16 @@ function readSignInLog() {
   throw new Error(`E2E sign-in log not found at ${E2E_SIGNIN_LOG}`)
 }
 
-function latestMagicLinkUrlFromLog(email) {
+function tokenFromMagicLinkUrl(link) {
+  const url = new URL(link)
+  const token = url.searchParams.get('token')
+  if (!token) {
+    throw new Error(`No token query param in magic link URL: ${link}`)
+  }
+  return token
+}
+
+function latestMagicLinkTokenFromLog(email) {
   const normalizedEmail = email.trim().toLowerCase()
   const escapedEmail = normalizedEmail.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
   const patterns = [
@@ -68,7 +103,7 @@ function latestMagicLinkUrlFromLog(email) {
     throw new Error(`No magic link found in E2E log for ${email}`)
   }
 
-  return lastLink
+  return tokenFromMagicLinkUrl(lastLink)
 }
 
 function latestLoginCodeFromLog(email) {
@@ -106,15 +141,90 @@ async function pollForValue(readValue, label, { timeoutMs = 15000 } = {}) {
   throw new Error(`Timed out waiting for ${label}`)
 }
 
-async function submitEmailForSignIn(page, email) {
-  await page.getByRole('textbox', { name: 'Email' }).fill(email)
-  await page.getByRole('button', { name: 'Continue with email' }).click()
-  await expect(page.getByRole('heading', { name: 'Enter your code' })).toBeVisible({ timeout: 30000 })
+function curlGraphql(query, variables = {}) {
+  const payloadPath = path.join(repoRoot, 'tmp', `gql-${process.pid}-${Date.now()}.json`)
+  fs.mkdirSync(path.dirname(payloadPath), { recursive: true })
+  fs.writeFileSync(payloadPath, JSON.stringify({ query, variables }))
+
+  try {
+    return execSync(
+      `curl -sS -i -m ${CURL_TIMEOUT_SEC} -X POST ${GRAPHQL_URL} -H 'Content-Type: application/json' --data-binary @${payloadPath}`,
+      {
+        encoding: 'utf8',
+        maxBuffer: 10 * 1024 * 1024,
+      },
+    )
+  } finally {
+    fs.unlinkSync(payloadPath)
+  }
+}
+
+function sessionCookieFromCurlOutput(output) {
+  for (const line of output.split('\n')) {
+    if (!line.toLowerCase().startsWith('set-cookie:')) {
+      continue
+    }
+
+    const header = line.slice('set-cookie:'.length).trim()
+    const [pair] = header.split(';')
+    const eq = pair.indexOf('=')
+    if (eq === -1) {
+      continue
+    }
+
+    const name = pair.slice(0, eq).trim()
+    if (name === SESSION_COOKIE_NAME) {
+      return pair.slice(eq + 1)
+    }
+  }
+
+  return null
+}
+
+function assertGraphqlSuccess(output) {
+  const bodyIndex = output.indexOf('\r\n\r\n')
+  const body = bodyIndex === -1 ? output : output.slice(bodyIndex + 4)
+  const payload = JSON.parse(body)
+  if (payload.errors?.length) {
+    throw new Error(payload.errors[0]?.message || 'GraphQL request failed')
+  }
+  return payload.data
+}
+
+async function requestSignInEmail(email) {
+  const output = curlGraphql(REQUEST_SIGN_IN, { email })
+  const data = assertGraphqlSuccess(output)
+  if (data.requestSignIn !== true) {
+    throw new Error('requestSignIn returned false')
+  }
+
   await pollForValue(() => latestLoginCodeFromLog(email), `sign-in email for ${email}`)
 }
 
-async function expectSignedIn(page) {
-  await expect(page.getByRole('button', { name: 'Log out' })).toBeVisible({ timeout: SIGNED_IN_TIMEOUT_MS })
+function completeSignInAndGetSessionCookie(query, variables) {
+  const output = curlGraphql(query, variables)
+  assertGraphqlSuccess(output)
+  const sessionCookie = sessionCookieFromCurlOutput(output)
+  if (!sessionCookie) {
+    throw new Error('No session cookie returned from sign-in completion')
+  }
+  return sessionCookie
+}
+
+async function applySessionCookie(page, sessionCookie) {
+  const baseURL = process.env.BASE_URL || 'http://127.0.0.1:5173'
+  const { hostname } = new URL(baseURL)
+
+  await page.context().addCookies([
+    {
+      name: SESSION_COOKIE_NAME,
+      value: sessionCookie,
+      domain: hostname,
+      path: '/',
+      httpOnly: true,
+      sameSite: 'Lax',
+    },
+  ])
 }
 
 export function setUserDisplayName(email, displayName, { avatarKey = 'compass' } = {}) {
@@ -125,19 +235,31 @@ export function setUserDisplayName(email, displayName, { avatarKey = 'compass' }
   runPsql(sql)
 }
 
-export async function signInWithEmailLink(page, email) {
-  await submitEmailForSignIn(page, email)
+async function expectSignedIn(page) {
+  await expect(page.getByRole('button', { name: 'Log out' })).toBeVisible({ timeout: 30000 })
+}
 
-  const magicLink = await pollForValue(() => latestMagicLinkUrlFromLog(email), `magic link for ${email}`)
-  await page.goto(magicLink)
-  await page.waitForURL((url) => !url.pathname.includes('/auth/complete'), { timeout: SIGNED_IN_TIMEOUT_MS })
+async function refreshSignedInUi(page) {
+  await page.goto('/')
   await expectSignedIn(page)
 }
 
+export async function signInWithEmailLink(page, email) {
+  await requestSignInEmail(email)
+
+  const token = await pollForValue(() => latestMagicLinkTokenFromLog(email), `magic link for ${email}`)
+  const sessionCookie = completeSignInAndGetSessionCookie(COMPLETE_SIGN_IN_WITH_LINK, { token })
+
+  await applySessionCookie(page, sessionCookie)
+  await refreshSignedInUi(page)
+}
+
 export async function signInWithEmailCode(page, email) {
-  await submitEmailForSignIn(page, email)
+  await requestSignInEmail(email)
 
   const code = await pollForValue(() => latestLoginCodeFromLog(email), `sign-in code for ${email}`)
-  await page.getByLabel('Sign-in code').fill(code)
-  await expectSignedIn(page)
+  const sessionCookie = completeSignInAndGetSessionCookie(COMPLETE_SIGN_IN_WITH_CODE, { email, code })
+
+  await applySessionCookie(page, sessionCookie)
+  await refreshSignedInUi(page)
 }

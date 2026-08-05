@@ -231,6 +231,29 @@ jobs:
         tail -n 50 tmp/e2e-backend.log || true
         exit 1
 
+    - name: Smoke test auth completion via curl
+      run: |
+        EMAIL="smoke-$(date +%s)@example.com"
+        curl -sf -m 20 -X POST http://127.0.0.1:8080/graphql \
+          -H 'Content-Type: application/json' \
+          -d "{\"query\":\"mutation RequestSignIn(\$email: String!) { requestSignIn(email: \$email) }\",\"variables\":{\"email\":\"$EMAIL\"}}"
+        for _ in {1..30}; do
+          CODE=$(grep "$EMAIL" tmp/e2e-sign-in.log 2>/dev/null | tail -1 | sed -n 's/.*code=\([0-9][0-9]*\).*/\1/p' || true)
+          if [ -n "$CODE" ]; then
+            break
+          fi
+          sleep 1
+        done
+        if [ -z "$CODE" ]; then
+          echo "No sign-in code found for $EMAIL"
+          tail -n 20 tmp/e2e-sign-in.log || true
+          exit 1
+        fi
+        curl -sf -m 20 -X POST http://127.0.0.1:8080/graphql \
+          -H 'Content-Type: application/json' \
+          -d "{\"query\":\"mutation CompleteSignInWithCode(\$email: String!, \$code: String!) { completeSignInWithCode(email: \$email, code: \$code) { id } }\",\"variables\":{\"email\":\"$EMAIL\",\"code\":\"$CODE\"}}"
+        echo "Auth completion smoke test passed for $EMAIL"
+
     - name: Run auth and game loop E2E tests
       run: |
         cd frontend
