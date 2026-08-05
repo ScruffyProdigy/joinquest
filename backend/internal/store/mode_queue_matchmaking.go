@@ -131,6 +131,9 @@ func (s *Store) JoinModeQueue(ctx context.Context, modeQueueID, userID uuid.UUID
 	if _, _, err := s.leaveTableSeatTx(ctx, tx, userID); err != nil {
 		return nil, err
 	}
+	if err := finishReturnedQueueSessionsForRequeueTx(ctx, tx, userID); err != nil {
+		return nil, err
+	}
 	if err := ensureNotInActiveGameTx(ctx, tx, userID); err != nil {
 		return nil, err
 	}

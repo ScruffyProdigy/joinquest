@@ -57,6 +57,36 @@ func (w *Worker) SetProvisionHook(hook ProvisionHook) {
 	w.onProvision = hook
 }
 
+// CancelPending stops a debounced reconcile timer without running it.
+func (w *Worker) CancelPending(modeQueueID uuid.UUID) {
+	if w == nil || modeQueueID == uuid.Nil {
+		return
+	}
+	w.mu.Lock()
+	defer w.mu.Unlock()
+	if timer, ok := w.timers[modeQueueID]; ok {
+		timer.Stop()
+		delete(w.timers, modeQueueID)
+	}
+}
+
+// Shutdown stops all pending reconcile and provision timers (test cleanup).
+func (w *Worker) Shutdown() {
+	if w == nil {
+		return
+	}
+	w.mu.Lock()
+	defer w.mu.Unlock()
+	for id, timer := range w.timers {
+		timer.Stop()
+		delete(w.timers, id)
+	}
+	for id, timer := range w.provisionTimers {
+		timer.Stop()
+		delete(w.provisionTimers, id)
+	}
+}
+
 // Schedule coalesces rapid joins on the same queue and reconciles shortly after.
 func (w *Worker) Schedule(modeQueueID uuid.UUID) {
 	if w == nil || w.store == nil || modeQueueID == uuid.Nil {

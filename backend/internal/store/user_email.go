@@ -289,18 +289,28 @@ func (s *Store) CountUserSignInMethods(ctx context.Context, userID uuid.UUID) (i
 }
 
 func (s *Store) ResolveUserIDByEmail(ctx context.Context, email string) (uuid.UUID, error) {
-	item, err := s.GetUserEmailByAddress(ctx, email)
+	normalized := strings.ToLower(strings.TrimSpace(email))
+	item, err := s.GetUserEmailByAddress(ctx, normalized)
 	if err == nil {
 		return item.UserID, nil
 	}
 	if !errors.Is(err, ErrNotFound) {
 		return uuid.Nil, err
 	}
-	user, err := s.GetUserByEmail(ctx, email)
+
+	var userID uuid.UUID
+	err = s.db.QueryRowContext(ctx, `
+		SELECT id
+		FROM users
+		WHERE email = $1 AND is_active = true
+	`, normalized).Scan(&userID)
 	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return uuid.Nil, ErrNotFound
+		}
 		return uuid.Nil, err
 	}
-	return user.ID, nil
+	return userID, nil
 }
 
 func isEmailUniqueViolation(err error) bool {

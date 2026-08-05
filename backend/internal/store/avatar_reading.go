@@ -432,7 +432,7 @@ func (s *Store) SelectSpiritAnimalTotem(ctx context.Context, userID, readingID u
 		    avatar_reading_id = $4,
 		    updated_at = NOW()
 		WHERE id = $1 AND is_active = true
-		RETURNING id, email, username, display_name, avatar_url, avatar_key, avatar_source, created_at
+		RETURNING `+userColumns+`
 	`, userID, url, source, readingID)
 	user, err := scanUser(row)
 	if err != nil {

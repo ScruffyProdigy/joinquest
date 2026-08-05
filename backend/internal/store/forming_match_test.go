@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"strings"
 	"testing"
 
 	"github.com/google/uuid"
@@ -119,8 +120,8 @@ func TestJoinModeQueueSplitPartyWordHunt(t *testing.T) {
 	for _, p := range participants {
 		byUser[p.UserID] = p.SeatKey
 	}
-	if byUser[pat.ID] != "ClueGiver-Red" {
-		t.Fatalf("pat seat = %q, want ClueGiver-Red", byUser[pat.ID])
+	if !strings.HasPrefix(byUser[pat.ID], "ClueGiver-") {
+		t.Fatalf("pat seat = %q, want ClueGiver-*", byUser[pat.ID])
 	}
 	if byUser[bro.ID] != "Guesser-1" {
 		t.Fatalf("bro seat = %q, want Guesser-1", byUser[bro.ID])

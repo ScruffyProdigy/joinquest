@@ -69,6 +69,10 @@ func (s *Store) uniqueGuestUsername(ctx context.Context) (string, error) {
 	return "", fmt.Errorf("store: failed to generate unique guest username")
 }
 
+func mergedUserEmail(userID uuid.UUID) string {
+	return fmt.Sprintf("merged+%s@inactive.local", strings.ReplaceAll(userID.String(), "-", ""))
+}
+
 // MergeUserInto moves sign-in methods and transferable state from source into target, then deactivates source.
 func (s *Store) MergeUserInto(ctx context.Context, sourceID, targetID uuid.UUID) error {
 	if sourceID == targetID {
@@ -134,6 +138,11 @@ func (s *Store) MergeUserInto(ctx context.Context, sourceID, targetID uuid.UUID)
 		}
 		if makePrimary {
 			if _, err := tx.ExecContext(ctx, `
+				UPDATE users SET email = NULL, updated_at = NOW() WHERE id = $1
+			`, sourceID); err != nil {
+				return err
+			}
+			if _, err := tx.ExecContext(ctx, `
 				UPDATE users SET email = $2, updated_at = NOW() WHERE id = $1
 			`, targetID, item.Email); err != nil {
 				return err
@@ -180,9 +189,10 @@ func (s *Store) MergeUserInto(ctx context.Context, sourceID, targetID uuid.UUID)
 		UPDATE users
 		SET is_active = false,
 		    merged_into_user_id = $2,
+		    email = $3,
 		    updated_at = NOW()
 		WHERE id = $1
-	`, sourceID, targetID); err != nil {
+	`, sourceID, targetID, mergedUserEmail(sourceID)); err != nil {
 		return err
 	}
 

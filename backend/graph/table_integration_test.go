@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	"github.com/99designs/gqlgen/client"
+	"github.com/scruffyprodigy/playhub/internal/store"
 )
 
 func TestMyRoomTableSeatsIncludeUser(t *testing.T) {
@@ -16,24 +17,24 @@ func TestMyRoomTableSeatsIncludeUser(t *testing.T) {
 
 	_, hostCookie := createTestUserSession(t, ctx, env, cleaner)
 
-	var gamesResp struct {
-		Games []struct {
+	var gameResp struct {
+		Game struct {
 			ID    string
 			Modes []struct {
 				ID string
 			} `json:"modes"`
-		} `json:"games"`
+		} `json:"game"`
 	}
-	if err := env.Client.Post(`query {
-		games { id modes { id } }
-	}`, &gamesResp, client.AddCookie(hostCookie)); err != nil {
-		t.Fatalf("games query: %v", err)
+	if err := env.Client.Post(`query Game($id: ID!) {
+		game(id: $id) { id modes { id } }
+	}`, &gameResp, client.AddCookie(hostCookie), client.Var("id", store.DemoPrimaryGameIDStr)); err != nil {
+		t.Fatalf("game query: %v", err)
 	}
-	if len(gamesResp.Games) == 0 || len(gamesResp.Games[0].Modes) == 0 {
-		t.Fatal("expected catalog game with at least one mode")
+	if len(gameResp.Game.Modes) == 0 {
+		t.Fatal("expected demo game with at least one mode")
 	}
-	gameID := gamesResp.Games[0].ID
-	modeID := gamesResp.Games[0].Modes[0].ID
+	gameID := gameResp.Game.ID
+	modeID := gameResp.Game.Modes[0].ID
 
 	var tableResp struct {
 		CreatePrivateTable struct {

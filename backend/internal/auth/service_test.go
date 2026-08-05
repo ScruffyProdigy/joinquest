@@ -24,6 +24,7 @@ func openAuthTestService(t *testing.T) *Service {
 
 func openAuthTestServiceWithMailer(t *testing.T, mailer email.Sender) *Service {
 	t.Helper()
+	t.Setenv("MAGIC_LINK_BASE_URL", "http://localhost:5174/sign-in?token={token}")
 
 	databaseURL := testdb.RequireURL(t)
 

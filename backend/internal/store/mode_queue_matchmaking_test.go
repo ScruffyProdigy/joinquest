@@ -104,6 +104,7 @@ func TestJoinModeQueueRejectsWhenAlreadyMatched(t *testing.T) {
 	if _, err := st.JoinModeQueue(ctx, queueID, userB.ID, "", nil); err != nil {
 		t.Fatalf("join B: %v", err)
 	}
+	mustReconcileForming(t, st, ctx, queueID)
 
 	_, err = st.JoinModeQueue(ctx, queueID, userA.ID, "", nil)
 	if err == nil {

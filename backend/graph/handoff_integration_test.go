@@ -69,9 +69,8 @@ func TestJoinQueueProvisionsMatchOnGameServer(t *testing.T) {
 
 	postGraphQL(t, env.Handler, joinQuery, vars, cookieA)
 	postGraphQL(t, env.Handler, joinQuery, vars, cookieB)
-	if err := env.resolver.FormingWorker.ReconcileNow(ctx, uuid.MustParse(demoDefaultQueueID)); err != nil {
-		t.Fatalf("reconcile: %v", err)
-	}
+	flushFormingWorker(t, env, ctx, uuid.MustParse(demoDefaultQueueID))
+	waitForProvisionCalls(t, provisioner, 1)
 
 	if n := len(provisioner.calls); n != 1 {
 		t.Fatalf("expected exactly 1 provision call, got %d", n)
@@ -101,8 +100,17 @@ func TestJoinQueueProvisionsMatchOnGameServer(t *testing.T) {
 	if a.GameMode != "duel" {
 		t.Fatalf("gameMode = %q, want duel", a.GameMode)
 	}
-	if a.Seats[0].SeatKey != "1" || a.Seats[1].SeatKey != "2" {
-		t.Fatalf("expected manifest seat keys 1/2, got %+v", a.Seats)
+	seatKeys := map[string]struct{}{}
+	for _, seat := range a.Seats {
+		seatKeys[seat.SeatKey] = struct{}{}
+	}
+	if len(seatKeys) != 2 {
+		t.Fatalf("expected 2 unique seat keys, got %+v", a.Seats)
+	}
+	for _, want := range []string{"1", "2"} {
+		if _, ok := seatKeys[want]; !ok {
+			t.Fatalf("expected manifest seat key %q, got %+v", want, a.Seats)
+		}
 	}
 }
 
@@ -127,9 +135,8 @@ func TestJoinQueueProvisionsServiceTokenWhenConfigured(t *testing.T) {
 
 	postGraphQL(t, env.Handler, joinQuery, vars, cookieA)
 	postGraphQL(t, env.Handler, joinQuery, vars, cookieB)
-	if err := env.resolver.FormingWorker.ReconcileNow(ctx, uuid.MustParse(demoDefaultQueueID)); err != nil {
-		t.Fatalf("reconcile: %v", err)
-	}
+	flushFormingWorker(t, env, ctx, uuid.MustParse(demoDefaultQueueID))
+	waitForProvisionCalls(t, provisioner, 1)
 
 	call := provisioner.lastCall()
 	wantToken, err := auth.FormatGameServiceToken(uuid.MustParse(store.DemoPrimaryGameIDStr))

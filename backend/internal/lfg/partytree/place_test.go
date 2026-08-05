@@ -52,6 +52,9 @@ func TestSeatMatchesPrefix(t *testing.T) {
 	if !seatMatchesPrefix("Team-1-SpyMaster", "Team-1", "SpyMaster") {
 		t.Fatal("expected spymaster match")
 	}
+	if !seatMatchesPrefix("Team-1-DPS-1", "", "DPS") {
+		t.Fatal("expected nested role match with empty prefix")
+	}
 }
 
 func TestPlaceTree_CompetingSpymasters(t *testing.T) {

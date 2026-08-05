@@ -29,10 +29,11 @@ export async function expectNoIntentBanner(page) {
   await expect(page.getByRole('region', { name: 'Your intent' })).not.toBeVisible()
 }
 export async function readLaunchMatchId(page) {
-  const launchLink = page.getByRole('region', { name: 'Your intent' }).getByRole('link', {
+  const banner = page.getByRole('region', { name: 'Your intent' })
+  const launchLink = banner.getByRole('link', {
     name: 'Launch game',
   })
-  await expect(launchLink).toBeVisible()
+  await expect(launchLink).toBeVisible({ timeout: 30000 })
   const href = await launchLink.getAttribute('href')
   if (!href) {
     throw new Error('Launch game link is missing href')

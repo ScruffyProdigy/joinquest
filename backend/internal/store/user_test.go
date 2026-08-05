@@ -1,6 +1,7 @@
 package store
 
 import (
+	"errors"
 	"strings"
 	"testing"
 
@@ -81,6 +82,19 @@ func TestCreateUserUsernameIncludesRandomSuffix(t *testing.T) {
 	suffix := strings.TrimPrefix(user.Username, base+"_")
 	if len(suffix) != 8 {
 		t.Fatalf("expected 8-character username suffix, got %q", suffix)
+	}
+}
+
+func TestResolveUserIDByEmailReturnsNotFoundForUnknownAddress(t *testing.T) {
+	st := openTestStore(t)
+	ctx := t.Context()
+
+	_, err := st.ResolveUserIDByEmail(ctx, "missing-"+mustUUID(t)+"@example.com")
+	if err == nil {
+		t.Fatal("expected ErrNotFound for unknown email")
+	}
+	if !errors.Is(err, ErrNotFound) {
+		t.Fatalf("expected ErrNotFound, got %v", err)
 	}
 }
 

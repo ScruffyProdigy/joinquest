@@ -59,11 +59,18 @@ func TestJoinModeQueueSyncHealsMissedFormingPlacements(t *testing.T) {
 	var formingMatchID uuid.UUID
 	if err := st.db.QueryRowContext(ctx, `
 		SELECT id FROM forming_matches
-		WHERE mode_queue_id = $1 AND status = 'filling'
+		WHERE mode_queue_id = $1
 		ORDER BY created_at DESC
 		LIMIT 1
 	`, queueID).Scan(&formingMatchID); err != nil {
 		t.Fatalf("forming match: %v", err)
+	}
+	if _, err := st.db.ExecContext(ctx, `
+		UPDATE forming_matches
+		SET status = 'filling', fired_at = NULL
+		WHERE id = $1
+	`, formingMatchID); err != nil {
+		t.Fatalf("reset forming match: %v", err)
 	}
 	if _, err := st.db.ExecContext(ctx, `
 		UPDATE forming_match_assignments
@@ -71,6 +78,25 @@ func TestJoinModeQueueSyncHealsMissedFormingPlacements(t *testing.T) {
 		WHERE forming_match_id = $1
 	`, formingMatchID); err != nil {
 		t.Fatalf("clear assignments: %v", err)
+	}
+
+	if _, err := st.db.ExecContext(ctx, `
+		UPDATE game_session_participants gsp
+		SET finished_at = NOW()
+		FROM game_sessions gs
+		WHERE gsp.session_id = gs.id
+		  AND gs.mode_queue_id = $1
+		  AND gsp.user_id IN ($2, $3)
+		  AND gsp.finished_at IS NULL
+	`, queueID, userA.ID, userB.ID); err != nil {
+		t.Fatalf("finish session participants: %v", err)
+	}
+	if _, err := st.db.ExecContext(ctx, `
+		UPDATE game_sessions
+		SET status = 'completed', ended_at = NOW()
+		WHERE mode_queue_id = $1 AND status = 'active'
+	`, queueID); err != nil {
+		t.Fatalf("complete sessions: %v", err)
 	}
 
 	healed, err := st.JoinModeQueue(ctx, queueID, userA.ID, "", nil)

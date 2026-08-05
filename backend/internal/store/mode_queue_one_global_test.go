@@ -21,10 +21,18 @@ func TestJoinModeQueueSwitchesFromOtherQueueWhileWaiting(t *testing.T) {
 	secondQueueID := uuid.MustParse("b3000000-0000-4000-8000-000000000099")
 	secondModeID := uuid.MustParse("b2000000-0000-4000-8000-000000000099")
 	_, err = st.db.ExecContext(ctx, `
-		INSERT INTO game_modes (id, game_id, mode_key, display_name, min_players, max_players, status)
-		VALUES ($1, $2, 'alt', 'Alt mode', 2, 2, 'active')
+		INSERT INTO game_modes (id, game_id, mode_key, display_name, min_players, max_players, seat_template, status)
+		VALUES ($1, $2, 'alt', 'Alt mode', 2, 2, '{"count":2}'::jsonb, 'active')
 		ON CONFLICT (game_id, mode_key) DO NOTHING
 	`, secondModeID, DemoPrimaryGameID)
+	if err != nil {
+		t.Fatalf("insert mode: %v", err)
+	}
+	_, err = st.db.ExecContext(ctx, `
+		INSERT INTO game_mode_seats (mode_id, seat_key, sort_order)
+		VALUES ($1, '1', 0), ($1, '2', 1)
+		ON CONFLICT (mode_id, seat_key) DO NOTHING
+	`, secondModeID)
 	if err != nil {
 		t.Fatalf("insert mode: %v", err)
 	}

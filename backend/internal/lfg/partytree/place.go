@@ -254,7 +254,13 @@ func openSlotsForRole(slots []lfg.SeatSlot, prefix, role string) []int {
 
 func seatMatchesPrefix(seatKey, prefix, role string) bool {
 	if prefix == "" {
-		return strings.HasPrefix(seatKey, role+"-") || seatKey == role || strings.HasSuffix(seatKey, "-"+role)
+		if role == "" {
+			return true
+		}
+		if strings.HasPrefix(seatKey, role+"-") || seatKey == role || strings.HasSuffix(seatKey, "-"+role) {
+			return true
+		}
+		return leafRoleFromSeatKey(seatKey) == role
 	}
 	if !strings.HasPrefix(seatKey, prefix) {
 		return false

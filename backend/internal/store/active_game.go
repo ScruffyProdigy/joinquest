@@ -45,6 +45,30 @@ func (s *Store) GetUserActiveSessionParticipation(ctx context.Context, userID uu
 	return &view, nil
 }
 
+// finishReturnedQueueSessionsForRequeueTx marks catalog queue sessions finished when the
+// user already left the matched queue (return hub) but the session is still active.
+func finishReturnedQueueSessionsForRequeueTx(ctx context.Context, tx *sql.Tx, userID uuid.UUID) error {
+	_, err := tx.ExecContext(ctx, `
+		UPDATE game_session_participants gsp
+		SET finished_at = NOW()
+		FROM game_sessions gs
+		WHERE gsp.session_id = gs.id
+		  AND gsp.user_id = $1
+		  AND gsp.left_at IS NULL
+		  AND gsp.finished_at IS NULL
+		  AND gs.status = 'active'
+		  AND gs.mode_queue_id IS NOT NULL
+		  AND NOT EXISTS (
+		    SELECT 1
+		    FROM game_queues gq
+		    WHERE gq.user_id = gsp.user_id
+		      AND gq.mode_queue_id = gs.mode_queue_id
+		      AND gq.status IN ('waiting', 'matched')
+		  )
+	`, userID)
+	return err
+}
+
 func ensureNotInActiveGameTx(ctx context.Context, tx *sql.Tx, userID uuid.UUID) error {
 	var exists bool
 	if err := tx.QueryRowContext(ctx, `

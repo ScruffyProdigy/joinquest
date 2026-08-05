@@ -299,6 +299,10 @@ func (s *Store) UpdateMyGameMetadata(ctx context.Context, gameID, ownerUserID uu
 	if params.Tags != nil {
 		game.Tags = params.Tags
 	}
+	tags := game.Tags
+	if tags == nil {
+		tags = []string{}
+	}
 	if params.ContactEmail != nil {
 		email := strings.TrimSpace(*params.ContactEmail)
 		if email == "" {
@@ -330,7 +334,7 @@ func (s *Store) UpdateMyGameMetadata(ctx context.Context, gameID, ownerUserID uu
 			updated_at = NOW()
 		WHERE id = $1 AND owner_user_id = $2
 		RETURNING `+gameColumns+`
-	`, gameID, ownerUserID, game.Name, game.ShortDescription, game.Description, game.HowToPlay, pq.Array(game.Tags), game.ContactEmail, game.WebsiteURL, game.CommunityURL)
+	`, gameID, ownerUserID, game.Name, game.ShortDescription, game.Description, game.HowToPlay, pq.Array(tags), game.ContactEmail, game.WebsiteURL, game.CommunityURL)
 	return scanGame(row)
 }
 

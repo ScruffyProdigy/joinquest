@@ -62,3 +62,35 @@ func (s *Store) ClearWaitingModeQueue(ctx context.Context, modeQueueID uuid.UUID
 	`, modeQueueID)
 	return err
 }
+
+// ResetModeQueueIntegrationState clears queue, party, and forming rows for a mode queue.
+func (s *Store) ResetModeQueueIntegrationState(ctx context.Context, modeQueueID uuid.UUID) error {
+	if _, err := s.db.ExecContext(ctx, `
+		DELETE FROM game_queues WHERE mode_queue_id = $1
+	`, modeQueueID); err != nil {
+		return err
+	}
+	if _, err := s.db.ExecContext(ctx, `
+		DELETE FROM forming_match_assignments
+		WHERE forming_match_id IN (
+			SELECT id FROM forming_matches WHERE mode_queue_id = $1
+		)
+	`, modeQueueID); err != nil {
+		return err
+	}
+	if _, err := s.db.ExecContext(ctx, `
+		DELETE FROM forming_matches WHERE mode_queue_id = $1
+	`, modeQueueID); err != nil {
+		return err
+	}
+	if _, err := s.db.ExecContext(ctx, `
+		DELETE FROM party_members
+		WHERE party_id IN (SELECT id FROM parties WHERE mode_queue_id = $1)
+	`, modeQueueID); err != nil {
+		return err
+	}
+	_, err := s.db.ExecContext(ctx, `
+		DELETE FROM parties WHERE mode_queue_id = $1
+	`, modeQueueID)
+	return err
+}

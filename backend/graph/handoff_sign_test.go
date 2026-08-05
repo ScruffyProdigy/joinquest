@@ -64,7 +64,7 @@ func TestSignLaunchURLEmptyUntilProvisioned(t *testing.T) {
 	if err != nil {
 		t.Fatalf("GetGameByID: %v", err)
 	}
-	apiURL := "https://api.example.com"
+	apiURL := "http://localhost:3001"
 	game.APIBaseURL = &apiURL
 
 	launch, err := resolver.signLaunchURL(ctx, game, *rec.SessionID, userB.ID)
@@ -120,14 +120,14 @@ func TestSignLaunchURLFromStoredBase(t *testing.T) {
 	if err != nil {
 		t.Fatalf("GetGameByID: %v", err)
 	}
-	apiURL := "https://api.example.com"
+	apiURL := "http://localhost:3001"
 	game.APIBaseURL = &apiURL
 	sessionID := *rec.SessionID
 
 	provisioner := &gameURLProvisioner{
 		launchURLs: map[string]string{
-			userA.ID.String(): "https://play.example.com/?match=" + sessionID.String() + "&seat=1",
-			userB.ID.String(): "https://play.example.com/?match=" + sessionID.String() + "&seat=2",
+			userA.ID.String(): "http://localhost:5174/?match=" + sessionID.String() + "&seat=1",
+			userB.ID.String(): "http://localhost:5174/?match=" + sessionID.String() + "&seat=2",
 		},
 	}
 	env.resolverWithProvisioner(t, provisioner)

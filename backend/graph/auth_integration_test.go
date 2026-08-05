@@ -28,6 +28,7 @@ func newAuthGraphQLTestClient(t *testing.T) (*client.Client, http.Handler, *stor
 
 func newAuthGraphQLTestClientWithMailer(t *testing.T, mailer email.Sender) (*client.Client, http.Handler, *store.Store) {
 	t.Helper()
+	t.Setenv("MAGIC_LINK_BASE_URL", "http://localhost:5174/sign-in?token={token}")
 
 	databaseURL := testdb.RequireURL(t)
 

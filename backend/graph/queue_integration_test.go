@@ -80,6 +80,7 @@ func newQueueIntegrationEnv(t *testing.T) *queueIntegrationEnv {
 	resolver.SpiritAnimal = spiritanimal.NewRunnerFromEnv(st, "https://joinquest.test")
 	resolver.FormingWorker = formingworker.New(st, resolver.HandleFormingReconciled, 5*time.Millisecond, time.Minute)
 	resolver.FormingWorker.SetProvisionHook(resolver.HandleUnprovisionedSession)
+	t.Cleanup(func() { resolver.FormingWorker.Shutdown() })
 	env := &queueIntegrationEnv{
 		DB:       db,
 		Store:    st,
@@ -415,9 +416,7 @@ func TestJoinQueueGraphQLMatchArrivesViaWorker(t *testing.T) {
 		t.Fatalf("expected B queued from mutation, got %+v", matchResp.JoinQueue)
 	}
 
-	if err := env.resolver.FormingWorker.ReconcileNow(ctx, uuid.MustParse(demoDefaultQueueID)); err != nil {
-		t.Fatalf("reconcile: %v", err)
-	}
+	flushFormingWorker(t, env, ctx, uuid.MustParse(demoDefaultQueueID))
 
 	var statusResp struct {
 		MyQueueStatus struct {
@@ -441,9 +440,41 @@ func clearDemoQueue(t *testing.T, st *store.Store) {
 	if err != nil {
 		t.Fatalf("parse demo queue id: %v", err)
 	}
-	if err := st.ClearWaitingModeQueue(context.Background(), queueID); err != nil {
-		t.Fatalf("clear waiting queue: %v", err)
+	if err := st.ResetModeQueueIntegrationState(context.Background(), queueID); err != nil {
+		t.Fatalf("reset demo queue: %v", err)
 	}
+}
+
+func flushFormingWorker(t *testing.T, env *queueIntegrationEnv, ctx context.Context, queueID uuid.UUID) {
+	t.Helper()
+	env.resolver.FormingWorker.CancelPending(queueID)
+	for i := 0; i < 3; i++ {
+		if err := env.resolver.FormingWorker.ReconcileNow(ctx, queueID); err != nil {
+			t.Fatalf("reconcile: %v", err)
+		}
+		if i < 2 {
+			time.Sleep(15 * time.Millisecond)
+			env.resolver.FormingWorker.CancelPending(queueID)
+		}
+	}
+}
+
+func waitForProvisionCalls(t *testing.T, provisioner *syncProvisioner, want int) {
+	t.Helper()
+	deadline := time.Now().Add(500 * time.Millisecond)
+	for time.Now().Before(deadline) {
+		provisioner.mu.Lock()
+		n := len(provisioner.calls)
+		provisioner.mu.Unlock()
+		if n >= want {
+			return
+		}
+		time.Sleep(10 * time.Millisecond)
+	}
+	provisioner.mu.Lock()
+	n := len(provisioner.calls)
+	provisioner.mu.Unlock()
+	t.Fatalf("expected >= %d provision calls, got %d", want, n)
 }
 
 func TestQueueSubscriptionNotifiesWaitingPlayerOnMatch(t *testing.T) {

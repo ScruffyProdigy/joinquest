@@ -2,7 +2,6 @@ package graph
 
 import (
 	"context"
-	"encoding/json"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -227,19 +226,27 @@ func TestRefreshGameManifestRequiresAdmin(t *testing.T) {
 }
 
 func TestRegisterGameGraphQLErrorIsJSON(t *testing.T) {
+	t.Setenv("LOBBY_GAME_TOKEN_PEPPER", "catalog-test-pepper")
 	gameAPI := newMockGameAPIServer(t)
 	defer gameAPI.Close()
 
 	adminEmail := "admin-catalog-" + uuid.NewString() + "@example.com"
 	c, sessionCookies := signInAdmin(t, adminEmail)
 
-	var raw json.RawMessage
+	slug := "dup-" + uuid.NewString()
+	var firstResp struct {
+		RegisterGame struct {
+			Game struct {
+				ID string `json:"id"`
+			} `json:"game"`
+		} `json:"registerGame"`
+	}
 	err := c.Post(`mutation RegisterGame($input: RegisterGameInput!) {
 		registerGame(input: $input) {
 			game { id }
 		}
-	}`, &raw, append(sessionCookieOptions(sessionCookies), client.Var("input", map[string]any{
-		"slug":       "duplicate",
+	}`, &firstResp, append(sessionCookieOptions(sessionCookies), client.Var("input", map[string]any{
+		"slug":       slug,
 		"apiBaseUrl": gameAPI.URL,
 		"iconUrl":    "/games/default.svg",
 		"heroUrl":    "/games/default-hero.svg",
@@ -248,12 +255,19 @@ func TestRegisterGameGraphQLErrorIsJSON(t *testing.T) {
 		t.Fatalf("first registerGame failed: %v", err)
 	}
 
+	var dupResp struct {
+		RegisterGame struct {
+			Game struct {
+				ID string `json:"id"`
+			} `json:"game"`
+		} `json:"registerGame"`
+	}
 	err = c.Post(`mutation RegisterGame($input: RegisterGameInput!) {
 		registerGame(input: $input) {
 			game { id }
 		}
-	}`, &raw, append(sessionCookieOptions(sessionCookies), client.Var("input", map[string]any{
-		"slug":       "duplicate",
+	}`, &dupResp, append(sessionCookieOptions(sessionCookies), client.Var("input", map[string]any{
+		"slug":       slug,
 		"apiBaseUrl": gameAPI.URL,
 		"iconUrl":    "/games/default.svg",
 		"heroUrl":    "/games/default-hero.svg",

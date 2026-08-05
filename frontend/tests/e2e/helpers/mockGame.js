@@ -4,9 +4,31 @@ import http from 'node:http'
 export function startMockGameServer() {
   const server = http.createServer((req, res) => {
     if (req.method === 'POST' && req.url === '/api/v1/matches') {
-      req.resume()
-      res.writeHead(201, { 'Content-Type': 'application/json' })
-      res.end('{}')
+      const chunks = []
+      req.on('data', (chunk) => {
+        chunks.push(chunk)
+      })
+      req.on('end', () => {
+        let launchUrls = {}
+        try {
+          const payload = JSON.parse(Buffer.concat(chunks).toString('utf8'))
+          const seats = payload?.assignment?.seats || []
+          const matchId = payload?.assignment?.externalMatchId || 'e2e-match'
+          launchUrls = Object.fromEntries(
+            seats
+              .filter((seat) => seat?.lobbyUserId)
+              .map((seat) => [
+                seat.lobbyUserId,
+                `http://127.0.0.1:5173/return?match=${encodeURIComponent(matchId)}&seat=${encodeURIComponent(seat.seatKey || '1')}`,
+              ]),
+          )
+        } catch {
+          launchUrls = {}
+        }
+
+        res.writeHead(201, { 'Content-Type': 'application/json' })
+        res.end(JSON.stringify({ launchUrls }))
+      })
       return
     }
     res.writeHead(404).end()

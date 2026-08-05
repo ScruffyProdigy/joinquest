@@ -32,7 +32,7 @@ func TestParseGameServiceTokenRejectsWrongGame(t *testing.T) {
 	if err != nil {
 		t.Fatalf("FormatGameServiceToken: %v", err)
 	}
-	token = token[:len(token)-1] + "0"
+	token = token + "tampered"
 	if _, err := ParseGameServiceToken(token); err == nil {
 		t.Fatal("expected tampered token to fail")
 	}

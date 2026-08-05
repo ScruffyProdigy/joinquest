@@ -503,7 +503,7 @@ func (s *Store) GetUserTableSeat(ctx context.Context, userID uuid.UUID) (*UserTa
 // GetUserStartedTableSession returns the user's active launch from a started room table.
 func (s *Store) GetUserStartedTableSession(ctx context.Context, userID uuid.UUID) (*UserTableSeatView, error) {
 	row := s.db.QueryRowContext(ctx, `
-		SELECT rt.id, rt.room_id, r.invite_code, g.id, g.name, gm.id, gm.display_name, gsp.seat_key, gs.id
+		SELECT rt.id, rt.room_id, r.invite_code, g.id, g.name, gm.id, gm.display_name, COALESCE(NULLIF(gsp.role, ''), 'player'), gs.id
 		FROM game_session_participants gsp
 		INNER JOIN game_sessions gs ON gs.id = gsp.session_id AND gs.status = 'active'
 		INNER JOIN room_tables rt ON rt.session_id = gs.id AND rt.status = $2

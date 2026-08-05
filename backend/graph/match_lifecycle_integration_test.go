@@ -30,9 +30,8 @@ func TestReturnDestinationAfterMatchmaking(t *testing.T) {
 	vars := map[string]any{"id": demoDefaultQueueID}
 	postGraphQL(t, env.Handler, joinQuery, vars, cookieA)
 	postGraphQL(t, env.Handler, joinQuery, vars, cookieB)
-	if err := env.resolver.FormingWorker.ReconcileNow(ctx, uuid.MustParse(demoDefaultQueueID)); err != nil {
-		t.Fatalf("reconcile: %v", err)
-	}
+	flushFormingWorker(t, env, ctx, uuid.MustParse(demoDefaultQueueID))
+	waitForProvisionCalls(t, provisioner, 1)
 
 	call := provisioner.lastCall()
 	matchID := call.Assignment.ExternalMatchID
@@ -84,9 +83,8 @@ func TestReportMatchResultCompletesSession(t *testing.T) {
 	vars := map[string]any{"id": demoDefaultQueueID}
 	postGraphQL(t, env.Handler, joinQuery, vars, cookieA)
 	postGraphQL(t, env.Handler, joinQuery, vars, cookieB)
-	if err := env.resolver.FormingWorker.ReconcileNow(ctx, uuid.MustParse(demoDefaultQueueID)); err != nil {
-		t.Fatalf("reconcile: %v", err)
-	}
+	flushFormingWorker(t, env, ctx, uuid.MustParse(demoDefaultQueueID))
+	waitForProvisionCalls(t, provisioner, 1)
 
 	matchID := provisioner.lastCall().Assignment.ExternalMatchID
 	sessionID, err := uuid.Parse(matchID)
@@ -155,27 +153,30 @@ func TestFullGameLoopReturnAndRequeue(t *testing.T) {
 
 	postGraphQL(t, env.Handler, joinQuery, vars, cookieA)
 	postGraphQL(t, env.Handler, joinQuery, vars, cookieB)
-	if err := env.resolver.FormingWorker.ReconcileNow(ctx, uuid.MustParse(demoDefaultQueueID)); err != nil {
-		t.Fatalf("reconcile: %v", err)
+	flushFormingWorker(t, env, ctx, uuid.MustParse(demoDefaultQueueID))
+	waitForProvisionCalls(t, provisioner, 1)
+
+	firstSessionID := provisioner.lastCall().Assignment.ExternalMatchID
+	if firstSessionID == "" {
+		t.Fatal("expected external match id from provision")
 	}
 
-	activeQuery := `query { myActiveIntent { queueId status sessionId joinUrl } }`
+	activeQuery := `query { myActiveIntent { queueId status joinUrl } }`
 	bodyBefore := postGraphQL(t, env.Handler, activeQuery, nil, cookieA)
 	var beforeResp struct {
 		Data struct {
 			MyActiveIntent *struct {
-				Status    string  `json:"status"`
-				SessionID *string `json:"sessionId"`
+				Status  string  `json:"status"`
+				JoinURL *string `json:"joinUrl"`
 			} `json:"myActiveIntent"`
 		} `json:"data"`
 	}
 	if err := json.Unmarshal(bodyBefore, &beforeResp); err != nil {
 		t.Fatalf("decode active before: %v", err)
 	}
-	if beforeResp.Data.MyActiveIntent == nil || beforeResp.Data.MyActiveIntent.SessionID == nil {
-		t.Fatalf("expected matched session after worker, got %s", bodyBefore)
+	if beforeResp.Data.MyActiveIntent == nil || beforeResp.Data.MyActiveIntent.JoinURL == nil {
+		t.Fatalf("expected matched launch url after worker, got %s", bodyBefore)
 	}
-	firstSessionID := *beforeResp.Data.MyActiveIntent.SessionID
 
 	if beforeResp.Data.MyActiveIntent.Status != "MATCHED" {
 		t.Fatalf("expected MATCHED before return, got %s", bodyBefore)
@@ -202,16 +203,15 @@ func TestFullGameLoopReturnAndRequeue(t *testing.T) {
 
 	postGraphQL(t, env.Handler, joinQuery, vars, cookieA)
 	postGraphQL(t, env.Handler, joinQuery, vars, cookieB)
-	if err := env.resolver.FormingWorker.ReconcileNow(ctx, uuid.MustParse(demoDefaultQueueID)); err != nil {
-		t.Fatalf("reconcile requeue: %v", err)
-	}
+	flushFormingWorker(t, env, ctx, uuid.MustParse(demoDefaultQueueID))
+	waitForProvisionCalls(t, provisioner, 2)
 
 	requeuedBody := postGraphQL(t, env.Handler, activeQuery, nil, cookieA)
 	var requeuedActive struct {
 		Data struct {
 			MyActiveIntent *struct {
-				Status    string  `json:"status"`
-				SessionID *string `json:"sessionId"`
+				Status  string  `json:"status"`
+				JoinURL *string `json:"joinUrl"`
 			} `json:"myActiveIntent"`
 		} `json:"data"`
 	}
@@ -221,10 +221,13 @@ func TestFullGameLoopReturnAndRequeue(t *testing.T) {
 	if requeuedActive.Data.MyActiveIntent == nil || requeuedActive.Data.MyActiveIntent.Status != "MATCHED" {
 		t.Fatalf("expected MATCHED after requeue, got %s", requeuedBody)
 	}
-	if requeuedActive.Data.MyActiveIntent.SessionID == nil {
-		t.Fatalf("expected session after requeue worker, got %s", requeuedBody)
+	if requeuedActive.Data.MyActiveIntent.JoinURL == nil {
+		t.Fatalf("expected launch url after requeue worker, got %s", requeuedBody)
 	}
-	secondSessionID := *requeuedActive.Data.MyActiveIntent.SessionID
+	secondSessionID := provisioner.lastCall().Assignment.ExternalMatchID
+	if secondSessionID == "" {
+		t.Fatal("expected external match id after requeue provision")
+	}
 	if secondSessionID == firstSessionID {
 		t.Fatalf("re-queue reused session %s", firstSessionID)
 	}
@@ -262,9 +265,8 @@ func TestReturnDestinationClearsMatchedQueue(t *testing.T) {
 	vars := map[string]any{"id": demoDefaultQueueID}
 	postGraphQL(t, env.Handler, joinQuery, vars, cookieA)
 	postGraphQL(t, env.Handler, joinQuery, vars, cookieB)
-	if err := env.resolver.FormingWorker.ReconcileNow(ctx, uuid.MustParse(demoDefaultQueueID)); err != nil {
-		t.Fatalf("reconcile: %v", err)
-	}
+	flushFormingWorker(t, env, ctx, uuid.MustParse(demoDefaultQueueID))
+	waitForProvisionCalls(t, provisioner, 1)
 
 	matchID := provisioner.lastCall().Assignment.ExternalMatchID
 

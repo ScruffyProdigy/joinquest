@@ -97,6 +97,9 @@ func ToGraphQLGame(game *store.Game) *model.Game {
 	if game.ShortDescription != nil {
 		result.ShortDescription = game.ShortDescription
 	}
+	if game.Slug != nil {
+		result.Slug = game.Slug
+	}
 	if game.APIBaseURL != nil {
 		result.APIBaseURL = game.APIBaseURL
 	}
