@@ -14,8 +14,6 @@ func sampleManifest() *gameclient.Manifest {
 		Modes: []gameclient.ModeManifest{{
 			Key:          "classic",
 			DisplayName:  "Classic",
-			MinPlayers:   2,
-			MaxPlayers:   2,
 			SeatTemplate: json.RawMessage(`{"count":2}`),
 		}},
 		Status: gameclient.StatusResponse{

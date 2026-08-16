@@ -96,19 +96,16 @@ Lobby derives player UI (**Look for group** vs **Join as …** role buckets) fro
 |-------|----------|---------|
 | `key` | yes | Mode id (`gameMode` on provision) |
 | `displayName` | yes | Lobby UI |
-| `seatTemplate` | yes | Layout tree → seat map |
-| `min`, `max` | variable modes | Legal sizes for **Start now**; bounds `sizeForQueue` |
-| `sizeForQueue` | no | LFG target when `min < max`; **default `max`** |
-| `count` | no | Optional checksum (= leaf count) |
+| `seatTemplate` | yes | Layout tree → seat map. **All sizing lives here** — `min`, `max`, `sizeForQueue` are keys inside `seatTemplate` (at the root for a single-path mode, or per named dimension for composition modes), never sibling fields on the mode object. |
 
-**Rejected:** `seats[]`, `minPlayers`/`maxPlayers`, `rosters[]`, `matchmaking.kind`, `queue`, `startPolicy`, `assignment`.
+**Rejected:** `seats[]`, top-level `min`/`max`/`minPlayers`/`maxPlayers`/`sizeForQueue`, `count` on the mode, `rosters[]`, `matchmaking.kind`, `queue`, `startPolicy`, `assignment`.
 
 ### Mode sizing
 
-| Layout | Author sends | LFG fire size |
-|--------|--------------|---------------|
-| Fixed (duel, 3v3, full role comp) | `seatTemplate` only | **Derived** = number of expanded leaves |
-| Variable (e.g. 2–5 players) | `min`, `max`, optional `sizeForQueue` | `sizeForQueue` or **`max`** |
+| Layout | Author sends | LFG fire size | Whole-mode min/max |
+|--------|--------------|---------------|---------------------|
+| Fixed (duel, 3v3, full role comp) | `seatTemplate` only | **Derived** = number of expanded leaves | **Derived** = leaf count |
+| Variable (e.g. 2–5 players) | `min`, `max`, optional `sizeForQueue` *inside* `seatTemplate` | `sizeForQueue` or **`max`** | Sum of each path's own `min`/`max` (falls back to that path's full seat count if it doesn't declare one) |
 
 Do **not** duplicate fixed size as `count` on the mode — Lobby derives it from the template.
 
@@ -451,14 +448,26 @@ When the template has **multiple queue paths** (e.g. DPS / Tank / Support):
 {
   "key": "casual",
   "displayName": "Casual",
-  "min": 2,
-  "max": 5,
-  "sizeForQueue": 4,
-  "seatTemplate": { "count": 5 }
+  "seatTemplate": { "count": 5, "min": 2, "max": 5, "sizeForQueue": 4 }
 }
 ```
 
-Omit `sizeForQueue` to default LFG to 5.
+`min`/`max`/`sizeForQueue` are keys on the `seatTemplate` node itself, not siblings of it. Omit `sizeForQueue` to default LFG to `max`.
+
+### Word Hunt Party (composition + per-path sizing)
+
+```json
+{
+  "key": "party",
+  "displayName": "Word Hunt Party",
+  "seatTemplate": {
+    "ClueGiver": { "displayName": "Clue Giver", "name": ["Red", "Blue", "Green"], "min": 2, "max": 3, "sizeForQueue": 2 },
+    "Guesser": { "count": 6, "min": 2, "max": 6, "sizeForQueue": 4 }
+  }
+}
+```
+
+No top-level `min`/`max` needed — Lobby derives the mode's whole-table bounds (4–9 players) by summing each path's own `min`/`max`, and fires LFG at 6 (2 ClueGivers + 4 Guessers) from each path's `sizeForQueue`.
 
 ---
 

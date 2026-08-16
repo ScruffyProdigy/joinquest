@@ -14,15 +14,12 @@ import (
 	"github.com/scruffyprodigy/playhub/internal/seattemplate"
 )
 
-// ModeManifest is one playable mode from GET /api/v1/game-modes.
+// ModeManifest is one playable mode from GET /api/v1/game-modes. Sizing
+// (min/max/sizeForQueue) lives entirely inside seatTemplate -- there is no
+// top-level sibling field for it.
 type ModeManifest struct {
 	Key          string          `json:"key"`
 	DisplayName  string          `json:"displayName"`
-	Min          int             `json:"min"`
-	Max          int             `json:"max"`
-	MinPlayers   int             `json:"minPlayers"`
-	MaxPlayers   int             `json:"maxPlayers"`
-	SizeForQueue int             `json:"sizeForQueue"`
 	SeatTemplate json.RawMessage `json:"seatTemplate"`
 	Seats        json.RawMessage `json:"seats"`
 }
@@ -210,30 +207,6 @@ func validateModes(modes []ModeManifest) error {
 // ExpandModeSeats expands a mode's seatTemplate into catalog leaves.
 func ExpandModeSeats(mode ModeManifest) ([]seattemplate.Leaf, error) {
 	return seattemplate.Expand(mode.SeatTemplate)
-}
-
-// ModePlayerBounds returns min/max players for a mode after template expansion.
-// An explicit top-level min/max always takes precedence. Otherwise, bounds are
-// derived by summing each queue path's own min/max (already embedded in the
-// seatTemplate) so games don't need to redundantly restate them; a template
-// with no per-path min/max (e.g. a plain duel or solo mode) falls back to the
-// template's total leaf count.
-func ModePlayerBounds(mode ModeManifest, leafCount int, specs []seattemplate.PathSpec) (int, int) {
-	min := mode.Min
-	if min <= 0 {
-		min = mode.MinPlayers
-	}
-	max := mode.Max
-	if max <= 0 {
-		max = mode.MaxPlayers
-	}
-	if min > 0 && max > 0 {
-		return min, max
-	}
-	if derivedMin, derivedMax := seattemplate.DerivedPlayerBoundsFromPaths(specs); derivedMin > 0 && derivedMax > 0 {
-		return derivedMin, derivedMax
-	}
-	return seattemplate.DerivedPlayerBounds(leafCount, min, max)
 }
 
 // ErrManifestNotModified means the remote manifest etag is unchanged.

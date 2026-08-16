@@ -198,7 +198,7 @@ func applyManifestTx(ctx context.Context, tx *sql.Tx, game *Game, manifest *game
 			return nil, false, fmt.Errorf("store: mode %q: %w", modeKey, err)
 		}
 
-		minPlayers, maxPlayers := gameclient.ModePlayerBounds(modeDef, leafCount, pathSpecs)
+		minPlayers, maxPlayers := seattemplate.DerivedPlayerBoundsFromPaths(pathSpecs)
 
 		mode, err := upsertGameModeTx(ctx, tx, game.ID, modeKey, displayName, minPlayers, maxPlayers, modeDef.SeatTemplate)
 		if err != nil {
