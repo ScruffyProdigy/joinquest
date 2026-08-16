@@ -14,9 +14,8 @@ import (
 	"github.com/scruffyprodigy/playhub/internal/seattemplate"
 )
 
-// ModeManifest is one playable mode from GET /api/v1/game-modes. Sizing
-// (min/max/sizeForQueue) lives entirely inside seatTemplate -- there is no
-// top-level sibling field for it.
+// ModeManifest is one playable mode from GET /api/v1/game-modes. All sizing
+// (min/max/sizeForQueue) lives inside seatTemplate, not as sibling fields.
 type ModeManifest struct {
 	Key          string          `json:"key"`
 	DisplayName  string          `json:"displayName"`

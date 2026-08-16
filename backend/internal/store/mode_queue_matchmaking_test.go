@@ -203,8 +203,7 @@ func TestJoinModeQueueWordHuntFiresAtPartialCohortSizes(t *testing.T) {
 
 	slug := "wordhunt-" + uuid.NewString()
 	manifest := &gameclient.Manifest{
-		// No top-level Min/Max override — it should be derived by summing each
-		// path's own min/max (already declared below), per JQ-40.
+		// Min/max is derived below by summing each path's own min/max.
 		Modes: []gameclient.ModeManifest{{
 			Key:         "party",
 			DisplayName: "Word Hunt Party",

@@ -101,10 +101,8 @@ func TotalPlayersToStart(specs []PathSpec) int {
 	return total
 }
 
-// DerivedPlayerBoundsFromPaths sums each path's own min/max into whole-mode
-// bounds, falling back to a path's full seat capacity when it doesn't declare
-// its own min. Returns (0, 0) for an empty spec list, so callers can fall back
-// to a leaf-count-only derivation.
+// DerivedPlayerBoundsFromPaths sums each path's own min/max, falling back to
+// its full seat capacity when a path doesn't declare its own min.
 func DerivedPlayerBoundsFromPaths(specs []PathSpec) (int, int) {
 	if len(specs) == 0 {
 		return 0, 0
