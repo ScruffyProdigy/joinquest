@@ -6,6 +6,8 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"testing"
+
+	"github.com/scruffyprodigy/playhub/internal/seattemplate"
 )
 
 func newManifestTestServer(t *testing.T) *httptest.Server {
@@ -99,5 +101,50 @@ func TestValidateModesRejectsFlatSeats(t *testing.T) {
 	}})
 	if err == nil {
 		t.Fatal("expected validation error for flat seats[]")
+	}
+}
+
+func TestModePlayerBoundsDerivesFromPathsWhenNoTopLevelOverride(t *testing.T) {
+	raw := json.RawMessage(`{
+		"ClueGiver":{"name":["Red","Blue","Green"],"min":2,"max":3,"sizeForQueue":2},
+		"Guesser":{"count":6,"min":2,"max":6,"sizeForQueue":4}
+	}`)
+	specs, err := seattemplate.PathSpecs(raw)
+	if err != nil {
+		t.Fatal(err)
+	}
+	mode := ModeManifest{Key: "party", SeatTemplate: raw}
+	min, max := ModePlayerBounds(mode, 9, specs)
+	if min != 4 || max != 9 {
+		t.Fatalf("got (%d, %d), want (4, 9) derived from per-path min/max, no top-level override needed", min, max)
+	}
+}
+
+func TestModePlayerBoundsExplicitTopLevelOverrideTakesPrecedence(t *testing.T) {
+	raw := json.RawMessage(`{
+		"ClueGiver":{"name":["Red","Blue","Green"],"min":2,"max":3,"sizeForQueue":2},
+		"Guesser":{"count":6,"min":2,"max":6,"sizeForQueue":4}
+	}`)
+	specs, err := seattemplate.PathSpecs(raw)
+	if err != nil {
+		t.Fatal(err)
+	}
+	mode := ModeManifest{Key: "party", SeatTemplate: raw, Min: 3, Max: 8}
+	min, max := ModePlayerBounds(mode, 9, specs)
+	if min != 3 || max != 8 {
+		t.Fatalf("got (%d, %d), want (3, 8) — explicit manifest override should win over path-derived bounds", min, max)
+	}
+}
+
+func TestModePlayerBoundsFixedTemplateFallsBackToLeafCount(t *testing.T) {
+	raw := json.RawMessage(`{"count":2}`)
+	specs, err := seattemplate.PathSpecs(raw)
+	if err != nil {
+		t.Fatal(err)
+	}
+	mode := ModeManifest{Key: "duel", SeatTemplate: raw}
+	min, max := ModePlayerBounds(mode, 2, specs)
+	if min != 2 || max != 2 {
+		t.Fatalf("got (%d, %d), want (2, 2)", min, max)
 	}
 }

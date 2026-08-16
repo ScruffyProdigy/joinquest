@@ -213,7 +213,12 @@ func ExpandModeSeats(mode ModeManifest) ([]seattemplate.Leaf, error) {
 }
 
 // ModePlayerBounds returns min/max players for a mode after template expansion.
-func ModePlayerBounds(mode ModeManifest, leafCount int) (int, int) {
+// An explicit top-level min/max always takes precedence. Otherwise, bounds are
+// derived by summing each queue path's own min/max (already embedded in the
+// seatTemplate) so games don't need to redundantly restate them; a template
+// with no per-path min/max (e.g. a plain duel or solo mode) falls back to the
+// template's total leaf count.
+func ModePlayerBounds(mode ModeManifest, leafCount int, specs []seattemplate.PathSpec) (int, int) {
 	min := mode.Min
 	if min <= 0 {
 		min = mode.MinPlayers
@@ -221,6 +226,12 @@ func ModePlayerBounds(mode ModeManifest, leafCount int) (int, int) {
 	max := mode.Max
 	if max <= 0 {
 		max = mode.MaxPlayers
+	}
+	if min > 0 && max > 0 {
+		return min, max
+	}
+	if derivedMin, derivedMax := seattemplate.DerivedPlayerBoundsFromPaths(specs); derivedMin > 0 && derivedMax > 0 {
+		return derivedMin, derivedMax
 	}
 	return seattemplate.DerivedPlayerBounds(leafCount, min, max)
 }
