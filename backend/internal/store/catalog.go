@@ -189,7 +189,16 @@ func applyManifestTx(ctx context.Context, tx *sql.Tx, game *Game, manifest *game
 			return nil, false, fmt.Errorf("store: mode %q: %w", modeKey, err)
 		}
 		leafCount := len(leaves)
-		minPlayers, maxPlayers := gameclient.ModePlayerBounds(modeDef, leafCount)
+
+		pathSpecs, err := seattemplate.PathSpecs(modeDef.SeatTemplate)
+		if err != nil {
+			return nil, false, fmt.Errorf("store: mode %q path specs: %w", modeKey, err)
+		}
+		if err := seattemplate.ValidateDistinctDisplayNames(pathSpecs); err != nil {
+			return nil, false, fmt.Errorf("store: mode %q: %w", modeKey, err)
+		}
+
+		minPlayers, maxPlayers := seattemplate.DerivedPlayerBoundsFromPaths(pathSpecs)
 
 		mode, err := upsertGameModeTx(ctx, tx, game.ID, modeKey, displayName, minPlayers, maxPlayers, modeDef.SeatTemplate)
 		if err != nil {
@@ -214,13 +223,6 @@ func applyManifestTx(ctx context.Context, tx *sql.Tx, game *Game, manifest *game
 			return nil, false, err
 		}
 
-		pathSpecs, err := seattemplate.PathSpecs(modeDef.SeatTemplate)
-		if err != nil {
-			return nil, false, fmt.Errorf("store: mode %q path specs: %w", modeKey, err)
-		}
-		if err := seattemplate.ValidateDistinctDisplayNames(pathSpecs); err != nil {
-			return nil, false, fmt.Errorf("store: mode %q: %w", modeKey, err)
-		}
 		playersToStart := seattemplate.TotalPlayersToStart(pathSpecs)
 		if playersToStart < 1 {
 			playersToStart = leafCount

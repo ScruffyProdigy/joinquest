@@ -203,11 +203,10 @@ func TestJoinModeQueueWordHuntFiresAtPartialCohortSizes(t *testing.T) {
 
 	slug := "wordhunt-" + uuid.NewString()
 	manifest := &gameclient.Manifest{
+		// Min/max is derived below by summing each path's own min/max.
 		Modes: []gameclient.ModeManifest{{
 			Key:         "party",
 			DisplayName: "Word Hunt Party",
-			Min:         4,
-			Max:         9,
 			SeatTemplate: json.RawMessage(`{
 				"ClueGiver":{"displayName":"Clue Giver","name":["Red","Blue","Green"],"min":2,"max":3,"sizeForQueue":2},
 				"Guesser":{"count":6,"min":2,"max":6,"sizeForQueue":4}
@@ -232,6 +231,10 @@ func TestJoinModeQueueWordHuntFiresAtPartialCohortSizes(t *testing.T) {
 	modes, err := st.ListGameModesByGameID(ctx, result.Game.ID)
 	if err != nil {
 		t.Fatalf("ListGameModesByGameID: %v", err)
+	}
+	if modes[0].MinPlayers != 4 || modes[0].MaxPlayers != 9 {
+		t.Fatalf("mode bounds = (%d, %d), want (4, 9) derived from ClueGiver (2-3) + Guesser (2-6) path min/max",
+			modes[0].MinPlayers, modes[0].MaxPlayers)
 	}
 	queues, err := st.ListModeQueuesByModeID(ctx, modes[0].ID)
 	if err != nil {

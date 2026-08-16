@@ -18,11 +18,6 @@ import (
 type ModeManifest struct {
 	Key          string          `json:"key"`
 	DisplayName  string          `json:"displayName"`
-	Min          int             `json:"min"`
-	Max          int             `json:"max"`
-	MinPlayers   int             `json:"minPlayers"`
-	MaxPlayers   int             `json:"maxPlayers"`
-	SizeForQueue int             `json:"sizeForQueue"`
 	SeatTemplate json.RawMessage `json:"seatTemplate"`
 	Seats        json.RawMessage `json:"seats"`
 }
@@ -210,19 +205,6 @@ func validateModes(modes []ModeManifest) error {
 // ExpandModeSeats expands a mode's seatTemplate into catalog leaves.
 func ExpandModeSeats(mode ModeManifest) ([]seattemplate.Leaf, error) {
 	return seattemplate.Expand(mode.SeatTemplate)
-}
-
-// ModePlayerBounds returns min/max players for a mode after template expansion.
-func ModePlayerBounds(mode ModeManifest, leafCount int) (int, int) {
-	min := mode.Min
-	if min <= 0 {
-		min = mode.MinPlayers
-	}
-	max := mode.Max
-	if max <= 0 {
-		max = mode.MaxPlayers
-	}
-	return seattemplate.DerivedPlayerBounds(leafCount, min, max)
 }
 
 // ErrManifestNotModified means the remote manifest etag is unchanged.

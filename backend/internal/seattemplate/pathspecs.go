@@ -101,6 +101,24 @@ func TotalPlayersToStart(specs []PathSpec) int {
 	return total
 }
 
+// DerivedPlayerBoundsFromPaths sums each path's own min/max, falling back to
+// its full seat capacity when a path doesn't declare its own min.
+func DerivedPlayerBoundsFromPaths(specs []PathSpec) (int, int) {
+	if len(specs) == 0 {
+		return 0, 0
+	}
+	var min, max int
+	for _, spec := range specs {
+		pathMin := spec.Min
+		if pathMin <= 0 {
+			pathMin = spec.SeatCapacity
+		}
+		min += pathMin
+		max += spec.Max
+	}
+	return min, max
+}
+
 func walkPathMeta(node map[string]any, inheritedPath string, out map[string]map[string]any) error {
 	pascal := pascalKeys(node)
 	if len(pascal) == 0 {
