@@ -27,6 +27,9 @@ export const LOOK_FOR_GROUP = 'Look for group'
 export const LOOKING_FOR_GROUP = 'Looking…'
 export const STOP_LOOKING = 'Stop looking'
 
+export const PLAY_SOLO = 'Play'
+export const STARTING_SOLO = 'Starting…'
+
 export function joinAsLabel(queuePath) {
   return `Join as ${queuePath}`
 }
