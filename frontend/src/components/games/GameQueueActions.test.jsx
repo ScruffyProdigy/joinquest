@@ -165,4 +165,69 @@ describe('GameQueueActions', () => {
     await userEvent.click(screen.getByRole('button', { name: 'Join as Guesser' }))
     expect(onJoin).toHaveBeenCalledWith('Guesser')
   })
+
+  it('shows a Play button instead of Look for group for solo modes', () => {
+    render(
+      <GameQueueActions
+        joinOptions={{ kind: 'fifo', paths: [] }}
+        queueState="idle"
+        busy={false}
+        onJoin={vi.fn()}
+        onLeave={vi.fn()}
+        solo
+      />,
+    )
+
+    expect(screen.getByRole('button', { name: 'Play' })).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Look for group' })).not.toBeInTheDocument()
+  })
+
+  it('shows a Starting… label while a solo mode join is in flight', () => {
+    render(
+      <GameQueueActions
+        joinOptions={{ kind: 'fifo', paths: [] }}
+        queueState="idle"
+        busy
+        onJoin={vi.fn()}
+        onLeave={vi.fn()}
+        solo
+      />,
+    )
+
+    expect(screen.getByRole('button', { name: 'Starting…' })).toBeInTheDocument()
+  })
+
+  it('calls onJoin with no queue path when Play is clicked in a solo mode', async () => {
+    const onJoin = vi.fn()
+    render(
+      <GameQueueActions
+        joinOptions={{ kind: 'fifo', paths: [] }}
+        queueState="idle"
+        busy={false}
+        onJoin={onJoin}
+        onLeave={vi.fn()}
+        solo
+      />,
+    )
+
+    await userEvent.click(screen.getByRole('button', { name: 'Play' }))
+    expect(onJoin).toHaveBeenCalledWith()
+  })
+
+  it('shows Launch game without a Leave match button once a solo mode fires', () => {
+    render(
+      <GameQueueActions
+        joinOptions={{ kind: 'fifo', paths: [] }}
+        queueState="matched"
+        joinUrl="https://example.com/launch"
+        busy={false}
+        onJoin={vi.fn()}
+        onLeave={vi.fn()}
+        solo
+      />,
+    )
+
+    expect(screen.getByRole('link', { name: 'Launch game' })).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Leave match' })).not.toBeInTheDocument()
+  })
 })
