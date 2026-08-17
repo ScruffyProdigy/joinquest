@@ -1,7 +1,7 @@
 # Developer self-service — game registration & integration
 
 **Status:** Phase A shipped · Phase B largely shipped (integration checks, MCP, agent discovery)  
-**Next:** public release review polish, scheduled re-checks, JWKS rotation remote check  
+**Next:** public release review polish, scheduled re-checks  
 **Related:** [developer-integration-guide.md](./developer-integration-guide.md) · [game-minted launch URLs](./game-minted-launch-urls.md) ✅ · [player experience roadmap](./player-experience-roadmap.md)
 
 Today, adding a game means backfilling the database or calling admin-only `registerGame`. That works for us, but it blocks the goal of **any web developer** plugging in their game. This spec is the v1 path from homepage curiosity → registered game → working integration → friends testing → public release.
@@ -214,6 +214,7 @@ Each row: **status** (pass / fail / not run), **last checked**, **plain-language
 | Expired token | Past `exp` → 401 | “Expired seat tokens must be rejected.” |
 | Invalid token | Malformed JWT → 401 | “Malformed tokens must be rejected.” |
 | Wrong seat | Token for another reserved seat → 401/403 | “A user cannot claim a seat reserved for someone else.” |
+| Rotation overlap | Token signed under a temporary second key is accepted while both keys are active in JWKS (optional, non-gating) | “Your game rejected a token signed with a newly added key while the old key was still active — verify tokens by matching the JWT's `kid` header against every key in the JWKS response, not just the first/cached one.” |
 
 **Implementation note:** Run checks server-side on demand and on a schedule (e.g. every few hours for `private_testing` / `public` games). Store last result JSON on `game_integration_checks` or similar.
 
@@ -398,7 +399,6 @@ Registration, private testing, and the developer dashboard:
 **Still open (Phase B follow-ups):**
 
 - Scheduled re-checks + email on spec-breaking manifest changes  
-- Remote `jwt.rotation_overlap` check (needs Lobby dual-key JWKS during rotation)  
 - Optional `provision.banlist` remote check (games must opt in by banning test user)
 
 ### Phase C — PDF (optional / defer)
