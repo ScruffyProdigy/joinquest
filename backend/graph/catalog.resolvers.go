@@ -84,6 +84,11 @@ func (r *gameModeResolver) Queues(ctx context.Context, obj *model.GameMode) ([]*
 	return ToGraphQLModeQueues(queues), nil
 }
 
+// Eligibility is the resolver for the eligibility field.
+func (r *gameModeResolver) Eligibility(ctx context.Context, obj *model.GameMode, playerID string) (*model.ModeEligibility, error) {
+	panic(fmt.Errorf("not implemented: Eligibility - eligibility"))
+}
+
 // WaitingCount is the resolver for the waitingCount field.
 func (r *modeQueueResolver) WaitingCount(ctx context.Context, obj *model.ModeQueue) (int, error) {
 	st, err := r.requireStore()

@@ -10,6 +10,11 @@ import (
 	"time"
 )
 
+type ModeRequirementNode interface {
+	IsModeRequirementNode()
+	GetLabel() string
+}
+
 type Account struct {
 	User              *User           `json:"user"`
 	Emails            []*UserEmail    `json:"emails"`
@@ -134,8 +139,9 @@ type GameMode struct {
 	Status      string          `json:"status"`
 	Seats       []*GameModeSeat `json:"seats"`
 	// Join options with human labels and per-cohort fire sizes.
-	QueuePaths []*GameModeQueuePath `json:"queuePaths"`
-	Queues     []*ModeQueue         `json:"queues"`
+	QueuePaths  []*GameModeQueuePath `json:"queuePaths"`
+	Queues      []*ModeQueue         `json:"queues"`
+	Eligibility *ModeEligibility     `json:"eligibility,omitempty"`
 }
 
 // One join bucket from seatTemplate (composition modes).
@@ -163,6 +169,13 @@ type JoinResult struct {
 	QueuedCount *int    `json:"queuedCount,omitempty"`
 	QueuePath   *string `json:"queuePath,omitempty"`
 	Message     *string `json:"message,omitempty"`
+}
+
+type ModeEligibility struct {
+	Accessible    bool                `json:"accessible"`
+	Reason        *string             `json:"reason,omitempty"`
+	Requirement   ModeRequirementNode `json:"requirement,omitempty"`
+	UnlockModeKey *string             `json:"unlockModeKey,omitempty"`
 }
 
 type ModeQueue struct {
@@ -272,6 +285,24 @@ type RegisterMyGamePayload struct {
 	Connected     bool    `json:"connected"`
 	ConnectError  *string `json:"connectError,omitempty"`
 }
+
+type RequirementGroup struct {
+	Label    string                `json:"label"`
+	Operator RequirementOperator   `json:"operator"`
+	Children []ModeRequirementNode `json:"children"`
+}
+
+func (RequirementGroup) IsModeRequirementNode() {}
+func (this RequirementGroup) GetLabel() string  { return this.Label }
+
+type RequirementLeaf struct {
+	Label   string `json:"label"`
+	Current int    `json:"current"`
+	Target  int    `json:"target"`
+}
+
+func (RequirementLeaf) IsModeRequirementNode() {}
+func (this RequirementLeaf) GetLabel() string  { return this.Label }
 
 type ReturnDestination struct {
 	Path string `json:"path"`
@@ -869,6 +900,61 @@ func (e *QueueStatus) UnmarshalJSON(b []byte) error {
 }
 
 func (e QueueStatus) MarshalJSON() ([]byte, error) {
+	var buf bytes.Buffer
+	e.MarshalGQL(&buf)
+	return buf.Bytes(), nil
+}
+
+type RequirementOperator string
+
+const (
+	RequirementOperatorAll RequirementOperator = "ALL"
+	RequirementOperatorAny RequirementOperator = "ANY"
+)
+
+var AllRequirementOperator = []RequirementOperator{
+	RequirementOperatorAll,
+	RequirementOperatorAny,
+}
+
+func (e RequirementOperator) IsValid() bool {
+	switch e {
+	case RequirementOperatorAll, RequirementOperatorAny:
+		return true
+	}
+	return false
+}
+
+func (e RequirementOperator) String() string {
+	return string(e)
+}
+
+func (e *RequirementOperator) UnmarshalGQL(v any) error {
+	str, ok := v.(string)
+	if !ok {
+		return fmt.Errorf("enums must be strings")
+	}
+
+	*e = RequirementOperator(str)
+	if !e.IsValid() {
+		return fmt.Errorf("%s is not a valid RequirementOperator", str)
+	}
+	return nil
+}
+
+func (e RequirementOperator) MarshalGQL(w io.Writer) {
+	fmt.Fprint(w, strconv.Quote(e.String()))
+}
+
+func (e *RequirementOperator) UnmarshalJSON(b []byte) error {
+	s, err := strconv.Unquote(string(b))
+	if err != nil {
+		return err
+	}
+	return e.UnmarshalGQL(s)
+}
+
+func (e RequirementOperator) MarshalJSON() ([]byte, error) {
 	var buf bytes.Buffer
 	e.MarshalGQL(&buf)
 	return buf.Bytes(), nil

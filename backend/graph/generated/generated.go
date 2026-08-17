@@ -165,6 +165,7 @@ type ComplexityRoot struct {
 
 	GameMode struct {
 		DisplayName func(childComplexity int) int
+		Eligibility func(childComplexity int, playerID string) int
 		ID          func(childComplexity int) int
 		MaxPlayers  func(childComplexity int) int
 		MinPlayers  func(childComplexity int) int
@@ -198,6 +199,13 @@ type ComplexityRoot struct {
 		Queued      func(childComplexity int) int
 		QueuedCount func(childComplexity int) int
 		SessionID   func(childComplexity int) int
+	}
+
+	ModeEligibility struct {
+		Accessible    func(childComplexity int) int
+		Reason        func(childComplexity int) int
+		Requirement   func(childComplexity int) int
+		UnlockModeKey func(childComplexity int) int
 	}
 
 	ModeQueue struct {
@@ -350,6 +358,18 @@ type ComplexityRoot struct {
 		Game          func(childComplexity int) int
 		ServiceToken  func(childComplexity int) int
 		WebhookSecret func(childComplexity int) int
+	}
+
+	RequirementGroup struct {
+		Children func(childComplexity int) int
+		Label    func(childComplexity int) int
+		Operator func(childComplexity int) int
+	}
+
+	RequirementLeaf struct {
+		Current func(childComplexity int) int
+		Label   func(childComplexity int) int
+		Target  func(childComplexity int) int
 	}
 
 	ReturnDestination struct {
@@ -552,6 +572,7 @@ type GameModeResolver interface {
 	Seats(ctx context.Context, obj *model.GameMode) ([]*model.GameModeSeat, error)
 	QueuePaths(ctx context.Context, obj *model.GameMode) ([]*model.GameModeQueuePath, error)
 	Queues(ctx context.Context, obj *model.GameMode) ([]*model.ModeQueue, error)
+	Eligibility(ctx context.Context, obj *model.GameMode, playerID string) (*model.ModeEligibility, error)
 }
 type ModeQueueResolver interface {
 	WaitingCount(ctx context.Context, obj *model.ModeQueue) (int, error)
@@ -1151,6 +1172,17 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.GameMode.DisplayName(childComplexity), true
+	case "GameMode.eligibility":
+		if e.complexity.GameMode.Eligibility == nil {
+			break
+		}
+
+		args, err := ec.field_GameMode_eligibility_args(ctx, rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.complexity.GameMode.Eligibility(childComplexity, args["playerId"].(string)), true
 	case "GameMode.id":
 		if e.complexity.GameMode.ID == nil {
 			break
@@ -1298,6 +1330,31 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.JoinResult.SessionID(childComplexity), true
+
+	case "ModeEligibility.accessible":
+		if e.complexity.ModeEligibility.Accessible == nil {
+			break
+		}
+
+		return e.complexity.ModeEligibility.Accessible(childComplexity), true
+	case "ModeEligibility.reason":
+		if e.complexity.ModeEligibility.Reason == nil {
+			break
+		}
+
+		return e.complexity.ModeEligibility.Reason(childComplexity), true
+	case "ModeEligibility.requirement":
+		if e.complexity.ModeEligibility.Requirement == nil {
+			break
+		}
+
+		return e.complexity.ModeEligibility.Requirement(childComplexity), true
+	case "ModeEligibility.unlockModeKey":
+		if e.complexity.ModeEligibility.UnlockModeKey == nil {
+			break
+		}
+
+		return e.complexity.ModeEligibility.UnlockModeKey(childComplexity), true
 
 	case "ModeQueue.id":
 		if e.complexity.ModeQueue.ID == nil {
@@ -2305,6 +2362,44 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.RegisterMyGamePayload.WebhookSecret(childComplexity), true
+
+	case "RequirementGroup.children":
+		if e.complexity.RequirementGroup.Children == nil {
+			break
+		}
+
+		return e.complexity.RequirementGroup.Children(childComplexity), true
+	case "RequirementGroup.label":
+		if e.complexity.RequirementGroup.Label == nil {
+			break
+		}
+
+		return e.complexity.RequirementGroup.Label(childComplexity), true
+	case "RequirementGroup.operator":
+		if e.complexity.RequirementGroup.Operator == nil {
+			break
+		}
+
+		return e.complexity.RequirementGroup.Operator(childComplexity), true
+
+	case "RequirementLeaf.current":
+		if e.complexity.RequirementLeaf.Current == nil {
+			break
+		}
+
+		return e.complexity.RequirementLeaf.Current(childComplexity), true
+	case "RequirementLeaf.label":
+		if e.complexity.RequirementLeaf.Label == nil {
+			break
+		}
+
+		return e.complexity.RequirementLeaf.Label(childComplexity), true
+	case "RequirementLeaf.target":
+		if e.complexity.RequirementLeaf.Target == nil {
+			break
+		}
+
+		return e.complexity.RequirementLeaf.Target(childComplexity), true
 
 	case "ReturnDestination.kind":
 		if e.complexity.ReturnDestination.Kind == nil {
@@ -3343,6 +3438,35 @@ type GameMode {
   """Join options with human labels and per-cohort fire sizes."""
   queuePaths: [GameModeQueuePath!]!
   queues: [ModeQueue!]!
+  eligibility(playerId: ID!): ModeEligibility
+}
+
+type ModeEligibility {
+  accessible: Boolean!
+  reason: String
+  requirement: ModeRequirementNode
+  unlockModeKey: String
+}
+
+interface ModeRequirementNode {
+  label: String!
+}
+
+type RequirementLeaf implements ModeRequirementNode {
+  label: String!
+  current: Int!
+  target: Int!
+}
+
+type RequirementGroup implements ModeRequirementNode {
+  label: String!
+  operator: RequirementOperator!
+  children: [ModeRequirementNode!]!
+}
+
+enum RequirementOperator {
+  ALL
+  ANY
 }
 
 type ModeQueue {
@@ -3922,6 +4046,17 @@ var parsedSchema = gqlparser.MustLoadSchema(sources...)
 // endregion ************************** generated!.gotpl **************************
 
 // region    ***************************** args.gotpl *****************************
+
+func (ec *executionContext) field_GameMode_eligibility_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
+	var err error
+	args := map[string]any{}
+	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "playerId", ec.unmarshalNID2string)
+	if err != nil {
+		return nil, err
+	}
+	args["playerId"] = arg0
+	return args, nil
+}
 
 func (ec *executionContext) field_Game_activeSessions_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
 	var err error
@@ -6705,6 +6840,8 @@ func (ec *executionContext) fieldContext_Game_modes(_ context.Context, field gra
 				return ec.fieldContext_GameMode_queuePaths(ctx, field)
 			case "queues":
 				return ec.fieldContext_GameMode_queues(ctx, field)
+			case "eligibility":
+				return ec.fieldContext_GameMode_eligibility(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type GameMode", field.Name)
 		},
@@ -7340,6 +7477,57 @@ func (ec *executionContext) fieldContext_GameMode_queues(_ context.Context, fiel
 	return fc, nil
 }
 
+func (ec *executionContext) _GameMode_eligibility(ctx context.Context, field graphql.CollectedField, obj *model.GameMode) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_GameMode_eligibility,
+		func(ctx context.Context) (any, error) {
+			fc := graphql.GetFieldContext(ctx)
+			return ec.resolvers.GameMode().Eligibility(ctx, obj, fc.Args["playerId"].(string))
+		},
+		nil,
+		ec.marshalOModeEligibility2ᚖgithubᚗcomᚋscruffyprodigyᚋplayhubᚋgraphᚋmodelᚐModeEligibility,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_GameMode_eligibility(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "GameMode",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "accessible":
+				return ec.fieldContext_ModeEligibility_accessible(ctx, field)
+			case "reason":
+				return ec.fieldContext_ModeEligibility_reason(ctx, field)
+			case "requirement":
+				return ec.fieldContext_ModeEligibility_requirement(ctx, field)
+			case "unlockModeKey":
+				return ec.fieldContext_ModeEligibility_unlockModeKey(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type ModeEligibility", field.Name)
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_GameMode_eligibility_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _GameModeQueuePath_queuePath(ctx context.Context, field graphql.CollectedField, obj *model.GameModeQueuePath) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
@@ -7794,6 +7982,122 @@ func (ec *executionContext) _JoinResult_message(ctx context.Context, field graph
 func (ec *executionContext) fieldContext_JoinResult_message(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	fc = &graphql.FieldContext{
 		Object:     "JoinResult",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _ModeEligibility_accessible(ctx context.Context, field graphql.CollectedField, obj *model.ModeEligibility) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_ModeEligibility_accessible,
+		func(ctx context.Context) (any, error) {
+			return obj.Accessible, nil
+		},
+		nil,
+		ec.marshalNBoolean2bool,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_ModeEligibility_accessible(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "ModeEligibility",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Boolean does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _ModeEligibility_reason(ctx context.Context, field graphql.CollectedField, obj *model.ModeEligibility) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_ModeEligibility_reason,
+		func(ctx context.Context) (any, error) {
+			return obj.Reason, nil
+		},
+		nil,
+		ec.marshalOString2ᚖstring,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_ModeEligibility_reason(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "ModeEligibility",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _ModeEligibility_requirement(ctx context.Context, field graphql.CollectedField, obj *model.ModeEligibility) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_ModeEligibility_requirement,
+		func(ctx context.Context) (any, error) {
+			return obj.Requirement, nil
+		},
+		nil,
+		ec.marshalOModeRequirementNode2githubᚗcomᚋscruffyprodigyᚋplayhubᚋgraphᚋmodelᚐModeRequirementNode,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_ModeEligibility_requirement(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "ModeEligibility",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("FieldContext.Child cannot be called on type INTERFACE")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _ModeEligibility_unlockModeKey(ctx context.Context, field graphql.CollectedField, obj *model.ModeEligibility) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_ModeEligibility_unlockModeKey,
+		func(ctx context.Context) (any, error) {
+			return obj.UnlockModeKey, nil
+		},
+		nil,
+		ec.marshalOString2ᚖstring,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_ModeEligibility_unlockModeKey(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "ModeEligibility",
 		Field:      field,
 		IsMethod:   false,
 		IsResolver: false,
@@ -13530,6 +13834,180 @@ func (ec *executionContext) fieldContext_RegisterMyGamePayload_connectError(_ co
 	return fc, nil
 }
 
+func (ec *executionContext) _RequirementGroup_label(ctx context.Context, field graphql.CollectedField, obj *model.RequirementGroup) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_RequirementGroup_label,
+		func(ctx context.Context) (any, error) {
+			return obj.Label, nil
+		},
+		nil,
+		ec.marshalNString2string,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_RequirementGroup_label(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "RequirementGroup",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _RequirementGroup_operator(ctx context.Context, field graphql.CollectedField, obj *model.RequirementGroup) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_RequirementGroup_operator,
+		func(ctx context.Context) (any, error) {
+			return obj.Operator, nil
+		},
+		nil,
+		ec.marshalNRequirementOperator2githubᚗcomᚋscruffyprodigyᚋplayhubᚋgraphᚋmodelᚐRequirementOperator,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_RequirementGroup_operator(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "RequirementGroup",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type RequirementOperator does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _RequirementGroup_children(ctx context.Context, field graphql.CollectedField, obj *model.RequirementGroup) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_RequirementGroup_children,
+		func(ctx context.Context) (any, error) {
+			return obj.Children, nil
+		},
+		nil,
+		ec.marshalNModeRequirementNode2ᚕgithubᚗcomᚋscruffyprodigyᚋplayhubᚋgraphᚋmodelᚐModeRequirementNodeᚄ,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_RequirementGroup_children(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "RequirementGroup",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("FieldContext.Child cannot be called on type INTERFACE")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _RequirementLeaf_label(ctx context.Context, field graphql.CollectedField, obj *model.RequirementLeaf) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_RequirementLeaf_label,
+		func(ctx context.Context) (any, error) {
+			return obj.Label, nil
+		},
+		nil,
+		ec.marshalNString2string,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_RequirementLeaf_label(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "RequirementLeaf",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _RequirementLeaf_current(ctx context.Context, field graphql.CollectedField, obj *model.RequirementLeaf) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_RequirementLeaf_current,
+		func(ctx context.Context) (any, error) {
+			return obj.Current, nil
+		},
+		nil,
+		ec.marshalNInt2int,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_RequirementLeaf_current(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "RequirementLeaf",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Int does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _RequirementLeaf_target(ctx context.Context, field graphql.CollectedField, obj *model.RequirementLeaf) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_RequirementLeaf_target,
+		func(ctx context.Context) (any, error) {
+			return obj.Target, nil
+		},
+		nil,
+		ec.marshalNInt2int,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_RequirementLeaf_target(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "RequirementLeaf",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Int does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _ReturnDestination_path(ctx context.Context, field graphql.CollectedField, obj *model.ReturnDestination) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
@@ -16445,6 +16923,8 @@ func (ec *executionContext) fieldContext_Table_mode(_ context.Context, field gra
 				return ec.fieldContext_GameMode_queuePaths(ctx, field)
 			case "queues":
 				return ec.fieldContext_GameMode_queues(ctx, field)
+			case "eligibility":
+				return ec.fieldContext_GameMode_eligibility(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type GameMode", field.Name)
 		},
@@ -19517,6 +19997,29 @@ func (ec *executionContext) unmarshalInputUpdateMyGameMetadataInput(ctx context.
 
 // region    ************************** interface.gotpl ***************************
 
+func (ec *executionContext) _ModeRequirementNode(ctx context.Context, sel ast.SelectionSet, obj model.ModeRequirementNode) graphql.Marshaler {
+	switch obj := (obj).(type) {
+	case nil:
+		return graphql.Null
+	case model.RequirementLeaf:
+		return ec._RequirementLeaf(ctx, sel, &obj)
+	case *model.RequirementLeaf:
+		if obj == nil {
+			return graphql.Null
+		}
+		return ec._RequirementLeaf(ctx, sel, obj)
+	case model.RequirementGroup:
+		return ec._RequirementGroup(ctx, sel, &obj)
+	case *model.RequirementGroup:
+		if obj == nil {
+			return graphql.Null
+		}
+		return ec._RequirementGroup(ctx, sel, obj)
+	default:
+		panic(fmt.Errorf("unexpected type %T", obj))
+	}
+}
+
 // endregion ************************** interface.gotpl ***************************
 
 // region    **************************** object.gotpl ****************************
@@ -20431,6 +20934,39 @@ func (ec *executionContext) _GameMode(ctx context.Context, sel ast.SelectionSet,
 			}
 
 			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
+		case "eligibility":
+			field := field
+
+			innerFunc := func(ctx context.Context, _ *graphql.FieldSet) (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._GameMode_eligibility(ctx, field, obj)
+				return res
+			}
+
+			if field.Deferrable != nil {
+				dfs, ok := deferred[field.Deferrable.Label]
+				di := 0
+				if ok {
+					dfs.AddField(field)
+					di = len(dfs.Values) - 1
+				} else {
+					dfs = graphql.NewFieldSet([]graphql.CollectedField{field})
+					deferred[field.Deferrable.Label] = dfs
+				}
+				dfs.Concurrently(di, func(ctx context.Context) graphql.Marshaler {
+					return innerFunc(ctx, dfs)
+				})
+
+				// don't run the out.Concurrently() call below
+				out.Values[i] = graphql.Null
+				continue
+			}
+
+			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}
@@ -20589,6 +21125,51 @@ func (ec *executionContext) _JoinResult(ctx context.Context, sel ast.SelectionSe
 			out.Values[i] = ec._JoinResult_queuePath(ctx, field, obj)
 		case "message":
 			out.Values[i] = ec._JoinResult_message(ctx, field, obj)
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch(ctx)
+	if out.Invalids > 0 {
+		return graphql.Null
+	}
+
+	atomic.AddInt32(&ec.deferred, int32(len(deferred)))
+
+	for label, dfs := range deferred {
+		ec.processDeferredGroup(graphql.DeferredGroup{
+			Label:    label,
+			Path:     graphql.GetPath(ctx),
+			FieldSet: dfs,
+			Context:  ctx,
+		})
+	}
+
+	return out
+}
+
+var modeEligibilityImplementors = []string{"ModeEligibility"}
+
+func (ec *executionContext) _ModeEligibility(ctx context.Context, sel ast.SelectionSet, obj *model.ModeEligibility) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, modeEligibilityImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	deferred := make(map[string]*graphql.FieldSet)
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("ModeEligibility")
+		case "accessible":
+			out.Values[i] = ec._ModeEligibility_accessible(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "reason":
+			out.Values[i] = ec._ModeEligibility_reason(ctx, field, obj)
+		case "requirement":
+			out.Values[i] = ec._ModeEligibility_requirement(ctx, field, obj)
+		case "unlockModeKey":
+			out.Values[i] = ec._ModeEligibility_unlockModeKey(ctx, field, obj)
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}
@@ -22226,6 +22807,104 @@ func (ec *executionContext) _RegisterMyGamePayload(ctx context.Context, sel ast.
 			}
 		case "connectError":
 			out.Values[i] = ec._RegisterMyGamePayload_connectError(ctx, field, obj)
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch(ctx)
+	if out.Invalids > 0 {
+		return graphql.Null
+	}
+
+	atomic.AddInt32(&ec.deferred, int32(len(deferred)))
+
+	for label, dfs := range deferred {
+		ec.processDeferredGroup(graphql.DeferredGroup{
+			Label:    label,
+			Path:     graphql.GetPath(ctx),
+			FieldSet: dfs,
+			Context:  ctx,
+		})
+	}
+
+	return out
+}
+
+var requirementGroupImplementors = []string{"RequirementGroup", "ModeRequirementNode"}
+
+func (ec *executionContext) _RequirementGroup(ctx context.Context, sel ast.SelectionSet, obj *model.RequirementGroup) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, requirementGroupImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	deferred := make(map[string]*graphql.FieldSet)
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("RequirementGroup")
+		case "label":
+			out.Values[i] = ec._RequirementGroup_label(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "operator":
+			out.Values[i] = ec._RequirementGroup_operator(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "children":
+			out.Values[i] = ec._RequirementGroup_children(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch(ctx)
+	if out.Invalids > 0 {
+		return graphql.Null
+	}
+
+	atomic.AddInt32(&ec.deferred, int32(len(deferred)))
+
+	for label, dfs := range deferred {
+		ec.processDeferredGroup(graphql.DeferredGroup{
+			Label:    label,
+			Path:     graphql.GetPath(ctx),
+			FieldSet: dfs,
+			Context:  ctx,
+		})
+	}
+
+	return out
+}
+
+var requirementLeafImplementors = []string{"RequirementLeaf", "ModeRequirementNode"}
+
+func (ec *executionContext) _RequirementLeaf(ctx context.Context, sel ast.SelectionSet, obj *model.RequirementLeaf) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, requirementLeafImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	deferred := make(map[string]*graphql.FieldSet)
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("RequirementLeaf")
+		case "label":
+			out.Values[i] = ec._RequirementLeaf_label(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "current":
+			out.Values[i] = ec._RequirementLeaf_current(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "target":
+			out.Values[i] = ec._RequirementLeaf_target(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}
@@ -25325,6 +26004,60 @@ func (ec *executionContext) marshalNModeQueue2ᚖgithubᚗcomᚋscruffyprodigy�
 	return ec._ModeQueue(ctx, sel, v)
 }
 
+func (ec *executionContext) marshalNModeRequirementNode2githubᚗcomᚋscruffyprodigyᚋplayhubᚋgraphᚋmodelᚐModeRequirementNode(ctx context.Context, sel ast.SelectionSet, v model.ModeRequirementNode) graphql.Marshaler {
+	if v == nil {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			ec.Errorf(ctx, "the requested element is null which the schema does not allow")
+		}
+		return graphql.Null
+	}
+	return ec._ModeRequirementNode(ctx, sel, v)
+}
+
+func (ec *executionContext) marshalNModeRequirementNode2ᚕgithubᚗcomᚋscruffyprodigyᚋplayhubᚋgraphᚋmodelᚐModeRequirementNodeᚄ(ctx context.Context, sel ast.SelectionSet, v []model.ModeRequirementNode) graphql.Marshaler {
+	ret := make(graphql.Array, len(v))
+	var wg sync.WaitGroup
+	isLen1 := len(v) == 1
+	if !isLen1 {
+		wg.Add(len(v))
+	}
+	for i := range v {
+		i := i
+		fc := &graphql.FieldContext{
+			Index:  &i,
+			Result: &v[i],
+		}
+		ctx := graphql.WithFieldContext(ctx, fc)
+		f := func(i int) {
+			defer func() {
+				if r := recover(); r != nil {
+					ec.Error(ctx, ec.Recover(ctx, r))
+					ret = nil
+				}
+			}()
+			if !isLen1 {
+				defer wg.Done()
+			}
+			ret[i] = ec.marshalNModeRequirementNode2githubᚗcomᚋscruffyprodigyᚋplayhubᚋgraphᚋmodelᚐModeRequirementNode(ctx, sel, v[i])
+		}
+		if isLen1 {
+			f(i)
+		} else {
+			go f(i)
+		}
+
+	}
+	wg.Wait()
+
+	for _, e := range ret {
+		if e == graphql.Null {
+			return graphql.Null
+		}
+	}
+
+	return ret
+}
+
 func (ec *executionContext) marshalNMyGameCredentials2githubᚗcomᚋscruffyprodigyᚋplayhubᚋgraphᚋmodelᚐMyGameCredentials(ctx context.Context, sel ast.SelectionSet, v model.MyGameCredentials) graphql.Marshaler {
 	return ec._MyGameCredentials(ctx, sel, &v)
 }
@@ -25487,6 +26220,16 @@ func (ec *executionContext) marshalNRegisterMyGamePayload2ᚖgithubᚗcomᚋscru
 		return graphql.Null
 	}
 	return ec._RegisterMyGamePayload(ctx, sel, v)
+}
+
+func (ec *executionContext) unmarshalNRequirementOperator2githubᚗcomᚋscruffyprodigyᚋplayhubᚋgraphᚋmodelᚐRequirementOperator(ctx context.Context, v any) (model.RequirementOperator, error) {
+	var res model.RequirementOperator
+	err := res.UnmarshalGQL(v)
+	return res, graphql.ErrorOnPath(ctx, err)
+}
+
+func (ec *executionContext) marshalNRequirementOperator2githubᚗcomᚋscruffyprodigyᚋplayhubᚋgraphᚋmodelᚐRequirementOperator(ctx context.Context, sel ast.SelectionSet, v model.RequirementOperator) graphql.Marshaler {
+	return v
 }
 
 func (ec *executionContext) marshalNReturnDestination2githubᚗcomᚋscruffyprodigyᚋplayhubᚋgraphᚋmodelᚐReturnDestination(ctx context.Context, sel ast.SelectionSet, v model.ReturnDestination) graphql.Marshaler {
@@ -26690,6 +27433,20 @@ func (ec *executionContext) marshalOJSON2map(ctx context.Context, sel ast.Select
 	_ = ctx
 	res := graphql.MarshalMap(v)
 	return res
+}
+
+func (ec *executionContext) marshalOModeEligibility2ᚖgithubᚗcomᚋscruffyprodigyᚋplayhubᚋgraphᚋmodelᚐModeEligibility(ctx context.Context, sel ast.SelectionSet, v *model.ModeEligibility) graphql.Marshaler {
+	if v == nil {
+		return graphql.Null
+	}
+	return ec._ModeEligibility(ctx, sel, v)
+}
+
+func (ec *executionContext) marshalOModeRequirementNode2githubᚗcomᚋscruffyprodigyᚋplayhubᚋgraphᚋmodelᚐModeRequirementNode(ctx context.Context, sel ast.SelectionSet, v model.ModeRequirementNode) graphql.Marshaler {
+	if v == nil {
+		return graphql.Null
+	}
+	return ec._ModeRequirementNode(ctx, sel, v)
 }
 
 func (ec *executionContext) marshalOMyGameCredentials2ᚖgithubᚗcomᚋscruffyprodigyᚋplayhubᚋgraphᚋmodelᚐMyGameCredentials(ctx context.Context, sel ast.SelectionSet, v *model.MyGameCredentials) graphql.Marshaler {
