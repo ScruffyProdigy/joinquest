@@ -31,6 +31,28 @@ func TestRunJWTChecksRotationOverlapPassesWhenGameChecksKid(t *testing.T) {
 	if got := resultStatus(t, results, "jwt.rotation_overlap"); got != StatusPass {
 		t.Fatalf("expected jwt.rotation_overlap to pass, got %s", got)
 	}
+
+	keys := fetchJWKSKeys(t, jwksSrv.URL)
+	if len(keys) != 1 {
+		t.Fatalf("expected rotation key to be cleaned up after RunJWTChecks returns, got %d keys in JWKS", len(keys))
+	}
+}
+
+func TestRunJWTChecksRotationOverlapSkippedWhenBaselineFails(t *testing.T) {
+	signer, _ := testSignerWithJWKS(t)
+
+	gameSrv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusUnauthorized)
+	}))
+	t.Cleanup(gameSrv.Close)
+
+	game := testGame(gameSrv.URL)
+	runner := &Runner{}
+	results := runner.RunJWTChecks(context.Background(), game, signer, "match-1", "seat-a", "")
+
+	if got := resultStatus(t, results, "jwt.rotation_overlap"); got != StatusSkipped {
+		t.Fatalf("expected jwt.rotation_overlap to be skipped when the baseline claim fails, got %s", got)
+	}
 }
 
 func TestRunJWTChecksRotationOverlapFailsWhenGameIgnoresKid(t *testing.T) {

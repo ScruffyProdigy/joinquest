@@ -251,7 +251,7 @@ func (r *Runner) RunJWTChecks(ctx context.Context, game *store.Game, signer *aut
 	apiBase := strings.TrimRight(strings.TrimSpace(*game.APIBaseURL), "/")
 	audience := apiBase
 
-	results := make([]Result, 0, 8)
+	results := make([]Result, 0, 9)
 
 	jwksURL := strings.TrimRight(auth.LobbyIssuer(), "/") + "/.well-known/jwks.json"
 	if err := r.checkJWKSReachable(ctx, jwksURL); err != nil {
@@ -430,23 +430,23 @@ func (r *Runner) RunJWTChecks(ctx context.Context, game *store.Game, signer *aut
 			rotationOK := rotationStatus >= 200 && rotationStatus < 300
 
 			switch {
-			case primaryOK && rotationOK:
+			case !primaryOK:
+				results = append(results, Result{
+					CheckID: "jwt.rotation_overlap",
+					Status:  StatusSkipped,
+					Message: "Couldn't establish a baseline claim — see jwt.claim_happy_path.",
+				})
+			case rotationOK:
 				results = append(results, Result{
 					CheckID: "jwt.rotation_overlap",
 					Status:  StatusPass,
 					Message: "Your game accepted valid tokens signed under two different active keys.",
 				})
-			case primaryOK && !rotationOK:
-				results = append(results, Result{
-					CheckID: "jwt.rotation_overlap",
-					Status:  StatusFail,
-					Message: fmt.Sprintf("Your game rejected a token signed with a newly added key while the old key was still active (HTTP %d) — verify tokens by matching the JWT's kid header against every key in the JWKS response, not just the first/cached one.", rotationStatus),
-				})
 			default:
 				results = append(results, Result{
 					CheckID: "jwt.rotation_overlap",
 					Status:  StatusFail,
-					Message: fmt.Sprintf("Your game rejected a validly signed token while two keys were active in JWKS (HTTP %d / %d).", primaryStatus, rotationStatus),
+					Message: fmt.Sprintf("Your game rejected a token signed with a newly added key while the old key was still active (HTTP %d) — verify tokens by matching the JWT's kid header against every key in the JWKS response, not just the first/cached one.", rotationStatus),
 				})
 			}
 		}()

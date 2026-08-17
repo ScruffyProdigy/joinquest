@@ -157,12 +157,21 @@ func (s *Signer) JWKSHandler() http.HandlerFunc {
 	}
 }
 
+const maxRotationKeys = 4
+
 // AddRotationKey generates a temporary ed25519 keypair and publishes its
 // public half in this signer's JWKS document until the returned cleanup
 // func is called. Integration checks use this to verify a game can validate
 // tokens signed under more than one active key, as happens during a real
 // signing-key rotation.
 func (s *Signer) AddRotationKey() (kid string, priv ed25519.PrivateKey, cleanup func(), err error) {
+	s.rotationMu.RLock()
+	atCap := len(s.rotationKeys) >= maxRotationKeys
+	s.rotationMu.RUnlock()
+	if atCap {
+		return "", nil, nil, fmt.Errorf("auth: too many concurrent rotation keys (max %d)", maxRotationKeys)
+	}
+
 	pub, priv, err := ed25519.GenerateKey(rand.Reader)
 	if err != nil {
 		return "", nil, nil, fmt.Errorf("auth: generate rotation key: %w", err)
@@ -172,6 +181,10 @@ func (s *Signer) AddRotationKey() (kid string, priv ed25519.PrivateKey, cleanup 
 	s.rotationMu.Lock()
 	if s.rotationKeys == nil {
 		s.rotationKeys = make(map[string]ed25519.PublicKey)
+	}
+	if len(s.rotationKeys) >= maxRotationKeys {
+		s.rotationMu.Unlock()
+		return "", nil, nil, fmt.Errorf("auth: too many concurrent rotation keys (max %d)", maxRotationKeys)
 	}
 	s.rotationKeys[kid] = pub
 	s.rotationMu.Unlock()

@@ -103,6 +103,10 @@ func TestSignSeatTokenWithKeyVerifiesUnderRotationKid(t *testing.T) {
 	}
 }
 
+// TestAddRotationKeyConcurrentSafe fires more concurrent AddRotationKey
+// calls than maxRotationKeys allows, proving both that concurrent access is
+// race-free (run with -race) and that the cap is enforced exactly — even
+// under contention — with no overshoot from the check-then-insert race.
 func TestAddRotationKeyConcurrentSafe(t *testing.T) {
 	dir := t.TempDir()
 	t.Setenv("JWT_DEV_KEY_FILE", filepath.Join(dir, "test.pem"))
@@ -112,29 +116,77 @@ func TestAddRotationKeyConcurrentSafe(t *testing.T) {
 	}
 
 	const n = 20
-	cleanups := make(chan func(), n)
-	errs := make(chan error, n)
+	type addResult struct {
+		cleanup func()
+		err     error
+	}
+	resultsCh := make(chan addResult, n)
 	for i := 0; i < n; i++ {
 		go func() {
 			_, _, cleanup, err := signer.AddRotationKey()
-			errs <- err
-			cleanups <- cleanup
+			resultsCh <- addResult{cleanup, err}
 		}()
 	}
+
+	var cleanups []func()
 	for i := 0; i < n; i++ {
-		if err := <-errs; err != nil {
-			t.Fatalf("AddRotationKey: %v", err)
+		res := <-resultsCh
+		if res.err == nil {
+			cleanups = append(cleanups, res.cleanup)
 		}
-		if cleanup := <-cleanups; cleanup != nil {
-			cleanup()
-		}
+	}
+
+	if len(cleanups) > maxRotationKeys {
+		t.Fatalf("expected at most %d successful concurrent AddRotationKey calls, got %d", maxRotationKeys, len(cleanups))
 	}
 
 	srv := httptest.NewServer(signer.JWKSHandler())
 	t.Cleanup(srv.Close)
 	jwks := fetchJWKSKeys(t, srv.URL)
+	if len(jwks) != len(cleanups)+1 {
+		t.Fatalf("expected %d keys (primary + successful rotations), got %d", len(cleanups)+1, len(jwks))
+	}
+
+	for _, c := range cleanups {
+		c()
+	}
+
+	jwks = fetchJWKSKeys(t, srv.URL)
 	if len(jwks) != 1 {
 		t.Fatalf("expected all rotation keys cleaned up, got %d keys", len(jwks))
+	}
+}
+
+func TestAddRotationKeyEnforcesCap(t *testing.T) {
+	dir := t.TempDir()
+	t.Setenv("JWT_DEV_KEY_FILE", filepath.Join(dir, "test.pem"))
+	signer, err := LoadSignerFromEnv()
+	if err != nil {
+		t.Fatalf("load signer: %v", err)
+	}
+
+	var cleanups []func()
+	for i := 0; i < maxRotationKeys; i++ {
+		_, _, cleanup, err := signer.AddRotationKey()
+		if err != nil {
+			t.Fatalf("AddRotationKey %d: %v", i, err)
+		}
+		cleanups = append(cleanups, cleanup)
+	}
+
+	if _, _, _, err := signer.AddRotationKey(); err == nil {
+		t.Fatal("expected AddRotationKey to fail once at cap")
+	}
+
+	cleanups[0]()
+	if _, _, cleanup, err := signer.AddRotationKey(); err != nil {
+		t.Fatalf("expected AddRotationKey to succeed after freeing a slot: %v", err)
+	} else {
+		cleanup()
+	}
+
+	for _, c := range cleanups[1:] {
+		c()
 	}
 }
 
