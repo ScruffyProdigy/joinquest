@@ -18,7 +18,11 @@ func EligibilityFixtureHandler() http.Handler {
 			return
 		}
 
-		unlocked := strings.Contains(r.URL.Path, "-unlocked")
+		// Extract lobbyUserId from path: /api/v1/players/{lobbyUserId}/mode-eligibility
+		lobbyUserId := strings.TrimPrefix(r.URL.Path, "/api/v1/players/")
+		lobbyUserId = strings.TrimSuffix(lobbyUserId, "/mode-eligibility")
+
+		unlocked := strings.HasSuffix(lobbyUserId, "-unlocked")
 
 		deckBuilder := "deck-builder"
 		modes := map[string]any{
