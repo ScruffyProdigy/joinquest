@@ -6,6 +6,13 @@ import (
 	"time"
 )
 
+// cacheEntry holds a cached eligibility result and a generation token to prevent stale timers
+// from evicting freshly-fetched entries that raced with an older fetch.
+type cacheEntry struct {
+	data  map[string]ModeEligibility
+	token uint64
+}
+
 // EligibilityCache caches FetchModeEligibility results briefly per (gameID, lobbyUserID).
 // It is never a source of truth — just enough to absorb rapid re-renders/polling without
 // hammering the game server on every panel load.
@@ -13,15 +20,16 @@ type EligibilityCache struct {
 	client *Client
 	ttl    time.Duration
 
-	mu    sync.Mutex
-	items map[string]map[string]ModeEligibility
+	mu      sync.Mutex
+	items   map[string]cacheEntry
+	nextTok uint64
 }
 
 func NewEligibilityCache(client *Client, ttl time.Duration) *EligibilityCache {
 	return &EligibilityCache{
 		client: client,
 		ttl:    ttl,
-		items:  make(map[string]map[string]ModeEligibility),
+		items:  make(map[string]cacheEntry),
 	}
 }
 
@@ -34,9 +42,9 @@ func (c *EligibilityCache) Get(ctx context.Context, gameID, apiBaseURL, lobbyUse
 	key := eligibilityCacheKey(gameID, lobbyUserID)
 
 	c.mu.Lock()
-	if cached, ok := c.items[key]; ok {
+	if entry, ok := c.items[key]; ok {
 		c.mu.Unlock()
-		return cached, nil
+		return entry.data, nil
 	}
 	c.mu.Unlock()
 
@@ -46,11 +54,15 @@ func (c *EligibilityCache) Get(ctx context.Context, gameID, apiBaseURL, lobbyUse
 	}
 
 	c.mu.Lock()
-	c.items[key] = fetched
+	c.nextTok++
+	token := c.nextTok
+	c.items[key] = cacheEntry{data: fetched, token: token}
 	c.mu.Unlock()
 	time.AfterFunc(c.ttl, func() {
 		c.mu.Lock()
-		delete(c.items, key)
+		if entry, ok := c.items[key]; ok && entry.token == token {
+			delete(c.items, key)
+		}
 		c.mu.Unlock()
 	})
 
