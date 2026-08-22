@@ -30,6 +30,8 @@ type Resolver struct {
 	FormingWorker     *formingworker.Worker
 	// GameProvisioner pushes match rosters to game APIs; nil uses the default HTTP client.
 	GameProvisioner gameclient.MatchProvisioner
+	// EligibilityCache resolves GameMode.eligibility; nil uses a default 5s in-memory cache.
+	EligibilityCache *gameclient.EligibilityCache
 }
 
 // NewResolver creates a resolver backed by the store and auth service.
