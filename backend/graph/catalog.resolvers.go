@@ -93,13 +93,18 @@ func (r *gameModeResolver) Eligibility(ctx context.Context, obj *model.GameMode,
 
 	authUserID, err := requireAuthUserID(ctx)
 	if err != nil {
-		return nil, err
+		// Fail open: no valid session (e.g. an expired cookie) shouldn't blank
+		// out the whole catalog page over one nullable field.
+		return &model.ModeEligibility{Accessible: true}, nil
 	}
 	requestedID, err := parseUUID(playerID, "player id")
 	if err != nil {
-		return nil, err
+		// Fail open: a malformed argument isn't a security concern here.
+		return &model.ModeEligibility{Accessible: true}, nil
 	}
 	if requestedID != authUserID {
+		// Hard error: a well-formed but mismatched player id is a genuine
+		// cross-player authorization violation, not something to paper over.
 		return nil, fmt.Errorf("cannot query eligibility for another player")
 	}
 
