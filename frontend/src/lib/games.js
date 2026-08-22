@@ -20,6 +20,30 @@ const GAME_MODE_FIELDS = `
       playersToStart
       status
     }
+    eligibility(playerId: $playerId) @include(if: $hasPlayer) {
+      accessible
+      reason
+      unlockModeKey
+      requirement {
+        __typename
+        label
+        ... on RequirementLeaf {
+          current
+          target
+        }
+        ... on RequirementGroup {
+          operator
+          children {
+            __typename
+            label
+            ... on RequirementLeaf {
+              current
+              target
+            }
+          }
+        }
+      }
+    }
   }
 `
 
@@ -41,7 +65,7 @@ const GAME_CARD_FIELDS = `
 `
 
 const GAMES_QUERY = `
-  query Games {
+  query Games($playerId: ID!, $hasPlayer: Boolean!) {
     games {
       ${GAME_CARD_FIELDS}
     }
@@ -49,7 +73,7 @@ const GAMES_QUERY = `
 `
 
 const GAME_BY_SLUG_QUERY = `
-  query GameBySlug($slug: String!) {
+  query GameBySlug($slug: String!, $playerId: ID!, $hasPlayer: Boolean!) {
     gameBySlug(slug: $slug) {
       ${GAME_CARD_FIELDS}
     }
@@ -125,16 +149,23 @@ export function joinGroupOptionsForGame(game) {
   return joinGroupOptionsForMode(defaultModeForGame(game))
 }
 
-export async function fetchGames() {
-  const data = await graphqlRequest(GAMES_QUERY)
+export async function fetchGames(playerId = '') {
+  const data = await graphqlRequest(GAMES_QUERY, {
+    playerId,
+    hasPlayer: Boolean(playerId),
+  })
   return data.games ?? []
 }
 
-export async function fetchGameBySlug(slug) {
+export async function fetchGameBySlug(slug, playerId = '') {
   const trimmed = String(slug || '').trim()
   if (!trimmed) {
     return null
   }
-  const data = await graphqlRequest(GAME_BY_SLUG_QUERY, { slug: trimmed })
+  const data = await graphqlRequest(GAME_BY_SLUG_QUERY, {
+    slug: trimmed,
+    playerId,
+    hasPlayer: Boolean(playerId),
+  })
   return data.gameBySlug ?? null
 }
