@@ -5,6 +5,7 @@ import { CREATE_PRIVATE_GAME } from '../../lib/playerCopy'
 import { createPrivateTable } from '../../lib/tables'
 import { useActiveRoom } from '../rooms/ActiveRoomProvider'
 import GameQueueActions from './GameQueueActions'
+import ModeRequirement from './ModeRequirement'
 import { useGameQueue } from './useGameQueue'
 
 function ModeRow({
@@ -15,6 +16,7 @@ function ModeRow({
   onQueueChange,
   onQueueJoined,
   onTableChange,
+  onNavigateToMode,
   prominent = false,
 }) {
   const { refresh: refreshRoom, openRoom } = useActiveRoom()
@@ -135,27 +137,51 @@ function ModeRow({
         ) : null}
       </div>
       <div className="game-mode-row__actions">
-        <GameQueueActions
-          joinOptions={joinOptions}
-          queueState={resolvedQueueState}
-          joinUrl={resolvedJoinUrl}
-          busy={queue.busy}
-          selectedQueuePath={
-            queue.selectedQueuePath || (isThisQueue ? activeIntent?.queuePath : '') || ''
-          }
-          onJoin={handleJoin}
-          onLeave={handleLeave}
-          disabled={!defaultQueue || blockedByMatch || Boolean(activeTableSeat?.tableId && !seatedHere)}
-          prominent={prominent}
-        />
-        <button
-          type="button"
-          className={`game-list-button game-list-button-secondary${prominent ? ' game-list-button--prominent' : ''}`}
-          disabled={tableBusy || blockedByMatch}
-          onClick={handleCreatePrivate}
-        >
-          {tableBusy ? '…' : CREATE_PRIVATE_GAME}
-        </button>
+        {mode.eligibility?.accessible === false ? (
+          <div className="game-mode-row__locked" role="status">
+            <button
+              type="button"
+              className="game-mode-row__locked-reason"
+              disabled={!mode.eligibility.unlockModeKey}
+              onClick={() => {
+                if (mode.eligibility.unlockModeKey) {
+                  onNavigateToMode?.(mode.eligibility.unlockModeKey)
+                }
+              }}
+            >
+              {mode.eligibility.reason}
+            </button>
+            {mode.eligibility.requirement ? (
+              <p className="game-mode-row__locked-progress">
+                <ModeRequirement requirement={mode.eligibility.requirement} />
+              </p>
+            ) : null}
+          </div>
+        ) : (
+          <>
+            <GameQueueActions
+              joinOptions={joinOptions}
+              queueState={resolvedQueueState}
+              joinUrl={resolvedJoinUrl}
+              busy={queue.busy}
+              selectedQueuePath={
+                queue.selectedQueuePath || (isThisQueue ? activeIntent?.queuePath : '') || ''
+              }
+              onJoin={handleJoin}
+              onLeave={handleLeave}
+              disabled={!defaultQueue || blockedByMatch || Boolean(activeTableSeat?.tableId && !seatedHere)}
+              prominent={prominent}
+            />
+            <button
+              type="button"
+              className={`game-list-button game-list-button-secondary${prominent ? ' game-list-button--prominent' : ''}`}
+              disabled={tableBusy || blockedByMatch}
+              onClick={handleCreatePrivate}
+            >
+              {tableBusy ? '…' : CREATE_PRIVATE_GAME}
+            </button>
+          </>
+        )}
       </div>
     </li>
   )
@@ -168,6 +194,7 @@ export default function GameModesPanel({
   onQueueChange,
   onQueueJoined,
   onTableChange,
+  onNavigateToMode,
   heading = 'Play',
   variant = 'default',
 }) {
@@ -192,6 +219,7 @@ export default function GameModesPanel({
             onQueueChange={onQueueChange}
             onQueueJoined={onQueueJoined}
             onTableChange={onTableChange}
+            onNavigateToMode={onNavigateToMode}
             prominent={prominent}
           />
         ))}
