@@ -122,12 +122,88 @@ describe('GameModesPanel locked mode', () => {
 
     await userEvent.click(screen.getByRole('button', { name: 'You have no Standard-legal decks.' }))
 
-    const targetRow = document.getElementById('game-mode-row-deck-builder')
+    const targetRow = document.getElementById('game-mode-row-game-1-deck-builder')
     expect(targetRow).not.toBeNull()
     expect(scrollIntoView).toHaveBeenCalledTimes(1)
     expect(scrollIntoView).toHaveBeenCalledWith({ behavior: 'smooth', block: 'center' })
     // Confirm it was invoked on the target row specifically (this === targetRow),
     // not just called somewhere with matching arguments.
     expect(scrollIntoView.mock.contexts[0]).toBe(targetRow)
+  })
+
+  it('scopes the default navigation target by game so two games sharing a mode key do not collide', async () => {
+    const scrollIntoView = vi.fn()
+    Element.prototype.scrollIntoView = scrollIntoView
+
+    // Two different games on a lobby listing, each rendering its own
+    // GameModesPanel, that both happen to have a mode with the same
+    // modeKey ("deck-builder"). Without scoping the DOM id by game, both
+    // rows would share the id "game-mode-row-deck-builder" and
+    // document.getElementById would only ever resolve the first one.
+    function makeGame(gameId) {
+      return {
+        id: gameId,
+        modes: [
+          {
+            id: `${gameId}-mode-standard`,
+            modeKey: 'standard',
+            displayName: 'Standard',
+            status: 'active',
+            queues: [],
+            seats: [],
+            queuePaths: [],
+            eligibility: {
+              accessible: false,
+              reason: 'You have no Standard-legal decks.',
+              unlockModeKey: 'deck-builder',
+              requirement: { __typename: 'RequirementLeaf', label: 'Standard-legal decks', current: 0, target: 1 },
+            },
+          },
+          {
+            id: `${gameId}-mode-deck-builder`,
+            modeKey: 'deck-builder',
+            displayName: 'Deck Builder',
+            status: 'active',
+            queues: [],
+            seats: [],
+            queuePaths: [],
+            eligibility: { accessible: true },
+          },
+        ],
+      }
+    }
+
+    const gameA = makeGame('game-a')
+    const gameB = makeGame('game-b')
+
+    render(
+      <>
+        <GameModesPanel game={gameA} />
+        <GameModesPanel game={gameB} />
+      </>,
+    )
+
+    const rowAStandard = screen.getAllByRole('button', { name: 'You have no Standard-legal decks.' })[0]
+    const rowBStandard = screen.getAllByRole('button', { name: 'You have no Standard-legal decks.' })[1]
+
+    // Click game B's locked "Standard" reason button.
+    await userEvent.click(rowBStandard)
+
+    const gameATarget = document.getElementById('game-mode-row-game-a-deck-builder')
+    const gameBTarget = document.getElementById('game-mode-row-game-b-deck-builder')
+    expect(gameATarget).not.toBeNull()
+    expect(gameBTarget).not.toBeNull()
+    expect(gameATarget).not.toBe(gameBTarget)
+
+    // Only game B's Deck Builder row should have been scrolled into view.
+    expect(scrollIntoView).toHaveBeenCalledTimes(1)
+    expect(scrollIntoView.mock.contexts[0]).toBe(gameBTarget)
+    expect(scrollIntoView.mock.contexts[0]).not.toBe(gameATarget)
+
+    // Sanity: clicking game A's own locked row scrolls to game A's row.
+    scrollIntoView.mockClear()
+    await userEvent.click(rowAStandard)
+    expect(scrollIntoView).toHaveBeenCalledTimes(1)
+    expect(scrollIntoView.mock.contexts[0]).toBe(gameATarget)
   })
 })

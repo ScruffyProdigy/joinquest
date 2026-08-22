@@ -113,7 +113,7 @@ function ModeRow({
 
   return (
     <li
-      id={`game-mode-row-${mode.modeKey}`}
+      id={`game-mode-row-${game.id}-${mode.modeKey}`}
       className={`game-mode-row${prominent ? ' game-mode-row--prominent' : ''}`}
     >
       <div className="game-mode-row__copy">
@@ -210,10 +210,15 @@ export default function GameModesPanel({
 
   // When the caller doesn't wire up cross-page navigation, scroll the
   // unlocking mode's own row into view within this panel instead of no-oping.
+  // The id is scoped by game.id so that panels for different games (each
+  // rendered once per game on the lobby listing) never collide when two
+  // games happen to share a mode key.
   const handleNavigateToMode =
     onNavigateToMode ??
     ((modeKey) => {
-      document.getElementById(`game-mode-row-${modeKey}`)?.scrollIntoView({ behavior: 'smooth', block: 'center' })
+      document
+        .getElementById(`game-mode-row-${game.id}-${modeKey}`)
+        ?.scrollIntoView({ behavior: 'smooth', block: 'center' })
     })
 
   return (
