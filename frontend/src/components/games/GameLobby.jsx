@@ -19,7 +19,7 @@ export default function GameLobby({ activeIntent, activeTableSeat, onQueueChange
     setStatus('loading')
     setError('')
 
-    fetchGames()
+    fetchGames(user.id)
       .then((items) => {
         if (cancelled) {
           return
@@ -39,7 +39,7 @@ export default function GameLobby({ activeIntent, activeTableSeat, onQueueChange
     return () => {
       cancelled = true
     }
-  }, [authLoading, user])
+  }, [authLoading, user, user?.id])
 
   if (authLoading || !user) {
     return null

@@ -83,7 +83,7 @@ export default function GameDetailPage({
     setStatus('loading')
     setError('')
 
-    fetchGameBySlug(slug)
+    fetchGameBySlug(slug, user?.id ?? '')
       .then((item) => {
         if (cancelled) {
           return
@@ -103,7 +103,7 @@ export default function GameDetailPage({
     return () => {
       cancelled = true
     }
-  }, [slug])
+  }, [slug, user?.id])
 
   if (status === 'loading') {
     return (
