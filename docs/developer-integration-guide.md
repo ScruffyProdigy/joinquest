@@ -239,3 +239,85 @@ When integration checks are green and catalog metadata is complete (`shortDescri
 | `jwt.expired` | §6 JWT |
 | `jwt.invalid_token` | §6 JWT |
 | `jwt.wrong_seat` | §6 JWT |
+
+---
+
+## 12. Mode-level eligibility (optional)
+
+Like [`queue-options`](./composition-and-join-options.md#what-belongs-on-the-game-site) (in-queue role choices), **mode-level eligibility** lets your game gate an entire `GameMode` behind player progress the manifest can't express — a tutorial-complete flag, a win-count threshold, a "has a legal deck" check, or a compound requirement. This is a separate, optional mechanism: `queue-options` narrows role choices *within* a mode you can already join; mode-eligibility decides whether the mode is joinable *at all*.
+
+**Opt-in, fail-open if absent.** JoinQuest only calls this endpoint if you implement it. If it 404s, times out, or returns malformed JSON, every mode falls back to `accessible: true` — existing games are unaffected without any changes.
+
+```
+GET {apiBaseUrl}/api/v1/players/{lobbyUserId}/mode-eligibility
+```
+
+Returns eligibility for **every mode of the game in one payload** (not one call per mode), keyed by `modeKey`:
+
+```json
+{
+  "modes": {
+    "<modeKey>": {
+      "accessible": false,
+      "reason": "Complete 50 Ranked matches to unlock.",
+      "requirement": { "kind": "leaf", "label": "Ranked matches", "current": 12, "target": 50 },
+      "unlockModeKey": null
+    }
+  }
+}
+```
+
+| Field | Type | Notes |
+|-------|------|-------|
+| `accessible` | bool | Required. Whether this player can join the mode right now. |
+| `reason` | string | Player-facing text shown when locked. Omit or empty when `accessible: true`. |
+| `requirement` | object or `null` | Optional progress readout — see below. `null` for a pure boolean gate with nothing countable to show. |
+| `unlockModeKey` | string or `null` | Optional. Another mode's `modeKey` to route the player to (e.g. a deck builder). `null` when there's no single obvious next step. |
+
+A mode key you omit from `modes` is treated as `accessible: true` (same as the endpoint being absent entirely).
+
+### `requirement` shapes
+
+A bare **leaf** for a single counter, or a boolean has/has-not check (use `target: 1`):
+
+```json
+{ "kind": "leaf", "label": "Ranked matches", "current": 12, "target": 50 }
+```
+
+A **group** combining two or more requirements with `"all"` or `"any"` (lowercase; any other value is treated as malformed and fails open):
+
+```json
+{
+  "kind": "group",
+  "label": "Commander requirements",
+  "operator": "all",
+  "children": [
+    { "kind": "leaf", "label": "Standard wins", "current": 18, "target": 25 },
+    { "kind": "leaf", "label": "Unique decks used", "current": 3, "target": 5 }
+  ]
+}
+```
+
+`children` nodes are the same leaf/group shape recursively, so nested groups are structurally supported — but JoinQuest's catalog UI only renders one level deep today, so keep requirement trees to a single level of nesting for now.
+
+Query this alongside your modes via GraphQL:
+
+```graphql
+query {
+  game(id: "…") {
+    modes {
+      modeKey
+      eligibility(playerId: "…") {
+        accessible
+        reason
+        unlockModeKey
+        requirement {
+          __typename
+          ... on RequirementLeaf { label current target }
+          ... on RequirementGroup { label operator children { __typename } }
+        }
+      }
+    }
+  }
+}
+```

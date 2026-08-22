@@ -68,6 +68,8 @@ Those should come from the **game server**, not from a fixed list in `seatTempla
 
 Lobby caches responses **briefly** (seconds), not as source of truth. DLC and unlock changes stay on the game.
 
+**Related but separate:** `queue-options` narrows role choices *within* a mode you can already join. A related, separate mechanism — **mode-level eligibility** — gates whether an entire `GameMode` is joinable at all (tutorial-complete flags, win-count thresholds, compound requirements). See [§12 of the developer integration guide](./developer-integration-guide.md#12-mode-level-eligibility-optional) for the endpoint contract.
+
 ---
 
 ## Why not only a manifest?
