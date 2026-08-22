@@ -1,4 +1,15 @@
 @import url("https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400;12..96,500;12..96,600;12..96,700;12..96,800&family=Plus+Jakarta+Sans:ital,wght@0,400;0,500;0,600;0,700;1,400&family=DM+Mono:wght@400;500&display=swap");
+
+/* Explicit layer order: legacy hand-written CSS is lowest priority, Tailwind
+   utilities highest. Without this, CSS Cascade Layers rules mean *any*
+   unlayered selector (e.g. index.css's generic `button {}`) would silently
+   beat every Tailwind utility class regardless of specificity — so legacy
+   CSS is imported into its own named layer here rather than left unlayered.
+   This does not modify index.css/App.css themselves, only how they load. */
+@layer legacy, theme, utilities;
+
+@import "./index.css" layer(legacy);
+@import "./App.css" layer(legacy);
 @import "tailwindcss/theme.css" layer(theme);
 @import "tailwindcss/utilities.css" layer(utilities);
 
