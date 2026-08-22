@@ -39,10 +39,10 @@ function hashSlug(slug) {
  * to change when that ticket lands.
  *
  * @param {string} slug
- * @param {string | null} [overrideColor]
+ * @param {string | null} [_overrideColor]
  * @returns {{name: string, badge: string, cardBg: string, border: string}}
  */
-export function accentColorFor(slug, overrideColor = null) {
+export function accentColorFor(slug, _overrideColor = null) {
   const entry = ACCENT_PALETTE[hashSlug(slug) % ACCENT_PALETTE.length]
   return toAccent(entry)
 }

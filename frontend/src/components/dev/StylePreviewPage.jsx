@@ -18,9 +18,10 @@ export default function StylePreviewPage() {
   return (
     <main className="min-h-screen bg-background text-foreground p-10 flex flex-col gap-8">
       <div>
-        <h1 className="font-heading text-4xl font-bold">Tailwind + shadcn/ui style check</h1>
+        <h1 className="font-heading text-3xl font-bold">Design tokens</h1>
         <p className="font-sans text-muted-foreground mt-2">
-          Confirms the Tailwind v4 + shadcn/ui pipeline renders the ported theme tokens correctly.
+          Live reference for the dark-first theme: colors, type scale, spacing, and per-game accent
+          colors, alongside a Tailwind v4 + shadcn/ui pipeline check.
         </p>
       </div>
 
