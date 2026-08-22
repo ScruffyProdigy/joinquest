@@ -145,6 +145,38 @@ describe('integrationNextSteps', () => {
     expect(steps[0].status).toBe('done')
     expect(steps[1].status).toBe('current')
   })
+
+  it('does not block on an optional check failure', () => {
+    const steps = integrationNextSteps({
+      visibility: 'PRIVATE_TESTING',
+      integrationChecks: [
+        ...[
+          'manifest.reach_api',
+          'manifest.status',
+          'manifest.launch_urls_on_provision',
+          'manifest.game_modes',
+          'manifest.sync_freshness',
+          'provision.happy_path',
+          'provision.idempotent_repush',
+          'provision.auth',
+          'provision.missing_auth',
+          'provision.launch_urls',
+          'provision.launch_url_no_jwt',
+          'jwt.jwks',
+          'jwt.claim_happy_path',
+          'jwt.wrong_audience',
+          'jwt.unknown_match',
+          'jwt.wrong_issuer',
+          'jwt.expired',
+          'jwt.invalid_token',
+          'jwt.wrong_seat',
+        ].map((checkId) => ({ checkId, status: 'PASS' })),
+        { checkId: 'jwt.rotation_overlap', status: 'FAIL' },
+      ],
+    })
+    const checksStep = steps.find((s) => s.id === 'checks')
+    expect(checksStep.status).toBe('done')
+  })
 })
 
 describe('canRequestPublicRelease', () => {

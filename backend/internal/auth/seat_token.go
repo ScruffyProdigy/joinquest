@@ -1,6 +1,7 @@
 package auth
 
 import (
+	"crypto/ed25519"
 	"fmt"
 	"strings"
 	"time"
@@ -14,7 +15,7 @@ const defaultSeatTokenTTL = 2 * time.Hour
 // SignSeatToken issues a short-lived JWT for launching into a third-party game.
 // Claims: iss, aud, sub, jti, matchId, seatKey, name (optional), nbf, iat, exp.
 func (s *Signer) SignSeatToken(userID uuid.UUID, audience, externalMatchID, seatKey, displayName string, ttl time.Duration) (string, error) {
-	return s.signSeatToken(userID, LobbyIssuer(), audience, externalMatchID, seatKey, displayName, ttl)
+	return s.signSeatToken(s.kid, s.privateKey, userID, LobbyIssuer(), audience, externalMatchID, seatKey, displayName, ttl)
 }
 
 // SignSeatTokenWithIssuer signs a seat token using a custom iss claim (integration checks).
@@ -22,10 +23,18 @@ func (s *Signer) SignSeatTokenWithIssuer(userID uuid.UUID, issuer, audience, ext
 	if strings.TrimSpace(issuer) == "" {
 		return "", fmt.Errorf("auth: issuer is required")
 	}
-	return s.signSeatToken(userID, strings.TrimSpace(issuer), audience, externalMatchID, seatKey, displayName, ttl)
+	return s.signSeatToken(s.kid, s.privateKey, userID, strings.TrimSpace(issuer), audience, externalMatchID, seatKey, displayName, ttl)
 }
 
-func (s *Signer) signSeatToken(userID uuid.UUID, issuer, audience, externalMatchID, seatKey, displayName string, ttl time.Duration) (string, error) {
+// SignSeatTokenWithKey signs a seat token under an alternate (kid, private
+// key) pair instead of the signer's primary key. Used together with
+// AddRotationKey to mint a token that only verifies against a temporary
+// rotation key.
+func (s *Signer) SignSeatTokenWithKey(kid string, priv ed25519.PrivateKey, userID uuid.UUID, audience, externalMatchID, seatKey, displayName string, ttl time.Duration) (string, error) {
+	return s.signSeatToken(kid, priv, userID, LobbyIssuer(), audience, externalMatchID, seatKey, displayName, ttl)
+}
+
+func (s *Signer) signSeatToken(kid string, priv ed25519.PrivateKey, userID uuid.UUID, issuer, audience, externalMatchID, seatKey, displayName string, ttl time.Duration) (string, error) {
 	audience = normalizeAudience(audience)
 	if audience == "" {
 		return "", fmt.Errorf("auth: audience is required")
@@ -54,8 +63,8 @@ func (s *Signer) signSeatToken(userID uuid.UUID, issuer, audience, externalMatch
 	}
 
 	token := jwt.NewWithClaims(jwt.SigningMethodEdDSA, claims)
-	token.Header["kid"] = s.kid
-	return token.SignedString(s.privateKey)
+	token.Header["kid"] = kid
+	return token.SignedString(priv)
 }
 
 func normalizeAudience(audience string) string {

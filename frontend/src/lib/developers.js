@@ -251,6 +251,8 @@ export const CHECK_FIX_HINTS = {
   'jwt.expired': 'Reject expired seat tokens with 401/403.',
   'jwt.invalid_token': 'Reject malformed tokens with 401/403.',
   'jwt.wrong_seat': 'Reject tokens that claim another player\'s reserved seat.',
+  'jwt.rotation_overlap':
+    "On an unrecognized kid, refetch JWKS (rate-limited) before rejecting — don't verify against a single cached key.",
 }
 
 export const DEVELOPER_LANDING_PATH = '/developers'
@@ -408,8 +410,12 @@ export function integrationNextSteps(game) {
 
   const checksById = new Map((game.integrationChecks ?? []).map((c) => [c.checkId, c]))
   const hasChecks = (game.integrationChecks ?? []).length > 0
-  const requiredPass = REQUIRED_INTEGRATION_CHECKS.every((id) => checksById.get(id) === 'PASS')
-  const hasFailures = (game.integrationChecks ?? []).some((c) => c.status === 'FAIL')
+  const requiredPass = REQUIRED_INTEGRATION_CHECKS.every(
+    (id) => checksById.get(id)?.status === 'PASS',
+  )
+  const hasFailures = (game.integrationChecks ?? []).some(
+    (c) => c.status === 'FAIL' && REQUIRED_INTEGRATION_CHECKS.includes(c.checkId),
+  )
   const connected = game.visibility !== 'DRAFT'
   const hasMetadata =
     Boolean(game.shortDescription?.trim()) &&

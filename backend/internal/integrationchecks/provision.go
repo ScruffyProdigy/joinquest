@@ -251,7 +251,7 @@ func (r *Runner) RunJWTChecks(ctx context.Context, game *store.Game, signer *aut
 	apiBase := strings.TrimRight(strings.TrimSpace(*game.APIBaseURL), "/")
 	audience := apiBase
 
-	results := make([]Result, 0, 8)
+	results := make([]Result, 0, 9)
 
 	jwksURL := strings.TrimRight(auth.LobbyIssuer(), "/") + "/.well-known/jwks.json"
 	if err := r.checkJWKSReachable(ctx, jwksURL); err != nil {
@@ -409,6 +409,55 @@ func (r *Runner) RunJWTChecks(ctx context.Context, game *store.Game, signer *aut
 		results = append(results, skipped("jwt.wrong_seat", "No second seat in test mode."))
 	}
 
+	if kid, rotPriv, cleanup, rotErr := signer.AddRotationKey(); rotErr == nil {
+		func() {
+			defer cleanup()
+
+			primaryToken, primaryErr := signer.SignSeatToken(userID, audience, provisionMatchID, seatKey, "", time.Hour)
+			rotationToken, rotationErr := signer.SignSeatTokenWithKey(kid, rotPriv, userID, audience, provisionMatchID, seatKey, "", time.Hour)
+			if primaryErr != nil || rotationErr != nil {
+				results = append(results, Result{
+					CheckID: "jwt.rotation_overlap",
+					Status:  StatusSkipped,
+					Message: "Could not mint rotation test tokens.",
+				})
+				return
+			}
+
+			primaryStatus, _ := r.postClaim(ctx, claimURL, primaryToken)
+			rotationStatus, _ := r.postClaim(ctx, claimURL, rotationToken)
+			primaryOK := primaryStatus >= 200 && primaryStatus < 300
+			rotationOK := rotationStatus >= 200 && rotationStatus < 300
+
+			switch {
+			case !primaryOK:
+				results = append(results, Result{
+					CheckID: "jwt.rotation_overlap",
+					Status:  StatusSkipped,
+					Message: "Couldn't establish a baseline claim — see jwt.claim_happy_path.",
+				})
+			case rotationOK:
+				results = append(results, Result{
+					CheckID: "jwt.rotation_overlap",
+					Status:  StatusPass,
+					Message: "Your game accepted valid tokens signed under two different active keys.",
+				})
+			default:
+				results = append(results, Result{
+					CheckID: "jwt.rotation_overlap",
+					Status:  StatusFail,
+					Message: fmt.Sprintf("Your game rejected a token signed with a newly added key while the old key was still active (HTTP %d) — verify tokens by matching the JWT's kid header against every key in the JWKS response, not just the first/cached one.", rotationStatus),
+				})
+			}
+		}()
+	} else {
+		results = append(results, Result{
+			CheckID: "jwt.rotation_overlap",
+			Status:  StatusSkipped,
+			Message: "Could not set up a temporary rotation key for this check.",
+		})
+	}
+
 	return results
 }
 
@@ -519,6 +568,7 @@ func jwtSkippedAll(msg string) []Result {
 		skipped("jwt.expired", msg),
 		skipped("jwt.invalid_token", msg),
 		skipped("jwt.wrong_seat", msg),
+		skipped("jwt.rotation_overlap", msg),
 	}
 }
 
@@ -530,6 +580,7 @@ func jwtSkippedRest(msg string) []Result {
 		skipped("jwt.expired", msg),
 		skipped("jwt.invalid_token", msg),
 		skipped("jwt.wrong_seat", msg),
+		skipped("jwt.rotation_overlap", msg),
 	}
 }
 
