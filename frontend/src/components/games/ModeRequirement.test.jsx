@@ -36,6 +36,14 @@ describe('ModeRequirement', () => {
     expect(screen.getByText('3/5 Unique decks used')).toBeInTheDocument()
   })
 
+  it('renders an empty group without throwing when children is missing (deeper-than-queried tree)', () => {
+    const { container } = render(
+      <ModeRequirement requirement={{ __typename: 'RequirementGroup', label: 'x', operator: 'ALL' }} />,
+    )
+    expect(container.querySelector('.mode-requirement--group')).toBeInTheDocument()
+    expect(container.querySelector('.mode-requirement--group')).toBeEmptyDOMElement()
+  })
+
   it('renders an ANY group joined by "or"', () => {
     render(
       <ModeRequirement
