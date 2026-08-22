@@ -1,5 +1,6 @@
 import { Button } from '../ui/button'
 import { listAccentColors } from '../../lib/gameAccent'
+import ComponentLibrarySection from './ComponentLibrarySection'
 
 const TYPE_SCALE = [
   { className: 'text-2xs', label: '2xs / 11px — micro meta (counts, timestamps)' },
@@ -98,6 +99,8 @@ export default function StylePreviewPage() {
           ))}
         </div>
       </section>
+
+      <ComponentLibrarySection />
     </main>
   )
 }
