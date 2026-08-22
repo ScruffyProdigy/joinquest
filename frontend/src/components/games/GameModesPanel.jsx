@@ -112,7 +112,10 @@ function ModeRow({
     isThisQueue && activeIntent?.joinUrl ? activeIntent.joinUrl : queue.joinUrl
 
   return (
-    <li className={`game-mode-row${prominent ? ' game-mode-row--prominent' : ''}`}>
+    <li
+      id={`game-mode-row-${mode.modeKey}`}
+      className={`game-mode-row${prominent ? ' game-mode-row--prominent' : ''}`}
+    >
       <div className="game-mode-row__copy">
         <h4 className="game-mode-row__title">{mode.displayName}</h4>
         {tableError ? (
@@ -205,6 +208,14 @@ export default function GameModesPanel({
     return <p className="game-list-meta">No active modes right now.</p>
   }
 
+  // When the caller doesn't wire up cross-page navigation, scroll the
+  // unlocking mode's own row into view within this panel instead of no-oping.
+  const handleNavigateToMode =
+    onNavigateToMode ??
+    ((modeKey) => {
+      document.getElementById(`game-mode-row-${modeKey}`)?.scrollIntoView({ behavior: 'smooth', block: 'center' })
+    })
+
   return (
     <section className={`game-modes-panel${prominent ? ' game-modes-panel--prominent' : ''}`}>
       {heading ? <h3 className="game-modes-panel__title">{heading}</h3> : null}
@@ -219,7 +230,7 @@ export default function GameModesPanel({
             onQueueChange={onQueueChange}
             onQueueJoined={onQueueJoined}
             onTableChange={onTableChange}
-            onNavigateToMode={onNavigateToMode}
+            onNavigateToMode={handleNavigateToMode}
             prominent={prominent}
           />
         ))}

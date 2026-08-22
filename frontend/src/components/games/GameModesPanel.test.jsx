@@ -82,4 +82,52 @@ describe('GameModesPanel locked mode', () => {
     await userEvent.click(screen.getByRole('button', { name: 'You have no Standard-legal decks.' }))
     expect(onNavigateToMode).toHaveBeenCalledWith('deck-builder')
   })
+
+  it('scrolls the unlocking mode row into view when onNavigateToMode is not supplied', async () => {
+    const scrollIntoView = vi.fn()
+    Element.prototype.scrollIntoView = scrollIntoView
+
+    const game = {
+      id: 'game-1',
+      modes: [
+        {
+          id: 'mode-1',
+          modeKey: 'standard',
+          displayName: 'Standard',
+          status: 'active',
+          queues: [],
+          seats: [],
+          queuePaths: [],
+          eligibility: {
+            accessible: false,
+            reason: 'You have no Standard-legal decks.',
+            unlockModeKey: 'deck-builder',
+            requirement: { __typename: 'RequirementLeaf', label: 'Standard-legal decks', current: 0, target: 1 },
+          },
+        },
+        {
+          id: 'mode-2',
+          modeKey: 'deck-builder',
+          displayName: 'Deck Builder',
+          status: 'active',
+          queues: [],
+          seats: [],
+          queuePaths: [],
+          eligibility: { accessible: true },
+        },
+      ],
+    }
+
+    render(<GameModesPanel game={game} />)
+
+    await userEvent.click(screen.getByRole('button', { name: 'You have no Standard-legal decks.' }))
+
+    const targetRow = document.getElementById('game-mode-row-deck-builder')
+    expect(targetRow).not.toBeNull()
+    expect(scrollIntoView).toHaveBeenCalledTimes(1)
+    expect(scrollIntoView).toHaveBeenCalledWith({ behavior: 'smooth', block: 'center' })
+    // Confirm it was invoked on the target row specifically (this === targetRow),
+    // not just called somewhere with matching arguments.
+    expect(scrollIntoView.mock.contexts[0]).toBe(targetRow)
+  })
 })
