@@ -24,7 +24,7 @@ function SparkleBadge() {
   )
 }
 
-export default function SignInPanel() {
+export default function SignInPanel({ heading = SIGN_IN_HEADING, showGuestOption = true, next = null }) {
   const { acceptSessionUser, refreshSession } = useAuth()
   const [status, setStatus] = useState('idle')
   const [message, setMessage] = useState('')
@@ -49,16 +49,18 @@ export default function SignInPanel() {
   }
 
   return (
-    <Card aria-labelledby="sign-in-heading">
-      <CardHeader className="flex flex-col items-center gap-3 text-center">
-        <SparkleBadge />
-        <h2 id="sign-in-heading" className="font-heading text-xl font-semibold">
-          {SIGN_IN_HEADING}
-        </h2>
-      </CardHeader>
+    <Card {...(heading === null ? {} : { 'aria-labelledby': 'sign-in-heading' })}>
+      {heading === null ? null : (
+        <CardHeader className="flex flex-col items-center gap-3 text-center">
+          <SparkleBadge />
+          <h2 id="sign-in-heading" className="font-heading text-xl font-semibold">
+            {heading}
+          </h2>
+        </CardHeader>
+      )}
 
       <CardContent className="flex flex-col gap-4">
-        <SocialSignInRow />
+        <SocialSignInRow next={next} />
 
         <div className="flex items-center gap-3 text-2xs uppercase tracking-wide text-muted-foreground" role="separator" aria-label={SIGN_IN_DIVIDER_LABEL}>
           <span className="h-px flex-1 bg-border" />
@@ -74,12 +76,14 @@ export default function SignInPanel() {
           </p>
         ) : null}
 
-        <div className="flex flex-col items-center gap-1 border-t border-border pt-4">
-          <Button type="button" variant="link" onClick={() => void handleJumpIn()} disabled={status === 'loading'}>
-            {status === 'loading' ? 'Starting…' : JUMP_IN}
-          </Button>
-          <p className="text-2xs text-muted-foreground">{JUMP_IN_HINT}</p>
-        </div>
+        {showGuestOption ? (
+          <div className="flex flex-col items-center gap-1 border-t border-border pt-4">
+            <Button type="button" variant="link" onClick={() => void handleJumpIn()} disabled={status === 'loading'}>
+              {status === 'loading' ? 'Starting…' : JUMP_IN}
+            </Button>
+            <p className="text-2xs text-muted-foreground">{JUMP_IN_HINT}</p>
+          </div>
+        ) : null}
       </CardContent>
     </Card>
   )

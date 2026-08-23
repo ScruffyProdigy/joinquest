@@ -9,7 +9,7 @@ function oauthBaseUrl() {
   return ''
 }
 
-export function buildOAuthStartUrl(provider, { mode = 'signin', confirmMerge = false } = {}) {
+export function buildOAuthStartUrl(provider, { mode = 'signin', confirmMerge = false, next = null } = {}) {
   const slug = String(provider || '').trim().toLowerCase()
   const params = new URLSearchParams()
   if (mode === 'link') {
@@ -18,14 +18,18 @@ export function buildOAuthStartUrl(provider, { mode = 'signin', confirmMerge = f
   if (confirmMerge) {
     params.set('confirm_merge', '1')
   }
+  // An opaque destination key — the backend maps it to a fixed path, or ignores it.
+  if (next) {
+    params.set('next', next)
+  }
   const query = params.toString()
   const path = `/auth/oauth/${encodeURIComponent(slug)}/start${query ? `?${query}` : ''}`
   const apiBase = oauthBaseUrl()
   return apiBase ? `${apiBase}${path}` : path
 }
 
-export function startOAuthSignIn(provider) {
-  window.location.assign(buildOAuthStartUrl(provider, { mode: 'signin' }))
+export function startOAuthSignIn(provider, next = null) {
+  window.location.assign(buildOAuthStartUrl(provider, { mode: 'signin', next }))
 }
 
 export function startOAuthLink(provider, confirmMerge = false) {

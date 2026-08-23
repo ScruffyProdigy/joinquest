@@ -662,6 +662,30 @@
   text-align: left;
 }
 
+.developer-auth-gate {
+  display: grid;
+  gap: 1rem;
+  text-align: left;
+}
+
+.developer-auth-gate h2 {
+  margin: 0;
+  font-size: 1.35rem;
+}
+
+.developer-auth-gate__notice {
+  margin: 0;
+  border: 1px solid rgba(100, 108, 255, 0.35);
+  border-radius: 0.6rem;
+  background: rgba(100, 108, 255, 0.1);
+  padding: 0.75rem 0.9rem;
+  text-align: left;
+}
+
+.developer-auth-gate__account {
+  margin: 0;
+}
+
 .developer-home-block {
   border-color: rgba(100, 108, 255, 0.35);
   background: rgba(100, 108, 255, 0.1);

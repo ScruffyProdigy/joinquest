@@ -6,21 +6,41 @@ import {
   registerMyGame,
   suggestSlugFromName,
 } from '../../lib/developers'
+import {
+  clearRegistrationDraft,
+  readRegistrationDraft,
+  saveRegistrationDraft,
+} from '../../lib/developerDraft'
 import { navigateTo } from '../../lib/usePathname'
 
-export default function RegisterGameForm() {
+export default function RegisterGameForm({ onAccountRequired }) {
   const { user } = useAuth()
-  const [name, setName] = useState('')
-  const [slug, setSlug] = useState('')
-  const [slugTouched, setSlugTouched] = useState(false)
-  const [shortDescription, setShortDescription] = useState('')
-  const [apiBaseUrl, setApiBaseUrl] = useState('')
-  const [contactEmail, setContactEmail] = useState(user?.email ?? '')
-  const [websiteUrl, setWebsiteUrl] = useState('')
-  const [communityUrl, setCommunityUrl] = useState('')
+  const [draft] = useState(() => readRegistrationDraft())
+  const [name, setName] = useState(draft?.name ?? '')
+  const [slug, setSlug] = useState(draft?.slug ?? '')
+  // A restored slug is already the developer's choice — don't re-derive it from the name.
+  const [slugTouched, setSlugTouched] = useState(Boolean(draft?.slug))
+  const [shortDescription, setShortDescription] = useState(draft?.shortDescription ?? '')
+  const [apiBaseUrl, setApiBaseUrl] = useState(draft?.apiBaseUrl ?? '')
+  const [contactEmail, setContactEmail] = useState(draft?.contactEmail ?? user?.email ?? '')
+  const [websiteUrl, setWebsiteUrl] = useState(draft?.websiteUrl ?? '')
+  const [communityUrl, setCommunityUrl] = useState(draft?.communityUrl ?? '')
   const [status, setStatus] = useState('idle')
   const [error, setError] = useState('')
   const [connectError, setConnectError] = useState('')
+
+  // Registering a game needs a durable identity; guests and signed-out visitors get prompted.
+  const needsAccount = !user || user.isGuest
+
+  const fields = {
+    name,
+    slug,
+    shortDescription,
+    apiBaseUrl,
+    contactEmail,
+    websiteUrl,
+    communityUrl,
+  }
 
   useEffect(() => {
     if (!slugTouched) {
@@ -34,20 +54,26 @@ export default function RegisterGameForm() {
     }
   }, [user?.email, contactEmail])
 
-  if (!user) {
-    return (
-      <p className="panel-copy">
-        Sign in above to register your game. Registration is free and your game stays private until you
-        are ready.
-      </p>
-    )
-  }
+  useEffect(() => {
+    // Keep the in-progress form recoverable if signing up navigates the page away.
+    if (Object.values(fields).some((value) => value.trim() !== '')) {
+      saveRegistrationDraft(fields)
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [name, slug, shortDescription, apiBaseUrl, contactEmail, websiteUrl, communityUrl])
 
   async function handleSubmit(event) {
     event.preventDefault()
     if (status === 'loading') {
       return
     }
+
+    if (needsAccount) {
+      saveRegistrationDraft(fields)
+      onAccountRequired?.()
+      return
+    }
+
     setStatus('loading')
     setError('')
     setConnectError('')
@@ -65,6 +91,7 @@ export default function RegisterGameForm() {
       if (!result.connected && result.connectError) {
         setConnectError(result.connectError)
       }
+      clearRegistrationDraft()
       navigateTo(developerWelcomePath(result.game.id))
     } catch (err) {
       setError(err.message || 'Could not register game.')

@@ -57,7 +57,9 @@ func handleOAuthStart(w http.ResponseWriter, r *http.Request, service *Service, 
 	confirmMerge := strings.EqualFold(strings.TrimSpace(r.URL.Query().Get("confirm_merge")), "1") ||
 		strings.EqualFold(strings.TrimSpace(r.URL.Query().Get("confirm_merge")), "true")
 
-	startURL, err := service.OAuthStartURL(r.Context(), provider, mode, confirmMerge)
+	next := NormalizeOAuthNextKey(r.URL.Query().Get("next"))
+
+	startURL, err := service.OAuthStartURL(r.Context(), provider, mode, confirmMerge, next)
 	if err != nil {
 		redirectOAuthError(w, r, err, mode)
 		return
@@ -81,7 +83,7 @@ func handleOAuthCallback(w http.ResponseWriter, r *http.Request, service *Servic
 	log.Printf("auth: oauth %s callback received code_present=%t state_len=%d", provider, code != "", len(state))
 	ctx, cancel := context.WithTimeout(context.Background(), oauthCallbackTimeout)
 	defer cancel()
-	user, sessionToken, merge, mode, err := service.CompleteOAuthCallback(ctx, provider, code, state)
+	user, sessionToken, merge, oauthState, err := service.CompleteOAuthCallback(ctx, provider, code, state)
 	if merge != nil {
 		values := url.Values{}
 		values.Set("oauth_merge", "1")
@@ -96,11 +98,11 @@ func handleOAuthCallback(w http.ResponseWriter, r *http.Request, service *Servic
 		stats := service.store.DBStats()
 		log.Printf("auth: oauth %s callback failed: %v (db pool open=%d inUse=%d idle=%d waitCount=%d waitDuration=%s)",
 			provider, err, stats.OpenConnections, stats.InUse, stats.Idle, stats.WaitCount, stats.WaitDuration)
-		redirectOAuthError(w, r, err, mode)
+		redirectOAuthError(w, r, err, oauthState.Mode)
 		return
 	}
 
-	if mode == OAuthModeLink {
+	if oauthState.Mode == OAuthModeLink {
 		SetSessionCookie(w, sessionToken, service.CookieConfig())
 		values := url.Values{}
 		values.Set("linked", "1")
@@ -110,7 +112,7 @@ func handleOAuthCallback(w http.ResponseWriter, r *http.Request, service *Servic
 		http.Redirect(w, r, accountRedirectURL(values), http.StatusFound)
 		return
 	}
-	writeOAuthSignInSuccess(w, sessionToken, service.CookieConfig(), LobbyPublicURL()+"/")
+	writeOAuthSignInSuccess(w, sessionToken, service.CookieConfig(), ResolveOAuthNext(oauthState.Next))
 }
 
 func writeOAuthSignInSuccess(w http.ResponseWriter, sessionToken string, cookie CookieConfig, dest string) {
