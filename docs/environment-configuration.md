@@ -2,11 +2,11 @@
 
 How runtime configuration works for the JoinQuest frontend and deployments ([platform overview](./vision.md)).
 
-This document explains environment injection across local, staging, and production.
+This document explains environment injection for local development and the live joinquest.cc production deployment (plus unused legacy staging/production templates kept for reference).
 
 ## Overview
 
-JoinQuest uses a Docker-based approach to inject environment variables into the frontend application at runtime. This allows the same Docker image to be deployed to different environments (local, staging, production) with different configurations.
+JoinQuest uses a Docker-based approach to inject environment variables into the frontend application at runtime. This allows the same Docker image to be deployed to different environments (local, production) with different configurations.
 
 ## How It Works
 
@@ -59,7 +59,9 @@ data:
   REACT_APP_API_BASE_URL: "http://localhost:8080"
 ```
 
-**Deployment**: `./scripts/dev.sh` for local development, or `./deploy-local.sh` for minikube.
+**Deployment**: `./scripts/dev.sh` (Docker Compose) — this is the day-to-day local workflow; see [lobby-maintenance.md](./lobby-maintenance.md#local-stack).
+
+A `./scripts/deploy-local.sh` script also exists for deploying to a local minikube cluster (namespace `playhub`), but it's a legacy path not exercised by the current contributor workflow — prefer `dev.sh`.
 
 - Backend GraphQL: `http://localhost:8080/graphql`
 - Frontend: `http://localhost:5173`
@@ -79,91 +81,22 @@ data:
   REACT_APP_API_BASE_URL: "https://joinquest.cc"
 ```
 
-**Deployment**: `./scripts/deploy-joinquest.sh`
+**Deployment**:
+
+```bash
+./scripts/build-and-push.sh --push
+./scripts/deploy-joinquest.sh
+```
+
+This is the canonical, actively-maintained deploy path — documented in full in [lobby-maintenance.md](./lobby-maintenance.md#deploy-to-joinquestcc-gke). It applies `k8s/base/*` with the namespace rewritten from `playhub` to `joinquest`, applies `k8s/env/joinquest.yaml`, runs the migration job, patches game handoff URLs, and restarts deployments.
 
 - Namespace: `joinquest`
 - Public URL: `https://joinquest.cc`
 - GraphQL: `https://joinquest.cc/graphql`
 
-### Staging (legacy template)
+### Unused legacy templates (staging.yaml / production.yaml)
 
-**File**: `k8s/env/staging.yaml` — example ConfigMap; URLs may differ per cluster.
-
-```yaml
-apiVersion: v1
-kind: ConfigMap
-metadata:
-  name: lobby-frontend-config
-  namespace: playhub-staging
-  labels: { env: staging }
-data:
-  REACT_APP_ENV: staging
-  REACT_APP_API_BASE_URL: "https://staging.example.com"
-```
-
-**Deployment**: `./deploy-staging.sh` (legacy script)
-
-### Production (legacy template)
-
-**File**: `k8s/env/production.yaml` — example ConfigMap; use `joinquest.yaml` for the live JoinQuest deployment.
-
-```yaml
-apiVersion: v1
-kind: ConfigMap
-metadata:
-  name: lobby-frontend-config
-  namespace: playhub-production
-  labels: { env: production }
-data:
-  REACT_APP_ENV: production
-  REACT_APP_API_BASE_URL: "https://joinquest.cc"
-```
-
-**Deployment**: `./deploy-production.sh` (legacy script; prefer `./scripts/deploy-joinquest.sh`)
-
-## Deployment Scripts
-
-### Local Deployment
-
-```bash
-./deploy-local.sh
-```
-
-This script:
-1. Sets kubectl context to `minikube`
-2. Creates the `playhub` namespace
-3. Applies base configurations (backend, ingress)
-4. Applies local environment configuration
-5. Waits for deployments to be ready
-6. Shows deployment status and access instructions
-
-### Staging Deployment
-
-```bash
-./deploy-staging.sh
-```
-
-This script:
-1. Sets kubectl context to `staging-cluster`
-2. Creates the `playhub-staging` namespace
-3. Applies base configurations
-4. Applies staging environment configuration
-5. Waits for deployments to be ready
-6. Shows deployment status
-
-### Production Deployment
-
-```bash
-./deploy-production.sh
-```
-
-This script:
-1. Sets kubectl context to `production-cluster`
-2. Creates the `playhub-production` namespace
-3. Applies base configurations
-4. Applies production environment configuration
-5. Waits for deployments to be ready
-6. Shows deployment status
+`k8s/env/staging.yaml` and `k8s/env/production.yaml`, and their matching scripts `scripts/deploy-staging.sh` / `scripts/deploy-production.sh`, predate the JoinQuest rebrand and the move to the `joinquest` namespace. They target namespaces `playhub-staging` / `playhub-production`, placeholder kubectl contexts (`staging-cluster` / `production-cluster`), and domains (`staging.playhub.com`, `playhub.com`) that don't correspond to any live infrastructure. They still exist in the repo and are technically runnable, but they are **not** part of the current deploy flow, aren't listed in [scripts/README.md](../scripts/README.md)'s contributor script table, and shouldn't be used — they're kept only as historical reference. There is currently no staging environment.
 
 ## Environment Variables
 
@@ -207,21 +140,21 @@ To add new environment variables:
 ### Check Environment Configuration
 
 ```bash
-# View the current ConfigMap
-kubectl get configmap lobby-frontend-config -n playhub -o yaml
+# View the current ConfigMap (joinquest.cc production)
+kubectl get configmap lobby-frontend-config -n joinquest -o yaml
 
 # Check if env.js is being generated correctly
-kubectl exec -n playhub deployment/lobby-frontend -- cat /usr/share/nginx/html/env.js
+kubectl exec -n joinquest deployment/lobby-frontend -- cat /usr/share/nginx/html/env.js
 ```
 
 ### Verify Frontend Access
 
 ```bash
 # Check if the frontend is serving env.js
-curl http://localhost:8080/env.js
+curl https://joinquest.cc/env.js
 
-# Check the generated content
-kubectl port-forward -n playhub svc/lobby-frontend 8080:80 &
+# Or via port-forward
+kubectl port-forward -n joinquest svc/lobby-frontend 8080:80 &
 curl http://localhost:8080/env.js
 ```
 

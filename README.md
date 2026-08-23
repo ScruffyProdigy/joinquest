@@ -140,17 +140,13 @@ See [Database Migrations](docs/database-migrations.md) for detailed documentatio
 
 ### Deployment
 
-Deploy to different environments:
-
 ```bash
-# Local development (minikube)
-./deploy-local.sh
+# Local dev stack (Docker Compose)
+./scripts/dev.sh
 
-# Staging environment
-./deploy-staging.sh
-
-# Production environment
-./deploy-production.sh
+# Deploy to production (joinquest.cc)
+./scripts/build-and-push.sh --push
+./scripts/deploy-joinquest.sh
 ```
 
 See [Environment Configuration](docs/environment-configuration.md) for detailed deployment instructions.
