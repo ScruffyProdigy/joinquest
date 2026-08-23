@@ -3,6 +3,7 @@ package graph
 import (
 	"context"
 	"fmt"
+	"time"
 
 	"github.com/google/uuid"
 	"github.com/scruffyprodigy/playhub/internal/auth"
@@ -22,22 +23,25 @@ func parseUUID(id, label string) (uuid.UUID, error) {
 }
 
 type Resolver struct {
-	Store             *store.Store
-	Auth              *auth.Service
-	PubSub            pubsub.Broker
-	ManifestFetcher   *gameclient.ManifestFetcher
-	SpiritAnimal      *spiritanimal.Runner
-	FormingWorker     *formingworker.Worker
+	Store           *store.Store
+	Auth            *auth.Service
+	PubSub          pubsub.Broker
+	ManifestFetcher *gameclient.ManifestFetcher
+	SpiritAnimal    *spiritanimal.Runner
+	FormingWorker   *formingworker.Worker
 	// GameProvisioner pushes match rosters to game APIs; nil uses the default HTTP client.
 	GameProvisioner gameclient.MatchProvisioner
+	// EligibilityCache resolves GameMode.eligibility; nil uses a default 5s in-memory cache.
+	EligibilityCache *gameclient.EligibilityCache
 }
 
 // NewResolver creates a resolver backed by the store and auth service.
 func NewResolver(st *store.Store, authService *auth.Service, broker pubsub.Broker) *Resolver {
 	return &Resolver{
-		Store:   st,
-		Auth:    authService,
-		PubSub:  broker,
+		Store:            st,
+		Auth:             authService,
+		PubSub:           broker,
+		EligibilityCache: gameclient.NewEligibilityCache(gameclient.NewClient(), 5*time.Second),
 	}
 }
 

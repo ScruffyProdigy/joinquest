@@ -84,6 +84,59 @@ func (r *gameModeResolver) Queues(ctx context.Context, obj *model.GameMode) ([]*
 	return ToGraphQLModeQueues(queues), nil
 }
 
+// Eligibility is the resolver for the eligibility field.
+func (r *gameModeResolver) Eligibility(ctx context.Context, obj *model.GameMode, playerID string) (*model.ModeEligibility, error) {
+	st, err := r.requireStore()
+	if err != nil {
+		return nil, err
+	}
+
+	authUserID, err := requireAuthUserID(ctx)
+	if err != nil {
+		// Fail open: no valid session (e.g. an expired cookie) shouldn't blank
+		// out the whole catalog page over one nullable field.
+		return &model.ModeEligibility{Accessible: true}, nil
+	}
+	requestedID, err := parseUUID(playerID, "player id")
+	if err != nil {
+		// Fail open: a malformed argument isn't a security concern here.
+		return &model.ModeEligibility{Accessible: true}, nil
+	}
+	if requestedID != authUserID {
+		// Hard error: a well-formed but mismatched player id is a genuine
+		// cross-player authorization violation, not something to paper over.
+		return nil, fmt.Errorf("cannot query eligibility for another player")
+	}
+
+	modeID, err := parseUUID(obj.ID, "mode id")
+	if err != nil {
+		return nil, err
+	}
+	mode, err := st.GetGameModeByID(ctx, modeID)
+	if err != nil {
+		return nil, err
+	}
+	game, err := st.GetGameByID(ctx, mode.GameID)
+	if err != nil {
+		return nil, err
+	}
+	if game.APIBaseURL == nil || *game.APIBaseURL == "" {
+		return &model.ModeEligibility{Accessible: true}, nil
+	}
+
+	batch, err := r.eligibilityCache().Get(ctx, game.ID.String(), *game.APIBaseURL, playerID)
+	if err != nil {
+		// Fail open: a game server we can't reach doesn't block play.
+		return &model.ModeEligibility{Accessible: true}, nil
+	}
+
+	elig, ok := batch[mode.ModeKey]
+	if !ok {
+		return &model.ModeEligibility{Accessible: true}, nil
+	}
+	return toGraphQLModeEligibility(elig), nil
+}
+
 // WaitingCount is the resolver for the waitingCount field.
 func (r *modeQueueResolver) WaitingCount(ctx context.Context, obj *model.ModeQueue) (int, error) {
 	st, err := r.requireStore()

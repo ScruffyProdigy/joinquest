@@ -31,6 +31,8 @@ models:
         resolver: true
       queues:
         resolver: true
+      eligibility:
+        resolver: true
   ModeQueue:
     fields:
       waitingCount:

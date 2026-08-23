@@ -45,6 +45,35 @@ type GameMode {
   """Join options with human labels and per-cohort fire sizes."""
   queuePaths: [GameModeQueuePath!]!
   queues: [ModeQueue!]!
+  eligibility(playerId: ID!): ModeEligibility
+}
+
+type ModeEligibility {
+  accessible: Boolean!
+  reason: String
+  requirement: ModeRequirementNode
+  unlockModeKey: String
+}
+
+interface ModeRequirementNode {
+  label: String!
+}
+
+type RequirementLeaf implements ModeRequirementNode {
+  label: String!
+  current: Int!
+  target: Int!
+}
+
+type RequirementGroup implements ModeRequirementNode {
+  label: String!
+  operator: RequirementOperator!
+  children: [ModeRequirementNode!]!
+}
+
+enum RequirementOperator {
+  ALL
+  ANY
 }
 
 type ModeQueue {
