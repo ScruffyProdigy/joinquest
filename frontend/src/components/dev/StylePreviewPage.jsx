@@ -39,7 +39,7 @@ export default function StylePreviewPage() {
 
       <section className="flex flex-col gap-2">
         <h2 className="font-heading text-xl font-semibold">Fonts</h2>
-        <p className="font-heading text-2xl">Bricolage Grotesque (heading)</p>
+        <p className="font-heading text-2xl">Cal Sans (heading)</p>
         <p className="font-sans text-lg">Plus Jakarta Sans (body)</p>
         <p className="font-mono-display text-sm">DM Mono (mono display)</p>
       </section>

@@ -97,6 +97,8 @@ frontend/public/*
 !frontend/public/avatars/**
 !frontend/public/games/
 !frontend/public/games/**
+!frontend/public/fonts/
+!frontend/public/fonts/**
 data/spirit-avatars/
 
 # Storybook build outputs
