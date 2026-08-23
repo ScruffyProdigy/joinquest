@@ -1,5 +1,25 @@
 import { describe, it, expect } from 'vitest'
-import { accentColorFor, listAccentColors } from './gameAccent'
+import { accentColorFor, listAccentColors, parseHex } from './gameAccent'
+
+describe('parseHex', () => {
+  it('normalizes #rrggbb to lowercase', () => {
+    expect(parseHex('#7C3AED')).toBe('#7c3aed')
+  })
+
+  it('expands #rgb shorthand to lowercase #rrggbb', () => {
+    expect(parseHex('#ABC')).toBe('#aabbcc')
+  })
+
+  it('trims surrounding whitespace', () => {
+    expect(parseHex('  #7c3aed  ')).toBe('#7c3aed')
+  })
+
+  it('returns null for unusable input', () => {
+    for (const bad of ['', 'nope', '#12345', '#gggggg', 'rebeccapurple', 'rgb(1,2,3)', null, undefined]) {
+      expect(parseHex(bad)).toBeNull()
+    }
+  })
+})
 
 describe('accentColorFor', () => {
   it('is deterministic for the same slug', () => {

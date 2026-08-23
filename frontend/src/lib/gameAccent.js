@@ -29,7 +29,7 @@ function toAccent(entry) {
 }
 
 /** Accept `#rgb` or `#rrggbb` in any case; return a normalized `#rrggbb`, or null if unusable. */
-function parseHex(value) {
+export function parseHex(value) {
   const raw = String(value ?? '').trim().toLowerCase()
   const short = /^#([0-9a-f])([0-9a-f])([0-9a-f])$/.exec(raw)
   if (short) {

@@ -40,6 +40,17 @@ describe('DeveloperCatalogMetadata accent color', () => {
     )
   })
 
+  it('normalizes #rgb shorthand for the swatch instead of falling back to the default color', async () => {
+    const user = userEvent.setup()
+    render(<DeveloperCatalogMetadata game={baseGame} />)
+
+    const hexField = screen.getByLabelText('Accent color hex value')
+    await user.clear(hexField)
+    await user.type(hexField, '#abc')
+
+    expect(screen.getByLabelText('Catalog accent color (optional)')).toHaveValue('#aabbcc')
+  })
+
   it('sends an empty accentColor after "Use default" so the override is cleared', async () => {
     const user = userEvent.setup()
     render(<DeveloperCatalogMetadata game={baseGame} />)

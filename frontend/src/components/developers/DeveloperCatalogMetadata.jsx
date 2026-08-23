@@ -4,6 +4,11 @@ import {
   fetchCatalogTagTaxonomy,
   updateMyGameMetadata,
 } from '../../lib/developers'
+import { parseHex } from '../../lib/gameAccent'
+
+// Neutral placeholder for the swatch when accentColor doesn't parse yet
+// (empty, mid-typing, or invalid) — matches the palette's "indigo" entry.
+const SWATCH_FALLBACK_COLOR = '#6366f1'
 
 export default function DeveloperCatalogMetadata({ game, onSaved }) {
   const [name, setName] = useState(game?.name ?? '')
@@ -160,7 +165,7 @@ export default function DeveloperCatalogMetadata({ game, onSaved }) {
             <input
               id="dev-accent-color"
               type="color"
-              value={/^#[0-9a-fA-F]{6}$/.test(accentColor) ? accentColor : '#6366f1'}
+              value={parseHex(accentColor) ?? SWATCH_FALLBACK_COLOR}
               onChange={(event) => setAccentColor(event.target.value)}
             />
             <input
