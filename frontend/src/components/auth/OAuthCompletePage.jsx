@@ -1,5 +1,7 @@
 import { useEffect, useState } from 'react'
 import { oauthErrorMessage } from '../../lib/oauth'
+import { Button } from '../ui/button'
+import { Card, CardContent, CardHeader, CardTitle } from '../ui/card'
 
 export default function OAuthCompletePage() {
   const [message, setMessage] = useState('Something went wrong during sign-in.')
@@ -14,16 +16,20 @@ export default function OAuthCompletePage() {
   }, [])
 
   return (
-    <main className="app-shell app-shell--narrow">
-      <section className="panel-card auth-sign-in">
-        <h1>Sign-in</h1>
-        <p className="panel-copy status-message status-message-error" role="alert">
-          {message}
-        </p>
-        <a className="auth-link" href="/">
-          Back to home
-        </a>
-      </section>
+    <main className="flex min-h-screen flex-col items-center justify-center bg-background p-6 text-foreground">
+      <Card className="w-full max-w-sm">
+        <CardHeader>
+          <CardTitle as="h1">Sign-in</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <p className="status-message status-message-error" role="alert">
+            {message}
+          </p>
+          <Button variant="link" className="self-start px-0" asChild>
+            <a href="/">Back to home</a>
+          </Button>
+        </CardContent>
+      </Card>
     </main>
   )
 }
