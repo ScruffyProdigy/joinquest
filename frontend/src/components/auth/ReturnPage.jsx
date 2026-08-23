@@ -43,9 +43,11 @@ export default function ReturnPage() {
       <h1 className="font-heading text-2xl font-bold">{APP_NAME}</h1>
       <Card className="w-full max-w-sm" aria-live="polite">
         <CardHeader>
-          <CardTitle>Welcome back</CardTitle>
+          <CardTitle as="h2" className="font-heading text-xl font-semibold">
+            Welcome back
+          </CardTitle>
         </CardHeader>
-        <CardContent>
+        <CardContent className="flex flex-col gap-4">
           <p className={status === 'error' ? 'status-message status-message-error' : 'status-message'}>
             {message}
           </p>

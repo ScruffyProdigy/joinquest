@@ -90,9 +90,11 @@ export default function LinkEmailPage() {
       <h1 className="font-heading text-2xl font-bold">{APP_NAME}</h1>
       <Card className="w-full max-w-sm" aria-live="polite">
         <CardHeader>
-          <CardTitle>Link your email</CardTitle>
+          <CardTitle as="h2" className="font-heading text-xl font-semibold">
+            Link your email
+          </CardTitle>
         </CardHeader>
-        <CardContent>
+        <CardContent className="flex flex-col gap-4">
           {status === 'merge' ? (
             <div className="flex flex-col gap-3 rounded-lg border border-amber-500/25 bg-amber-500/10 p-3" role="alert">
               <p className="text-sm text-amber-100">{formatMergeWarning(null, user?.displayName)}</p>

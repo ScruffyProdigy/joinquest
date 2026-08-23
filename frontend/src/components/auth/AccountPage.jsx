@@ -287,9 +287,11 @@ export default function AccountPage() {
       <main className="flex min-h-screen flex-col items-center justify-center bg-background p-6 text-foreground">
         <Card className="w-full max-w-lg">
           <CardHeader>
-            <CardTitle as="h1">Account settings</CardTitle>
+            <CardTitle as="h1" className="font-heading text-xl font-semibold">
+              Account settings
+            </CardTitle>
           </CardHeader>
-          <CardContent>
+          <CardContent className="flex flex-col gap-4">
             <p className="text-sm text-muted-foreground">Sign in to manage your account.</p>
             <Button variant="link" className="self-start px-0" asChild>
               <a href="/">Back to home</a>
@@ -319,14 +321,16 @@ export default function AccountPage() {
   return (
     <main className="flex min-h-screen flex-col items-center bg-background p-6 text-foreground">
       <Card className="w-full max-w-lg">
-        <CardHeader className="flex items-baseline justify-between space-y-0">
-          <CardTitle as="h1">Account settings</CardTitle>
+        <CardHeader className="flex items-baseline justify-between">
+          <CardTitle as="h1" className="font-heading text-xl font-semibold">
+            Account settings
+          </CardTitle>
           <Button variant="link" className="h-auto p-0" asChild>
             <a href="/">Back to home</a>
           </Button>
         </CardHeader>
 
-        <CardContent>
+        <CardContent className="flex flex-col gap-4">
           {user.isGuest ? <p className="text-sm text-amber-400">{GUEST_ACCOUNT_PROMPT}</p> : null}
           {error ? <p className="status-message status-message-error">{error}</p> : null}
 

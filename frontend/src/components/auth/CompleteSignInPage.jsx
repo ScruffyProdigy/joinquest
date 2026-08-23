@@ -53,9 +53,11 @@ export default function CompleteSignInPage() {
       <h1 className="font-heading text-2xl font-bold">{APP_NAME}</h1>
       <Card className="w-full max-w-sm" aria-live="polite">
         <CardHeader>
-          <CardTitle>Signing you in</CardTitle>
+          <CardTitle as="h2" className="font-heading text-xl font-semibold">
+            Signing you in
+          </CardTitle>
         </CardHeader>
-        <CardContent>
+        <CardContent className="flex flex-col gap-4">
           <p className={status === 'error' ? 'status-message status-message-error' : 'status-message'}>{message}</p>
           {status === 'error' ? (
             <Button variant="link" className="self-start px-0" asChild>

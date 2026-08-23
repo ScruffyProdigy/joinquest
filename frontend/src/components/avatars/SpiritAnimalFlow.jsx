@@ -369,9 +369,11 @@ export default function SpiritAnimalFlow({ onComplete, onCancel }) {
     return (
       <Card aria-labelledby="spirit-animal-heading">
         <CardHeader>
-          <CardTitle as="h3">Find my spirit animal</CardTitle>
+          <CardTitle as="h3" className="font-heading text-lg font-semibold">
+            Find my spirit animal
+          </CardTitle>
         </CardHeader>
-        <CardContent>
+        <CardContent className="flex flex-col gap-4">
           <p className="text-sm text-muted-foreground">
             Draw five tarot cards, answer a few symbolic questions, and meet five mascot companions crafted for you.
           </p>
@@ -419,9 +421,11 @@ export default function SpiritAnimalFlow({ onComplete, onCancel }) {
     return (
       <Card aria-live="polite">
         <CardHeader>
-          <CardTitle as="h3">{waitingForQuestions ? 'Reading the cards' : 'Summoning your companions'}</CardTitle>
+          <CardTitle as="h3" className="font-heading text-lg font-semibold">
+            {waitingForQuestions ? 'Reading the cards' : 'Summoning your companions'}
+          </CardTitle>
         </CardHeader>
-        <CardContent>
+        <CardContent className="flex flex-col gap-4">
           <p className="text-sm text-muted-foreground">
             {waitingForQuestions
               ? 'Five cards are being drawn — one for each chapter of your journey.'
@@ -458,9 +462,11 @@ export default function SpiritAnimalFlow({ onComplete, onCancel }) {
     return (
       <Card>
         <CardHeader>
-          <CardTitle as="h3">Reading interrupted</CardTitle>
+          <CardTitle as="h3" className="font-heading text-lg font-semibold">
+            Reading interrupted
+          </CardTitle>
         </CardHeader>
-        <CardContent>
+        <CardContent className="flex flex-col gap-4">
           <p className="status-message status-message-error">{friendlySpiritAnimalError(error || reading?.errorMessage)}</p>
           <div className="flex flex-wrap gap-3">
             <Button type="button" disabled={busy} onClick={handleResume}>
@@ -486,7 +492,7 @@ export default function SpiritAnimalFlow({ onComplete, onCancel }) {
     if (!current) {
       return (
         <Card>
-          <CardContent>
+          <CardContent className="flex flex-col gap-4">
             <p className="status-message" role="status">Loading questions…</p>
           </CardContent>
         </Card>
@@ -496,7 +502,7 @@ export default function SpiritAnimalFlow({ onComplete, onCancel }) {
     const answersDisabled = busy || panelState !== 'open'
     return (
       <Card aria-labelledby="spirit-question-heading">
-        <CardContent>
+        <CardContent className="flex flex-col gap-4">
           <div ref={journeyAnchorRef} className="flex flex-col gap-3">
             <p className="text-xs font-medium text-muted-foreground">
               Question {questionIndex + 1} of {questions.length}
@@ -567,9 +573,11 @@ export default function SpiritAnimalFlow({ onComplete, onCancel }) {
   return (
     <Card aria-labelledby="spirit-results-heading">
       <CardHeader>
-        <CardTitle as="h3">Your spirit animals</CardTitle>
+        <CardTitle as="h3" className="font-heading text-lg font-semibold">
+          Your spirit animals
+        </CardTitle>
       </CardHeader>
-      <CardContent>
+      <CardContent className="flex flex-col gap-4">
         {reading?.personality?.overview ? (
           <p className="text-sm text-muted-foreground">{reading.personality.overview}</p>
         ) : null}

@@ -1,4 +1,3 @@
-// frontend/src/components/auth/UserSessionCard.jsx
 import { useEffect, useState } from 'react'
 import { logout } from '../../lib/auth'
 import { needsProfileSetup } from '../../lib/avatars'
@@ -84,7 +83,7 @@ export default function UserSessionCard({ user, compact = false, showProfileActi
 
   return (
     <Card className={cn(compact && 'gap-4 p-4')} aria-labelledby="welcome-heading">
-      <CardHeader className="flex items-center gap-3 space-y-0">
+      <CardHeader className="flex items-center gap-3">
         <PlayerAvatar user={user} size="md" />
         <div className="flex flex-col gap-0.5">
           <h2 id="welcome-heading" className={cn('font-heading font-semibold', compact ? 'text-base' : 'text-lg')}>
@@ -98,7 +97,7 @@ export default function UserSessionCard({ user, compact = false, showProfileActi
         </div>
       </CardHeader>
 
-      <CardContent className={cn(compact && 'gap-3')}>
+      <CardContent className={cn('flex flex-col gap-4', compact && 'gap-3')}>
         {spiritFlowOpen ? (
           <SpiritAnimalFlow onComplete={handleSpiritComplete} onCancel={() => setSpiritFlowOpen(false)} />
         ) : editorOpen ? (

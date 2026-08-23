@@ -50,14 +50,14 @@ export default function SignInPanel() {
 
   return (
     <Card aria-labelledby="sign-in-heading">
-      <CardHeader className="items-center text-center">
+      <CardHeader className="flex flex-col items-center gap-3 text-center">
         <SparkleBadge />
         <h2 id="sign-in-heading" className="font-heading text-xl font-semibold">
           {SIGN_IN_HEADING}
         </h2>
       </CardHeader>
 
-      <CardContent>
+      <CardContent className="flex flex-col gap-4">
         <SocialSignInRow />
 
         <div className="flex items-center gap-3 text-2xs uppercase tracking-wide text-muted-foreground" role="separator" aria-label={SIGN_IN_DIVIDER_LABEL}>
