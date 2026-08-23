@@ -34,7 +34,7 @@ import { useEffect } from 'react'
 
 function CatalogPage() {
   const { user, loading: authLoading } = useAuth()
-  const { activeIntent, activeTableSeat, busy, queueWsConnected, refresh, notifyQueueJoined, handleLeave } =
+  const { activeIntent, activeTableSeat, busy, queueWsConnected, handleLeave } =
     useActiveIntent()
   const liveUpdatesConnected = !activeIntent?.queueId || activeIntent.status !== 'WAITING' || queueWsConnected
 
@@ -61,13 +61,7 @@ function CatalogPage() {
 
       <AuthPanel />
       <DeveloperHomeBlock />
-      <GameLobby
-        activeIntent={activeIntent}
-        activeTableSeat={activeTableSeat}
-        onQueueChange={refresh}
-        onQueueJoined={notifyQueueJoined}
-        onTableChange={refresh}
-      />
+      <GameLobby />
 
       <AppFooter />
     </main>
