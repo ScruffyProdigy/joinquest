@@ -6,44 +6,48 @@
  * name's noun decides its sigil, so FrostFox always lands on the canine silhouette.
  */
 
-/** Guest-tier avatars. Keys match SigilCatalog in backend/internal/avatars/catalog.go. */
+/**
+ * Guest-tier avatar shapes. Family keys match the sigil parser in
+ * backend/internal/avatars/catalog.go.
+ */
 export const SIGIL_FAMILIES = [
-  {
-    key: 'sigil-canine',
-    imageUrl: '/avatars/sigil-canine.svg',
-    nouns: ['Fox', 'Wolf', 'Hound', 'Jackal', 'Coyote', 'Dingo'],
-  },
-  {
-    key: 'sigil-feline',
-    imageUrl: '/avatars/sigil-feline.svg',
-    nouns: ['Lynx', 'Tiger', 'Panther', 'Puma', 'Ocelot', 'Cougar'],
-  },
-  {
-    key: 'sigil-horned',
-    imageUrl: '/avatars/sigil-horned.svg',
-    nouns: ['Ox', 'Ram', 'Bull', 'Stag', 'Elk', 'Bison'],
-  },
-  {
-    key: 'sigil-raptor',
-    imageUrl: '/avatars/sigil-raptor.svg',
-    nouns: ['Eagle', 'Falcon', 'Hawk', 'Osprey', 'Kestrel', 'Harrier'],
-  },
-  {
-    key: 'sigil-corvid',
-    imageUrl: '/avatars/sigil-corvid.svg',
-    nouns: ['Raven', 'Crow', 'Rook', 'Magpie', 'Jay', 'Grackle'],
-  },
-  {
-    key: 'sigil-ursine',
-    imageUrl: '/avatars/sigil-ursine.svg',
-    nouns: ['Bear', 'Bruin', 'Kodiak', 'Grizzly', 'Ursa', 'Sable'],
-  },
+  { key: 'canine', nouns: ['Fox', 'Wolf', 'Hound', 'Jackal', 'Coyote', 'Dingo'] },
+  { key: 'feline', nouns: ['Lynx', 'Tiger', 'Panther', 'Puma', 'Ocelot', 'Cougar'] },
+  { key: 'horned', nouns: ['Ox', 'Ram', 'Bull', 'Stag', 'Elk', 'Bison'] },
+  { key: 'raptor', nouns: ['Eagle', 'Falcon', 'Hawk', 'Osprey', 'Kestrel', 'Harrier'] },
+  { key: 'corvid', nouns: ['Raven', 'Crow', 'Rook', 'Magpie', 'Jay', 'Grackle'] },
+  { key: 'ursine', nouns: ['Bear', 'Bruin', 'Kodiak', 'Grizzly', 'Ursa', 'Sable'] },
 ]
 
-export const GUEST_NAME_ADJECTIVES = [
-  'Frost', 'Ember', 'Swift', 'Bold', 'Nova', 'Ash', 'Wise', 'Blaze', 'Dusk', 'Dawn',
-  'Iron', 'Storm', 'Wild', 'Lone', 'Quick', 'Grim', 'Bright', 'Shadow', 'Silver', 'Onyx',
+/**
+ * The adjective in a guest name is also its colour, so FrostFox really is the icy
+ * blue one. Tints are deep enough to carry the near-white silhouette on top.
+ */
+export const SIGIL_TINTS = [
+  { key: 'frost', word: 'Frost', hex: '#0284c7' },
+  { key: 'ember', word: 'Ember', hex: '#ea580c' },
+  { key: 'blaze', word: 'Blaze', hex: '#dc2626' },
+  { key: 'dawn', word: 'Dawn', hex: '#e11d48' },
+  { key: 'dusk', word: 'Dusk', hex: '#9333ea' },
+  { key: 'storm', word: 'Storm', hex: '#4f46e5' },
+  { key: 'moss', word: 'Moss', hex: '#16a34a' },
+  { key: 'tide', word: 'Tide', hex: '#0d9488' },
+  { key: 'solar', word: 'Solar', hex: '#ca8a04' },
+  { key: 'nova', word: 'Nova', hex: '#0891b2' },
+  { key: 'rust', word: 'Rust', hex: '#d97706' },
+  { key: 'bloom', word: 'Bloom', hex: '#db2777' },
 ]
+
+/** The silhouette drawn on top of every tint. */
+export const SIGIL_SILHOUETTE = '#f8fafc'
+
+export function sigilAvatarKey(familyKey, tintKey) {
+  return `sigil-${familyKey}-${tintKey}`
+}
+
+export function sigilImageUrl(familyKey, tintKey) {
+  return `/avatars/sigils/${familyKey}-${tintKey}.svg`
+}
 
 /** Four digits keeps names distinct without making them unreadable. */
 const NUMBER_MIN = 1000
@@ -77,24 +81,27 @@ function sampleWithoutReplacement(items, count) {
 }
 
 /**
- * Builds one identity: an adjective, a noun from `family`, and a 4-digit number.
+ * Builds one identity: a tint word, a noun from `family`, and a 4-digit number.
  * The number is what keeps two guests from colliding on the same name.
  */
-export function generateGuestIdentity(family, adjective = pickOne(GUEST_NAME_ADJECTIVES)) {
+export function generateGuestIdentity(family, tint = pickOne(SIGIL_TINTS)) {
   const number = NUMBER_MIN + randomInt(NUMBER_MAX - NUMBER_MIN + 1)
-  const name = `${adjective}${pickOne(family.nouns)}${number}`
-  return { name, avatarKey: family.key, imageUrl: family.imageUrl }
+  return {
+    name: `${tint.word}${pickOne(family.nouns)}${number}`,
+    avatarKey: sigilAvatarKey(family.key, tint.key),
+    imageUrl: sigilImageUrl(family.key, tint.key),
+  }
 }
 
 /**
  * Builds a fresh set of choices for the picker — one per sigil family, so the row
  * shows six distinct silhouettes rather than six variations of the same animal.
- * Adjectives are drawn without replacement too, so no two choices rhyme.
+ * Tints are drawn without replacement too, so no two choices share a colour.
  */
 export function generateGuestIdentities(count = GUEST_IDENTITY_CHOICES) {
   const families = sampleWithoutReplacement(SIGIL_FAMILIES, count)
-  const adjectives = sampleWithoutReplacement(GUEST_NAME_ADJECTIVES, families.length)
-  return families.map((family, index) => generateGuestIdentity(family, adjectives[index]))
+  const tints = sampleWithoutReplacement(SIGIL_TINTS, families.length)
+  return families.map((family, index) => generateGuestIdentity(family, tints[index]))
 }
 
 /** True while a display name is still a placeholder the player never chose. */

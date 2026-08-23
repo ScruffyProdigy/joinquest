@@ -2,6 +2,7 @@ package avatars
 
 import (
 	"fmt"
+	"slices"
 	"strings"
 )
 
@@ -102,25 +103,34 @@ func ResolveURL(publicOrigin string, storedURL, avatarKey *string) *string {
 // signing in and finishing the spirit animal journey.
 const SourceSigil = "sigil"
 
-// SigilCatalog is the guest-tier avatar set: one flat silhouette per animal family.
-// Generated guest names pick a noun from the matching family, so a player called
-// FrostFox lands on the canine sigil rather than an unrelated one.
-var SigilCatalog = []StarterEntry{
-	{Key: "sigil-canine", Name: "Canine", Slot: "Canine", File: "sigil-canine.svg"},
-	{Key: "sigil-feline", Name: "Feline", Slot: "Feline", File: "sigil-feline.svg"},
-	{Key: "sigil-horned", Name: "Horned", Slot: "Horned", File: "sigil-horned.svg"},
-	{Key: "sigil-raptor", Name: "Raptor", Slot: "Raptor", File: "sigil-raptor.svg"},
-	{Key: "sigil-corvid", Name: "Corvid", Slot: "Corvid", File: "sigil-corvid.svg"},
-	{Key: "sigil-ursine", Name: "Ursine", Slot: "Ursine", File: "sigil-ursine.svg"},
+// SigilFamilies are the guest-tier silhouettes. A generated guest name picks the
+// noun that matches its family, so a player called FrostFox gets the canine one.
+var SigilFamilies = []string{"canine", "feline", "horned", "raptor", "corvid", "ursine"}
+
+// SigilTints are the colours a sigil can be drawn in. The tint is also the
+// adjective in the guest's name, so FrostFox really is the icy blue one.
+var SigilTints = []string{
+	"frost", "ember", "blaze", "dawn", "dusk", "storm",
+	"moss", "tide", "solar", "nova", "rust", "bloom",
 }
 
-// SigilByKey returns a guest-tier catalog entry by key (case-insensitive).
+// SigilByKey resolves a "sigil-<family>-<tint>" key, e.g. "sigil-canine-frost".
+// Keys are composite rather than a flat catalog because every family is drawn in
+// every tint; frontend/scripts/generate-sigils.mjs writes the matching files.
 func SigilByKey(key string) (StarterEntry, bool) {
 	normalized := strings.ToLower(strings.TrimSpace(key))
-	for _, entry := range SigilCatalog {
-		if entry.Key == normalized {
-			return entry, true
-		}
+	rest, ok := strings.CutPrefix(normalized, "sigil-")
+	if !ok {
+		return StarterEntry{}, false
 	}
-	return StarterEntry{}, false
+	family, tint, ok := strings.Cut(rest, "-")
+	if !ok || !slices.Contains(SigilFamilies, family) || !slices.Contains(SigilTints, tint) {
+		return StarterEntry{}, false
+	}
+	return StarterEntry{
+		Key:  normalized,
+		Name: family,
+		Slot: family,
+		File: fmt.Sprintf("sigils/%s-%s.svg", family, tint),
+	}, true
 }

@@ -2,8 +2,8 @@ import { existsSync, readFileSync } from 'node:fs'
 import { describe, expect, it } from 'vitest'
 import {
   GUEST_IDENTITY_CHOICES,
-  GUEST_NAME_ADJECTIVES,
   SIGIL_FAMILIES,
+  SIGIL_TINTS,
   generateGuestIdentities,
   generateGuestIdentity,
   isGeneratedDisplayName,
@@ -14,8 +14,17 @@ describe('generateGuestIdentity', () => {
   it('pairs the name with a noun from its own sigil family', () => {
     for (const family of SIGIL_FAMILIES) {
       const identity = generateGuestIdentity(family)
-      expect(identity.avatarKey).toBe(family.key)
+      expect(identity.avatarKey).toMatch(new RegExp(`^sigil-${family.key}-`))
       expect(family.nouns.some((noun) => identity.name.includes(noun))).toBe(true)
+    }
+  })
+
+  it('names the avatar after its own tint, so the colour matches the word', () => {
+    for (const tint of SIGIL_TINTS) {
+      const identity = generateGuestIdentity(SIGIL_FAMILIES[0], tint)
+      expect(identity.name.startsWith(tint.word)).toBe(true)
+      expect(identity.avatarKey).toBe(`sigil-canine-${tint.key}`)
+      expect(identity.imageUrl).toBe(`/avatars/sigils/canine-${tint.key}.svg`)
     }
   })
 
@@ -44,12 +53,12 @@ describe('generateGuestIdentities', () => {
     expect(generateGuestIdentities(99)).toHaveLength(SIGIL_FAMILIES.length)
   })
 
-  it('does not repeat an adjective across the choices', () => {
+  it('does not repeat a tint across the choices', () => {
     for (let i = 0; i < 20; i += 1) {
-      const adjectives = generateGuestIdentities().map(
-        (item) => GUEST_NAME_ADJECTIVES.find((word) => item.name.startsWith(word)),
+      const tints = generateGuestIdentities().map(
+        (item) => SIGIL_TINTS.find((tint) => item.name.startsWith(tint.word)),
       )
-      expect(new Set(adjectives).size).toBe(adjectives.length)
+      expect(new Set(tints).size).toBe(tints.length)
     }
   })
 })
@@ -98,15 +107,28 @@ describe('needsIdentity', () => {
 })
 
 describe('sigil assets', () => {
-  it('ships an SVG file for every family', () => {
+  it('ships an SVG file for every family in every tint', () => {
     for (const family of SIGIL_FAMILIES) {
-      expect(existsSync(`public${family.imageUrl}`)).toBe(true)
+      for (const tint of SIGIL_TINTS) {
+        expect(existsSync(`public/avatars/sigils/${family.key}-${tint.key}.svg`)).toBe(true)
+      }
     }
   })
 
-  it('uses the same keys as the backend catalog', () => {
+  it('paints each sigil in its own tint rather than a flat dark disc', () => {
+    for (const tint of SIGIL_TINTS) {
+      const svg = readFileSync(`public/avatars/sigils/canine-${tint.key}.svg`, 'utf8')
+      expect(svg).toContain(tint.hex)
+    }
+  })
+
+  it('uses families and tints the backend also accepts', () => {
     const catalog = readFileSync('../backend/internal/avatars/catalog.go', 'utf8')
-    const backendKeys = [...catalog.matchAll(/Key: "(sigil-[a-z]+)"/g)].map((match) => match[1])
-    expect(backendKeys.sort()).toEqual(SIGIL_FAMILIES.map((family) => family.key).sort())
+    const listed = (name) => {
+      const block = catalog.slice(catalog.indexOf(`var ${name} = `))
+      return [...block.slice(0, block.indexOf('}')).matchAll(/"([a-z]+)"/g)].map((m) => m[1])
+    }
+    expect(listed('SigilFamilies').sort()).toEqual(SIGIL_FAMILIES.map((f) => f.key).sort())
+    expect(listed('SigilTints').sort()).toEqual(SIGIL_TINTS.map((t) => t.key).sort())
   })
 })

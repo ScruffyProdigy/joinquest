@@ -232,7 +232,7 @@ func TestUpdatePlayerProfileAcceptsGuestSigil(t *testing.T) {
 	}`
 	body := postGraphQL(t, env.Handler, query, map[string]any{
 		"displayName": "FrostFox4827",
-		"avatarKey":   "sigil-canine",
+		"avatarKey":   "sigil-canine-frost",
 	}, cookie)
 
 	var resp struct {
@@ -259,10 +259,10 @@ func TestUpdatePlayerProfileAcceptsGuestSigil(t *testing.T) {
 	if profile.DisplayName == nil || *profile.DisplayName != "FrostFox4827" {
 		t.Fatalf("displayName: %+v", profile.DisplayName)
 	}
-	if profile.AvatarKey == nil || *profile.AvatarKey != "sigil-canine" {
+	if profile.AvatarKey == nil || *profile.AvatarKey != "sigil-canine-frost" {
 		t.Fatalf("avatarKey: %+v", profile.AvatarKey)
 	}
-	if profile.AvatarURL == nil || *profile.AvatarURL != "https://joinquest.test/avatars/sigil-canine.svg" {
+	if profile.AvatarURL == nil || *profile.AvatarURL != "https://joinquest.test/avatars/sigils/canine-frost.svg" {
 		t.Fatalf("avatarUrl: %+v", profile.AvatarURL)
 	}
 	if profile.AvatarSource == nil || *profile.AvatarSource != "SIGIL" {

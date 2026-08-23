@@ -29,7 +29,7 @@ function renderGate() {
 function avatarChoices() {
   return screen
     .getAllByRole('button')
-    .filter((button) => button.querySelector('img[src*="/avatars/sigil-"]'))
+    .filter((button) => button.querySelector('img[src*="/avatars/sigils/"]'))
 }
 
 async function waitForGate() {
@@ -167,8 +167,8 @@ describe('IdentityGate', () => {
     mockAuthenticatedSession({
       ...NAMELESS_GUEST,
       displayName: 'FrostFox4827',
-      avatarKey: 'sigil-canine',
-      avatarUrl: '/avatars/sigil-canine.svg',
+      avatarKey: 'sigil-canine-frost',
+      avatarUrl: '/avatars/sigils/canine-frost.svg',
     })
     renderGate()
 
