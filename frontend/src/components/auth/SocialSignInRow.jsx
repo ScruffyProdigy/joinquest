@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { fetchEnabledOAuthProviders, startOAuthSignIn } from '../../lib/oauth'
+import { Button } from '../ui/button'
 import OAuthProviderIcon, { oauthProviderLabel } from './OAuthProviderIcon'
 
 export default function SocialSignInRow() {
@@ -35,21 +36,19 @@ export default function SocialSignInRow() {
   }
 
   return (
-    <div className="auth-social" aria-label="Social sign-in options">
-      <div className="auth-social__icons">
-        {providers.map((provider) => (
-          <button
-            key={provider}
-            type="button"
-            className="auth-social__icon"
-            aria-label={`Continue with ${oauthProviderLabel(provider)}`}
-            title={`Continue with ${oauthProviderLabel(provider)}`}
-            onClick={() => startOAuthSignIn(provider)}
-          >
-            <OAuthProviderIcon provider={provider} />
-          </button>
-        ))}
-      </div>
+    <div className="flex flex-col gap-2" aria-label="Social sign-in options">
+      {providers.map((provider) => (
+        <Button
+          key={provider}
+          type="button"
+          variant="outline"
+          className="w-full justify-start gap-3"
+          onClick={() => startOAuthSignIn(provider)}
+        >
+          <OAuthProviderIcon provider={provider} />
+          Continue with {oauthProviderLabel(provider)}
+        </Button>
+      ))}
     </div>
   )
 }
