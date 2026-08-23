@@ -2,7 +2,7 @@ import { render, screen, waitFor } from '@testing-library/react'
 import { describe, it, expect, beforeEach } from 'vitest'
 import App from './App'
 import { SIGN_IN_HEADING } from './lib/playerCopy'
-import { mockAuthenticatedSession, mockUnauthenticatedSession } from './test/setup'
+import { mockAuthenticatedSession, mockDemoGames, mockUnauthenticatedSession } from './test/setup'
 
 describe('App Component', () => {
   beforeEach(() => {
@@ -29,6 +29,20 @@ describe('App Component', () => {
       expect(screen.getByRole('heading', { name: SIGN_IN_HEADING })).toBeInTheDocument()
     })
     expect(screen.queryByRole('heading', { name: 'Room' })).not.toBeInTheDocument()
+  })
+
+  it('shows the games catalog to signed-out visitors', async () => {
+    mockUnauthenticatedSession({ games: mockDemoGames })
+    render(<App />)
+
+    expect(await screen.findByRole('heading', { name: 'Available games' })).toBeInTheDocument()
+    expect(
+      await screen.findByRole('heading', { name: 'Rock Paper Scissors Lizard Robot' }),
+    ).toBeInTheDocument()
+    // Browsing is open to guests; the account prompt lives on the game page.
+    expect(
+      screen.getByRole('link', { name: /Rock Paper Scissors Lizard Robot/ }),
+    ).toHaveAttribute('href', '/games/rock-paper-scissors-lizard-robot')
   })
 
   it('shows the signed-in user when authenticated', async () => {

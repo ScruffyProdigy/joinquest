@@ -49,6 +49,7 @@ global.ResizeObserver = vi.fn().mockImplementation(() => ({
 export const mockDemoGames = [
   {
     id: 'game-1',
+    slug: 'rock-paper-scissors-lizard-robot',
     name: 'Rock Paper Scissors Lizard Robot',
     iconUrl: '/games/rpslr-icon.png',
     heroUrl: '/games/rpslr-hero.jpg',
@@ -161,8 +162,8 @@ export function mockGraphQLResponse(data) {
   })
 }
 
-export function mockUnauthenticatedSession() {
-  global.fetch = createFetchMock({ me: null, games: [] })
+export function mockUnauthenticatedSession(overrides = {}) {
+  global.fetch = createFetchMock({ me: null, games: [], ...overrides })
 }
 
 export function mockAuthenticatedSession(
