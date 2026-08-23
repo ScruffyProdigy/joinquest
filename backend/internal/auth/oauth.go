@@ -166,7 +166,7 @@ func EnabledOAuthProviders() []string {
 	return providers
 }
 
-func (s *Service) OAuthStartURL(ctx context.Context, provider string, mode OAuthMode, confirmMerge bool) (string, error) {
+func (s *Service) OAuthStartURL(ctx context.Context, provider string, mode OAuthMode, confirmMerge bool, next string) (string, error) {
 	cfg, err := oauthProviderFromName(provider)
 	if err != nil {
 		return "", err
@@ -176,6 +176,7 @@ func (s *Service) OAuthStartURL(ctx context.Context, provider string, mode OAuth
 		Provider:     cfg.name,
 		Mode:         mode,
 		ConfirmMerge: confirmMerge,
+		Next:         NormalizeOAuthNextKey(next),
 	}
 	if mode == OAuthModeLink {
 		user, err := s.GetAuthenticatedUser(ctx)
@@ -207,7 +208,7 @@ func (s *Service) resolveOAuthState(ctx context.Context, stateToken string) (OAu
 	return state, "", err
 }
 
-func (s *Service) CompleteOAuthCallback(ctx context.Context, provider, code, stateToken string) (*store.User, string, *OAuthMergeRequired, OAuthMode, error) {
+func (s *Service) CompleteOAuthCallback(ctx context.Context, provider, code, stateToken string) (*store.User, string, *OAuthMergeRequired, OAuthState, error) {
 	start := time.Now()
 	logStep := func(step string) {
 		log.Printf("auth: oauth %s callback %s (%s elapsed)", provider, step, time.Since(start))
@@ -215,30 +216,30 @@ func (s *Service) CompleteOAuthCallback(ctx context.Context, provider, code, sta
 
 	cfg, err := oauthProviderFromName(provider)
 	if err != nil {
-		return nil, "", nil, OAuthModeSignIn, err
+		return nil, "", nil, OAuthState{}, err
 	}
 	state, _, err := s.resolveOAuthState(ctx, stateToken)
 	logStep("state loaded")
 	if err != nil {
-		return nil, "", nil, OAuthModeSignIn, ErrOAuthInvalidState
+		return nil, "", nil, OAuthState{}, ErrOAuthInvalidState
 	}
 	if state.Provider != cfg.name {
-		return nil, "", nil, state.Mode, ErrOAuthInvalidState
+		return nil, "", nil, state, ErrOAuthInvalidState
 	}
 
 	token, err := cfg.exchangeCode(ctx, code, "")
 	logStep("token exchanged")
 	if err != nil {
-		return nil, "", nil, state.Mode, ErrOAuthProviderError
+		return nil, "", nil, state, ErrOAuthProviderError
 	}
 
 	profile, err := fetchOAuthProfile(ctx, cfg, token.AccessToken)
 	logStep("profile fetched")
 	if err != nil {
-		return nil, "", nil, state.Mode, err
+		return nil, "", nil, state, err
 	}
 	if strings.TrimSpace(profile.Subject) == "" {
-		return nil, "", nil, state.Mode, ErrOAuthProviderError
+		return nil, "", nil, state, ErrOAuthProviderError
 	}
 
 	var user *store.User
@@ -251,7 +252,7 @@ func (s *Service) CompleteOAuthCallback(ctx context.Context, provider, code, sta
 	case OAuthModeLink:
 		user, sessionToken, merge, err = s.finishOAuthLink(ctx, state.UserID, cfg.name, profile, state.ConfirmMerge)
 	default:
-		return nil, "", nil, OAuthModeSignIn, ErrOAuthInvalidState
+		return nil, "", nil, OAuthState{}, ErrOAuthInvalidState
 	}
 	logStep("session created")
 
@@ -263,7 +264,7 @@ func (s *Service) CompleteOAuthCallback(ctx context.Context, provider, code, sta
 		}
 	}
 
-	return user, sessionToken, merge, state.Mode, err
+	return user, sessionToken, merge, state, err
 }
 
 type OAuthMergeRequired struct {

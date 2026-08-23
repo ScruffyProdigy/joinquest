@@ -4,7 +4,7 @@ import { cn } from '../../lib/utils'
 import { Button } from '../ui/button'
 import OAuthProviderIcon, { oauthProviderLabel } from './OAuthProviderIcon'
 
-export default function SocialSignInRow() {
+export default function SocialSignInRow({ next = null }) {
   const [providers, setProviders] = useState([])
   const [loading, setLoading] = useState(true)
 
@@ -48,7 +48,7 @@ export default function SocialSignInRow() {
             provider === 'GOOGLE' && '[&_svg]:size-5',
             provider === 'DISCORD' && '[&_svg]:size-6',
           )}
-          onClick={() => startOAuthSignIn(provider)}
+          onClick={() => startOAuthSignIn(provider, next)}
         >
           <OAuthProviderIcon provider={provider} />
           Continue with {oauthProviderLabel(provider)}

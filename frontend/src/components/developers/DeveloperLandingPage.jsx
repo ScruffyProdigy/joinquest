@@ -1,9 +1,11 @@
 import { useEffect, useState } from 'react'
 import { Button } from '../ui/button'
 import AuthPanel from '../auth/AuthPanel'
+import { useAuth } from '../auth/AuthProvider'
 import { APP_NAME } from '../../lib/brand'
 import { developerLandingHref, parseDeveloperLandingPath } from '../../lib/developers'
 import { navigateTo } from '../../lib/usePathname'
+import DeveloperAuthGate from './DeveloperAuthGate'
 import DeveloperMcpWizard from './DeveloperMcpWizard'
 import ReferenceGamesPanel from './ReferenceGamesPanel'
 import RegisterGameForm from './RegisterGameForm'
@@ -13,7 +15,13 @@ function readLandingPathFromUrl() {
 }
 
 export default function DeveloperLandingPage() {
+  const { user, loading } = useAuth()
   const [route, setRoute] = useState(() => readLandingPathFromUrl())
+  // Which action is waiting on an account, so we can resume it after sign-in.
+  const [gate, setGate] = useState(null)
+
+  // Generating an API key and registering a game both need a durable identity.
+  const needsAccount = !user || user.isGuest
 
   useEffect(() => {
     const syncFromUrl = () => setRoute(readLandingPathFromUrl())
@@ -21,7 +29,19 @@ export default function DeveloperLandingPage() {
     return () => window.removeEventListener('popstate', syncFromUrl)
   }, [])
 
+  useEffect(() => {
+    // Signing in without leaving the page drops the visitor back into what they were doing.
+    if (gate && !needsAccount) {
+      setRoute(gate)
+      setGate(null)
+    }
+  }, [gate, needsAccount])
+
   function selectRoute(next) {
+    if (next === 'ai' && needsAccount) {
+      setGate('ai')
+      return
+    }
     setRoute(next)
     navigateTo(developerLandingHref(next), { replace: true })
   }
@@ -31,9 +51,22 @@ export default function DeveloperLandingPage() {
     navigateTo(developerLandingHref(), { replace: true })
   }
 
+  function dismissGate() {
+    setGate(null)
+  }
+
+  if (gate) {
+    return (
+      <main className="app-shell developer-shell">
+        {/* Opaque keys the backend maps back to this page after OAuth sign-in. */}
+        <DeveloperAuthGate onBack={dismissGate} next={gate === 'ai' ? 'dev-ai' : 'dev-manual'} />
+      </main>
+    )
+  }
+
   return (
     <main className="app-shell developer-shell">
-      <AuthPanel variant="developer" />
+      {loading || user ? <AuthPanel variant="developer" /> : null}
 
       <header className="app-header">
         <p className="developer-back">
@@ -105,7 +138,7 @@ export default function DeveloperLandingPage() {
           ) : (
             <section className="panel-card" aria-labelledby="register-game-heading">
               <h2 id="register-game-heading">Register your game</h2>
-              <RegisterGameForm />
+              <RegisterGameForm onAccountRequired={() => setGate('manual')} />
             </section>
           )}
         </>

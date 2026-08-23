@@ -21,6 +21,7 @@ type storedOAuthState struct {
 	Mode         OAuthMode `json:"mode"`
 	UserID       string    `json:"userId,omitempty"`
 	ConfirmMerge bool      `json:"confirmMerge,omitempty"`
+	Next         string    `json:"next,omitempty"`
 	PKCEVerifier string    `json:"pkceVerifier,omitempty"`
 }
 
@@ -143,6 +144,7 @@ func encodeStoredOAuthState(state OAuthState, pkceVerifier string) (storedOAuthS
 		Provider:     state.Provider,
 		Mode:         state.Mode,
 		ConfirmMerge: state.ConfirmMerge,
+		Next:         NormalizeOAuthNextKey(state.Next),
 		PKCEVerifier: strings.TrimSpace(pkceVerifier),
 	}
 	if state.UserID != uuid.Nil {
@@ -156,6 +158,7 @@ func decodeStoredOAuthState(payload storedOAuthState) (OAuthState, string, error
 		Provider:     strings.ToLower(strings.TrimSpace(payload.Provider)),
 		Mode:         payload.Mode,
 		ConfirmMerge: payload.ConfirmMerge,
+		Next:         NormalizeOAuthNextKey(payload.Next),
 	}
 	if payload.UserID != "" {
 		parsed, err := uuid.Parse(payload.UserID)

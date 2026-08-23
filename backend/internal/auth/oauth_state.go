@@ -24,6 +24,8 @@ type OAuthState struct {
 	Mode         OAuthMode
 	UserID       uuid.UUID
 	ConfirmMerge bool
+	// Next is an opaque destination key, never a path. See oauth_next.go.
+	Next string
 }
 
 func (s *Signer) SignOAuthState(state OAuthState, ttl time.Duration) (string, error) {
@@ -54,6 +56,9 @@ func (s *Signer) SignOAuthState(state OAuthState, ttl time.Duration) (string, er
 	}
 	if state.ConfirmMerge {
 		claims["cm"] = true
+	}
+	if next := NormalizeOAuthNextKey(state.Next); next != "" {
+		claims["nxt"] = next
 	}
 
 	token := jwt.NewWithClaims(jwt.SigningMethodEdDSA, claims)
@@ -101,6 +106,9 @@ func (s *Signer) VerifyOAuthState(tokenString string) (OAuthState, error) {
 	}
 	if cm, ok := claims["cm"].(bool); ok {
 		state.ConfirmMerge = cm
+	}
+	if next, _ := claims["nxt"].(string); next != "" {
+		state.Next = NormalizeOAuthNextKey(next)
 	}
 	return state, nil
 }
