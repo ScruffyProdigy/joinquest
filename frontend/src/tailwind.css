@@ -87,4 +87,25 @@
   --font-heading: var(--font-heading);
   --font-sans: var(--font-sans);
   --font-mono-display: var(--font-mono-display);
+  --text-2xs: 0.6875rem;
+  --text-2xs--line-height: 1rem;
+  --text-xs: 0.75rem;
+  --text-xs--line-height: 1.125rem;
+  --text-sm: 0.8125rem;
+  --text-sm--line-height: 1.25rem;
+  --text-base: 0.9375rem;
+  --text-base--line-height: 1.375rem;
+  --text-lg: 1.125rem;
+  --text-lg--line-height: 1.5rem;
+  --text-xl: 1.5rem;
+  --text-xl--line-height: 1.875rem;
+  --text-2xl: 2.125rem;
+  --text-2xl--line-height: 2.375rem;
+  --text-3xl: 2.5rem;
+  --text-3xl--line-height: 2.75rem;
 }
+
+/* Spacing intentionally uses Tailwind's default 4px-based scale (p-1, gap-2,
+   mb-6, etc.) rather than custom tokens — the prototype never deviates from
+   it. See the "Spacing" section on /dev/style-preview for the documented
+   reference. */
