@@ -73,3 +73,26 @@ export function gameTagChips(tags) {
   }
   return tags.map((tag) => String(tag).trim()).filter(Boolean).slice(0, 3)
 }
+
+/** Genre/mode badge label from the first two tag chips, e.g. "Trivia · Party". Null with no tags. */
+export function gameGenreModeLabel(tags) {
+  const chips = gameTagChips(tags)
+  if (chips.length === 0) {
+    return null
+  }
+  return chips.slice(0, 2).join(' · ')
+}
+
+/** Player-count badge label aggregated across active modes, e.g. "2–8 players" or "1 player". */
+export function gamePlayerCountLabel(modes) {
+  const active = (Array.isArray(modes) ? modes : []).filter((mode) => mode?.status === 'active')
+  if (active.length === 0) {
+    return null
+  }
+  const min = Math.min(...active.map((mode) => mode.minPlayers))
+  const max = Math.max(...active.map((mode) => mode.maxPlayers))
+  if (min === max) {
+    return `${min} player${min === 1 ? '' : 's'}`
+  }
+  return `${min}–${max} players`
+}
