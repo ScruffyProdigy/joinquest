@@ -61,7 +61,7 @@ export default function IntentBanner({ activeIntent, activeTableSeat, busy, live
         </div>
         <div className="intent-banner__actions">
           {launchUrl ? (
-            <Button asChild variant="default" className="intent-banner__cta">
+            <Button asChild variant="default" className="intent-banner__cta font-semibold">
               <a href={launchUrl}>{LAUNCH_GAME}</a>
             </Button>
           ) : null}

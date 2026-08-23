@@ -280,41 +280,41 @@ export default function DeveloperDashboard({ gameId }) {
       <section className="panel-card developer-actions">
         <h2>Actions</h2>
         <div className="developer-actions__row">
-          <button
+          <Button
             type="button"
-            className="button-primary"
+            variant="default"
             disabled={checksBusy}
             onClick={() => void handleRunChecks()}
           >
             {checksBusy ? 'Running checks…' : 'Run all checks'}
-          </button>
-          <button
+          </Button>
+          <Button
             type="button"
-            className="button-secondary"
+            variant="secondary"
             disabled={syncBusy}
             onClick={() => void handleSyncManifest()}
           >
             {syncBusy ? 'Syncing…' : 'Resync game modes'}
-          </button>
+          </Button>
           {canTestTable ? (
-            <button
+            <Button
               type="button"
-              className="button-secondary"
+              variant="secondary"
               disabled={tableBusy}
               onClick={() => void handleCreateTestTable()}
             >
               {tableBusy ? 'Creating table…' : 'Create test table'}
-            </button>
+            </Button>
           ) : null}
           {showRelease ? (
-            <button
+            <Button
               type="button"
-              className="button-secondary"
+              variant="secondary"
               disabled={releaseBusy}
               onClick={() => void handleRequestRelease()}
             >
               {releaseBusy ? 'Submitting…' : 'Request public release'}
-            </button>
+            </Button>
           ) : null}
         </div>
 
@@ -415,14 +415,14 @@ export default function DeveloperDashboard({ gameId }) {
             The service token is derived from your game id (not rotatable). Rotate the webhook secret
             if it leaks — the previous secret stops working immediately.
           </p>
-          <button
+          <Button
             type="button"
-            className="button-secondary"
+            variant="secondary"
             disabled={rotateBusy}
             onClick={() => void handleRotateWebhook()}
           >
             {rotateBusy ? 'Rotating…' : 'Rotate webhook secret'}
-          </button>
+          </Button>
         </section>
       ) : null}
 

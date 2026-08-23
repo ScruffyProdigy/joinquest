@@ -1,5 +1,6 @@
 import { useCallback, useLayoutEffect, useRef, useState } from 'react'
 import { flushSync } from 'react-dom'
+import { Button } from '../ui/button'
 import { completeSignInWithCode, requestSignIn } from '../../lib/auth'
 import { notifyAuthComplete } from '../../lib/authBroadcast'
 import { useAuth } from './AuthProvider'
@@ -197,14 +198,14 @@ export default function EmailSignInForm() {
           </button>
         </form>
 
-        <button
+        <Button
           type="button"
-          className="auth-link-button"
+          variant="link"
           onClick={handleUseDifferentEmail}
           disabled={isSigningIn}
         >
           Use a different email
-        </button>
+        </Button>
       </div>
     )
   }

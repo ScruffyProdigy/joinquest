@@ -448,14 +448,14 @@ export default function AccountPage() {
                   </div>
                   {canRemove ? (
                     <div className="account-method-list__actions">
-                      <button
+                      <Button
                         type="button"
-                        className="auth-link-button"
+                        variant="link"
                         onClick={() => void handleRemoveIdentity(item.id)}
                         disabled={actionStatus === 'loading'}
                       >
                         Remove
-                      </button>
+                      </Button>
                     </div>
                   ) : null}
                 </li>

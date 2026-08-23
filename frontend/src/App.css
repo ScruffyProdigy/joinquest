@@ -98,10 +98,6 @@
   gap: 0.5rem;
 }
 
-.intent-banner__cta {
-  font-weight: 600;
-}
-
 .app-header,
 .auth-page h1 {
   text-align: center;
@@ -1495,10 +1491,6 @@
 .developer-route-back {
   margin: 0;
   text-align: left;
-}
-
-.developer-route-back .auth-link-button {
-  margin-top: 0;
 }
 
 .developer-home-block {

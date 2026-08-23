@@ -7,7 +7,7 @@
    beat every Tailwind utility class regardless of specificity — so legacy
    CSS is imported into its own named layer here rather than left unlayered.
    This does not modify index.css/App.css themselves, only how they load. */
-@layer legacy, theme, base, utilities;
+@layer base, legacy, theme, utilities;
 
 @import "./index.css" layer(legacy);
 @import "./App.css" layer(legacy);
@@ -117,5 +117,9 @@
   ::before,
   ::after {
     border-color: var(--border);
+  }
+
+  button[data-slot="button"] {
+    background-color: transparent;
   }
 }
