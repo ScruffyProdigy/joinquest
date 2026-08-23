@@ -319,7 +319,7 @@ export default function AccountPage() {
   return (
     <main className="flex min-h-screen flex-col items-center bg-background p-6 text-foreground">
       <Card className="w-full max-w-lg">
-        <CardHeader className="flex-row items-baseline justify-between space-y-0">
+        <CardHeader className="flex items-baseline justify-between space-y-0">
           <CardTitle as="h1">Account settings</CardTitle>
           <Button variant="link" className="h-auto p-0" asChild>
             <a href="/">Back to home</a>

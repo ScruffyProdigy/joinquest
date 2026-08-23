@@ -84,7 +84,7 @@ export default function UserSessionCard({ user, compact = false, showProfileActi
 
   return (
     <Card className={cn(compact && 'gap-4 p-4')} aria-labelledby="welcome-heading">
-      <CardHeader className="flex-row items-center gap-3 space-y-0">
+      <CardHeader className="flex items-center gap-3 space-y-0">
         <PlayerAvatar user={user} size="md" />
         <div className="flex flex-col gap-0.5">
           <h2 id="welcome-heading" className={cn('font-heading font-semibold', compact ? 'text-base' : 'text-lg')}>
