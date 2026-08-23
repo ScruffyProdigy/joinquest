@@ -1,38 +1,19 @@
-import { useEffect, useState } from 'react'
-
-const EXIT_ANIMATION_MS = 300
+import { Sheet, SheetContent, SheetTitle } from '../ui/sheet'
 
 export default function RoomSheet({ open, onDismiss, children }) {
-  const [render, setRender] = useState(open)
-  const [exiting, setExiting] = useState(false)
-
-  useEffect(() => {
-    if (open) {
-      setRender(true)
-      setExiting(false)
-      return undefined
-    }
-    if (render) {
-      setExiting(true)
-      const timer = window.setTimeout(() => {
-        setRender(false)
-        setExiting(false)
-      }, EXIT_ANIMATION_MS)
-      return () => window.clearTimeout(timer)
-    }
-    return undefined
-  }, [open, render])
-
-  if (!render) {
-    return null
-  }
-
   return (
-    <div className={`room-sheet ${exiting ? 'room-sheet--exiting' : ''}`} role="dialog" aria-modal="true" aria-label="Room chat">
-      <button type="button" className="room-sheet__backdrop" onClick={onDismiss} aria-label="Dismiss room" />
-      <div className={`room-sheet__panel panel-card ${exiting ? 'room-sheet__panel--exiting' : 'room-sheet__panel--entering'}`}>
-        {children}
-      </div>
-    </div>
+    <Sheet
+      open={open}
+      onOpenChange={(next) => {
+        if (!next) {
+          onDismiss()
+        }
+      }}
+    >
+      <SheetContent side="bottom" className="h-[90vh] gap-0 p-0" aria-label="Room chat">
+        <SheetTitle className="sr-only">Room chat</SheetTitle>
+        <div className="flex h-full flex-col overflow-hidden">{children}</div>
+      </SheetContent>
+    </Sheet>
   )
 }
