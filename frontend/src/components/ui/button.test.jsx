@@ -31,6 +31,7 @@ describe('Button', () => {
     const button = screen.getByRole('button')
     expect(button).toHaveClass('bg-transparent')
     expect(button).toHaveClass('text-foreground')
+    expect(button).toHaveClass('border-transparent')
   })
 
   it('applies an explicit transparent background class for the link variant', () => {

@@ -369,7 +369,7 @@ export default function SpiritAnimalFlow({ onComplete, onCancel }) {
     return (
       <Card aria-labelledby="spirit-animal-heading">
         <CardHeader>
-          <CardTitle as="h3" className="font-heading text-lg font-semibold">
+          <CardTitle as="h3" id="spirit-animal-heading" className="font-heading text-lg font-semibold">
             Find my spirit animal
           </CardTitle>
         </CardHeader>
@@ -573,7 +573,7 @@ export default function SpiritAnimalFlow({ onComplete, onCancel }) {
   return (
     <Card aria-labelledby="spirit-results-heading">
       <CardHeader>
-        <CardTitle as="h3" className="font-heading text-lg font-semibold">
+        <CardTitle as="h3" id="spirit-results-heading" className="font-heading text-lg font-semibold">
           Your spirit animals
         </CardTitle>
       </CardHeader>
