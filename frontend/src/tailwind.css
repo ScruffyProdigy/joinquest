@@ -118,8 +118,4 @@
   ::after {
     border-color: var(--border);
   }
-
-  button[data-slot="button"] {
-    background-color: transparent;
-  }
 }
