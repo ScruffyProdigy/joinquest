@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { accentColorFor, listAccentColors, parseHex } from './gameAccent'
+import { accentBaseFor, accentColorFor, listAccentColors, parseHex } from './gameAccent'
 
 describe('parseHex', () => {
   it('normalizes #rrggbb to lowercase', () => {
@@ -17,6 +17,30 @@ describe('parseHex', () => {
   it('returns null for unusable input', () => {
     for (const bad of ['', 'nope', '#12345', '#gggggg', 'rebeccapurple', 'rgb(1,2,3)', null, undefined]) {
       expect(parseHex(bad)).toBeNull()
+    }
+  })
+})
+
+describe('accentBaseFor', () => {
+  it('returns the hashed palette entry as a plain hex', () => {
+    expect(accentBaseFor('word-hunt')).toBe('#f59e0b')
+  })
+
+  it('returns a valid override instead of the hashed entry', () => {
+    expect(accentBaseFor('word-hunt', '#7c3aed')).toBe('#7c3aed')
+    expect(accentBaseFor('word-hunt', '#ABC')).toBe('#aabbcc')
+  })
+
+  it('falls back to the hashed entry when the override is unusable', () => {
+    expect(accentBaseFor('word-hunt', '#12345')).toBe('#f59e0b')
+    expect(accentBaseFor('word-hunt', '')).toBe('#f59e0b')
+  })
+
+  it('is the color accentColorFor builds its badge gradient from', () => {
+    for (const override of [null, '#7c3aed']) {
+      expect(accentColorFor('word-hunt', override).badge).toContain(
+        accentBaseFor('word-hunt', override),
+      )
     }
   })
 })

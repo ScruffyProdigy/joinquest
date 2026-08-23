@@ -11,6 +11,7 @@ vi.mock('../../lib/developers', () => ({
 
 const baseGame = {
   id: 'game-1',
+  slug: 'accent-game',
   name: 'Accent Game',
   shortDescription: 'Short',
   longDescription: 'Long',
@@ -51,12 +52,23 @@ describe('DeveloperCatalogMetadata accent color', () => {
     expect(screen.getByLabelText('Catalog accent color (optional)')).toHaveValue('#aabbcc')
   })
 
+  it("seeds the swatch with the game's default color when no override is set", () => {
+    render(<DeveloperCatalogMetadata game={{ ...baseGame, accentColor: null }} />)
+
+    // The slug 'accent-game' hashes to the palette's violet entry.
+    expect(screen.getByLabelText('Catalog accent color (optional)')).toHaveValue('#8b5cf6')
+    expect(screen.getByLabelText('Accent color hex value')).toHaveValue('')
+  })
+
   it('sends an empty accentColor after "Use default" so the override is cleared', async () => {
     const user = userEvent.setup()
     render(<DeveloperCatalogMetadata game={baseGame} />)
 
     await user.click(screen.getByRole('button', { name: 'Use default' }))
     expect(screen.getByLabelText('Accent color hex value')).toHaveValue('')
+    // The swatch must show the color the card will actually render in, not a
+    // neutral placeholder that misrepresents the game's default.
+    expect(screen.getByLabelText('Catalog accent color (optional)')).toHaveValue('#8b5cf6')
 
     await user.click(screen.getByRole('button', { name: 'Save listing' }))
 

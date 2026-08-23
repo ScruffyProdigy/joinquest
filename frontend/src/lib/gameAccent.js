@@ -55,23 +55,45 @@ function hashSlug(slug) {
 }
 
 /**
- * Per-game accent. Uses `overrideColor` when it parses as a hex color, otherwise
- * falls back to a palette entry deterministically hashed from the game's slug.
+ * The palette entry a game draws its accent from: a valid `overrideColor` when
+ * present, otherwise one deterministically hashed from the slug.
  *
  * The override is re-validated here rather than trusted, so bad stored data
  * degrades to the hashed accent instead of blanking out a card.
+ *
+ * @param {string} slug
+ * @param {string | null} overrideColor
+ * @returns {{name: string, accent500: string, accent700: string}}
+ */
+function entryFor(slug, overrideColor) {
+  const override = parseHex(overrideColor)
+  if (override) {
+    return { name: 'custom', accent500: override, accent700: darken(override) }
+  }
+  return ACCENT_PALETTE[hashSlug(slug) % ACCENT_PALETTE.length]
+}
+
+/**
+ * Per-game accent as ready-to-use CSS values.
  *
  * @param {string} slug
  * @param {string | null} [overrideColor]
  * @returns {{name: string, badge: string, cardBg: string, border: string, headerBg: string, heroScrim: string}}
  */
 export function accentColorFor(slug, overrideColor = null) {
-  const override = parseHex(overrideColor)
-  if (override) {
-    return toAccent({ name: 'custom', accent500: override, accent700: darken(override) })
-  }
-  const entry = ACCENT_PALETTE[hashSlug(slug) % ACCENT_PALETTE.length]
-  return toAccent(entry)
+  return toAccent(entryFor(slug, overrideColor))
+}
+
+/**
+ * The same accent as a plain hex, for UI that needs a raw color rather than a
+ * CSS value — a `<input type="color">` swatch, for instance.
+ *
+ * @param {string} slug
+ * @param {string | null} [overrideColor]
+ * @returns {string}
+ */
+export function accentBaseFor(slug, overrideColor = null) {
+  return entryFor(slug, overrideColor).accent500
 }
 
 /** @returns {Array<{name: string, badge: string, cardBg: string, border: string, headerBg: string, heroScrim: string}>} */
