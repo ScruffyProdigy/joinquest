@@ -148,3 +148,6 @@ coverage/
 # Kubernetes secrets (may contain sensitive data)
 k8s/secrets/*.yaml
 !k8s/secrets/*.example.yaml
+
+# Subagent-driven-development scratch workspaces (per-plan ledgers, briefs, review packages)
+.superpowers/
