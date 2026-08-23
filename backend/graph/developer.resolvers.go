@@ -406,6 +406,18 @@ func (r *mutationResolver) UpdateMyGameMetadata(ctx context.Context, input model
 			params.CommunityURL = &trimmed
 		}
 	}
+	if input.AccentColor != nil {
+		trimmed := strings.TrimSpace(*input.AccentColor)
+		if trimmed == "" {
+			params.ClearAccentColor = true
+		} else {
+			normalized, err := developer.NormalizeAccentColor(trimmed)
+			if err != nil {
+				return nil, err
+			}
+			params.AccentColor = &normalized
+		}
+	}
 
 	game, err := st.UpdateMyGameMetadata(ctx, gameID, userID, params)
 	if err != nil {

@@ -103,6 +103,8 @@ extend type Game {
   tutorialUrl: String
   screenshots: [String!]!
   tags: [String!]!
+  """Developer-chosen hex accent (#rrggbb). Null falls back to the slug-hashed palette color."""
+  accentColor: String
   modes: [GameMode!]!
 }
 

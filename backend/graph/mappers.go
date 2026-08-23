@@ -122,6 +122,9 @@ func ToGraphQLGame(game *store.Game) *model.Game {
 	if game.CommunityURL != nil {
 		result.CommunityURL = game.CommunityURL
 	}
+	if game.AccentColor != nil {
+		result.AccentColor = game.AccentColor
+	}
 	if game.OwnerUserID != nil {
 		ownerID := game.OwnerUserID.String()
 		result.OwnerUserID = &ownerID

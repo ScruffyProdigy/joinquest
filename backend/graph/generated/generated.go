@@ -129,6 +129,7 @@ type ComplexityRoot struct {
 
 	Game struct {
 		APIBaseURL        func(childComplexity int) int
+		AccentColor       func(childComplexity int) int
 		ActiveSessions    func(childComplexity int, limit *int) int
 		CatalogHeroURL    func(childComplexity int) int
 		CommunityURL      func(childComplexity int) int
@@ -985,6 +986,12 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.Game.APIBaseURL(childComplexity), true
+	case "Game.accentColor":
+		if e.complexity.Game.AccentColor == nil {
+			break
+		}
+
+		return e.complexity.Game.AccentColor(childComplexity), true
 	case "Game.activeSessions":
 		if e.complexity.Game.ActiveSessions == nil {
 			break
@@ -3496,6 +3503,8 @@ extend type Game {
   tutorialUrl: String
   screenshots: [String!]!
   tags: [String!]!
+  """Developer-chosen hex accent (#rrggbb). Null falls back to the slug-hashed palette color."""
+  accentColor: String
   modes: [GameMode!]!
 }
 
@@ -3596,6 +3605,8 @@ input UpdateMyGameMetadataInput {
   contactEmail: String
   websiteUrl: String
   communityUrl: String
+  """Hex catalog accent (#rrggbb or #rgb). Empty string resets to the default."""
+  accentColor: String
 }
 
 input ConnectMyGameInput {
@@ -5546,6 +5557,8 @@ func (ec *executionContext) fieldContext_ConnectMyGamePayload_game(_ context.Con
 				return ec.fieldContext_Game_screenshots(ctx, field)
 			case "tags":
 				return ec.fieldContext_Game_tags(ctx, field)
+			case "accentColor":
+				return ec.fieldContext_Game_accentColor(ctx, field)
 			case "modes":
 				return ec.fieldContext_Game_modes(ctx, field)
 			case "visibility":
@@ -6045,6 +6058,8 @@ func (ec *executionContext) fieldContext_DigitalGood_game(_ context.Context, fie
 				return ec.fieldContext_Game_screenshots(ctx, field)
 			case "tags":
 				return ec.fieldContext_Game_tags(ctx, field)
+			case "accentColor":
+				return ec.fieldContext_Game_accentColor(ctx, field)
 			case "modes":
 				return ec.fieldContext_Game_modes(ctx, field)
 			case "visibility":
@@ -6786,6 +6801,35 @@ func (ec *executionContext) _Game_tags(ctx context.Context, field graphql.Collec
 }
 
 func (ec *executionContext) fieldContext_Game_tags(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Game",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Game_accentColor(ctx context.Context, field graphql.CollectedField, obj *model.Game) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_Game_accentColor,
+		func(ctx context.Context) (any, error) {
+			return obj.AccentColor, nil
+		},
+		nil,
+		ec.marshalOString2ᚖstring,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_Game_accentColor(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	fc = &graphql.FieldContext{
 		Object:     "Game",
 		Field:      field,
@@ -9254,6 +9298,8 @@ func (ec *executionContext) fieldContext_Mutation_refreshGameManifest(ctx contex
 				return ec.fieldContext_Game_screenshots(ctx, field)
 			case "tags":
 				return ec.fieldContext_Game_tags(ctx, field)
+			case "accentColor":
+				return ec.fieldContext_Game_accentColor(ctx, field)
 			case "modes":
 				return ec.fieldContext_Game_modes(ctx, field)
 			case "visibility":
@@ -9688,6 +9734,8 @@ func (ec *executionContext) fieldContext_Mutation_updateMyGameMetadata(ctx conte
 				return ec.fieldContext_Game_screenshots(ctx, field)
 			case "tags":
 				return ec.fieldContext_Game_tags(ctx, field)
+			case "accentColor":
+				return ec.fieldContext_Game_accentColor(ctx, field)
 			case "modes":
 				return ec.fieldContext_Game_modes(ctx, field)
 			case "visibility":
@@ -9781,6 +9829,8 @@ func (ec *executionContext) fieldContext_Mutation_requestPublicRelease(ctx conte
 				return ec.fieldContext_Game_screenshots(ctx, field)
 			case "tags":
 				return ec.fieldContext_Game_tags(ctx, field)
+			case "accentColor":
+				return ec.fieldContext_Game_accentColor(ctx, field)
 			case "modes":
 				return ec.fieldContext_Game_modes(ctx, field)
 			case "visibility":
@@ -9874,6 +9924,8 @@ func (ec *executionContext) fieldContext_Mutation_reviewGameRelease(ctx context.
 				return ec.fieldContext_Game_screenshots(ctx, field)
 			case "tags":
 				return ec.fieldContext_Game_tags(ctx, field)
+			case "accentColor":
+				return ec.fieldContext_Game_accentColor(ctx, field)
 			case "modes":
 				return ec.fieldContext_Game_modes(ctx, field)
 			case "visibility":
@@ -11497,6 +11549,8 @@ func (ec *executionContext) fieldContext_Query_games(ctx context.Context, field 
 				return ec.fieldContext_Game_screenshots(ctx, field)
 			case "tags":
 				return ec.fieldContext_Game_tags(ctx, field)
+			case "accentColor":
+				return ec.fieldContext_Game_accentColor(ctx, field)
 			case "modes":
 				return ec.fieldContext_Game_modes(ctx, field)
 			case "visibility":
@@ -11590,6 +11644,8 @@ func (ec *executionContext) fieldContext_Query_game(ctx context.Context, field g
 				return ec.fieldContext_Game_screenshots(ctx, field)
 			case "tags":
 				return ec.fieldContext_Game_tags(ctx, field)
+			case "accentColor":
+				return ec.fieldContext_Game_accentColor(ctx, field)
 			case "modes":
 				return ec.fieldContext_Game_modes(ctx, field)
 			case "visibility":
@@ -11683,6 +11739,8 @@ func (ec *executionContext) fieldContext_Query_gameBySlug(ctx context.Context, f
 				return ec.fieldContext_Game_screenshots(ctx, field)
 			case "tags":
 				return ec.fieldContext_Game_tags(ctx, field)
+			case "accentColor":
+				return ec.fieldContext_Game_accentColor(ctx, field)
 			case "modes":
 				return ec.fieldContext_Game_modes(ctx, field)
 			case "visibility":
@@ -12327,6 +12385,8 @@ func (ec *executionContext) fieldContext_Query_myGames(_ context.Context, field 
 				return ec.fieldContext_Game_screenshots(ctx, field)
 			case "tags":
 				return ec.fieldContext_Game_tags(ctx, field)
+			case "accentColor":
+				return ec.fieldContext_Game_accentColor(ctx, field)
 			case "modes":
 				return ec.fieldContext_Game_modes(ctx, field)
 			case "visibility":
@@ -12409,6 +12469,8 @@ func (ec *executionContext) fieldContext_Query_myGame(ctx context.Context, field
 				return ec.fieldContext_Game_screenshots(ctx, field)
 			case "tags":
 				return ec.fieldContext_Game_tags(ctx, field)
+			case "accentColor":
+				return ec.fieldContext_Game_accentColor(ctx, field)
 			case "modes":
 				return ec.fieldContext_Game_modes(ctx, field)
 			case "visibility":
@@ -12713,6 +12775,8 @@ func (ec *executionContext) fieldContext_Query_pendingGameReviews(_ context.Cont
 				return ec.fieldContext_Game_screenshots(ctx, field)
 			case "tags":
 				return ec.fieldContext_Game_tags(ctx, field)
+			case "accentColor":
+				return ec.fieldContext_Game_accentColor(ctx, field)
 			case "modes":
 				return ec.fieldContext_Game_modes(ctx, field)
 			case "visibility":
@@ -13558,6 +13622,8 @@ func (ec *executionContext) fieldContext_RegisterGamePayload_game(_ context.Cont
 				return ec.fieldContext_Game_screenshots(ctx, field)
 			case "tags":
 				return ec.fieldContext_Game_tags(ctx, field)
+			case "accentColor":
+				return ec.fieldContext_Game_accentColor(ctx, field)
 			case "modes":
 				return ec.fieldContext_Game_modes(ctx, field)
 			case "visibility":
@@ -13697,6 +13763,8 @@ func (ec *executionContext) fieldContext_RegisterMyGamePayload_game(_ context.Co
 				return ec.fieldContext_Game_screenshots(ctx, field)
 			case "tags":
 				return ec.fieldContext_Game_tags(ctx, field)
+			case "accentColor":
+				return ec.fieldContext_Game_accentColor(ctx, field)
 			case "modes":
 				return ec.fieldContext_Game_modes(ctx, field)
 			case "visibility":
@@ -14594,6 +14662,8 @@ func (ec *executionContext) fieldContext_Session_game(_ context.Context, field g
 				return ec.fieldContext_Game_screenshots(ctx, field)
 			case "tags":
 				return ec.fieldContext_Game_tags(ctx, field)
+			case "accentColor":
+				return ec.fieldContext_Game_accentColor(ctx, field)
 			case "modes":
 				return ec.fieldContext_Game_modes(ctx, field)
 			case "visibility":
@@ -16692,6 +16762,8 @@ func (ec *executionContext) fieldContext_SyncMyGameManifestPayload_game(_ contex
 				return ec.fieldContext_Game_screenshots(ctx, field)
 			case "tags":
 				return ec.fieldContext_Game_tags(ctx, field)
+			case "accentColor":
+				return ec.fieldContext_Game_accentColor(ctx, field)
 			case "modes":
 				return ec.fieldContext_Game_modes(ctx, field)
 			case "visibility":
@@ -16860,6 +16932,8 @@ func (ec *executionContext) fieldContext_Table_game(_ context.Context, field gra
 				return ec.fieldContext_Game_screenshots(ctx, field)
 			case "tags":
 				return ec.fieldContext_Game_tags(ctx, field)
+			case "accentColor":
+				return ec.fieldContext_Game_accentColor(ctx, field)
 			case "modes":
 				return ec.fieldContext_Game_modes(ctx, field)
 			case "visibility":
@@ -19917,7 +19991,7 @@ func (ec *executionContext) unmarshalInputUpdateMyGameMetadataInput(ctx context.
 		asMap[k] = v
 	}
 
-	fieldsInOrder := [...]string{"gameId", "name", "shortDescription", "longDescription", "howToPlay", "tags", "contactEmail", "websiteUrl", "communityUrl"}
+	fieldsInOrder := [...]string{"gameId", "name", "shortDescription", "longDescription", "howToPlay", "tags", "contactEmail", "websiteUrl", "communityUrl", "accentColor"}
 	for _, k := range fieldsInOrder {
 		v, ok := asMap[k]
 		if !ok {
@@ -19987,6 +20061,13 @@ func (ec *executionContext) unmarshalInputUpdateMyGameMetadataInput(ctx context.
 				return it, err
 			}
 			it.CommunityURL = data
+		case "accentColor":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("accentColor"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.AccentColor = data
 		}
 	}
 
@@ -20627,6 +20708,8 @@ func (ec *executionContext) _Game(ctx context.Context, sel ast.SelectionSet, obj
 			if out.Values[i] == graphql.Null {
 				atomic.AddUint32(&out.Invalids, 1)
 			}
+		case "accentColor":
+			out.Values[i] = ec._Game_accentColor(ctx, field, obj)
 		case "modes":
 			field := field
 
