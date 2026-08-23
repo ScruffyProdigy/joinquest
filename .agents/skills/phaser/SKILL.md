@@ -3,12 +3,15 @@ name: phaser
 description: >-
   Build 2D browser games with Phaser 3 using scene-based architecture and centralized state.
   Use when creating a new 2D game, adding 2D game features, working with Phaser, or building
-  sprite-based web games.
+  sprite-based web games. Covers engine mechanics only — for multiplayer architecture see the
+  game-architecture and multiplayer-game-design skills.
 ---
 
 # Phaser 3 Game Development
 
 You are an expert Phaser game developer. Follow these patterns to produce well-structured, visually polished, and maintainable 2D browser games.
+
+**Scope.** This skill covers Phaser engine mechanics, and its defaults assume a single local player. Guidance that changes once other real players share the match is flagged inline with a **Multiplayer note**. Read `game-architecture` (code structure, state, prediction/reconciliation) and `multiplayer-game-design` (server authority, disconnect/reconnect, turn structure, no pause menu) alongside this file for anything with more than one player in it.
 
 ## Core Principles
 
@@ -21,13 +24,15 @@ You are an expert Phaser game developer. Follow these patterns to produce well-s
 7. **Event-driven communication** — All cross-scene/system communication via EventBus
 8. **Restart-safe** — Gameplay must be fully restart-safe and deterministic. `GameState.reset()` must restore a clean slate. No stale references, lingering timers, or leaked event listeners across restarts.
 
+**Multiplayer note:** `reset()` alone doesn't cover it. Match end is signalled by the server rather than triggered by a local restart button, and client-side prediction needs a cheap clone/restore path so state can be rewound during reconciliation — see `game-architecture`.
+
 ## Mandatory Conventions
 
 All games MUST follow these conventions:
 
 - **`core/` directory** with EventBus, GameState, and Constants
 - **EventBus singleton** — `domain:action` event naming, no direct scene references
-- **GameState singleton** — Centralized state with `reset()` for clean restarts
+- **GameState singleton** — Centralized state with `reset()` for clean restarts. **Multiplayer note:** state becomes keyed by player ID, and predicted state has to stay separable from server-confirmed state
 - **Constants file** — Every magic number, color, speed, and config value — zero hardcoded values
 - **Scene cleanup** — Remove EventBus listeners in `shutdown()`
 
@@ -52,7 +57,7 @@ src/
 │   ├── Boot.ts            # Minimal setup, start Game scene
 │   ├── Preloader.ts       # Load all assets, show progress bar
 │   ├── Game.ts            # Main gameplay (starts immediately, no title screen)
-│   └── GameOver.ts        # End screen with restart
+│   └── GameOver.ts        # End screen with restart (single-player shape — see note below)
 ├── objects/               # Game entities (Player, Enemy, etc.)
 ├── systems/               # Managers and subsystems
 ├── ui/                    # UI components (buttons, bars, dialogs)
@@ -61,13 +66,15 @@ src/
 └── main.ts                # Entry point
 ```
 
+**Multiplayer note:** this scene list is single-player-shaped. A multiplayer game needs a connect/seat-claim step before `Game` (you can't start playing until the server has you in a match), a waiting-for-players state, and a `Reconnecting` state — `multiplayer-game-design` treats reconnect UI as core loop, not polish. `GameOver` becomes a server-signalled match end rather than a scene the client decides to enter on its own.
+
 ## Scene Architecture
 
 - **Lifecycle**: `init()` → `preload()` → `create()` → `update(time, delta)`
 - Use `init()` for receiving data from scene transitions
 - Load assets in a dedicated `Preloader` scene, not in every scene
 - Keep `update()` lean — delegate to subsystems and game objects
-- **No title screen by default** — boot directly into gameplay. Only add a title/menu scene if the user explicitly asks for one
+- **No title screen by default** — boot directly into gameplay. Only add a title/menu scene if the user explicitly asks for one. **Multiplayer note:** "boot straight into gameplay" doesn't survive contact with a real match — connecting, claiming a seat, and waiting for opponents all have to happen first
 - Communicate between scenes via EventBus (not direct references)
 
 ## Game Objects
@@ -83,6 +90,8 @@ src/
 - **Matter.js** — Use when you need realistic collisions, constraints, or complex shapes.
 - Never mix physics engines in the same game.
 - Use the **state pattern** for character movement (idle, walk, jump, attack).
+
+**Multiplayer note:** Arcade and Matter both run client-side, so their results are not authoritative. Any collision, hit, or position that affects another player must be computed or revalidated server-side — a client's physics result is a claim, not a fact. See `multiplayer-game-design`.
 
 ## Performance (Critical Rules)
 
@@ -150,6 +159,7 @@ Before considering a game complete, verify:
 - [ ] **Delta-based movement** — All motion uses `delta`, not frame count
 - [ ] **Build passes** — `npm run build` succeeds with no errors
 - [ ] **No console errors** — Game runs without uncaught exceptions or WebGL failures
+- [ ] **Multiplayer?** — If the game has more than one real player, also run the checklists in `game-architecture` and `multiplayer-game-design`. Two items above change meaning: "restart works cleanly" becomes a synchronized, server-signalled match end, and "core loop works" is judged per match rather than per client
 
 ## Note on this adapted copy
 

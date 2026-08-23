@@ -3,12 +3,15 @@ name: threejs-game
 description: >-
   Build 3D browser games with Three.js using event-driven modular architecture. Use when
   creating a new 3D game, adding 3D game features, setting up Three.js scenes, or working
-  on any Three.js game project.
+  on any Three.js game project. Covers engine mechanics only — for multiplayer architecture see
+  the game-architecture and multiplayer-game-design skills.
 ---
 
 # Three.js Game Development
 
 You are an expert Three.js game developer. Follow these opinionated patterns when building 3D browser games.
+
+**Scope.** This skill covers Three.js engine mechanics, and its defaults assume a single local player. Guidance that changes once other real players share the match is flagged inline with a **Multiplayer note**. Read `game-architecture` (code structure, state, prediction/reconciliation) and `multiplayer-game-design` (server authority, disconnect/reconnect, turn structure, no pause menu) alongside this file for anything with more than one player in it.
 
 ## Performance Notes
 
@@ -117,6 +120,8 @@ src/
 2. **Gameplay clarity > visual complexity** — Treat 3D as a style choice, not a complexity mandate. A readable game with simple materials beats a visually complex but confusing one.
 3. **Restart-safe** — Gameplay must be fully restart-safe. `GameState.reset()` must restore a clean slate. Dispose geometries/materials/textures on cleanup. No stale references or leaked listeners across restarts.
 
+**Multiplayer note:** `reset()` alone doesn't cover it. Match end is signalled by the server rather than triggered by a local restart button, and client-side prediction needs a cheap clone/restore path so state can be rewound during reconciliation — see `game-architecture`.
+
 ## Core Patterns (Non-Negotiable)
 
 ### 1. EventBus Singleton
@@ -125,11 +130,15 @@ ALL inter-module communication goes through an EventBus (`core/EventBus.js`). Mo
 ### 2. Centralized GameState
 One singleton (`core/GameState.js`) holds ALL game state. Systems read from it, events update it. Must include a `reset()` method that restores a clean slate for restarts.
 
+**Multiplayer note:** state becomes keyed by player ID, and predicted state has to stay separable from server-confirmed state. See `game-architecture`.
+
 ### 3. Constants File
 Every magic number, balance value, asset path, and configuration goes in `core/Constants.js`. Never hardcode values in game logic. Organize by domain: `PLAYER_CONFIG`, `ENEMY_CONFIG`, `WORLD`, `CAMERA`, `COLORS`, `ASSET_PATHS`.
 
 ### 4. Game.js Orchestrator
 The Game class (`core/Game.js`) initializes everything and runs the render loop. Uses `renderer.setAnimationLoop()` — the official Three.js pattern (handles WebGPU async correctly and pauses when the tab is hidden). Sets up renderer, scene, camera, systems, UI, and event listeners in `init()`.
+
+**Multiplayer note:** the automatic pause on hidden tabs is a benefit in single-player and a hazard in multiplayer — the server keeps simulating while the loop is stopped, so the player returns to a stale world. Treat `visibilitychange` as a session event needing an explicit policy (resync from a full server snapshot on resume, and possibly a disconnect grace period), not as free battery savings. See `multiplayer-game-design`.
 
 ## Renderer Selection
 
@@ -156,8 +165,8 @@ await renderer.init();
 
 ## Performance Rules
 
-- **Use `renderer.setAnimationLoop()`** instead of manual `requestAnimationFrame`. It pauses when the tab is hidden and handles WebGPU async correctly.
-- **Cap delta time**: `Math.min(clock.getDelta(), 0.1)` to prevent death spirals
+- **Use `renderer.setAnimationLoop()`** instead of manual `requestAnimationFrame`. It pauses when the tab is hidden and handles WebGPU async correctly — in multiplayer that pause needs an explicit resync policy, per the orchestrator note above.
+- **Cap delta time**: `Math.min(clock.getDelta(), 0.1)` to prevent death spirals. **Multiplayer note:** a variable delta makes the simulation non-deterministic, which breaks the predict-and-rewind pattern in `game-architecture` — real-time netcode needs a fixed timestep for the simulation step, with rendering interpolated separately
 - **Cap pixel ratio**: `renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2))` — avoids GPU overload on high-DPI screens
 - **Object pooling**: Reuse `Vector3`, `Box3`, temp objects in hot loops to minimize GC. Avoid per-frame allocations — preallocate and reuse.
 - **Disable shadows on first pass** — Only enable shadow maps when specifically needed and tested on mobile. Dynamic shadows are the single most expensive rendering feature.
@@ -230,6 +239,7 @@ Use a dedicated InputSystem that merges keyboard, gyroscope, and touch into a si
 - [ ] **Delta-capped movement** — `Math.min(clock.getDelta(), 0.1)` on every frame
 - [ ] **Build passes** — `npm run build` succeeds with no errors
 - [ ] **No console errors** — Game runs without uncaught exceptions or WebGL failures
+- [ ] **Multiplayer?** — If the game has more than one real player, also run the checklists in `game-architecture` and `multiplayer-game-design`. Two items above change meaning: "restart works cleanly" becomes a synchronized, server-signalled match end, and "core loop works" is judged per match rather than per client
 
 ## Note on this adapted copy
 
