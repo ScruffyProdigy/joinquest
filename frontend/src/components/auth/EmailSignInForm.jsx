@@ -5,6 +5,9 @@ import { notifyAuthComplete } from '../../lib/authBroadcast'
 import { useAuth } from './AuthProvider'
 import useWaitForSignIn from './useWaitForSignIn'
 import { focusCodeInput } from './focusCodeInput'
+import { Button } from '../ui/button'
+import { Input } from '../ui/input'
+import CodeInput from './CodeInput'
 
 function normalizeCode(value) {
   return value.replace(/\D/g, '').slice(0, 6)
@@ -153,11 +156,13 @@ export default function EmailSignInForm() {
 
   if (onVerifyStep) {
     return (
-      <div className="auth-email-verify" aria-labelledby="verify-heading">
-        <h3 id="verify-heading">Enter your code</h3>
-        <p className="panel-copy">
-          Check <strong>{email}</strong> for a 6-digit code. Tap the field below to use autofill from Mail or Messages,
-          or paste your code.
+      <div className="flex flex-col gap-4" aria-labelledby="verify-heading">
+        <h3 id="verify-heading" className="font-heading text-lg font-semibold">
+          Enter your code
+        </h3>
+        <p className="text-sm text-muted-foreground">
+          Check <strong className="text-foreground">{email}</strong> for a 6-digit code. Tap the field below to use
+          autofill from Mail or Messages, or paste your code.
         </p>
 
         {message ? (
@@ -166,9 +171,11 @@ export default function EmailSignInForm() {
           </p>
         ) : null}
 
-        <form className="auth-form" onSubmit={handleFormSubmit}>
-          <label htmlFor="login-code">Sign-in code</label>
-          <input
+        <form className="flex flex-col gap-3" onSubmit={handleFormSubmit}>
+          <label htmlFor="login-code" className="text-sm font-medium text-muted-foreground">
+            Sign-in code
+          </label>
+          <CodeInput
             ref={codeInputRef}
             id="login-code"
             name="code"
@@ -185,41 +192,33 @@ export default function EmailSignInForm() {
             required
             value={code}
             onChange={handleCodeChange}
-            placeholder="123456"
             disabled={isSigningIn}
-            className="auth-code-input"
           />
-          <button
-            type="submit"
-            disabled={isSigningIn || status === 'loading' || normalizeCode(code).length !== 6}
-          >
+          <Button type="submit" disabled={isSigningIn || status === 'loading' || normalizeCode(code).length !== 6}>
             {isSigningIn ? 'Signing in…' : 'Continue'}
-          </button>
+          </Button>
         </form>
 
-        <button
-          type="button"
-          className="auth-link-button"
-          onClick={handleUseDifferentEmail}
-          disabled={isSigningIn}
-        >
+        <Button type="button" variant="link" className="self-start px-0" onClick={handleUseDifferentEmail} disabled={isSigningIn}>
           Use a different email
-        </button>
+        </Button>
       </div>
     )
   }
 
   return (
-    <div className="auth-email-form">
+    <div className="flex flex-col gap-3">
       {message ? (
         <p className={status === 'error' ? 'status-message status-message-error' : 'status-message'} role="status">
           {message}
         </p>
       ) : null}
 
-      <form className="auth-form" onSubmit={handleFormSubmit}>
-        <label htmlFor="email">Email</label>
-        <input
+      <form className="flex flex-col gap-3" onSubmit={handleFormSubmit}>
+        <label htmlFor="email" className="text-sm font-medium text-muted-foreground">
+          Email
+        </label>
+        <Input
           id="email"
           name="email"
           type="email"
@@ -229,11 +228,10 @@ export default function EmailSignInForm() {
           onChange={(event) => setEmail(event.target.value)}
           placeholder="you@example.com"
           disabled={status === 'loading'}
-          className="auth-email-input"
         />
-        <button type="submit" disabled={emailContinueDisabled}>
+        <Button type="submit" disabled={emailContinueDisabled}>
           {status === 'loading' ? 'Sending…' : 'Continue with email'}
-        </button>
+        </Button>
       </form>
     </div>
   )

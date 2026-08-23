@@ -7,7 +7,7 @@ describe('PlayerAvatar', () => {
     const { container } = render(
       <PlayerAvatar user={{ displayName: 'Pat', avatarUrl: '/avatars/compass.png' }} />,
     )
-    expect(container.querySelector('img.player-avatar')).toBeTruthy()
+    expect(container.querySelector('[data-slot="avatar-image"]')).toBeTruthy()
   })
 
   it('falls back to initial without avatarUrl', () => {
@@ -17,15 +17,16 @@ describe('PlayerAvatar', () => {
 
   it('renders image from avatarKey when avatarUrl is missing', () => {
     const { container } = render(<PlayerAvatar user={{ displayName: 'River', avatarKey: 'storm' }} />)
-    const img = container.querySelector('img.player-avatar')
+    const img = container.querySelector('[data-slot="avatar-image"]')
     expect(img?.getAttribute('src')).toBe('/avatars/storm.png')
   })
 
-  it('wraps the avatar in a gold ring when ring is king', () => {
+  it('marks the avatar with a king ring when ring is king', () => {
     const { container } = render(
       <PlayerAvatar user={{ displayName: 'Pat', avatarUrl: '/avatars/compass.png' }} ring="king" />,
     )
-    expect(container.querySelector('.player-avatar-frame--king')).toBeTruthy()
-    expect(container.querySelector('.player-avatar-frame--king img.player-avatar')).toBeTruthy()
+    const avatar = container.querySelector('[data-slot="avatar"][data-ring="king"]')
+    expect(avatar).toBeTruthy()
+    expect(avatar.querySelector('[data-slot="avatar-image"]')).toBeTruthy()
   })
 })

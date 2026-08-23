@@ -57,9 +57,11 @@ describe('PRIMITIVE_GROUPS', () => {
     expect(total).toBe(15)
   })
 
-  it('marks Button as ported', () => {
-    const button = PRIMITIVE_GROUPS.flatMap((g) => g.items).find((item) => item.name === 'Button')
-    expect(button.status).toBe('ported')
+  it('marks Button, Avatar, Input, and Card as ported', () => {
+    const items = PRIMITIVE_GROUPS.flatMap((g) => g.items)
+    for (const name of ['Button', 'Avatar', 'Input', 'Card']) {
+      expect(items.find((item) => item.name === name).status).toBe('ported')
+    }
   })
 })
 
@@ -75,8 +77,8 @@ describe('COMPOSITE_PATTERNS', () => {
     })
   })
 
-  it('marks the avatar/spirit picker grid as legacy', () => {
+  it('marks the avatar/spirit picker grid as ported', () => {
     const pattern = COMPOSITE_PATTERNS.find((p) => p.name === 'Avatar / spirit picker grid')
-    expect(pattern.status).toBe('legacy')
+    expect(pattern.status).toBe('ported')
   })
 })

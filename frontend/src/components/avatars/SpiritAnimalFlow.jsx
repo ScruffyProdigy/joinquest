@@ -19,6 +19,8 @@ import { slotPromptForKey } from '../../lib/spiritAnimalSlots'
 import SpiritAnimalSlotGuide from './SpiritAnimalSlotGuide'
 import { useAuth } from '../auth/AuthProvider'
 import { Button } from '../ui/button'
+import { Card, CardContent, CardHeader, CardTitle } from '../ui/card'
+import { cn } from '../../lib/utils'
 
 const QUESTION_PANEL_CLOSE_MS = 700
 const QUESTION_PANEL_PAUSE_MS = 400
@@ -365,45 +367,51 @@ export default function SpiritAnimalFlow({ onComplete, onCancel }) {
   if (phase === 'intro') {
     const journeyBlocked = journeyEligibility && !journeyEligibility.canBegin
     return (
-      <section className="spirit-animal" aria-labelledby="spirit-animal-heading">
-        <h3 id="spirit-animal-heading">Find my spirit animal</h3>
-        <p className="spirit-animal__lead">
-          Draw five tarot cards, answer a few symbolic questions, and meet five mascot companions crafted for you.
-        </p>
-        {journeyBlocked ? (
-          <p className="status-message spirit-animal__hint" role="status">
-            {formatSpiritAnimalJourneyCooldown(
-              journeyEligibility.daysRemaining,
-              journeyEligibility.cooldownEndsAt,
-            )}
+      <Card aria-labelledby="spirit-animal-heading">
+        <CardHeader>
+          <CardTitle as="h3" id="spirit-animal-heading" className="font-heading text-lg font-semibold">
+            Find my spirit animal
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="flex flex-col gap-4">
+          <p className="text-sm text-muted-foreground">
+            Draw five tarot cards, answer a few symbolic questions, and meet five mascot companions crafted for you.
           </p>
-        ) : (
-          <>
-            <p className="spirit-animal__hint">
-              Each card lands in a journey slot — five chapters that shape your reading.
+          {journeyBlocked ? (
+            <p className="status-message" role="status">
+              {formatSpiritAnimalJourneyCooldown(
+                journeyEligibility.daysRemaining,
+                journeyEligibility.cooldownEndsAt,
+              )}
             </p>
-            <SpiritAnimalSlotGuide compact />
-            <div className="profile-editor__actions">
-              <Button type="button" variant="default" disabled={busy} onClick={handleBegin}>
-                {busy ? 'Drawing cards…' : 'Begin reading'}
-              </Button>
-              {onCancel ? (
-                <Button type="button" variant="secondary" disabled={busy} onClick={onCancel}>
-                  Back
+          ) : (
+            <>
+              <p className="text-sm text-muted-foreground">
+                Each card lands in a journey slot — five chapters that shape your reading.
+              </p>
+              <SpiritAnimalSlotGuide compact />
+              <div className="flex flex-wrap gap-3">
+                <Button type="button" disabled={busy} onClick={handleBegin}>
+                  {busy ? 'Drawing cards…' : 'Begin reading'}
                 </Button>
-              ) : null}
+                {onCancel ? (
+                  <Button type="button" variant="secondary" disabled={busy} onClick={onCancel}>
+                    Back
+                  </Button>
+                ) : null}
+              </div>
+            </>
+          )}
+          {error ? <p className="status-message status-message-error">{error}</p> : null}
+          {journeyBlocked && onCancel ? (
+            <div className="flex flex-wrap gap-3">
+              <Button type="button" variant="secondary" disabled={busy} onClick={onCancel}>
+                Back
+              </Button>
             </div>
-          </>
-        )}
-        {error ? <p className="status-message status-message-error">{error}</p> : null}
-        {journeyBlocked && onCancel ? (
-          <div className="profile-editor__actions">
-            <Button type="button" variant="secondary" disabled={busy} onClick={onCancel}>
-              Back
-            </Button>
-          </div>
-        ) : null}
-      </section>
+          ) : null}
+        </CardContent>
+      </Card>
     )
   }
 
@@ -411,58 +419,70 @@ export default function SpiritAnimalFlow({ onComplete, onCancel }) {
     const waitingForQuestions = processingPurpose === 'questions'
     const countdownLabel = formatPhaseCountdown(countdownSeconds) ?? 'Hang tight…'
     return (
-      <section className="spirit-animal" aria-live="polite">
-        <h3>{waitingForQuestions ? 'Reading the cards' : 'Summoning your companions'}</h3>
-        <p className="spirit-animal__lead">
-          {waitingForQuestions
-            ? 'Five cards are being drawn — one for each chapter of your journey.'
-            : 'Your mascots are taking shape. This can take a minute.'}
-        </p>
-        <p className="spirit-animal__countdown" role="status" aria-live="polite">
-          {countdownLabel}
-        </p>
-        {waitingForQuestions ? (
-          <>
-            <p className="spirit-animal__hint">
-              While the cards speak, here is what each slot asks about:
-            </p>
-            <SpiritAnimalSlotGuide />
-          </>
-        ) : null}
-        {error ? <p className="status-message status-message-error">{error}</p> : null}
-        {(countdownSeconds != null && countdownSeconds <= 0) || error ? (
-          <div className="profile-editor__actions">
-            <Button type="button" variant="default" disabled={busy} onClick={handleResume}>
-              {busy ? 'Checking…' : 'Check again'}
-            </Button>
-            <Button type="button" variant="secondary" disabled={busy} onClick={() => handleBegin({ forceRestart: true })}>
-              Start over
-            </Button>
-          </div>
-        ) : null}
-      </section>
+      <Card aria-live="polite">
+        <CardHeader>
+          <CardTitle as="h3" className="font-heading text-lg font-semibold">
+            {waitingForQuestions ? 'Reading the cards' : 'Summoning your companions'}
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="flex flex-col gap-4">
+          <p className="text-sm text-muted-foreground">
+            {waitingForQuestions
+              ? 'Five cards are being drawn — one for each chapter of your journey.'
+              : 'Your mascots are taking shape. This can take a minute.'}
+          </p>
+          <p className="font-mono-display text-lg text-primary" role="status" aria-live="polite">
+            {countdownLabel}
+          </p>
+          {waitingForQuestions ? (
+            <>
+              <p className="text-sm text-muted-foreground">
+                While the cards speak, here is what each slot asks about:
+              </p>
+              <SpiritAnimalSlotGuide />
+            </>
+          ) : null}
+          {error ? <p className="status-message status-message-error">{error}</p> : null}
+          {(countdownSeconds != null && countdownSeconds <= 0) || error ? (
+            <div className="flex flex-wrap gap-3">
+              <Button type="button" disabled={busy} onClick={handleResume}>
+                {busy ? 'Checking…' : 'Check again'}
+              </Button>
+              <Button type="button" variant="secondary" disabled={busy} onClick={() => handleBegin({ forceRestart: true })}>
+                Start over
+              </Button>
+            </div>
+          ) : null}
+        </CardContent>
+      </Card>
     )
   }
 
   if (phase === 'failed') {
     return (
-      <section className="spirit-animal">
-        <h3>Reading interrupted</h3>
-        <p className="status-message status-message-error">{friendlySpiritAnimalError(error || reading?.errorMessage)}</p>
-        <div className="profile-editor__actions">
-          <Button type="button" variant="default" disabled={busy} onClick={handleResume}>
-            {busy ? 'Checking…' : 'Check again'}
-          </Button>
-          <Button type="button" variant="secondary" disabled={busy} onClick={() => handleBegin({ forceRestart: true })}>
-            Start over
-          </Button>
-          {onCancel ? (
-            <Button type="button" variant="secondary" disabled={busy} onClick={onCancel}>
-              Back
+      <Card>
+        <CardHeader>
+          <CardTitle as="h3" className="font-heading text-lg font-semibold">
+            Reading interrupted
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="flex flex-col gap-4">
+          <p className="status-message status-message-error">{friendlySpiritAnimalError(error || reading?.errorMessage)}</p>
+          <div className="flex flex-wrap gap-3">
+            <Button type="button" disabled={busy} onClick={handleResume}>
+              {busy ? 'Checking…' : 'Check again'}
             </Button>
-          ) : null}
-        </div>
-      </section>
+            <Button type="button" variant="secondary" disabled={busy} onClick={() => handleBegin({ forceRestart: true })}>
+              Start over
+            </Button>
+            {onCancel ? (
+              <Button type="button" variant="secondary" disabled={busy} onClick={onCancel}>
+                Back
+              </Button>
+            ) : null}
+          </div>
+        </CardContent>
+      </Card>
     )
   }
 
@@ -471,33 +491,41 @@ export default function SpiritAnimalFlow({ onComplete, onCancel }) {
     const current = questions[questionIndex]
     if (!current) {
       return (
-        <section className="spirit-animal">
-          <p className="status-message" role="status">Loading questions…</p>
-        </section>
+        <Card>
+          <CardContent className="flex flex-col gap-4">
+            <p className="status-message" role="status">Loading questions…</p>
+          </CardContent>
+        </Card>
       )
     }
     const slotPrompt = slotPromptForKey(current.slot)
-    const panelClassName = `spirit-animal__question-panel spirit-animal__question-panel--${panelState}`
     const answersDisabled = busy || panelState !== 'open'
     return (
-      <section className="spirit-animal" aria-labelledby="spirit-question-heading">
-        <div ref={journeyAnchorRef} className="spirit-animal__journey-anchor">
-          <p className="spirit-animal__step">
-            Question {questionIndex + 1} of {questions.length}
-          </p>
-          <SpiritAnimalSlotGuide compact highlightKey={current.slot} />
-        </div>
+      <Card aria-labelledby="spirit-question-heading">
+        <CardContent className="flex flex-col gap-4">
+          <div ref={journeyAnchorRef} className="flex flex-col gap-3">
+            <p className="text-xs font-medium text-muted-foreground">
+              Question {questionIndex + 1} of {questions.length}
+            </p>
+            <SpiritAnimalSlotGuide compact highlightKey={current.slot} />
+          </div>
 
-        <div className={panelClassName}>
-          <div className="spirit-animal__question-panel-inner">
-            <div className="spirit-animal__reading">
-              <p className="spirit-animal__reading-block">
-                <span className="spirit-animal__reading-label">The {current.slotName}</span>
+          <div
+            className={cn(
+              'flex flex-col gap-4 transition-opacity duration-300',
+              (panelState === 'closing' || panelState === 'closed') && 'pointer-events-none opacity-0',
+              panelState === 'opening' && 'opacity-0',
+              panelState === 'open' && 'opacity-100',
+            )}
+          >
+            <div className="flex flex-col gap-2 rounded-xl border border-border bg-muted/40 p-3">
+              <p className="text-sm text-muted-foreground">
+                <span className="font-semibold text-foreground">The {current.slotName}</span>
                 {' '}asks about {slotPrompt.replace(/\.$/, '')}.
               </p>
 
-              <p className="spirit-animal__reading-block">
-                <span className="spirit-animal__reading-label">Your card: {current.card}</span>
+              <p className="text-sm text-muted-foreground">
+                <span className="font-semibold text-foreground">Your card: {current.card}</span>
                 {current.cardMeaningInGeneral ? (
                   <>
                     {' '}
@@ -507,77 +535,78 @@ export default function SpiritAnimalFlow({ onComplete, onCancel }) {
               </p>
 
               {current.cardMeaningForSlot ? (
-                <p className="spirit-animal__reading-block">
-                  <span className="spirit-animal__reading-label">In the {current.slotName} position</span>
+                <p className="text-sm text-muted-foreground">
+                  <span className="font-semibold text-foreground">In the {current.slotName} position</span>
                   {' '}
                   {current.cardMeaningForSlot}
                 </p>
               ) : null}
             </div>
 
-            <h3 id="spirit-question-heading" className="spirit-animal__question">
+            <h3 id="spirit-question-heading" className="font-heading text-lg font-semibold">
               {current.question}
             </h3>
 
-            <ul className="spirit-animal__answers" role="list">
+            <ul className="flex flex-col gap-2" role="list">
               {current.answers.map((answer) => (
                 <li key={answer.id}>
                   <button
                     type="button"
-                    className="spirit-animal__answer"
+                    className="flex w-full items-center gap-3 rounded-full border border-border bg-muted/40 px-4 py-2.5 text-left transition-colors hover:border-primary hover:bg-primary/10"
                     disabled={answersDisabled}
                     onClick={() => handlePickAnswer(answer.id)}
                   >
-                    <span className="spirit-animal__answer-id">{answer.id}</span>
-                    <span>{answer.label}</span>
+                    <span className="font-mono-display text-2xs text-muted-foreground">{answer.id}</span>
+                    <span className="text-sm text-foreground">{answer.label}</span>
                   </button>
                 </li>
               ))}
             </ul>
           </div>
-        </div>
-        {error ? <p className="status-message status-message-error">{error}</p> : null}
-      </section>
+          {error ? <p className="status-message status-message-error">{error}</p> : null}
+        </CardContent>
+      </Card>
     )
   }
 
   const totems = reading?.totems ?? []
   return (
-    <section className="spirit-animal" aria-labelledby="spirit-results-heading">
-      <h3 id="spirit-results-heading">Your spirit animals</h3>
-      {reading?.personality?.overview ? (
-        <p className="spirit-animal__lead">{reading.personality.overview}</p>
-      ) : null}
-      {reading?.mascotOverview ? <p className="spirit-animal__hint">{reading.mascotOverview}</p> : null}
-      {reading?.imagesMissing && phase === 'results' ? (
-        <p className="spirit-animal__hint" role="status">Restoring mascot images…</p>
-      ) : null}
-      <ul className="spirit-animal__totems" role="list">
-        {totems.map((totem) => (
-          <li key={totem.name} className="spirit-animal__totem">
-            {totem.imageUrl ? (
-              <img src={totem.imageUrl} alt="" className="spirit-animal__totem-image" />
-            ) : null}
-            <div>
-              <h4>{totem.name}</h4>
-              {totem.affinity ? <p className="spirit-animal__affinity">{totem.affinity}</p> : null}
-              <p>{totem.personalitySummary}</p>
-              {totem.whyChooseThisAvatar ? (
-                <p className="spirit-animal__hint">{totem.whyChooseThisAvatar}</p>
+    <Card aria-labelledby="spirit-results-heading">
+      <CardHeader>
+        <CardTitle as="h3" id="spirit-results-heading" className="font-heading text-lg font-semibold">
+          Your spirit animals
+        </CardTitle>
+      </CardHeader>
+      <CardContent className="flex flex-col gap-4">
+        {reading?.personality?.overview ? (
+          <p className="text-sm text-muted-foreground">{reading.personality.overview}</p>
+        ) : null}
+        {reading?.mascotOverview ? <p className="text-sm text-muted-foreground">{reading.mascotOverview}</p> : null}
+        {reading?.imagesMissing && phase === 'results' ? (
+          <p className="text-sm text-muted-foreground" role="status">Restoring mascot images…</p>
+        ) : null}
+        <ul className="grid grid-cols-[repeat(auto-fill,minmax(200px,1fr))] gap-4" role="list">
+          {totems.map((totem) => (
+            <li key={totem.name} className="flex flex-col gap-2 rounded-2xl border border-border bg-muted/40 p-4">
+              {totem.imageUrl ? (
+                <img src={totem.imageUrl} alt="" className="aspect-square w-full rounded-xl object-cover" />
               ) : null}
-              <button
-                type="button"
-                className="game-list-button game-list-button-secondary"
-                disabled={busy}
-                onClick={() => handleSelectTotem(totem.name)}
-              >
-                Choose {totem.name}
-              </button>
-            </div>
-          </li>
-        ))}
-      </ul>
-      {error ? <p className="status-message status-message-error">{error}</p> : null}
-    </section>
+              <div className="flex flex-col gap-1.5">
+                <h4 className="font-heading text-base font-semibold">{totem.name}</h4>
+                {totem.affinity ? <p className="text-xs font-medium text-primary">{totem.affinity}</p> : null}
+                <p className="text-sm text-muted-foreground">{totem.personalitySummary}</p>
+                {totem.whyChooseThisAvatar ? (
+                  <p className="text-xs text-muted-foreground">{totem.whyChooseThisAvatar}</p>
+                ) : null}
+                <Button type="button" variant="secondary" disabled={busy} onClick={() => handleSelectTotem(totem.name)}>
+                  Choose {totem.name}
+                </Button>
+              </div>
+            </li>
+          ))}
+        </ul>
+        {error ? <p className="status-message status-message-error">{error}</p> : null}
+      </CardContent>
+    </Card>
   )
 }

@@ -32,9 +32,9 @@ export const PRIMITIVE_GROUPS = [
     items: [
       {
         name: 'Avatar',
-        status: 'not-started',
+        status: 'ported',
         prototypeUse: 'Guest name picker, profile header, spirit-picker grid',
-        productionUse: 'Not yet',
+        productionUse: 'Ported (JQ-51)',
       },
     ],
   },
@@ -44,9 +44,9 @@ export const PRIMITIVE_GROUPS = [
     items: [
       {
         name: 'Input',
-        status: 'not-started',
+        status: 'ported',
         prototypeUse: 'Search-games field on Home',
-        productionUse: 'Not yet',
+        productionUse: 'Ported (JQ-51) — sign-in, account, and profile forms',
       },
       {
         name: 'Select',
@@ -84,7 +84,7 @@ export const PRIMITIVE_GROUPS = [
         name: 'Card',
         status: 'ported',
         prototypeUse: 'Foundation under every composite pattern below',
-        productionUse: 'Ported (JQ-52) — room panel, table card, share toolbar',
+        productionUse: 'Ported (JQ-51, JQ-52) — room panel, table card, share toolbar, sign-in/account/avatar screens',
       },
       {
         name: 'Dialog',
@@ -165,9 +165,9 @@ export const COMPOSITE_PATTERNS = [
   {
     name: 'Avatar / spirit picker grid',
     previewKind: 'avatarRow',
-    status: 'legacy',
+    status: 'ported',
     prototypeUse: 'Guest name selection on the Welcome screen',
-    productionUse: 'Legacy — SpiritAnimalFlow.jsx, hand-written CSS',
+    productionUse: 'Ported (JQ-51) — PlayerProfileEditor.jsx, SpiritAnimalFlow.jsx',
   },
   {
     name: 'Filter panel',

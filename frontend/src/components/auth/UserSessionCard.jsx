@@ -3,6 +3,9 @@ import { logout } from '../../lib/auth'
 import { needsProfileSetup } from '../../lib/avatars'
 import { fetchSpiritAnimalJourneyEligibility, formatSpiritAnimalJourneyCooldown } from '../../lib/spiritAnimal'
 import { ACCOUNT_LINK_LABEL, GUEST_BADGE, GUEST_SPIRIT_ANIMAL_HINT } from '../../lib/playerCopy'
+import { cn } from '../../lib/utils'
+import { Button } from '../ui/button'
+import { Card, CardContent, CardHeader } from '../ui/card'
 import { useAuth } from './AuthProvider'
 import PlayerProfileEditor from '../avatars/PlayerProfileEditor'
 import SpiritAnimalFlow from '../avatars/SpiritAnimalFlow'
@@ -79,84 +82,87 @@ export default function UserSessionCard({ user, compact = false, showProfileActi
   }
 
   return (
-    <section
-      className={`panel-card user-card${compact ? ' user-card--compact' : ''}`}
-      aria-labelledby="welcome-heading"
-    >
-      <div className="user-card__header">
+    <Card className={cn(compact && 'gap-4 p-4')} aria-labelledby="welcome-heading">
+      <CardHeader className="flex items-center gap-3">
         <PlayerAvatar user={user} size="md" />
-        <div>
-          <h2 id="welcome-heading">{setupRequired ? 'Set up your display' : 'Welcome back'}</h2>
-          {user.isGuest ? <p className="user-guest-badge">{GUEST_BADGE}</p> : null}
-          {user.email ? <p className="user-email">{user.email}</p> : null}
-          {!setupRequired && user.displayName ? <p className="user-name">{user.displayName}</p> : null}
+        <div className="flex flex-col gap-0.5">
+          <h2 id="welcome-heading" className={cn('font-heading font-semibold', compact ? 'text-base' : 'text-lg')}>
+            {setupRequired ? 'Set up your display' : 'Welcome back'}
+          </h2>
+          {user.isGuest ? <p className="text-xs font-semibold text-amber-400">{GUEST_BADGE}</p> : null}
+          {user.email ? <p className="text-sm text-foreground">{user.email}</p> : null}
+          {!setupRequired && user.displayName ? (
+            <p className="text-sm text-muted-foreground">{user.displayName}</p>
+          ) : null}
         </div>
-      </div>
+      </CardHeader>
 
-      {spiritFlowOpen ? (
-        <SpiritAnimalFlow
-          onComplete={handleSpiritComplete}
-          onCancel={() => setSpiritFlowOpen(false)}
-        />
-      ) : editorOpen ? (
-        <PlayerProfileEditor
-          user={user}
-          required={setupRequired}
-          onSaved={handleSaved}
-          onCancel={setupRequired ? undefined : () => setEditorOpen(false)}
-          onBeginSpiritAnimal={canBeginSpiritAnimal ? () => {
-            setEditorOpen(false)
-            setSpiritFlowOpen(true)
-          } : undefined}
-        />
-      ) : showProfileActions ? (
-        <>
-          <a className="game-list-button game-list-button-secondary" href="/account">
-            {ACCOUNT_LINK_LABEL}
-          </a>
-          <button
-            type="button"
-            className="game-list-button game-list-button-secondary"
-            onClick={() => setEditorOpen(true)}
-          >
-            Change display
-          </button>
-          {eligibilityPending ? null : canBeginSpiritAnimal ? (
-            <button
-              type="button"
-              className="game-list-button game-list-button-secondary"
-              onClick={() => setSpiritFlowOpen(true)}
-            >
-              Find my spirit animal
-            </button>
-          ) : (
-            <p className="spirit-animal__hint">
-              {formatSpiritAnimalJourneyCooldown(
-                journeyEligibility?.daysRemaining,
-                journeyEligibility?.cooldownEndsAt,
-              )}
-            </p>
-          )}
-        </>
-      ) : null}
+      <CardContent className={cn('flex flex-col gap-4', compact && 'gap-3')}>
+        {spiritFlowOpen ? (
+          <SpiritAnimalFlow onComplete={handleSpiritComplete} onCancel={() => setSpiritFlowOpen(false)} />
+        ) : editorOpen ? (
+          <PlayerProfileEditor
+            user={user}
+            required={setupRequired}
+            onSaved={handleSaved}
+            onCancel={setupRequired ? undefined : () => setEditorOpen(false)}
+            onBeginSpiritAnimal={
+              canBeginSpiritAnimal
+                ? () => {
+                    setEditorOpen(false)
+                    setSpiritFlowOpen(true)
+                  }
+                : undefined
+            }
+          />
+        ) : showProfileActions ? (
+          <div className="flex flex-col gap-2">
+            <Button variant="secondary" asChild>
+              <a href="/account">{ACCOUNT_LINK_LABEL}</a>
+            </Button>
+            <Button variant="secondary" onClick={() => setEditorOpen(true)}>
+              Change display
+            </Button>
+            {eligibilityPending ? null : canBeginSpiritAnimal ? (
+              <Button
+                variant="secondary"
+                className="justify-start gap-2 bg-gradient-to-br from-primary/20 to-accent/30"
+                onClick={() => setSpiritFlowOpen(true)}
+              >
+                <svg viewBox="0 0 24 24" className="size-4 fill-primary" aria-hidden="true" focusable="false">
+                  <path d="M12 2l1.8 5.6L19.4 9l-5.6 1.4L12 16l-1.8-5.6L4.6 9l5.6-1.4L12 2z" />
+                </svg>
+                Find my spirit animal
+              </Button>
+            ) : (
+              <p className="text-sm text-muted-foreground">
+                {formatSpiritAnimalJourneyCooldown(
+                  journeyEligibility?.daysRemaining,
+                  journeyEligibility?.cooldownEndsAt,
+                )}
+              </p>
+            )}
+          </div>
+        ) : null}
 
-      {guestSpiritHint ? (
-        <p className="account-page__guest-note">
-          {GUEST_SPIRIT_ANIMAL_HINT}{' '}
-          <a className="auth-link" href="/account">
-            {ACCOUNT_LINK_LABEL}
-          </a>
-        </p>
-      ) : null}
+        {guestSpiritHint ? (
+          <p className="text-sm text-muted-foreground">
+            {GUEST_SPIRIT_ANIMAL_HINT}{' '}
+            <Button variant="link" className="h-auto p-0" asChild>
+              <a href="/account">{ACCOUNT_LINK_LABEL}</a>
+            </Button>
+          </p>
+        ) : null}
 
-      <button type="button" onClick={handleLogout} disabled={status === 'loading'}>
-        {status === 'loading' ? 'Logging out…' : 'Log out'}
-      </button>
-      {error ? (
-        <p className="status-message status-message-error" role="status">
-          {error}
-        </p>
-      ) : null}
-    </section>
+        <Button variant="ghost" onClick={() => void handleLogout()} disabled={status === 'loading'}>
+          {status === 'loading' ? 'Logging out…' : 'Log out'}
+        </Button>
+        {error ? (
+          <p className="status-message status-message-error" role="status">
+            {error}
+          </p>
+        ) : null}
+      </CardContent>
+    </Card>
   )
 }

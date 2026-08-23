@@ -1,5 +1,6 @@
 import SignInPanel from './SignInPanel'
 import UserSessionCard from './UserSessionCard'
+import { Button } from '../ui/button'
 import { useAuth } from './AuthProvider'
 
 function SessionLoading() {
@@ -26,9 +27,9 @@ export default function AuthPanel({ variant = 'default' }) {
     <>
       {error ? <p className="status-message status-message-error">{error}</p> : null}
       {sessionUnavailable ? (
-        <button type="button" className="button-secondary" onClick={() => void refreshSession()}>
+        <Button type="button" variant="secondary" onClick={() => void refreshSession()}>
           Try again
-        </button>
+        </Button>
       ) : (
         <SignInPanel />
       )}

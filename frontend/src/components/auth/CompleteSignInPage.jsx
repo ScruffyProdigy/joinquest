@@ -2,6 +2,8 @@ import { useEffect, useState } from 'react'
 import { completeAuthLinkOnce } from '../../lib/auth'
 import { notifyAuthComplete } from '../../lib/authBroadcast'
 import { APP_NAME } from '../../lib/brand'
+import { Button } from '../ui/button'
+import { Card, CardContent, CardHeader, CardTitle } from '../ui/card'
 
 function getTokenFromLocation() {
   const params = new URLSearchParams(window.location.search)
@@ -47,17 +49,23 @@ export default function CompleteSignInPage() {
   }, [])
 
   return (
-    <main className="auth-page">
-      <h1>{APP_NAME}</h1>
-      <section className="panel-card" aria-live="polite">
-        <h2>Signing you in</h2>
-        <p className={status === 'error' ? 'status-message status-message-error' : 'status-message'}>{message}</p>
-        {status === 'error' ? (
-          <a className="auth-link" href="/">
-            Back to home
-          </a>
-        ) : null}
-      </section>
+    <main className="flex min-h-screen flex-col items-center justify-center gap-6 bg-background p-6 text-foreground">
+      <h1 className="font-heading text-2xl font-bold">{APP_NAME}</h1>
+      <Card className="w-full max-w-sm" aria-live="polite">
+        <CardHeader>
+          <CardTitle as="h2" className="font-heading text-xl font-semibold">
+            Signing you in
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="flex flex-col gap-4">
+          <p className={status === 'error' ? 'status-message status-message-error' : 'status-message'}>{message}</p>
+          {status === 'error' ? (
+            <Button variant="link" className="self-start px-0" asChild>
+              <a href="/">Back to home</a>
+            </Button>
+          ) : null}
+        </CardContent>
+      </Card>
     </main>
   )
 }

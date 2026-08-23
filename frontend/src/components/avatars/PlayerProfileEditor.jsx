@@ -6,7 +6,10 @@ import {
   needsProfileSetup,
   updatePlayerProfile,
 } from '../../lib/avatars'
+import { cn } from '../../lib/utils'
 import { useAuth } from '../auth/AuthProvider'
+import { Button } from '../ui/button'
+import { Input } from '../ui/input'
 import PlayerAvatar from './PlayerAvatar'
 
 export default function PlayerProfileEditor({ user, required = false, onSaved, onCancel, onBeginSpiritAnimal }) {
@@ -57,34 +60,35 @@ export default function PlayerProfileEditor({ user, required = false, onSaved, o
   }
 
   return (
-    <form className="profile-editor" onSubmit={handleSave}>
-      <p className="profile-editor__lead">
+    <form className="flex flex-col gap-4" onSubmit={handleSave}>
+      <p className="text-sm text-muted-foreground">
         {required || needsProfileSetup(user)
           ? 'Choose how others will see you in rooms and at tables.'
           : 'Update your display name and journey icon.'}
       </p>
 
-      <label className="profile-editor__label" htmlFor="profile-display-name">
-        Display name
-      </label>
-      <input
-        id="profile-display-name"
-        className="profile-editor__input"
-        type="text"
-        maxLength={100}
-        autoComplete="nickname"
-        placeholder="Your name"
-        value={displayName}
-        disabled={busy}
-        onChange={(event) => setDisplayName(event.target.value)}
-      />
+      <div className="flex flex-col gap-2">
+        <label htmlFor="profile-display-name" className="text-sm font-medium text-muted-foreground">
+          Display name
+        </label>
+        <Input
+          id="profile-display-name"
+          type="text"
+          maxLength={100}
+          autoComplete="nickname"
+          placeholder="Your name"
+          value={displayName}
+          disabled={busy}
+          onChange={(event) => setDisplayName(event.target.value)}
+        />
+      </div>
 
       {keepingCurrentAvatar ? (
-        <div className="profile-editor__current-avatar">
-          <p className="profile-editor__label">Current icon</p>
-          <div className="profile-editor__current-avatar-row">
+        <div className="flex flex-col gap-2">
+          <p className="text-sm font-medium text-muted-foreground">Current icon</p>
+          <div className="flex items-center gap-3">
             <PlayerAvatar user={user} size="md" />
-            <p className="profile-editor__hint">
+            <p className="text-sm text-muted-foreground">
               {user?.avatarSource === 'SPIRIT_ANIMAL'
                 ? 'Your spirit animal stays unless you pick a journey icon below.'
                 : 'Your current icon stays unless you pick a different one below.'}
@@ -93,46 +97,48 @@ export default function PlayerProfileEditor({ user, required = false, onSaved, o
         </div>
       ) : null}
 
-      <p className="profile-editor__label">{keepingCurrentAvatar ? 'Or choose a journey icon' : 'Journey icon'}</p>
-      <ul className="avatar-picker__grid" role="list">
-        {options.map((option) => {
-          const selected = option.key === selectedKey
-          return (
-            <li key={option.key}>
-              <button
-                type="button"
-                className={`avatar-picker__option${selected ? ' avatar-picker__option--selected' : ''}`}
-                disabled={busy}
-                aria-pressed={selected}
-                aria-label={`${option.name}${selected ? ' (selected)' : ''}`}
-                onClick={() => setSelectedKey(option.key)}
-              >
-                <img src={option.imageUrl} alt="" className="avatar-picker__image" />
-                <span className="avatar-picker__name">{option.name}</span>
-              </button>
-            </li>
-          )
-        })}
-      </ul>
+      <div className="flex flex-col gap-2">
+        <p className="text-sm font-medium text-muted-foreground">
+          {keepingCurrentAvatar ? 'Or choose a journey icon' : 'Journey icon'}
+        </p>
+        <ul className="flex flex-col gap-2" role="list">
+          {options.map((option) => {
+            const selected = option.key === selectedKey
+            return (
+              <li key={option.key}>
+                <button
+                  type="button"
+                  className={cn(
+                    'flex w-full items-center gap-3 rounded-full border border-border bg-muted/40 px-4 py-2.5 text-left transition-colors hover:bg-muted',
+                    selected && 'border-primary bg-primary/10',
+                  )}
+                  disabled={busy}
+                  aria-pressed={selected}
+                  aria-label={`${option.name}${selected ? ' (selected)' : ''}`}
+                  onClick={() => setSelectedKey(option.key)}
+                >
+                  <img src={option.imageUrl} alt="" className="size-8 shrink-0 rounded-full object-cover" />
+                  <span className="text-sm font-medium text-foreground">{option.name}</span>
+                </button>
+              </li>
+            )
+          })}
+        </ul>
+      </div>
 
-      <div className="profile-editor__actions">
-        <button type="submit" className="game-list-button" disabled={!canSave}>
+      <div className="flex flex-wrap gap-3">
+        <Button type="submit" disabled={!canSave}>
           {busy ? 'Saving…' : 'Save display'}
-        </button>
+        </Button>
         {onBeginSpiritAnimal ? (
-          <button
-            type="button"
-            className="game-list-button game-list-button-secondary"
-            disabled={busy}
-            onClick={onBeginSpiritAnimal}
-          >
+          <Button type="button" variant="secondary" disabled={busy} onClick={onBeginSpiritAnimal}>
             Find my spirit animal
-          </button>
+          </Button>
         ) : null}
         {!required && onCancel ? (
-          <button type="button" className="game-list-button game-list-button-secondary" disabled={busy} onClick={onCancel}>
+          <Button type="button" variant="secondary" disabled={busy} onClick={onCancel}>
             Cancel
-          </button>
+          </Button>
         ) : null}
       </div>
 

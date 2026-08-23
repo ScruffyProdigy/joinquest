@@ -3,6 +3,8 @@ import { completeLinkEmailWithLinkOnce, isMergeConfirmationRequired } from '../.
 import { notifyAuthComplete } from '../../lib/authBroadcast'
 import { APP_NAME } from '../../lib/brand'
 import { formatMergeWarning, MERGE_CANCEL, MERGE_CONFIRM } from '../../lib/playerCopy'
+import { Button } from '../ui/button'
+import { Card, CardContent, CardHeader, CardTitle } from '../ui/card'
 import { useAuth } from './AuthProvider'
 
 function getTokenFromLocation() {
@@ -84,31 +86,35 @@ export default function LinkEmailPage() {
   }
 
   return (
-    <main className="auth-page">
-      <h1>{APP_NAME}</h1>
-      <section className="panel-card" aria-live="polite">
-        <h2>Link your email</h2>
-        {status === 'merge' ? (
-          <div className="account-merge-warning" role="alert">
-            <p className="panel-copy">{formatMergeWarning(null, user?.displayName)}</p>
-            <div className="account-merge-warning__actions">
-              <button type="button" onClick={() => void handleConfirmMerge()}>
-                {MERGE_CONFIRM}
-              </button>
-              <a className="button-secondary auth-link" href="/account">
-                {MERGE_CANCEL}
-              </a>
+    <main className="flex min-h-screen flex-col items-center justify-center gap-6 bg-background p-6 text-foreground">
+      <h1 className="font-heading text-2xl font-bold">{APP_NAME}</h1>
+      <Card className="w-full max-w-sm" aria-live="polite">
+        <CardHeader>
+          <CardTitle as="h2" className="font-heading text-xl font-semibold">
+            Link your email
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="flex flex-col gap-4">
+          {status === 'merge' ? (
+            <div className="flex flex-col gap-3 rounded-lg border border-amber-500/25 bg-amber-500/10 p-3" role="alert">
+              <p className="text-sm text-amber-100">{formatMergeWarning(null, user?.displayName)}</p>
+              <div className="flex flex-wrap gap-3">
+                <Button onClick={() => void handleConfirmMerge()}>{MERGE_CONFIRM}</Button>
+                <Button variant="secondary" asChild>
+                  <a href="/account">{MERGE_CANCEL}</a>
+                </Button>
+              </div>
             </div>
-          </div>
-        ) : (
-          <p className={status === 'error' ? 'status-message status-message-error' : 'status-message'}>{message}</p>
-        )}
-        {status === 'error' ? (
-          <a className="auth-link" href="/account">
-            Back to account settings
-          </a>
-        ) : null}
-      </section>
+          ) : (
+            <p className={status === 'error' ? 'status-message status-message-error' : 'status-message'}>{message}</p>
+          )}
+          {status === 'error' ? (
+            <Button variant="link" className="self-start px-0" asChild>
+              <a href="/account">Back to account settings</a>
+            </Button>
+          ) : null}
+        </CardContent>
+      </Card>
     </main>
   )
 }

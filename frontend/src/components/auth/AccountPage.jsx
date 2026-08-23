@@ -20,7 +20,12 @@ import {
   MERGE_CANCEL,
   MERGE_CONFIRM,
 } from '../../lib/playerCopy'
+import { cn } from '../../lib/utils'
+import { Button } from '../ui/button'
+import { Input } from '../ui/input'
+import { Card, CardContent, CardHeader, CardTitle } from '../ui/card'
 import { useAuth } from './AuthProvider'
+import CodeInput from './CodeInput'
 import { focusCodeInput } from './focusCodeInput'
 import OAuthProviderIcon, { oauthProviderLabel as oauthLabel } from './OAuthProviderIcon'
 
@@ -279,21 +284,27 @@ export default function AccountPage() {
 
   if (!user) {
     return (
-      <main className="app-shell auth-page">
-        <section className="panel-card">
-          <h1>Account settings</h1>
-          <p className="panel-copy">Sign in to manage your account.</p>
-          <a className="auth-link" href="/">
-            Back to home
-          </a>
-        </section>
+      <main className="flex min-h-screen flex-col items-center justify-center bg-background p-6 text-foreground">
+        <Card className="w-full max-w-lg">
+          <CardHeader>
+            <CardTitle as="h1" className="font-heading text-xl font-semibold">
+              Account settings
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="flex flex-col gap-4">
+            <p className="text-sm text-muted-foreground">Sign in to manage your account.</p>
+            <Button variant="link" className="self-start px-0" asChild>
+              <a href="/">Back to home</a>
+            </Button>
+          </CardContent>
+        </Card>
       </main>
     )
   }
 
   if (loading && !account) {
     return (
-      <main className="app-shell auth-page">
+      <main className="flex min-h-screen flex-col items-center justify-center bg-background p-6 text-foreground">
         <p className="status-message" role="status">
           Loading account…
         </p>
@@ -308,180 +319,214 @@ export default function AccountPage() {
   const connectProviders = enabledProviders.filter((provider) => !linkedProviderSet.has(provider))
 
   return (
-    <main className="app-shell auth-page account-page">
-      <section className="panel-card account-page__card">
-        <header className="account-page__header">
-          <h1>Account settings</h1>
-          <a className="auth-link" href="/">
-            Back to home
-          </a>
-        </header>
+    <main className="flex min-h-screen flex-col items-center bg-background p-6 text-foreground">
+      <Card className="w-full max-w-lg">
+        <CardHeader className="flex items-baseline justify-between">
+          <CardTitle as="h1" className="font-heading text-xl font-semibold">
+            Account settings
+          </CardTitle>
+          <Button variant="link" className="h-auto p-0" asChild>
+            <a href="/">Back to home</a>
+          </Button>
+        </CardHeader>
 
-        {user.isGuest ? <p className="account-page__guest-note">{GUEST_ACCOUNT_PROMPT}</p> : null}
-        {error ? <p className="status-message status-message-error">{error}</p> : null}
+        <CardContent className="flex flex-col gap-4">
+          {user.isGuest ? <p className="text-sm text-amber-400">{GUEST_ACCOUNT_PROMPT}</p> : null}
+          {error ? <p className="status-message status-message-error">{error}</p> : null}
 
-        <section aria-labelledby="linked-emails-heading">
-          <h2 id="linked-emails-heading">Email addresses</h2>
-          {emails.length === 0 ? (
-            <p className="panel-copy">No email linked yet.</p>
-          ) : (
-            <ul className="account-method-list">
-              {emails.map((item) => (
-                <li key={item.id} className="account-method-list__item">
-                  <div>
-                    <strong>{item.email}</strong>
-                    {item.isPrimary ? <span className="account-method-list__badge">Primary</span> : null}
-                  </div>
-                  <div className="account-method-list__actions">
-                    {!item.isPrimary ? (
-                      <button type="button" className="auth-link-button" onClick={() => void handleSetPrimary(item.id)} disabled={actionStatus === 'loading'}>
-                        Make primary
-                      </button>
-                    ) : null}
+          <section aria-labelledby="linked-emails-heading" className="flex flex-col gap-3">
+            <h2 id="linked-emails-heading" className="font-heading text-base font-semibold">
+              Email addresses
+            </h2>
+            {emails.length === 0 ? (
+              <p className="text-sm text-muted-foreground">No email linked yet.</p>
+            ) : (
+              <ul className="flex flex-col gap-2">
+                {emails.map((item) => (
+                  <li
+                    key={item.id}
+                    className="flex items-center justify-between gap-3 rounded-lg border border-border bg-muted/40 px-3 py-2"
+                  >
+                    <div>
+                      <strong className="text-sm text-foreground">{item.email}</strong>
+                      {item.isPrimary ? (
+                        <span className="ml-2 text-xs font-semibold text-primary">Primary</span>
+                      ) : null}
+                    </div>
+                    <div className="flex flex-wrap justify-end gap-3">
+                      {!item.isPrimary ? (
+                        <Button
+                          variant="link"
+                          className="h-auto p-0 text-xs"
+                          onClick={() => void handleSetPrimary(item.id)}
+                          disabled={actionStatus === 'loading'}
+                        >
+                          Make primary
+                        </Button>
+                      ) : null}
+                      {canRemove ? (
+                        <Button
+                          variant="link"
+                          className="h-auto p-0 text-xs"
+                          onClick={() => void handleRemoveEmail(item.id)}
+                          disabled={actionStatus === 'loading'}
+                        >
+                          Remove
+                        </Button>
+                      ) : null}
+                    </div>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </section>
+
+          <section aria-labelledby="add-email-heading" className="flex flex-col gap-3">
+            <h2 id="add-email-heading" className="font-heading text-base font-semibold">
+              Add email
+            </h2>
+            {linkMessage ? (
+              <p className={linkStatus === 'error' ? 'status-message status-message-error' : 'status-message'} role="status">
+                {linkMessage}
+              </p>
+            ) : null}
+
+            {linkStep === 'merge-confirm' && mergePreview ? (
+              <div className="flex flex-col gap-3 rounded-lg border border-amber-500/25 bg-amber-500/10 p-3" role="alert">
+                <p className="text-sm text-amber-100">
+                  {formatMergeWarning(mergePreview.mergeSourceDisplayName, user.displayName)}
+                </p>
+                <div className="flex flex-wrap gap-3">
+                  <Button onClick={() => void handleConfirmMerge()} disabled={linkStatus === 'loading'}>
+                    {linkStatus === 'loading' ? 'Sending…' : MERGE_CONFIRM}
+                  </Button>
+                  <Button variant="secondary" onClick={handleCancelMerge} disabled={linkStatus === 'loading'}>
+                    {MERGE_CANCEL}
+                  </Button>
+                </div>
+              </div>
+            ) : null}
+
+            {linkStep === 'verify' ? (
+              <form className="flex flex-col gap-3" onSubmit={handleVerifyLink}>
+                <label htmlFor="link-code" className="text-sm font-medium text-muted-foreground">
+                  Verification code
+                </label>
+                <CodeInput
+                  ref={codeInputRef}
+                  id="link-code"
+                  type="text"
+                  inputMode="numeric"
+                  autoComplete="one-time-code"
+                  maxLength={6}
+                  value={code}
+                  onChange={(event) => setCode(normalizeCode(event.target.value))}
+                />
+                <Button type="submit" disabled={linkStatus === 'loading' || normalizeCode(code).length !== 6}>
+                  {linkStatus === 'loading' ? 'Verifying…' : 'Verify email'}
+                </Button>
+              </form>
+            ) : linkStep === 'email' ? (
+              <form className="flex flex-col gap-3" onSubmit={handleRequestLink}>
+                <label htmlFor="link-email" className="text-sm font-medium text-muted-foreground">
+                  Email
+                </label>
+                <Input
+                  id="link-email"
+                  type="email"
+                  autoComplete="email"
+                  value={email}
+                  onChange={(event) => setEmail(event.target.value)}
+                  placeholder="you@example.com"
+                  disabled={linkStatus === 'loading'}
+                />
+                <Button type="submit" disabled={linkStatus === 'loading' || email.trim() === ''}>
+                  {linkStatus === 'loading' ? 'Checking…' : 'Send verification code'}
+                </Button>
+              </form>
+            ) : null}
+          </section>
+
+          <section aria-labelledby="linked-identities-heading" className="flex flex-col gap-3">
+            <h2 id="linked-identities-heading" className="font-heading text-base font-semibold">
+              Connected accounts
+            </h2>
+            {oauthMessage ? (
+              <p className="status-message" role="status">
+                {oauthMessage}
+              </p>
+            ) : null}
+
+            {oauthMergePreview ? (
+              <div className="flex flex-col gap-3 rounded-lg border border-amber-500/25 bg-amber-500/10 p-3" role="alert">
+                <p className="text-sm text-amber-100">
+                  {formatMergeWarning(oauthMergePreview.mergeSourceDisplayName, user.displayName)}
+                </p>
+                <div className="flex flex-wrap gap-3">
+                  <Button onClick={handleConfirmOAuthMerge}>{MERGE_CONFIRM}</Button>
+                  <Button variant="secondary" onClick={handleCancelOAuthMerge}>
+                    {MERGE_CANCEL}
+                  </Button>
+                </div>
+              </div>
+            ) : null}
+
+            {identities.length === 0 ? (
+              <p className="text-sm text-muted-foreground">No social accounts linked yet.</p>
+            ) : (
+              <ul className="flex flex-col gap-2">
+                {identities.map((item) => (
+                  <li
+                    key={item.id}
+                    className="flex items-center justify-between gap-3 rounded-lg border border-border bg-muted/40 px-3 py-2"
+                  >
+                    <div>
+                      <strong className="text-sm text-foreground">{providerLabel(item.provider)}</strong>
+                      {item.email ? (
+                        <span className="ml-2 block text-xs text-muted-foreground">{item.email}</span>
+                      ) : null}
+                    </div>
                     {canRemove ? (
-                      <button type="button" className="auth-link-button" onClick={() => void handleRemoveEmail(item.id)} disabled={actionStatus === 'loading'}>
-                        Remove
-                      </button>
-                    ) : null}
-                  </div>
-                </li>
-              ))}
-            </ul>
-          )}
-        </section>
-
-        <section aria-labelledby="add-email-heading">
-          <h2 id="add-email-heading">Add email</h2>
-          {linkMessage ? (
-            <p className={linkStatus === 'error' ? 'status-message status-message-error' : 'status-message'} role="status">
-              {linkMessage}
-            </p>
-          ) : null}
-
-          {linkStep === 'merge-confirm' && mergePreview ? (
-            <div className="account-merge-warning" role="alert">
-              <p className="panel-copy">
-                {formatMergeWarning(mergePreview.mergeSourceDisplayName, user.displayName)}
-              </p>
-              <div className="account-merge-warning__actions">
-                <button type="button" onClick={() => void handleConfirmMerge()} disabled={linkStatus === 'loading'}>
-                  {linkStatus === 'loading' ? 'Sending…' : MERGE_CONFIRM}
-                </button>
-                <button type="button" className="button-secondary" onClick={handleCancelMerge} disabled={linkStatus === 'loading'}>
-                  {MERGE_CANCEL}
-                </button>
-              </div>
-            </div>
-          ) : null}
-
-          {linkStep === 'verify' ? (
-            <form className="auth-form" onSubmit={handleVerifyLink}>
-              <label htmlFor="link-code">Verification code</label>
-              <input
-                ref={codeInputRef}
-                id="link-code"
-                type="text"
-                inputMode="numeric"
-                autoComplete="one-time-code"
-                maxLength={6}
-                value={code}
-                onChange={(event) => setCode(normalizeCode(event.target.value))}
-                className="auth-code-input"
-              />
-              <button type="submit" disabled={linkStatus === 'loading' || normalizeCode(code).length !== 6}>
-                {linkStatus === 'loading' ? 'Verifying…' : 'Verify email'}
-              </button>
-            </form>
-          ) : linkStep === 'email' ? (
-            <form className="auth-form" onSubmit={handleRequestLink}>
-              <label htmlFor="link-email">Email</label>
-              <input
-                id="link-email"
-                type="email"
-                autoComplete="email"
-                value={email}
-                onChange={(event) => setEmail(event.target.value)}
-                placeholder="you@example.com"
-                disabled={linkStatus === 'loading'}
-              />
-              <button type="submit" disabled={linkStatus === 'loading' || email.trim() === ''}>
-                {linkStatus === 'loading' ? 'Checking…' : 'Send verification code'}
-              </button>
-            </form>
-          ) : null}
-        </section>
-
-        <section aria-labelledby="linked-identities-heading">
-          <h2 id="linked-identities-heading">Connected accounts</h2>
-          {oauthMessage ? (
-            <p className="status-message" role="status">
-              {oauthMessage}
-            </p>
-          ) : null}
-
-          {oauthMergePreview ? (
-            <div className="account-merge-warning" role="alert">
-              <p className="panel-copy">
-                {formatMergeWarning(oauthMergePreview.mergeSourceDisplayName, user.displayName)}
-              </p>
-              <div className="account-merge-warning__actions">
-                <button type="button" onClick={handleConfirmOAuthMerge}>
-                  {MERGE_CONFIRM}
-                </button>
-                <button type="button" className="button-secondary" onClick={handleCancelOAuthMerge}>
-                  {MERGE_CANCEL}
-                </button>
-              </div>
-            </div>
-          ) : null}
-
-          {identities.length === 0 ? (
-            <p className="panel-copy">No social accounts linked yet.</p>
-          ) : (
-            <ul className="account-method-list">
-              {identities.map((item) => (
-                <li key={item.id} className="account-method-list__item">
-                  <div>
-                    <strong>{providerLabel(item.provider)}</strong>
-                    {item.email ? <span className="account-method-list__meta">{item.email}</span> : null}
-                  </div>
-                  {canRemove ? (
-                    <div className="account-method-list__actions">
-                      <button
-                        type="button"
-                        className="auth-link-button"
+                      <Button
+                        variant="link"
+                        className="h-auto p-0 text-xs"
                         onClick={() => void handleRemoveIdentity(item.id)}
                         disabled={actionStatus === 'loading'}
                       >
                         Remove
-                      </button>
-                    </div>
-                  ) : null}
-                </li>
-              ))}
-            </ul>
-          )}
-
-          {connectProviders.length > 0 ? (
-            <div className="account-oauth-connect">
-              <p className="panel-copy">Connect another sign-in method:</p>
-              <div className="auth-social__icons">
-                {connectProviders.map((provider) => (
-                  <button
-                    key={provider}
-                    type="button"
-                    className="auth-social__icon"
-                    onClick={() => handleConnectProvider(provider)}
-                    aria-label={`Connect ${oauthLabel(provider)}`}
-                  >
-                    <OAuthProviderIcon provider={provider} />
-                  </button>
+                      </Button>
+                    ) : null}
+                  </li>
                 ))}
+              </ul>
+            )}
+
+            {connectProviders.length > 0 ? (
+              <div className="flex flex-col gap-2">
+                <p className="text-sm text-muted-foreground">Connect another sign-in method:</p>
+                <div className="flex flex-col gap-2">
+                  {connectProviders.map((provider) => (
+                    <Button
+                      key={provider}
+                      variant="outline"
+                      className={cn(
+                        'w-full justify-start gap-3',
+                        provider === 'GOOGLE' && '[&_svg]:size-5',
+                        provider === 'DISCORD' && '[&_svg]:size-6',
+                      )}
+                      onClick={() => handleConnectProvider(provider)}
+                      aria-label={`Connect ${oauthLabel(provider)}`}
+                    >
+                      <OAuthProviderIcon provider={provider} />
+                      Connect {oauthLabel(provider)}
+                    </Button>
+                  ))}
+                </div>
               </div>
-            </div>
-          ) : null}
-        </section>
-      </section>
+            ) : null}
+          </section>
+        </CardContent>
+      </Card>
     </main>
   )
 }
