@@ -9,13 +9,15 @@ const envPath = join(publicDir, 'env.js')
 const env = {
   REACT_APP_ENV: process.env.REACT_APP_ENV || 'local',
   REACT_APP_API_BASE_URL: process.env.REACT_APP_API_BASE_URL || '',
+  REACT_APP_STYLE_PREVIEW: process.env.REACT_APP_STYLE_PREVIEW || 'true',
 }
 
 mkdirSync(publicDir, { recursive: true })
 
 const content = `window.env = {
   REACT_APP_ENV: "${env.REACT_APP_ENV}",
-  REACT_APP_API_BASE_URL: "${env.REACT_APP_API_BASE_URL}"
+  REACT_APP_API_BASE_URL: "${env.REACT_APP_API_BASE_URL}",
+  REACT_APP_STYLE_PREVIEW: "${env.REACT_APP_STYLE_PREVIEW}"
 };
 `
 

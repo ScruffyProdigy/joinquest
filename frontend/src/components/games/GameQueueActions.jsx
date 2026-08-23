@@ -3,6 +3,8 @@ import {
   LEAVE_MATCH,
   LOOKING_FOR_GROUP,
   LOOK_FOR_GROUP,
+  PLAY_SOLO,
+  STARTING_SOLO,
   STOP_LOOKING,
   joinAsLabel,
   waitingAsRoleLine,
@@ -81,6 +83,7 @@ export default function GameQueueActions({
   onLeave,
   disabled = false,
   prominent = false,
+  solo = false,
 }) {
   const buttonClass = `game-list-button${prominent ? ' game-list-button--prominent' : ''}`
   const secondaryClass = `${buttonClass} game-list-button-secondary`
@@ -91,8 +94,25 @@ export default function GameQueueActions({
         <a className={buttonClass} href={joinUrl}>
           {LAUNCH_GAME}
         </a>
-        <button type="button" className={secondaryClass} onClick={onLeave} disabled={busy}>
-          {LEAVE_MATCH}
+        {solo ? null : (
+          <button type="button" className={secondaryClass} onClick={onLeave} disabled={busy}>
+            {LEAVE_MATCH}
+          </button>
+        )}
+      </div>
+    )
+  }
+
+  if (solo) {
+    return (
+      <div className="game-list-actions">
+        <button
+          type="button"
+          className={buttonClass}
+          onClick={() => onJoin()}
+          disabled={busy || disabled}
+        >
+          {busy ? STARTING_SOLO : PLAY_SOLO}
         </button>
       </div>
     )

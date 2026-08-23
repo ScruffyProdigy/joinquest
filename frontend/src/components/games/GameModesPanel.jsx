@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { joinGroupOptionsForMode } from '../../lib/games'
+import { isSoloMode, joinGroupOptionsForMode } from '../../lib/games'
 import { hasPlayingIntent, hasWaitingIntent } from '../../lib/intent'
 import { CREATE_PRIVATE_GAME } from '../../lib/playerCopy'
 import { createPrivateTable } from '../../lib/tables'
@@ -22,6 +22,7 @@ function ModeRow({
   const { refresh: refreshRoom, openRoom } = useActiveRoom()
   const defaultQueue = mode.queues?.find((q) => q.status === 'active') ?? null
   const joinOptions = joinGroupOptionsForMode(mode)
+  const solo = isSoloMode(mode)
   const [tableBusy, setTableBusy] = useState(false)
   const [tableError, setTableError] = useState('')
 
@@ -174,15 +175,18 @@ function ModeRow({
               onLeave={handleLeave}
               disabled={!defaultQueue || blockedByMatch || Boolean(activeTableSeat?.tableId && !seatedHere)}
               prominent={prominent}
+              solo={solo}
             />
-            <button
-              type="button"
-              className={`game-list-button game-list-button-secondary${prominent ? ' game-list-button--prominent' : ''}`}
-              disabled={tableBusy || blockedByMatch}
-              onClick={handleCreatePrivate}
-            >
-              {tableBusy ? '…' : CREATE_PRIVATE_GAME}
-            </button>
+            {solo ? null : (
+              <button
+                type="button"
+                className={`game-list-button game-list-button-secondary${prominent ? ' game-list-button--prominent' : ''}`}
+                disabled={tableBusy || blockedByMatch}
+                onClick={handleCreatePrivate}
+              >
+                {tableBusy ? '…' : CREATE_PRIVATE_GAME}
+              </button>
+            )}
           </>
         )}
       </div>

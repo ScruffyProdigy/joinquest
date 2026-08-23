@@ -157,6 +157,8 @@ Lobby mints seat JWTs (`iss`, `aud` = your API base URL, `matchId`, `seatKey`, `
 - Publish JWKS at `{lobbyIssuer}/.well-known/jwks.json`
 - **Claim:** `POST {apiBaseUrl}/api/v1/matches/{externalMatchId}/claim` with `Authorization: Bearer {jwt}`
 - Reject wrong `aud`, wrong `iss`, expired tokens, wrong reserved `seatKey`, unknown or mismatched match (`404`), malformed token (`401`/`403`)
+- **Claim must be repeatable:** JoinQuest's checklist claims the same seat more than once during checks (happy path, then again for the rotation check below) — treat a repeat claim of an already-claimed seat by the same player as success, not a conflict.
+- **Key rotation:** Lobby's JWKS can contain more than one active key at once during a signing-key rotation. Verify tokens by matching the JWT's `kid` header against the matching key in the JWKS response — don't cache a single key. If you don't recognize a `kid`, refetch JWKS (rate-limited) before rejecting.
 
 ---
 
@@ -240,6 +242,7 @@ When integration checks are green and catalog metadata is complete (`shortDescri
 | `jwt.expired` | §6 JWT |
 | `jwt.invalid_token` | §6 JWT |
 | `jwt.wrong_seat` | §6 JWT |
+| `jwt.rotation_overlap` | §6 JWT |
 
 ---
 

@@ -4,6 +4,8 @@ import OAuthCompletePage from './components/auth/OAuthCompletePage'
 import AccountPage from './components/auth/AccountPage'
 import ReturnPage from './components/auth/ReturnPage'
 import AuthPanel from './components/auth/AuthPanel'
+import StylePreviewPage from './components/dev/StylePreviewPage'
+import { isStylePreviewEnabled } from './lib/stylePreview'
 import IntentBanner from './components/games/IntentBanner'
 import GameLobby from './components/games/GameLobby'
 import GameDetailPage from './components/games/GameDetailPage'
@@ -29,7 +31,6 @@ import AppFooter from './components/legal/AppFooter'
 import TermsPage from './components/legal/TermsPage'
 import PrivacyPage from './components/legal/PrivacyPage'
 import { useEffect } from 'react'
-import './App.css'
 
 function CatalogPage() {
   const { user, loading: authLoading } = useAuth()
@@ -210,6 +211,8 @@ function App() {
         <PrivacyPage />
       ) : pathname.startsWith('/account') ? (
         <AccountPage />
+      ) : pathname.startsWith('/dev/style-preview') && isStylePreviewEnabled() ? (
+        <StylePreviewPage />
       ) : pathname.startsWith('/return') ? (
         <ReturnPage />
       ) : developerRoute ? (

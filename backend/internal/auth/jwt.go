@@ -12,6 +12,7 @@ import (
 	"net/http"
 	"os"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/golang-jwt/jwt/v5"
@@ -30,6 +31,9 @@ type Signer struct {
 	privateKey ed25519.PrivateKey
 	publicKey  ed25519.PublicKey
 	publicX    string
+
+	rotationMu   sync.RWMutex
+	rotationKeys map[string]ed25519.PublicKey
 }
 
 // LoadSignerFromEnv loads signing keys from environment or generates dev keys.
@@ -120,24 +124,77 @@ func newSignerFromPEM(kid, pemData string) (*Signer, error) {
 	}, nil
 }
 
-// PublicJWK returns the public JWKS payload for this signer.
+// PublicJWK returns the public JWKS payload for this signer's primary key.
 func (s *Signer) PublicJWK() map[string]string {
+	return publicJWK(s.kid, s.publicX)
+}
+
+func publicJWK(kid, publicX string) map[string]string {
 	return map[string]string{
 		"kty": "OKP",
 		"crv": "Ed25519",
 		"use": "sig",
 		"alg": "EdDSA",
-		"kid": s.kid,
-		"x":   s.publicX,
+		"kid": kid,
+		"x":   publicX,
 	}
 }
 
-// JWKSHandler serves the public JWKS document.
+// JWKSHandler serves the public JWKS document, including any temporary
+// rotation keys added via AddRotationKey.
 func (s *Signer) JWKSHandler() http.HandlerFunc {
 	return func(w http.ResponseWriter, _ *http.Request) {
+		s.rotationMu.RLock()
+		keys := make([]any, 0, 1+len(s.rotationKeys))
+		keys = append(keys, s.PublicJWK())
+		for kid, pub := range s.rotationKeys {
+			keys = append(keys, publicJWK(kid, base64.RawURLEncoding.EncodeToString(pub)))
+		}
+		s.rotationMu.RUnlock()
+
 		w.Header().Set("Content-Type", "application/json")
-		_ = json.NewEncoder(w).Encode(map[string]any{"keys": []any{s.PublicJWK()}})
+		_ = json.NewEncoder(w).Encode(map[string]any{"keys": keys})
 	}
+}
+
+const maxRotationKeys = 4
+
+// AddRotationKey generates a temporary ed25519 keypair and publishes its
+// public half in this signer's JWKS document until the returned cleanup
+// func is called. Integration checks use this to verify a game can validate
+// tokens signed under more than one active key, as happens during a real
+// signing-key rotation.
+func (s *Signer) AddRotationKey() (kid string, priv ed25519.PrivateKey, cleanup func(), err error) {
+	s.rotationMu.RLock()
+	atCap := len(s.rotationKeys) >= maxRotationKeys
+	s.rotationMu.RUnlock()
+	if atCap {
+		return "", nil, nil, fmt.Errorf("auth: too many concurrent rotation keys (max %d)", maxRotationKeys)
+	}
+
+	pub, priv, err := ed25519.GenerateKey(rand.Reader)
+	if err != nil {
+		return "", nil, nil, fmt.Errorf("auth: generate rotation key: %w", err)
+	}
+	kid = s.kid + "-rotate-" + uuid.NewString()
+
+	s.rotationMu.Lock()
+	if s.rotationKeys == nil {
+		s.rotationKeys = make(map[string]ed25519.PublicKey)
+	}
+	if len(s.rotationKeys) >= maxRotationKeys {
+		s.rotationMu.Unlock()
+		return "", nil, nil, fmt.Errorf("auth: too many concurrent rotation keys (max %d)", maxRotationKeys)
+	}
+	s.rotationKeys[kid] = pub
+	s.rotationMu.Unlock()
+
+	cleanup = func() {
+		s.rotationMu.Lock()
+		delete(s.rotationKeys, kid)
+		s.rotationMu.Unlock()
+	}
+	return kid, priv, cleanup, nil
 }
 
 const sessionTokenType = "session"

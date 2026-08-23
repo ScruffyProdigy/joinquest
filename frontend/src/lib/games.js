@@ -6,6 +6,8 @@ const GAME_MODE_FIELDS = `
     modeKey
     displayName
     status
+    minPlayers
+    maxPlayers
     queuePaths {
       queuePath
       displayName
@@ -108,6 +110,11 @@ export function defaultModeForGame(game) {
     }
   }
   return null
+}
+
+/** A single-seat mode (e.g. a solo tutorial) fires instantly for the one joining player. */
+export function isSoloMode(mode) {
+  return mode?.minPlayers === 1 && mode?.maxPlayers === 1
 }
 
 /**

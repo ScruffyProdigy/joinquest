@@ -22,8 +22,6 @@ func TestJoinModeQueueSplitPartyWordHunt(t *testing.T) {
 		Modes: []gameclient.ModeManifest{{
 			Key:         "party",
 			DisplayName: "Word Hunt Party",
-			Min:         4,
-			Max:         9,
 			SeatTemplate: json.RawMessage(`{
 				"ClueGiver":{"displayName":"Clue Giver","name":["Red","Blue","Green"],"min":2,"max":3,"sizeForQueue":2},
 				"Guesser":{"count":6,"min":2,"max":6,"sizeForQueue":4}

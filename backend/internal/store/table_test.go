@@ -350,8 +350,6 @@ func setupWordHuntMode(t *testing.T, st *Store, cleaner *TestCleaner) (*Game, *G
 		Modes: []gameclient.ModeManifest{{
 			Key:         "party",
 			DisplayName: "Word Hunt Party",
-			Min:         4,
-			Max:         9,
 			SeatTemplate: json.RawMessage(`{
 				"ClueGiver":{"displayName":"Clue Giver","name":["Red","Blue","Green"],"min":2,"max":3,"sizeForQueue":2},
 				"Guesser":{"count":6,"min":2,"max":6,"sizeForQueue":4}
@@ -392,8 +390,6 @@ func setupDuelMode(t *testing.T, st *Store, cleaner *TestCleaner) (*Game, *GameM
 		Modes: []gameclient.ModeManifest{{
 			Key:          "duel",
 			DisplayName:  "1v1 Duel",
-			Min:          2,
-			Max:          2,
 			SeatTemplate: json.RawMessage(`{"count":2}`),
 		}},
 		Status:     gameclient.StatusResponse{Game: "Duel", Version: "1.0.0"},

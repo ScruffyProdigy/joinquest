@@ -369,10 +369,3 @@ func queuePaths(node map[string]any, path []string) ([]string, error) {
 	}
 }
 
-// DerivedPlayerBounds returns min/max players for a fixed template.
-func DerivedPlayerBounds(leafCount int, minPlayers, maxPlayers int) (int, int) {
-	if minPlayers > 0 && maxPlayers > 0 {
-		return minPlayers, maxPlayers
-	}
-	return leafCount, leafCount
-}

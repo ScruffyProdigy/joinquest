@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest'
 import {
   defaultModeForGame,
+  isSoloMode,
   joinGroupOptionsForGame,
   joinGroupOptionsForMode,
 } from './games'
@@ -80,5 +81,21 @@ describe('joinGroupOptionsForGame', () => {
         { queuePath: 'Tank', displayName: 'Tank' },
       ],
     })
+  })
+})
+
+describe('isSoloMode', () => {
+  it('is true when a mode has exactly one seat', () => {
+    expect(isSoloMode({ minPlayers: 1, maxPlayers: 1 })).toBe(true)
+  })
+
+  it('is false for multiplayer modes', () => {
+    expect(isSoloMode({ minPlayers: 2, maxPlayers: 2 })).toBe(false)
+    expect(isSoloMode({ minPlayers: 2, maxPlayers: 5 })).toBe(false)
+  })
+
+  it('is false when player bounds are missing', () => {
+    expect(isSoloMode({})).toBe(false)
+    expect(isSoloMode(undefined)).toBe(false)
   })
 })
