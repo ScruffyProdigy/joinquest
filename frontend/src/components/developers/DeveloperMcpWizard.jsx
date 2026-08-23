@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
+import { Button } from '../ui/button'
 import {
   buildClaudeMcpAddCommand,
   buildGeminiMcpAddCommand,
@@ -457,14 +458,14 @@ export default function DeveloperMcpWizard({ defaultExpanded = false, alwaysExpa
                       value={apiKeyValue}
                       onChange={(event) => setApiKeyValue(event.target.value)}
                     />
-                    <button
+                    <Button
                       type="button"
-                      className="button-secondary"
+                      variant="secondary"
                       onClick={() => setShowApiKey((value) => !value)}
                       disabled={!apiKeyValue}
                     >
                       {showApiKey ? 'Hide' : 'Show'}
-                    </button>
+                    </Button>
                   </div>
                   <p className="developer-form__hint">
                     We only use this in your browser to build the copy-paste commands below — nothing
@@ -472,22 +473,22 @@ export default function DeveloperMcpWizard({ defaultExpanded = false, alwaysExpa
                   </p>
                 </div>
                 <div className="developer-mcp__key-actions">
-                  <button
+                  <Button
                     type="button"
-                    className="button-primary"
+                    variant="default"
                     disabled={busy}
                     onClick={() => void handleGenerateKey()}
                   >
                     {busy ? 'Generating…' : 'Generate new API key'}
-                  </button>
+                  </Button>
                   {activeKey ? (
-                    <button
+                    <Button
                       type="button"
-                      className="button-secondary"
+                      variant="secondary"
                       onClick={() => void handleCopy(activeKey, 'key')}
                     >
                       {copied === 'key' ? 'Copied' : 'Copy API key'}
-                    </button>
+                    </Button>
                   ) : null}
                 </div>
               </div>
@@ -511,13 +512,13 @@ export default function DeveloperMcpWizard({ defaultExpanded = false, alwaysExpa
                       )}
                     </p>
                     <pre className="developer-mcp__config">{installPluginCommand}</pre>
-                    <button
+                    <Button
                       type="button"
-                      className="button-secondary"
+                      variant="secondary"
                       onClick={() => void handleCopy(installPluginCommand, 'install-plugin')}
                     >
                       {copied === 'install-plugin' ? 'Copied' : 'Copy plugin install command'}
-                    </button>
+                    </Button>
                     <p className="panel-copy developer-mcp__what-it-does">What the plugin includes:</p>
                     <ul className="developer-mcp__explainer">
                       <li>
@@ -555,13 +556,13 @@ export default function DeveloperMcpWizard({ defaultExpanded = false, alwaysExpa
                         .
                       </p>
                       <pre className="developer-mcp__config">{installDevCommand}</pre>
-                      <button
+                      <Button
                         type="button"
-                        className="button-secondary"
+                        variant="secondary"
                         onClick={() => void handleCopy(installDevCommand, 'install-main')}
                       >
                         {copied === 'install-main' ? 'Copied' : 'Copy game-repo install command'}
-                      </button>
+                      </Button>
                     </details>
                   </>
                 ) : (
@@ -579,13 +580,13 @@ export default function DeveloperMcpWizard({ defaultExpanded = false, alwaysExpa
                       )}
                     </p>
                     <pre className="developer-mcp__config">{installDevCommand}</pre>
-                    <button
+                    <Button
                       type="button"
-                      className="button-secondary"
+                      variant="secondary"
                       onClick={() => void handleCopy(installDevCommand, 'install-main')}
                     >
                       {copied === 'install-main' ? 'Copied' : 'Copy install command'}
-                    </button>
+                    </Button>
                     <p className="panel-copy developer-mcp__what-it-does">What the script does:</p>
                     <ul className="developer-mcp__explainer">
                       <li>
@@ -616,13 +617,13 @@ export default function DeveloperMcpWizard({ defaultExpanded = false, alwaysExpa
                         <code>npx joinquest</code>).
                       </p>
                       <pre className="developer-mcp__config">{installInspectCommand}</pre>
-                      <button
+                      <Button
                         type="button"
-                        className="button-secondary"
+                        variant="secondary"
                         onClick={() => void handleCopy(installInspectCommand, 'inspect')}
                       >
                         {copied === 'inspect' ? 'Copied' : 'Copy review-first commands'}
-                      </button>
+                      </Button>
                     </details>
                   </>
                 )}
@@ -645,13 +646,13 @@ export default function DeveloperMcpWizard({ defaultExpanded = false, alwaysExpa
                   ))}
                 </ol>
                 <div className="developer-mcp__quick-copy-actions">
-                  <button
+                  <Button
                     type="button"
-                    className="button-primary"
+                    variant="default"
                     onClick={() => void handleCopy(AGENT_START_PROMPT, 'start-prompt')}
                   >
                     {copied === 'start-prompt' ? 'Copied' : 'Copy start prompt'}
-                  </button>
+                  </Button>
                 </div>
                 <p className="panel-copy">
                   From there, the agent skill walks you through discovery, integration checks, and
@@ -679,57 +680,57 @@ export default function DeveloperMcpWizard({ defaultExpanded = false, alwaysExpa
                 {clientId === 'claude-code' ? (
                   <>
                     <pre className="developer-mcp__config">{claudeAddCommand}</pre>
-                    <button
+                    <Button
                       type="button"
-                      className="button-secondary"
+                      variant="secondary"
                       onClick={() => void handleCopy(claudeAddCommand, 'claude-add')}
                     >
                       {copied === 'claude-add' ? 'Copied' : 'Copy Claude command'}
-                    </button>
+                    </Button>
                     <details className="developer-mcp__details">
                       <summary>Manual .mcp.json instead</summary>
                       <pre className="developer-mcp__config">{configText}</pre>
-                      <button
+                      <Button
                         type="button"
-                        className="button-secondary"
+                        variant="secondary"
                         onClick={() => void handleCopy(configText, 'config-manual')}
                       >
                         {copied === 'config-manual' ? 'Copied' : 'Copy .mcp.json'}
-                      </button>
+                      </Button>
                     </details>
                   </>
                 ) : clientId === 'gemini' ? (
                   <>
                     <pre className="developer-mcp__config">{geminiAddCommand}</pre>
-                    <button
+                    <Button
                       type="button"
-                      className="button-secondary"
+                      variant="secondary"
                       onClick={() => void handleCopy(geminiAddCommand, 'gemini-add')}
                     >
                       {copied === 'gemini-add' ? 'Copied' : 'Copy Gemini command'}
-                    </button>
+                    </Button>
                     <details className="developer-mcp__details">
                       <summary>Manual settings.json instead</summary>
                       <pre className="developer-mcp__config">{configText}</pre>
-                      <button
+                      <Button
                         type="button"
-                        className="button-secondary"
+                        variant="secondary"
                         onClick={() => void handleCopy(configText, 'config-manual')}
                       >
                         {copied === 'config-manual' ? 'Copied' : 'Copy settings.json'}
-                      </button>
+                      </Button>
                     </details>
                   </>
                 ) : (
                   <>
                     <pre className="developer-mcp__config">{configText}</pre>
-                    <button
+                    <Button
                       type="button"
-                      className="button-secondary"
+                      variant="secondary"
                       onClick={() => void handleCopy(configText, 'config')}
                     >
                       {copied === 'config' ? 'Copied' : manualConfigCopyLabel(clientId)}
-                    </button>
+                    </Button>
                   </>
                 )}
               </details>

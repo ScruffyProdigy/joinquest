@@ -98,10 +98,6 @@
   gap: 0.5rem;
 }
 
-.intent-banner__cta {
-  font-weight: 600;
-}
-
 .app-header,
 .auth-page h1 {
   text-align: center;
@@ -116,22 +112,24 @@
 
 .app-title {
   margin: 0;
-  font-size: 3.2em;
-  line-height: 1.05;
+  font-family: var(--font-heading);
+  font-weight: 700;
+  font-size: var(--text-3xl);
+  line-height: var(--text-3xl--line-height);
   letter-spacing: -0.02em;
+  color: var(--foreground);
 }
 
-.app-title__join {
-  color: #fff;
-}
-
-.app-title__quest {
-  color: #4349a8;
+@media (max-width: 480px) {
+  .app-title {
+    font-size: var(--text-2xl);
+    line-height: var(--text-2xl--line-height);
+  }
 }
 
 .tagline {
   margin: 0;
-  color: #888;
+  color: var(--muted-foreground);
 }
 
 .panel-card {
@@ -637,8 +635,8 @@
   max-width: 720px;
   margin: 0 auto;
   padding: 0.35rem 1rem calc(0.35rem + env(safe-area-inset-bottom, 0px));
-  border-top: 1px solid rgba(255, 255, 255, 0.12);
-  background: #141418;
+  border-top: 1px solid var(--border);
+  background: var(--card);
   opacity: 1;
 }
 
@@ -652,15 +650,15 @@
   border: none;
   border-radius: 10px;
   background: transparent;
-  color: #aaa;
+  color: var(--muted-foreground);
   cursor: pointer;
   font: inherit;
   font-size: 0.75rem;
 }
 
 .app-dock__tab--active {
-  color: #b8bcff;
-  background: rgba(100, 108, 255, 0.18);
+  color: var(--accent-foreground);
+  background: var(--accent);
 }
 
 .app-dock__icon-wrap {
@@ -676,7 +674,7 @@
   height: 1.1rem;
   padding: 0 0.25rem;
   border-radius: 999px;
-  background: #ff5a5a;
+  background: var(--destructive);
   color: #fff;
   font-size: 0.65rem;
   font-weight: 700;
@@ -1495,10 +1493,6 @@
   text-align: left;
 }
 
-.developer-route-back .auth-link-button {
-  margin-top: 0;
-}
-
 .developer-home-block {
   border-color: rgba(100, 108, 255, 0.35);
   background: rgba(100, 108, 255, 0.1);
@@ -2118,7 +2112,7 @@
 .app-footer {
   margin-top: 0.5rem;
   padding-top: 1.25rem;
-  border-top: 1px solid rgba(255, 255, 255, 0.08);
+  border-top: 1px solid var(--border);
   text-align: center;
 }
 
@@ -2132,7 +2126,7 @@
 }
 
 .app-footer__link {
-  color: #9aa0ff;
+  color: var(--primary);
   text-decoration: none;
 }
 

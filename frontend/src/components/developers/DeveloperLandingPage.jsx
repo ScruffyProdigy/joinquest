@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { Button } from '../ui/button'
 import AuthPanel from '../auth/AuthPanel'
 import { APP_NAME } from '../../lib/brand'
 import { developerLandingHref, parseDeveloperLandingPath } from '../../lib/developers'
@@ -94,9 +95,9 @@ export default function DeveloperLandingPage() {
       ) : (
         <>
           <p className="developer-route-back">
-            <button type="button" className="auth-link-button" onClick={clearRoute}>
+            <Button type="button" variant="link" onClick={clearRoute}>
               ← Choose a different path
-            </button>
+            </Button>
           </p>
 
           {route === 'ai' ? (

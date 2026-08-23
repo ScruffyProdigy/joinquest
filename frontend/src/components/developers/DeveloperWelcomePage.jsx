@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { Button } from '../ui/button'
 import { APP_NAME } from '../../lib/brand'
 import {
   developerDashboardPath,
@@ -88,13 +89,13 @@ export default function DeveloperWelcomePage({ gameId }) {
           When things look good, spin up a <strong>test table</strong> and invite friends. They can
           play before your game goes public.
         </p>
-        <button
+        <Button
           type="button"
-          className="button-primary"
+          variant="default"
           onClick={() => navigateTo(developerDashboardPath(game.id))}
         >
           Open developer dashboard
-        </button>
+        </Button>
       </section>
     </main>
   )

@@ -19,6 +19,7 @@ import {
   playingIntentTitle,
   resolveIntentLaunchUrl,
 } from '../../lib/intent'
+import { Button } from '../ui/button'
 
 export default function IntentBanner({ activeIntent, activeTableSeat, busy, liveUpdatesConnected = true, onLeave }) {
   if (hasWaitingIntent(activeIntent)) {
@@ -38,9 +39,9 @@ export default function IntentBanner({ activeIntent, activeTableSeat, busy, live
           </p>
         </div>
         <div className="intent-banner__actions">
-          <button type="button" className="game-list-button" onClick={onLeave} disabled={busy}>
+          <Button type="button" variant="default" onClick={onLeave} disabled={busy}>
             {busy ? '…' : STOP_LOOKING}
-          </button>
+          </Button>
         </div>
       </aside>
     )
@@ -60,18 +61,18 @@ export default function IntentBanner({ activeIntent, activeTableSeat, busy, live
         </div>
         <div className="intent-banner__actions">
           {launchUrl ? (
-            <a className="intent-banner__cta game-list-button" href={launchUrl}>
-              {LAUNCH_GAME}
-            </a>
+            <Button asChild variant="default" className="intent-banner__cta font-semibold">
+              <a href={launchUrl}>{LAUNCH_GAME}</a>
+            </Button>
           ) : null}
-          <button
+          <Button
             type="button"
-            className="game-list-button game-list-button-secondary"
+            variant="secondary"
             onClick={onLeave}
             disabled={busy}
           >
             {busy ? '…' : LEAVE_GAME}
-          </button>
+          </Button>
         </div>
       </aside>
     )
@@ -98,9 +99,9 @@ export default function IntentBanner({ activeIntent, activeTableSeat, busy, live
         </p>
       </div>
       <div className="intent-banner__actions">
-        <button type="button" className="game-list-button game-list-button-secondary" onClick={onLeave} disabled={busy}>
+        <Button type="button" variant="secondary" onClick={onLeave} disabled={busy}>
           {busy ? '…' : LEAVE_TABLE_SEAT}
-        </button>
+        </Button>
       </div>
     </aside>
   )
