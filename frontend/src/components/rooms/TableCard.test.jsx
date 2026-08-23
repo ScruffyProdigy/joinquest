@@ -1,4 +1,5 @@
-import { render, screen } from '@testing-library/react'
+import { render, screen, within } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import { describe, it, expect, vi } from 'vitest'
 import TableCard from './TableCard'
 
@@ -252,10 +253,7 @@ describe('TableCard', () => {
       <TableCard table={table} busy={false} onSit={() => {}} onLeave={() => {}} onStart={() => {}} onDiscard={() => {}} />,
     )
 
-    expect(container.querySelector('.table-card__icon')).toHaveAttribute(
-      'src',
-      '/games/word-hunt-icon.png?v=1',
-    )
+    expect(container.querySelector('img[src="/games/word-hunt-icon.png?v=1"]')).toBeInTheDocument()
     expect(screen.getByText('Everyone competes on a shared word grid.')).toBeInTheDocument()
     expect(screen.getByText('competitive')).toBeInTheDocument()
   })
@@ -283,5 +281,33 @@ describe('TableCard', () => {
     )
 
     expect(screen.getByText('Need 1 Clue Giver, 4 Guesser from the lobby')).toBeInTheDocument()
+  })
+
+  it('opens a seat-picker sheet on Sit and confirms the seat on confirm', async () => {
+    const user = userEvent.setup()
+    const onSit = vi.fn()
+    const table = {
+      id: 'table-1',
+      game: { name: 'Rock Paper Scissors Lizard Robot' },
+      mode: { displayName: '1v1 Duel (best 3 of 5)' },
+      seats: [],
+      seatSlots: [
+        { seatKey: '1', displayName: '1', user: null },
+        { seatKey: '2', displayName: '2', user: { id: 'user-2', displayName: 'Sam' } },
+      ],
+      lookForGroupOptions: [],
+    }
+
+    render(
+      <TableCard table={table} busy={false} onSit={onSit} onLeave={() => {}} onStart={() => {}} onDiscard={() => {}} />,
+    )
+
+    await user.click(screen.getByRole('button', { name: 'Sit' }))
+    const sheet = within(await screen.findByRole('dialog'))
+    expect(sheet.getByRole('heading', { name: 'Players', level: 2 })).toBeInTheDocument()
+    expect(sheet.getByText('Sam')).toBeInTheDocument()
+
+    await user.click(screen.getByRole('button', { name: 'Confirm seat' }))
+    expect(onSit).toHaveBeenCalledWith('1')
   })
 })

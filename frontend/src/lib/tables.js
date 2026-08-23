@@ -13,6 +13,7 @@ export const TABLE_FIELDS = `
   canDiscard
   game {
     id
+    slug
     name
     iconUrl
     shortDescription

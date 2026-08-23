@@ -1,5 +1,7 @@
+import { useState } from 'react'
 import { useAuth } from '../auth/AuthProvider'
 import { gameIconUrl, gameTagChips } from '../../lib/gameCard'
+import { accentColorFor } from '../../lib/gameAccent'
 import {
   DISCARD,
   formatFormingGapsFromLobbyLine,
@@ -22,8 +24,13 @@ import {
   seatLabelInSection,
 } from '../../lib/tables'
 import PlayerAvatar from '../avatars/PlayerAvatar'
+import { Card } from '../ui/card'
+import { Badge } from '../ui/badge'
+import { Button } from '../ui/button'
+import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetFooter } from '../ui/sheet'
+import { cn } from '../../lib/utils'
 
-function SeatRow({ slot, seatLabel, mySeat, userId, currentUser, kingUserId, busy, onSit }) {
+function SeatRow({ slot, seatLabel, sectionTitle, groupSlots, mySeat, userId, currentUser, kingUserId, busy, onRequestSit }) {
   const taken = Boolean(slot.user)
   const isMine = mySeat === slot.seatKey || slot.user?.id === userId
   const showOccupant = taken || isMine
@@ -33,55 +40,59 @@ function SeatRow({ slot, seatLabel, mySeat, userId, currentUser, kingUserId, bus
 
   if (!taken) {
     return (
-      <li className="table-seat-row table-seat-row--open">
-        {seatLabel ? <span className="table-seat-row__label">{seatLabel}</span> : null}
-        <button
+      <li className="flex items-center justify-between gap-3 rounded-lg border border-border/60 bg-background/30 px-3 py-2">
+        {seatLabel ? <span className="text-sm text-muted-foreground">{seatLabel}</span> : null}
+        <Button
           type="button"
-          className="table-seat-row__sit"
+          size="sm"
+          variant="secondary"
           disabled={busy}
-          onClick={() => onSit(slot.seatKey)}
+          onClick={() => onRequestSit(slot, sectionTitle, groupSlots)}
         >
           Sit
-        </button>
+        </Button>
       </li>
     )
   }
 
   return (
     <li
-      className={`table-seat-row table-seat-row--occupied${
-        isMine ? ' table-seat-row--mine' : ' table-seat-row--taken'
-      }`}
+      className={cn(
+        'flex items-center gap-3 rounded-lg border px-3 py-2',
+        isMine ? 'border-primary/60 bg-primary/10' : 'border-border/60 bg-background/30',
+      )}
     >
-      {seatLabel ? <span className="table-seat-row__label">{seatLabel}</span> : null}
+      {seatLabel ? <span className="text-sm text-muted-foreground">{seatLabel}</span> : null}
       {showOccupant ? (
-        <div className="table-seat-row__occupant" title={occupantLabel}>
+        <div className="flex items-center gap-2" title={occupantLabel}>
           <PlayerAvatar user={occupantUser} size="md" ring={isTableKing ? 'king' : undefined} />
-          <span className="table-seat-row__occupant-name">{occupantLabel}</span>
+          <span className="text-sm text-foreground">{occupantLabel}</span>
         </div>
       ) : null}
     </li>
   )
 }
 
-function SeatSection({ title, slots, mode, mySeat, userId, currentUser, kingUserId, busy, onSit }) {
+function SeatSection({ title, slots, mode, mySeat, userId, currentUser, kingUserId, busy, onRequestSit }) {
   const queuePath = slots[0]?.queuePath
   const meta = queuePathMeta(mode, queuePath)
   const seatedCount = countSeatedInGroup(slots)
   const pooled = isPooledRoleGroup(slots)
   const mineInGroup = slots.some((slot) => slot.seatKey === mySeat || slot.user?.id === userId)
   const openSeatKey = firstOpenSeatKey(slots)
+  const rowProps = { sectionTitle: title, groupSlots: slots, mySeat, userId, currentUser, kingUserId, busy, onRequestSit }
 
   if (pooled) {
     const occupants = slots.filter((slot) => slot.user || slot.seatKey === mySeat)
+    const openSlot = slots.find((slot) => slot.seatKey === openSeatKey)
     return (
-      <div className="table-card__team">
-        <div className="table-card__team-heading">
-          <h4 className="table-card__team-title">{title}</h4>
-          <p className="table-card__team-caption">{formatGroupSeatCaption(seatedCount, meta)}</p>
+      <div className="flex flex-col gap-2">
+        <div className="flex items-baseline justify-between">
+          <h4 className="text-sm font-semibold text-foreground">{title}</h4>
+          <p className="text-xs text-muted-foreground">{formatGroupSeatCaption(seatedCount, meta)}</p>
         </div>
-        <div className="table-card__pooled">
-          <div className="table-card__pooled-avatars" aria-label={`${title} seats`}>
+        <div className="flex flex-wrap items-center gap-3">
+          <div className="flex flex-wrap gap-3" aria-label={`${title} seats`}>
             {occupants.length > 0 ? (
               occupants.map((slot) => {
                 const isMine = mySeat === slot.seatKey || slot.user?.id === userId
@@ -93,30 +104,23 @@ function SeatSection({ title, slots, mode, mySeat, userId, currentUser, kingUser
                 return (
                   <div
                     key={slot.seatKey}
-                    className={`table-card__pooled-seat${isMine ? ' table-card__pooled-seat--mine' : ''}${
-                      isTableKing ? ' table-card__pooled-seat--king' : ''
-                    }`}
+                    className={cn('flex flex-col items-center gap-1 text-xs', isMine ? 'text-primary' : 'text-muted-foreground')}
                     title={titleText}
                   >
-                    {seatBadge ? <span className="table-card__pooled-seat-label">{seatBadge}</span> : null}
+                    {seatBadge ? <span className="text-[10px] uppercase tracking-wide">{seatBadge}</span> : null}
                     <PlayerAvatar user={occupantUser} size="md" ring={isTableKing ? 'king' : undefined} />
-                    <span className="table-card__pooled-seat-name">{occupantLabel}</span>
+                    <span>{occupantLabel}</span>
                   </div>
                 )
               })
             ) : (
-              <span className="table-card__pooled-empty">No one seated yet</span>
+              <span className="text-xs text-muted-foreground">No one seated yet</span>
             )}
           </div>
-          {!mineInGroup && openSeatKey ? (
-            <button
-              type="button"
-              className="table-seat-row__sit table-seat-row__sit--pooled"
-              disabled={busy}
-              onClick={() => onSit(openSeatKey)}
-            >
+          {!mineInGroup && openSlot ? (
+            <Button type="button" size="sm" variant="secondary" disabled={busy} onClick={() => onRequestSit(openSlot, title, slots)}>
               Sit
-            </button>
+            </Button>
           ) : null}
         </div>
       </div>
@@ -124,24 +128,14 @@ function SeatSection({ title, slots, mode, mySeat, userId, currentUser, kingUser
   }
 
   return (
-    <div className="table-card__team">
-      <div className="table-card__team-heading">
-        <h4 className="table-card__team-title">{title}</h4>
-        {meta ? <p className="table-card__team-caption">{formatGroupSeatCaption(seatedCount, meta)}</p> : null}
+    <div className="flex flex-col gap-2">
+      <div className="flex items-baseline justify-between">
+        <h4 className="text-sm font-semibold text-foreground">{title}</h4>
+        {meta ? <p className="text-xs text-muted-foreground">{formatGroupSeatCaption(seatedCount, meta)}</p> : null}
       </div>
-      <ul className="table-card__seats">
+      <ul className="flex flex-col gap-2">
         {slots.map((slot) => (
-          <SeatRow
-            key={slot.seatKey}
-            slot={slot}
-            seatLabel={seatLabelInSection(slot, title)}
-            mySeat={mySeat}
-            userId={userId}
-            currentUser={currentUser}
-            kingUserId={kingUserId}
-            busy={busy}
-            onSit={onSit}
-          />
+          <SeatRow key={slot.seatKey} slot={slot} seatLabel={seatLabelInSection(slot, title)} {...rowProps} />
         ))}
       </ul>
     </div>
@@ -150,6 +144,7 @@ function SeatSection({ title, slots, mode, mySeat, userId, currentUser, kingUser
 
 export default function TableCard({ table, busy, onSit, onLeave, onStart, onLookForGroup, onDiscard }) {
   const { user } = useAuth()
+  const [pickerSlot, setPickerSlot] = useState(null)
   const enriched = enrichTableSeats(table)
   const mySeat = mySeatKeyOnTable(enriched, user?.id)
   const mySeatLabel = mySeatDisplayName(enriched, user?.id)
@@ -159,6 +154,7 @@ export default function TableCard({ table, busy, onSit, onLeave, onStart, onLook
   const seatedCount = enriched.seats?.length ?? 0
   const gapsLine = formatFormingGapsFromLobbyLine(enriched.formingGaps)
   const game = enriched.game
+  const accent = accentColorFor(game?.slug || game?.id || 'table')
   const catalogTags = gameTagChips(game?.tags)
   const catalogBlurb = game?.shortDescription?.trim() || ''
   let catalogIcon = null
@@ -170,6 +166,18 @@ export default function TableCard({ table, busy, onSit, onLeave, onStart, onLook
     }
   }
 
+  function handleRequestSit(slot, sectionTitle, groupSlots) {
+    setPickerSlot({ slot, sectionTitle, groupSlots })
+  }
+
+  function confirmSit() {
+    if (!pickerSlot) {
+      return
+    }
+    onSit(pickerSlot.slot.seatKey)
+    setPickerSlot(null)
+  }
+
   const seatRowProps = {
     mode: enriched.mode,
     mySeat,
@@ -177,30 +185,30 @@ export default function TableCard({ table, busy, onSit, onLeave, onStart, onLook
     currentUser: user,
     kingUserId,
     busy,
-    onSit,
+    onRequestSit: handleRequestSit,
   }
 
   return (
-    <article className="table-card">
-      <header className="table-card__header">
+    <Card className="gap-4 overflow-hidden border py-4" style={{ background: accent.cardBg, borderColor: accent.border }}>
+      <header className="flex gap-3 px-4">
         {catalogIcon ? (
-          <img className="table-card__icon" src={catalogIcon} alt="" width={64} height={64} loading="lazy" />
+          <img className="h-16 w-16 shrink-0 rounded-lg object-cover" src={catalogIcon} alt="" width={64} height={64} loading="lazy" />
         ) : null}
-        <div className="table-card__header-copy">
-          <h3 className="table-card__title">
+        <div className="flex min-w-0 flex-col gap-1">
+          <h3 className="font-heading text-base font-semibold text-foreground">
             {game?.name} · {enriched.mode?.displayName}
           </h3>
-          {catalogBlurb ? <p className="table-card__blurb">{catalogBlurb}</p> : null}
+          {catalogBlurb ? <p className="text-sm text-muted-foreground">{catalogBlurb}</p> : null}
           {catalogTags.length > 0 ? (
-            <ul className="table-card__tags" aria-label="Game tags">
+            <ul className="flex flex-wrap gap-1" aria-label="Game tags">
               {catalogTags.map((tag) => (
-                <li key={tag} className="table-card__tag">
-                  {tag}
+                <li key={tag}>
+                  <Badge variant="secondary">{tag}</Badge>
                 </li>
               ))}
             </ul>
           ) : null}
-          <p className="table-card__meta">
+          <p className="text-xs text-muted-foreground">
             {seatedCount} seated
             {enriched.king ? ` · ${KING_LABEL}: ${displayName(enriched.king)}` : ''}
             {mySeatLabel ? ` · Your seat: ${mySeatLabel}` : ''}
@@ -209,23 +217,17 @@ export default function TableCard({ table, busy, onSit, onLeave, onStart, onLook
       </header>
 
       <div
-        className={`table-card__layout${
-          layout.kind === 'teams' || layout.kind === 'roles' ? ' table-card__layout--teams' : ''
-        }`}
+        className={cn(
+          'flex flex-col gap-4 px-4',
+          (layout.kind === 'teams' || layout.kind === 'roles') && 'sm:grid sm:grid-cols-2 sm:gap-x-6',
+        )}
       >
         {layout.kind === 'teams' ? (
           <>
             {layout.teams.map(([prefix, slots]) => (
-              <SeatSection
-                key={prefix}
-                title={prefix.replace('-', ' ')}
-                slots={slots}
-                {...seatRowProps}
-              />
+              <SeatSection key={prefix} title={prefix.replace('-', ' ')} slots={slots} {...seatRowProps} />
             ))}
-            {layout.ungrouped.length > 0 ? (
-              <SeatSection title="Seats" slots={layout.ungrouped} {...seatRowProps} />
-            ) : null}
+            {layout.ungrouped.length > 0 ? <SeatSection title="Seats" slots={layout.ungrouped} {...seatRowProps} /> : null}
           </>
         ) : null}
 
@@ -234,9 +236,7 @@ export default function TableCard({ table, busy, onSit, onLeave, onStart, onLook
             {layout.roles.map(([title, slots]) => (
               <SeatSection key={title} title={title} slots={slots} {...seatRowProps} />
             ))}
-            {layout.noPath.length > 0 ? (
-              <SeatSection title="Seats" slots={layout.noPath} {...seatRowProps} />
-            ) : null}
+            {layout.noPath.length > 0 ? <SeatSection title="Seats" slots={layout.noPath} {...seatRowProps} /> : null}
           </>
         ) : null}
 
@@ -244,12 +244,14 @@ export default function TableCard({ table, busy, onSit, onLeave, onStart, onLook
           isPooledRoleGroup(layout.slots) ? (
             <SeatSection title="Players" slots={layout.slots} {...seatRowProps} />
           ) : (
-            <ul className="table-card__seats table-card__seats--flat">
+            <ul className="flex flex-col gap-2">
               {layout.slots.map((slot) => (
                 <SeatRow
                   key={slot.seatKey}
                   slot={slot}
                   seatLabel={seatLabelInSection(slot, null)}
+                  sectionTitle={null}
+                  groupSlots={layout.slots}
                   {...seatRowProps}
                 />
               ))}
@@ -258,45 +260,70 @@ export default function TableCard({ table, busy, onSit, onLeave, onStart, onLook
         ) : null}
       </div>
 
-      {gapsLine ? <p className="table-card__gaps">{gapsLine}</p> : null}
+      {gapsLine ? <p className="px-4 text-xs text-muted-foreground">{gapsLine}</p> : null}
 
-      <div className="table-card__actions">
+      <div className="flex flex-wrap gap-2 px-4">
         {mySeat ? (
-          <button type="button" className="game-list-button game-list-button-secondary" disabled={busy} onClick={onLeave}>
+          <Button type="button" variant="secondary" disabled={busy} onClick={onLeave}>
             Leave seat
-          </button>
+          </Button>
         ) : null}
         {king && enriched.canStart ? (
-          <button type="button" className="game-list-button" disabled={busy} onClick={onStart}>
+          <Button type="button" disabled={busy} onClick={onStart}>
             {START_GAME}
-          </button>
+          </Button>
         ) : null}
         {king
           ? enriched.lookForGroupOptions
               ?.filter((opt) => opt.visible)
               .map((opt) => (
-                <button
+                <Button
                   key={opt.queueId}
                   type="button"
-                  className="game-list-button"
                   disabled={busy || !opt.enabled || enriched.backfillActive}
                   onClick={() => onLookForGroup?.(opt.queueId)}
                 >
                   {LOOK_FOR_GROUP} ({opt.queueName})
-                </button>
+                </Button>
               ))
           : null}
         {enriched.canDiscard ? (
-          <button
-            type="button"
-            className="game-list-button game-list-button-secondary"
-            disabled={busy}
-            onClick={onDiscard}
-          >
+          <Button type="button" variant="destructive" disabled={busy} onClick={onDiscard}>
             {DISCARD}
-          </button>
+          </Button>
         ) : null}
       </div>
-    </article>
+
+      <Sheet
+        open={Boolean(pickerSlot)}
+        onOpenChange={(next) => {
+          if (!next) {
+            setPickerSlot(null)
+          }
+        }}
+      >
+        <SheetContent side="bottom">
+          <SheetHeader>
+            <SheetTitle>{pickerSlot?.sectionTitle || 'Choose your seat'}</SheetTitle>
+          </SheetHeader>
+          <div className="flex flex-wrap gap-4 px-4">
+            {(pickerSlot?.groupSlots ?? [])
+              .filter((slot) => slot.user)
+              .map((slot) => (
+                <div key={slot.seatKey} className="flex flex-col items-center gap-1 text-xs text-muted-foreground">
+                  <PlayerAvatar user={slot.user} size="md" />
+                  <span>{displayName(slot.user)}</span>
+                </div>
+              ))}
+          </div>
+          {/* Role/seat description text lands here once JQ-42 adds it — intentionally empty so that ticket doesn't need a second visual pass. */}
+          <SheetFooter>
+            <Button type="button" disabled={busy} onClick={confirmSit}>
+              Confirm seat
+            </Button>
+          </SheetFooter>
+        </SheetContent>
+      </Sheet>
+    </Card>
   )
 }
