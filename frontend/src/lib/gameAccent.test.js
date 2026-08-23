@@ -24,11 +24,12 @@ describe('accentColorFor', () => {
     expect(distinctNames.size).toBeGreaterThanOrEqual(5)
   })
 
-  it('produces a badge gradient, card background, and border for every result', () => {
+  it('produces a badge gradient, card background, border, and header background for every result', () => {
     const result = accentColorFor('any-slug')
     expect(result.badge).toMatch(/^linear-gradient\(135deg, #[0-9a-f]{6}, #[0-9a-f]{6}\)$/)
     expect(result.cardBg).toMatch(/^linear-gradient\(160deg, color-mix\(/)
     expect(result.border).toMatch(/^#[0-9a-f]{6}40$/)
+    expect(result.headerBg).toMatch(/^linear-gradient\(135deg, color-mix\(in oklab, .+ var\(--background\)\), color-mix\(in oklab, .+ var\(--background\)\)\)$/)
   })
 
   it('ignores the overrideColor param (reserved for a future ticket)', () => {
@@ -51,11 +52,22 @@ describe('listAccentColors', () => {
     ])
   })
 
-  it('gives every entry a badge, cardBg, and border', () => {
+  it('gives every entry a badge, cardBg, border, and headerBg', () => {
     listAccentColors().forEach((entry) => {
       expect(entry.badge).toMatch(/^linear-gradient\(135deg, /)
       expect(entry.cardBg).toMatch(/^linear-gradient\(160deg, /)
       expect(entry.border).toMatch(/40$/)
+      expect(entry.headerBg).toContain('color-mix')
+      expect(entry.headerBg).toContain('var(--background)')
+    })
+  })
+
+  it('blends headerBg toward --background so a single light foreground stays readable', () => {
+    listAccentColors().forEach((entry) => {
+      // Both gradient stops must be mixed toward --background (not the raw
+      // vivid accent) so text-foreground has strong contrast at any position.
+      expect(entry.headerBg).toMatch(/color-mix\(in oklab, #[0-9a-f]{6} 35%, var\(--background\)\)/)
+      expect(entry.headerBg).toMatch(/color-mix\(in oklab, #[0-9a-f]{6} 45%, var\(--background\)\)/)
     })
   })
 })

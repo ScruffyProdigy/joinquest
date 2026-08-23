@@ -238,8 +238,8 @@ export default function RoomPanel({ compact = false }) {
     <div className={cn('flex h-full flex-col', compact && 'text-sm')}>
       <div className="flex-1 overflow-y-auto">
         <header
-          className="flex items-start justify-between gap-3 rounded-b-2xl px-6 py-8"
-          style={{ background: accent.badge, color: accent.foreground }}
+          className="flex items-start justify-between gap-3 rounded-b-2xl px-6 py-8 text-foreground"
+          style={{ background: accent.headerBg }}
         >
           <div>
             <h2 className="font-heading text-2xl font-bold">Room {room.inviteCode}</h2>
