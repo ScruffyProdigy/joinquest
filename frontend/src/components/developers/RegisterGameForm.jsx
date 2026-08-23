@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { Button } from '../ui/button'
 import { useAuth } from '../auth/AuthProvider'
 import {
   developerWelcomePath,
@@ -166,9 +167,9 @@ export default function RegisterGameForm() {
         </p>
       ) : null}
 
-      <button type="submit" className="button-primary" disabled={status === 'loading'}>
+      <Button type="submit" variant="default" disabled={status === 'loading'}>
         {status === 'loading' ? 'Registering…' : 'Register game'}
-      </button>
+      </Button>
     </form>
   )
 }

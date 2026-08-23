@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
+import { Button } from '../ui/button'
 import { APP_NAME } from '../../lib/brand'
 import {
   canRequestPublicRelease,
@@ -51,12 +52,12 @@ function CredentialField({ label, value }) {
       <span className="developer-credential__label">{label}</span>
       <code className="developer-credential__value">{revealed ? value : '••••••••••••••••'}</code>
       <div className="developer-credential__actions">
-        <button type="button" className="button-secondary" onClick={() => setRevealed((v) => !v)}>
+        <Button type="button" variant="secondary" onClick={() => setRevealed((v) => !v)}>
           {revealed ? 'Hide' : 'Reveal'}
-        </button>
-        <button type="button" className="button-secondary" onClick={() => void handleCopy()}>
+        </Button>
+        <Button type="button" variant="secondary" onClick={() => void handleCopy()}>
           Copy
-        </button>
+        </Button>
       </div>
     </div>
   )
@@ -335,9 +336,9 @@ export default function DeveloperDashboard({ gameId }) {
                 required
               />
             </div>
-            <button type="submit" className="button-secondary" disabled={connectBusy}>
+            <Button type="submit" variant="secondary" disabled={connectBusy}>
               {connectBusy ? 'Connecting…' : 'Connect API'}
-            </button>
+            </Button>
           </form>
         ) : (
           <p className="panel-copy">

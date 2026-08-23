@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { Button } from '../ui/button'
 import {
   fetchCatalogTagTaxonomy,
   updateMyGameMetadata,
@@ -169,9 +170,9 @@ export default function DeveloperCatalogMetadata({ game, onSaved }) {
             </ul>
           </fieldset>
         ) : null}
-        <button type="submit" className="button-secondary" disabled={status === 'saving'}>
+        <Button type="submit" variant="secondary" disabled={status === 'saving'}>
           {status === 'saving' ? 'Saving…' : 'Save listing'}
-        </button>
+        </Button>
         {error ? (
           <p className="status-message status-message-error" role="alert">
             {error}

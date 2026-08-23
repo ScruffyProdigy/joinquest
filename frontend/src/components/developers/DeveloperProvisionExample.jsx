@@ -1,4 +1,5 @@
 import { useMemo } from 'react'
+import { Button } from '../ui/button'
 import { getGraphQLUrl } from '../../lib/env'
 import {
   buildExampleProvisionPayload,
@@ -50,12 +51,12 @@ export default function DeveloperProvisionExample({ game, credentials }) {
       </p>
       <pre className="developer-provision__body">{payloadText}</pre>
       <div className="developer-actions__row">
-        <button type="button" className="button-secondary" onClick={() => void handleCopy(payloadText)}>
+        <Button type="button" variant="secondary" onClick={() => void handleCopy(payloadText)}>
           Copy JSON
-        </button>
-        <button type="button" className="button-secondary" onClick={() => void handleCopy(example.curl)}>
+        </Button>
+        <Button type="button" variant="secondary" onClick={() => void handleCopy(example.curl)}>
           Copy curl
-        </button>
+        </Button>
       </div>
     </section>
   )
