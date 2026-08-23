@@ -441,48 +441,6 @@
   gap: 0.75rem;
 }
 
-.game-list-item {
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  border-radius: 12px;
-  padding: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 0;
-  overflow: hidden;
-}
-
-.game-list-item__hero-wrap {
-  /* Catalog hero slot: 5:2 (2.5:1) — see docs/game-catalog-architecture.md */
-  aspect-ratio: 5 / 2;
-  background: rgba(0, 0, 0, 0.25);
-  overflow: hidden;
-}
-
-.game-list-item__hero {
-  display: block;
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-}
-
-.game-list-item__hero-link {
-  display: block;
-  width: 100%;
-  height: 100%;
-  color: inherit;
-  text-decoration: none;
-}
-
-.game-list-item__title-link {
-  color: inherit;
-  text-decoration: none;
-}
-
-.game-list-item__title-link:hover,
-.game-list-item__hero-link:hover {
-  text-decoration: underline;
-}
-
 .game-share {
   display: flex;
   flex-direction: column;
@@ -563,20 +521,6 @@
 .game-modes-panel__title {
   margin: 0 0 0.65rem;
   font-size: 1.1rem;
-}
-
-.game-list-item__body {
-  padding: 1rem 1rem 1.1rem;
-  display: flex;
-  flex-direction: column;
-  gap: 0.55rem;
-}
-
-.game-list-item__description {
-  margin: 0;
-  color: #bbb;
-  font-size: 0.92rem;
-  line-height: 1.45;
 }
 
 .game-list-item__tags {
@@ -661,11 +605,6 @@
 
 .game-list-button-secondary {
   background: transparent;
-}
-
-.game-list-item h3 {
-  margin: 0 0 0.35rem;
-  font-size: 1.1rem;
 }
 
 .game-list-meta {
@@ -896,19 +835,6 @@
     color: #5558aa;
   }
 
-  .game-list-item {
-    border-color: rgba(0, 0, 0, 0.08);
-  }
-}
-
-.game-list-item--hero .game-mode-list,
-.game-list-item--modes .game-mode-list {
-  list-style: none;
-  margin: 0.35rem 0 0;
-  padding: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 0.75rem;
 }
 
 .game-mode-row {
