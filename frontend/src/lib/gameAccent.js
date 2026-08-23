@@ -26,6 +26,22 @@ function toAccent(entry) {
   }
 }
 
+/** Accept `#rgb` or `#rrggbb` in any case; return a normalized `#rrggbb`, or null if unusable. */
+function parseHex(value) {
+  const raw = String(value ?? '').trim().toLowerCase()
+  const short = /^#([0-9a-f])([0-9a-f])([0-9a-f])$/.exec(raw)
+  if (short) {
+    return `#${short[1]}${short[1]}${short[2]}${short[2]}${short[3]}${short[3]}`
+  }
+  return /^#[0-9a-f]{6}$/.test(raw) ? raw : null
+}
+
+/** Darken toward black by roughly the gap between the palette's 500 and 700 stops. */
+function darken(hex) {
+  const channels = [1, 3, 5].map((i) => Math.round(parseInt(hex.slice(i, i + 2), 16) * 0.65))
+  return `#${channels.map((c) => c.toString(16).padStart(2, '0')).join('')}`
+}
+
 /** @param {string} slug @returns {number} */
 function hashSlug(slug) {
   const s = String(slug ?? '')
@@ -37,18 +53,21 @@ function hashSlug(slug) {
 }
 
 /**
- * Deterministic per-game accent, hashed from the game's slug.
+ * Per-game accent. Uses `overrideColor` when it parses as a hex color, otherwise
+ * falls back to a palette entry deterministically hashed from the game's slug.
  *
- * `overrideColor` is reserved for a future explicit per-game override (a
- * planned `games.accent_color` field, tracked as a follow-up ticket) and
- * has no effect yet — accepted now so this function's signature won't need
- * to change when that ticket lands.
+ * The override is re-validated here rather than trusted, so bad stored data
+ * degrades to the hashed accent instead of blanking out a card.
  *
  * @param {string} slug
- * @param {string | null} [_overrideColor]
+ * @param {string | null} [overrideColor]
  * @returns {{name: string, badge: string, cardBg: string, border: string, headerBg: string, heroScrim: string}}
  */
-export function accentColorFor(slug, _overrideColor = null) {
+export function accentColorFor(slug, overrideColor = null) {
+  const override = parseHex(overrideColor)
+  if (override) {
+    return toAccent({ name: 'custom', accent500: override, accent700: darken(override) })
+  }
   const entry = ACCENT_PALETTE[hashSlug(slug) % ACCENT_PALETTE.length]
   return toAccent(entry)
 }
