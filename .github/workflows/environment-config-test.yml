@@ -142,6 +142,30 @@ jobs:
           cat /usr/share/nginx/html/env.js
         ' | grep -q "production"
 
+    - name: env.js must not be cached as immutable/long-lived (JQ-54)
+      run: |
+        # nginx regex locations always win over prefix locations, so a plain
+        # "location /env.js" silently inherits the *.js hashed-asset immutable/1y
+        # caching rule. Guard against that regressing.
+        CID=$(docker run -d -p 8099:80 playhub-frontend:test)
+        trap 'docker rm -f "$CID" >/dev/null' EXIT
+
+        for i in $(seq 1 30); do
+          curl -sf http://localhost:8099/health >/dev/null && break
+          [ "$i" -eq 30 ] && { echo "container did not become healthy"; exit 1; }
+          sleep 1
+        done
+
+        echo "--- /env.js headers ---"
+        curl -sS -D - -o /dev/null http://localhost:8099/env.js | tee /tmp/env-headers.txt
+        grep -qi '^cache-control:.*no-store' /tmp/env-headers.txt || { echo "env.js must send Cache-Control: no-store"; exit 1; }
+        grep -qi '^cache-control:.*immutable' /tmp/env-headers.txt && { echo "env.js must not be immutable"; exit 1; } || true
+
+        ASSET_NAME=$(docker exec "$CID" sh -c "ls /usr/share/nginx/html/assets/*.js | head -1 | xargs -n1 basename")
+        echo "--- /assets/$ASSET_NAME headers (control: should still be immutable) ---"
+        curl -sS -D - -o /dev/null "http://localhost:8099/assets/$ASSET_NAME" | tee /tmp/asset-headers.txt
+        grep -qi '^cache-control:.*immutable' /tmp/asset-headers.txt || { echo "hashed bundle assets should still be immutable"; exit 1; }
+
   test-kubernetes-configmaps:
     runs-on: ubuntu-latest
     
