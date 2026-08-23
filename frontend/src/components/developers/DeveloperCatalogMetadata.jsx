@@ -14,6 +14,7 @@ export default function DeveloperCatalogMetadata({ game, onSaved }) {
   const [websiteUrl, setWebsiteUrl] = useState(game?.websiteUrl ?? '')
   const [communityUrl, setCommunityUrl] = useState(game?.communityUrl ?? '')
   const [selectedTags, setSelectedTags] = useState(game?.tags ?? [])
+  const [accentColor, setAccentColor] = useState(game?.accentColor ?? '')
   const [taxonomy, setTaxonomy] = useState([])
   const [status, setStatus] = useState('idle')
   const [error, setError] = useState('')
@@ -27,6 +28,7 @@ export default function DeveloperCatalogMetadata({ game, onSaved }) {
     setWebsiteUrl(game?.websiteUrl ?? '')
     setCommunityUrl(game?.communityUrl ?? '')
     setSelectedTags(game?.tags ?? [])
+    setAccentColor(game?.accentColor ?? '')
   }, [game])
 
   useEffect(() => {
@@ -65,6 +67,7 @@ export default function DeveloperCatalogMetadata({ game, onSaved }) {
         websiteUrl: websiteUrl.trim(),
         communityUrl: communityUrl.trim(),
         tags: selectedTags,
+        accentColor: accentColor.trim(),
       })
       onSaved?.(updated)
       setStatus('idle')
@@ -150,6 +153,30 @@ export default function DeveloperCatalogMetadata({ game, onSaved }) {
             onChange={(event) => setCommunityUrl(event.target.value)}
             placeholder="https://discord.gg/…"
           />
+        </div>
+        <div className="developer-form__field">
+          <label htmlFor="dev-accent-color">Catalog accent color (optional)</label>
+          <div className="flex items-center gap-2">
+            <input
+              id="dev-accent-color"
+              type="color"
+              value={/^#[0-9a-fA-F]{6}$/.test(accentColor) ? accentColor : '#6366f1'}
+              onChange={(event) => setAccentColor(event.target.value)}
+            />
+            <input
+              type="text"
+              aria-label="Accent color hex value"
+              value={accentColor}
+              onChange={(event) => setAccentColor(event.target.value)}
+              placeholder="#7c3aed"
+            />
+            <Button type="button" variant="ghost" onClick={() => setAccentColor('')}>
+              Use default
+            </Button>
+          </div>
+          <p className="panel-copy">
+            Tints your catalog card and game page. Leave blank to use a color picked from your slug.
+          </p>
         </div>
         {taxonomy.length > 0 ? (
           <fieldset className="developer-form__field developer-tag-picker">
