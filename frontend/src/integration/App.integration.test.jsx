@@ -1,7 +1,7 @@
 import { render, screen, waitFor } from '@testing-library/react'
 import { describe, it, expect, beforeEach } from 'vitest'
 import App from '../App'
-import { SIGN_IN_HEADING } from '../lib/playerCopy'
+import { IDENTITY_GATE_HEADING } from '../lib/playerCopy'
 import { mockAuthenticatedSession, mockUnauthenticatedSession } from '../test/setup'
 
 describe('App Integration Tests', () => {
@@ -10,7 +10,7 @@ describe('App Integration Tests', () => {
   })
 
   describe('User Journey: Content Discovery', () => {
-    it('presents branding and sign-in when logged out', async () => {
+    it('asks a logged-out visitor for a name and avatar before anything else', async () => {
       mockUnauthenticatedSession()
       render(<App />)
 
@@ -18,7 +18,7 @@ describe('App Integration Tests', () => {
       expect(screen.getByText('Find your group. Play together.')).toBeInTheDocument()
 
       await waitFor(() => {
-        expect(screen.getByRole('heading', { name: SIGN_IN_HEADING })).toBeInTheDocument()
+        expect(screen.getByRole('heading', { name: IDENTITY_GATE_HEADING })).toBeInTheDocument()
       })
     })
 

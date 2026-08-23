@@ -11,6 +11,16 @@ export const ACCOUNT_LINK_LABEL = 'Account settings'
 export const GUEST_BADGE = 'Guest'
 export const GUEST_SPIRIT_ANIMAL_HINT =
   'Nice find. Link an email in Account settings if you want this avatar on your next visit.'
+/** First-entry avatar picker. Copy stays account-wide — it is not per-game. */
+export const IDENTITY_GATE_HEADING = 'Welcome to JoinQuest'
+export const IDENTITY_GATE_TAGLINE = 'Find and play your next game'
+export const IDENTITY_GATE_PROMPT = 'Select an avatar to start playing'
+export const IDENTITY_GATE_SCOPE_HINT =
+  'This is your name and avatar across all of JoinQuest, not just one game.'
+export const IDENTITY_GATE_DIVIDER = 'or'
+export const IDENTITY_GATE_SIGN_IN = 'Log in or create account'
+export const IDENTITY_GATE_ERROR = 'Could not start your session. Pick an avatar to try again.'
+
 export const GUEST_ACCOUNT_PROMPT =
   'You’re playing as a guest. Add an email in Account settings to keep your progress across visits.'
 

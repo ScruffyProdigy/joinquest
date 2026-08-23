@@ -4047,6 +4047,7 @@ type PublicPlayer {
 
 enum AvatarSource {
   STARTER
+  SIGIL
   SPIRIT_ANIMAL
   NONE
 }

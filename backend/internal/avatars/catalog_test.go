@@ -55,3 +55,30 @@ func TestAbsolutizePublicAssetURL(t *testing.T) {
 }
 
 func ptr(s string) *string { return &s }
+
+func TestSigilCatalogKeysResolve(t *testing.T) {
+	if len(SigilCatalog) != 6 {
+		t.Fatalf("expected 6 guest sigils, got %d", len(SigilCatalog))
+	}
+	for _, entry := range SigilCatalog {
+		found, ok := SigilByKey(entry.Key)
+		if !ok {
+			t.Fatalf("SigilByKey(%q) not found", entry.Key)
+		}
+		if found.File != entry.File {
+			t.Fatalf("SigilByKey(%q) file = %q, want %q", entry.Key, found.File, entry.File)
+		}
+		if _, clash := StarterByKey(entry.Key); clash {
+			t.Fatalf("sigil key %q collides with a starter avatar key", entry.Key)
+		}
+	}
+}
+
+func TestSigilByKeyRejectsUnknown(t *testing.T) {
+	if _, ok := SigilByKey("compass"); ok {
+		t.Fatal("starter key should not resolve as a sigil")
+	}
+	if _, ok := SigilByKey(""); ok {
+		t.Fatal("empty key should not resolve")
+	}
+}

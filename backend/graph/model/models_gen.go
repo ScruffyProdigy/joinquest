@@ -567,19 +567,21 @@ type AvatarSource string
 
 const (
 	AvatarSourceStarter      AvatarSource = "STARTER"
+	AvatarSourceSigil        AvatarSource = "SIGIL"
 	AvatarSourceSpiritAnimal AvatarSource = "SPIRIT_ANIMAL"
 	AvatarSourceNone         AvatarSource = "NONE"
 )
 
 var AllAvatarSource = []AvatarSource{
 	AvatarSourceStarter,
+	AvatarSourceSigil,
 	AvatarSourceSpiritAnimal,
 	AvatarSourceNone,
 }
 
 func (e AvatarSource) IsValid() bool {
 	switch e {
-	case AvatarSourceStarter, AvatarSourceSpiritAnimal, AvatarSourceNone:
+	case AvatarSourceStarter, AvatarSourceSigil, AvatarSourceSpiritAnimal, AvatarSourceNone:
 		return true
 	}
 	return false

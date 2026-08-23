@@ -205,3 +205,67 @@ func TestMyRoomIncludesMemberAvatars(t *testing.T) {
 		t.Fatal("expected member avatarUrl")
 	}
 }
+
+// A guest coming through the first-entry avatar picker saves a generated name and
+// one of the guest-tier sigils in a single call.
+func TestUpdatePlayerProfileAcceptsGuestSigil(t *testing.T) {
+	env := newQueueIntegrationEnv(t)
+	cleaner := env.newCleaner(t)
+	ctx := context.Background()
+
+	t.Setenv("LOBBY_PUBLIC_URL", "https://joinquest.test")
+
+	guest, err := env.Store.CreateGuestUser(ctx)
+	if err != nil {
+		t.Fatalf("CreateGuestUser: %v", err)
+	}
+	cleaner.TrackUser(guest.ID)
+	_, cookie := createTestUserSessionForUser(t, env, guest.ID)
+
+	query := `mutation Profile($displayName: String!, $avatarKey: ID!) {
+		updatePlayerProfile(displayName: $displayName, avatarKey: $avatarKey) {
+			displayName
+			avatarKey
+			avatarUrl
+			avatarSource
+		}
+	}`
+	body := postGraphQL(t, env.Handler, query, map[string]any{
+		"displayName": "FrostFox4827",
+		"avatarKey":   "sigil-canine",
+	}, cookie)
+
+	var resp struct {
+		Data struct {
+			UpdatePlayerProfile struct {
+				DisplayName  *string `json:"displayName"`
+				AvatarKey    *string `json:"avatarKey"`
+				AvatarURL    *string `json:"avatarUrl"`
+				AvatarSource *string `json:"avatarSource"`
+			} `json:"updatePlayerProfile"`
+		} `json:"data"`
+		Errors []struct {
+			Message string `json:"message"`
+		} `json:"errors"`
+	}
+	if err := json.Unmarshal(body, &resp); err != nil {
+		t.Fatalf("decode profile: %v body=%s", err, body)
+	}
+	if len(resp.Errors) > 0 {
+		t.Fatalf("unexpected errors: %+v", resp.Errors)
+	}
+
+	profile := resp.Data.UpdatePlayerProfile
+	if profile.DisplayName == nil || *profile.DisplayName != "FrostFox4827" {
+		t.Fatalf("displayName: %+v", profile.DisplayName)
+	}
+	if profile.AvatarKey == nil || *profile.AvatarKey != "sigil-canine" {
+		t.Fatalf("avatarKey: %+v", profile.AvatarKey)
+	}
+	if profile.AvatarURL == nil || *profile.AvatarURL != "https://joinquest.test/avatars/sigil-canine.svg" {
+		t.Fatalf("avatarUrl: %+v", profile.AvatarURL)
+	}
+	if profile.AvatarSource == nil || *profile.AvatarSource != "SIGIL" {
+		t.Fatalf("avatarSource: %+v", profile.AvatarSource)
+	}
+}
