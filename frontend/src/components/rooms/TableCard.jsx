@@ -188,6 +188,8 @@ export default function TableCard({ table, busy, onSit, onLeave, onStart, onLook
     onRequestSit: handleRequestSit,
   }
 
+  const pickerSlotOccupants = (pickerSlot?.groupSlots ?? []).filter((slot) => slot.user)
+
   return (
     <Card className="gap-4 overflow-hidden border py-4" style={{ background: accent.cardBg, borderColor: accent.border }}>
       <header className="flex gap-3 px-4">
@@ -304,17 +306,22 @@ export default function TableCard({ table, busy, onSit, onLeave, onStart, onLook
       >
         <SheetContent side="bottom">
           <SheetHeader>
-            <SheetTitle>{pickerSlot?.sectionTitle || 'Choose your seat'}</SheetTitle>
+            <SheetTitle>Choose your seat</SheetTitle>
+            {pickerSlot?.sectionTitle ? (
+              <p className="text-sm text-muted-foreground">{pickerSlot.sectionTitle}</p>
+            ) : null}
           </SheetHeader>
           <div className="flex flex-wrap gap-4 px-4">
-            {(pickerSlot?.groupSlots ?? [])
-              .filter((slot) => slot.user)
-              .map((slot) => (
+            {pickerSlotOccupants.length > 0 ? (
+              pickerSlotOccupants.map((slot) => (
                 <div key={slot.seatKey} className="flex flex-col items-center gap-1 text-xs text-muted-foreground">
                   <PlayerAvatar user={slot.user} size="md" />
                   <span>{displayName(slot.user)}</span>
                 </div>
-              ))}
+              ))
+            ) : (
+              <span className="text-xs text-muted-foreground">No one else here yet</span>
+            )}
           </div>
           {/* Role/seat description text lands here once JQ-42 adds it — intentionally empty so that ticket doesn't need a second visual pass. */}
           <SheetFooter>

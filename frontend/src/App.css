@@ -43,8 +43,7 @@
   top: 1rem;
   max-height: calc(100vh - 2rem);
   overflow: auto;
-  padding: 0;
-  background: #242424;
+  background: var(--background);
 }
 
 .app-shell--catalog {

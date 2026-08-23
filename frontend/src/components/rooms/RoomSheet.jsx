@@ -10,7 +10,7 @@ export default function RoomSheet({ open, onDismiss, children }) {
         }
       }}
     >
-      <SheetContent side="bottom" className="h-[90vh] gap-0 p-0" aria-label="Room chat">
+      <SheetContent side="bottom" className="gap-0 p-0" aria-label="Room chat">
         <SheetTitle className="sr-only">Room chat</SheetTitle>
         <div className="flex h-full flex-col overflow-hidden">{children}</div>
       </SheetContent>

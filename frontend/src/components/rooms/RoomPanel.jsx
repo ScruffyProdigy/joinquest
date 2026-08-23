@@ -238,8 +238,8 @@ export default function RoomPanel({ compact = false }) {
     <div className={cn('flex h-full flex-col', compact && 'text-sm')}>
       <div className="flex-1 overflow-y-auto">
         <header
-          className="flex items-start justify-between gap-3 rounded-b-2xl px-6 py-8 text-primary-foreground"
-          style={{ background: accent.badge }}
+          className="flex items-start justify-between gap-3 rounded-b-2xl px-6 py-8"
+          style={{ background: accent.badge, color: accent.foreground }}
         >
           <div>
             <h2 className="font-heading text-2xl font-bold">Room {room.inviteCode}</h2>
@@ -252,38 +252,22 @@ export default function RoomPanel({ compact = false }) {
         <div className="flex flex-col gap-4 p-4">
           {error ? <p className="status-message status-message-error">{error}</p> : null}
 
-          {compact ? (
-            <details className="rounded-xl border border-border bg-card">
-              <summary className="cursor-pointer list-none px-4 py-3 text-sm font-semibold text-foreground">
-                Members ({memberCount})
-              </summary>
-              <div className="px-4 pb-4">{membersList}</div>
-            </details>
-          ) : (
-            <Card>
-              <CardContent className="flex flex-col gap-3 px-4">
-                <h3 className="text-sm font-semibold text-foreground">Members</h3>
-                {membersList}
-              </CardContent>
-            </Card>
-          )}
+          <details className="rounded-xl border border-border bg-card">
+            <summary className="cursor-pointer px-4 py-3 text-sm font-semibold text-foreground">
+              Members ({memberCount})
+            </summary>
+            <div className="px-4 pb-4">{membersList}</div>
+          </details>
 
           <RoomShareToolbar joinUrl={room.joinUrl} inviteCode={room.inviteCode} />
 
           {tables.length > 0 ? (
-            compact ? (
-              <details className="rounded-xl border border-border bg-card" open>
-                <summary className="cursor-pointer list-none px-4 py-3 text-sm font-semibold text-foreground">
-                  Tables ({tables.length})
-                </summary>
-                <div className="flex flex-col gap-4 px-4 pb-4">{tablesList}</div>
-              </details>
-            ) : (
-              <section className="flex flex-col gap-3">
-                <h3 className="text-sm font-semibold text-foreground">Tables ({tables.length})</h3>
-                {tablesList}
-              </section>
-            )
+            <details className="rounded-xl border border-border bg-card" open>
+              <summary className="cursor-pointer px-4 py-3 text-sm font-semibold text-foreground">
+                Tables ({tables.length})
+              </summary>
+              <div className="flex flex-col gap-4 px-4 pb-4">{tablesList}</div>
+            </details>
           ) : null}
 
           <Card className="flex flex-1 flex-col gap-3 py-4">
@@ -325,7 +309,7 @@ export default function RoomPanel({ compact = false }) {
                 <input
                   id="room-message"
                   type="text"
-                  className="h-9 flex-1 rounded-md border border-input bg-input-background px-3 text-sm text-foreground outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50"
+                  className="h-9 flex-1 rounded-md border border-border bg-input-background px-3 text-sm text-foreground outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50"
                   value={draft}
                   onChange={(event) => setDraft(event.target.value)}
                   maxLength={2000}

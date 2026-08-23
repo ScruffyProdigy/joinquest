@@ -304,7 +304,8 @@ describe('TableCard', () => {
 
     await user.click(screen.getByRole('button', { name: 'Sit' }))
     const sheet = within(await screen.findByRole('dialog'))
-    expect(sheet.getByRole('heading', { name: 'Players', level: 2 })).toBeInTheDocument()
+    expect(sheet.getByRole('heading', { name: 'Choose your seat', level: 2 })).toBeInTheDocument()
+    expect(sheet.getByText('Players')).toBeInTheDocument()
     expect(sheet.getByText('Sam')).toBeInTheDocument()
 
     await user.click(screen.getByRole('button', { name: 'Confirm seat' }))

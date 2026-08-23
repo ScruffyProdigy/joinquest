@@ -101,7 +101,7 @@ export default function RoomShareToolbar({ joinUrl, inviteCode }) {
       </CardContent>
 
       <Dialog open={qrOpen} onOpenChange={setQrOpen}>
-        <DialogContent aria-label="Room QR code">
+        <DialogContent>
           <DialogTitle>Scan to join</DialogTitle>
           <DialogDescription>Friends can open this link to join your room.</DialogDescription>
           {qrDataUrl ? (
