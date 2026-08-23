@@ -18,6 +18,7 @@ import {
 import { slotPromptForKey } from '../../lib/spiritAnimalSlots'
 import SpiritAnimalSlotGuide from './SpiritAnimalSlotGuide'
 import { useAuth } from '../auth/AuthProvider'
+import { Button } from '../ui/button'
 
 const QUESTION_PANEL_CLOSE_MS = 700
 const QUESTION_PANEL_PAUSE_MS = 400
@@ -383,13 +384,13 @@ export default function SpiritAnimalFlow({ onComplete, onCancel }) {
             </p>
             <SpiritAnimalSlotGuide compact />
             <div className="profile-editor__actions">
-              <button type="button" className="game-list-button" disabled={busy} onClick={handleBegin}>
+              <Button type="button" variant="default" disabled={busy} onClick={handleBegin}>
                 {busy ? 'Drawing cards…' : 'Begin reading'}
-              </button>
+              </Button>
               {onCancel ? (
-                <button type="button" className="game-list-button game-list-button-secondary" disabled={busy} onClick={onCancel}>
+                <Button type="button" variant="secondary" disabled={busy} onClick={onCancel}>
                   Back
-                </button>
+                </Button>
               ) : null}
             </div>
           </>
@@ -397,9 +398,9 @@ export default function SpiritAnimalFlow({ onComplete, onCancel }) {
         {error ? <p className="status-message status-message-error">{error}</p> : null}
         {journeyBlocked && onCancel ? (
           <div className="profile-editor__actions">
-            <button type="button" className="game-list-button game-list-button-secondary" disabled={busy} onClick={onCancel}>
+            <Button type="button" variant="secondary" disabled={busy} onClick={onCancel}>
               Back
-            </button>
+            </Button>
           </div>
         ) : null}
       </section>
@@ -431,12 +432,12 @@ export default function SpiritAnimalFlow({ onComplete, onCancel }) {
         {error ? <p className="status-message status-message-error">{error}</p> : null}
         {(countdownSeconds != null && countdownSeconds <= 0) || error ? (
           <div className="profile-editor__actions">
-            <button type="button" className="game-list-button" disabled={busy} onClick={handleResume}>
+            <Button type="button" variant="default" disabled={busy} onClick={handleResume}>
               {busy ? 'Checking…' : 'Check again'}
-            </button>
-            <button type="button" className="game-list-button game-list-button-secondary" disabled={busy} onClick={() => handleBegin({ forceRestart: true })}>
+            </Button>
+            <Button type="button" variant="secondary" disabled={busy} onClick={() => handleBegin({ forceRestart: true })}>
               Start over
-            </button>
+            </Button>
           </div>
         ) : null}
       </section>
@@ -449,16 +450,16 @@ export default function SpiritAnimalFlow({ onComplete, onCancel }) {
         <h3>Reading interrupted</h3>
         <p className="status-message status-message-error">{friendlySpiritAnimalError(error || reading?.errorMessage)}</p>
         <div className="profile-editor__actions">
-          <button type="button" className="game-list-button" disabled={busy} onClick={handleResume}>
+          <Button type="button" variant="default" disabled={busy} onClick={handleResume}>
             {busy ? 'Checking…' : 'Check again'}
-          </button>
-          <button type="button" className="game-list-button game-list-button-secondary" disabled={busy} onClick={() => handleBegin({ forceRestart: true })}>
+          </Button>
+          <Button type="button" variant="secondary" disabled={busy} onClick={() => handleBegin({ forceRestart: true })}>
             Start over
-          </button>
+          </Button>
           {onCancel ? (
-            <button type="button" className="game-list-button game-list-button-secondary" disabled={busy} onClick={onCancel}>
+            <Button type="button" variant="secondary" disabled={busy} onClick={onCancel}>
               Back
-            </button>
+            </Button>
           ) : null}
         </div>
       </section>

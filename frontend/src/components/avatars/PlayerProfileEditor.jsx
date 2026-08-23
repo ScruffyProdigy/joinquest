@@ -8,6 +8,7 @@ import {
 } from '../../lib/avatars'
 import { useAuth } from '../auth/AuthProvider'
 import PlayerAvatar from './PlayerAvatar'
+import { Button } from '../ui/button'
 
 export default function PlayerProfileEditor({ user, required = false, onSaved, onCancel, onBeginSpiritAnimal }) {
   const { acceptSessionUser } = useAuth()
@@ -116,23 +117,23 @@ export default function PlayerProfileEditor({ user, required = false, onSaved, o
       </ul>
 
       <div className="profile-editor__actions">
-        <button type="submit" className="game-list-button" disabled={!canSave}>
+        <Button type="submit" variant="default" disabled={!canSave}>
           {busy ? 'Saving…' : 'Save display'}
-        </button>
+        </Button>
         {onBeginSpiritAnimal ? (
-          <button
+          <Button
             type="button"
-            className="game-list-button game-list-button-secondary"
+            variant="secondary"
             disabled={busy}
             onClick={onBeginSpiritAnimal}
           >
             Find my spirit animal
-          </button>
+          </Button>
         ) : null}
         {!required && onCancel ? (
-          <button type="button" className="game-list-button game-list-button-secondary" disabled={busy} onClick={onCancel}>
+          <Button type="button" variant="secondary" disabled={busy} onClick={onCancel}>
             Cancel
-          </button>
+          </Button>
         ) : null}
       </div>
 
