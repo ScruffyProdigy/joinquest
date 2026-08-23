@@ -42,6 +42,10 @@ describe('accentColorFor', () => {
     expect(() => accentColorFor('')).not.toThrow()
   })
 
+  it('does not throw for an undefined slug', () => {
+    expect(() => accentColorFor(undefined)).not.toThrow()
+  })
+
   it('produces a heroScrim gradient tinted toward black for legibility', () => {
     const result = accentColorFor('any-slug')
     expect(result.heroScrim).toMatch(

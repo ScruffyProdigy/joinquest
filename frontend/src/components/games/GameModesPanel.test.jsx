@@ -227,6 +227,6 @@ describe('GameModesPanel prominent mode-card badges', () => {
         variant="prominent"
       />,
     )
-    expect(screen.queryByText(/players?$/)).not.toBeInTheDocument()
+    expect(screen.queryByLabelText('Mode details')).not.toBeInTheDocument()
   })
 })

@@ -28,9 +28,10 @@ function toAccent(entry) {
 
 /** @param {string} slug @returns {number} */
 function hashSlug(slug) {
+  const s = String(slug ?? '')
   let hash = 0
-  for (let i = 0; i < slug.length; i++) {
-    hash = (hash * 31 + slug.charCodeAt(i)) | 0
+  for (let i = 0; i < s.length; i++) {
+    hash = (hash * 31 + s.charCodeAt(i)) | 0
   }
   return Math.abs(hash)
 }

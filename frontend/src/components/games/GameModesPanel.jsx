@@ -118,7 +118,7 @@ function ModeRow({
   return (
     <li
       id={`game-mode-row-${game.id}-${mode.modeKey}`}
-      className={`game-mode-row${prominent ? ' game-mode-row--prominent rounded-2xl overflow-hidden border p-4 transition-all duration-150 hover:-translate-y-0.5 hover:shadow-lg hover:ring-1 hover:ring-white/15' : ''}`}
+      className={`game-mode-row${prominent ? ' game-mode-row--prominent rounded-2xl overflow-hidden border-[1.5px] p-4 transition-[transform,box-shadow] duration-150 motion-reduce:transition-none hover:-translate-y-0.5 hover:shadow-lg hover:ring-1 hover:ring-white/15' : ''}`}
       style={prominent ? { background: accent.cardBg, borderColor: accent.border } : undefined}
     >
       <div className="game-mode-row__copy">
@@ -126,7 +126,7 @@ function ModeRow({
         {prominent && playerRangeLabel ? (
           <ul className="mb-1 flex flex-wrap gap-1" aria-label="Mode details">
             <li
-              className="rounded-full px-2 py-1 text-[11px] font-semibold backdrop-blur-md"
+              className="rounded-full px-2 py-1 text-[11px] font-semibold backdrop-blur-[6px]"
               style={{ backgroundColor: 'rgba(0,0,0,0.42)', color: 'rgba(255,255,255,0.92)' }}
             >
               {playerRangeLabel}
