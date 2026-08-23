@@ -230,3 +230,4 @@ curl http://localhost:8080/env.js
 1. **env.js not found**: Check if the Docker entrypoint script is running
 2. **Wrong API URL**: Verify the ConfigMap values match your environment
 3. **CORS errors**: Ensure the API URL is accessible from the frontend domain
+4. **Deployed a new ConfigMap value but production still serves the old one**: `env.js` must be served with `Cache-Control: no-store` (`frontend/nginx.conf`, `location = /env.js`) — otherwise Cloudflare and browsers cache it for up to a year like a hashed bundle asset. See [lobby-maintenance.md](lobby-maintenance.md#envjs-caching-jq-54).
