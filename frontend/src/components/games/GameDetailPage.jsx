@@ -60,7 +60,7 @@ function GameDetailPlaySection({
 
   return (
     <section className="game-detail__play game-detail__sign-in">
-      <h2 className="game-detail__section-title">Ready to play?</h2>
+      <h2 className="font-heading text-lg font-semibold">Ready to play?</h2>
       <p className="panel-copy">Sign in to look for a group or create a private table.</p>
       <SignInPanel />
     </section>
@@ -172,7 +172,7 @@ export default function GameDetailPage({
               {tags.map((tag) => (
                 <li
                   key={tag}
-                  className="rounded-full px-2 py-1 text-[11px] font-semibold backdrop-blur-md"
+                  className="rounded-full px-2 py-1 text-[11px] font-semibold backdrop-blur-[6px]"
                   style={{ backgroundColor: 'rgba(0,0,0,0.42)', color: 'rgba(255,255,255,0.92)' }}
                 >
                   {tag}

@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { gamePageShareUrl } from '../../lib/gameCard'
 import { IconShare } from '../icons/ShareIcons'
+import { Button } from '../ui/button'
 
 export default function GameShareButton({ game, className = '' }) {
   const [status, setStatus] = useState('')
@@ -38,10 +39,10 @@ export default function GameShareButton({ game, className = '' }) {
 
   return (
     <div className={`game-share ${className}`.trim()}>
-      <button type="button" className="game-detail__toolbar-btn" onClick={handleShare}>
+      <Button type="button" variant="ghost" size="sm" onClick={handleShare}>
         <IconShare />
         Share
-      </button>
+      </Button>
       {status ? (
         <p className="game-share__status" role="status">
           {status}

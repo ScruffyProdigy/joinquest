@@ -483,25 +483,6 @@
   text-decoration: underline;
 }
 
-.game-detail__toolbar-btn {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.4rem;
-  border: 1px solid rgba(255, 255, 255, 0.18);
-  border-radius: 999px;
-  padding: 0.45rem 0.9rem;
-  background: rgba(255, 255, 255, 0.06);
-  color: inherit;
-  cursor: pointer;
-  font: inherit;
-  font-size: 0.92rem;
-  text-decoration: none;
-}
-
-.game-detail__toolbar-btn:hover {
-  background: rgba(255, 255, 255, 0.12);
-}
-
 .game-share {
   display: flex;
   flex-direction: column;
@@ -540,13 +521,6 @@
 
 .game-modes-panel--prominent .game-mode-list {
   gap: 1rem;
-}
-
-.game-mode-row--prominent {
-  padding: 0;
-  border: none;
-  border-radius: 0;
-  background: none;
 }
 
 .game-mode-row--prominent .game-mode-row__title {
