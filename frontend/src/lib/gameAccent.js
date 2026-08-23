@@ -21,9 +21,27 @@ function toAccent(entry) {
     // Blended well toward --background so both gradient stops stay dark
     // regardless of hue, letting a single fixed light foreground color
     // (text-foreground) always have strong contrast, at any text position.
+    // That guarantee holds for the palette above; a developer-supplied
+    // override (e.g. a near-white hex) can still come out lighter.
     headerBg: `linear-gradient(135deg, color-mix(in oklab, ${entry.accent500} 35%, var(--background)), color-mix(in oklab, ${entry.accent700} 45%, var(--background)))`,
     heroScrim: `linear-gradient(180deg, transparent 0%, color-mix(in oklab, ${entry.accent700} 55%, black) 55%, color-mix(in oklab, ${entry.accent700} 80%, black) 100%)`,
   }
+}
+
+/** Accept `#rgb` or `#rrggbb` in any case; return a normalized `#rrggbb`, or null if unusable. */
+export function parseHex(value) {
+  const raw = String(value ?? '').trim().toLowerCase()
+  const short = /^#([0-9a-f])([0-9a-f])([0-9a-f])$/.exec(raw)
+  if (short) {
+    return `#${short[1]}${short[1]}${short[2]}${short[2]}${short[3]}${short[3]}`
+  }
+  return /^#[0-9a-f]{6}$/.test(raw) ? raw : null
+}
+
+/** Darken toward black by roughly the gap between the palette's 500 and 700 stops. */
+function darken(hex) {
+  const channels = [1, 3, 5].map((i) => Math.round(parseInt(hex.slice(i, i + 2), 16) * 0.65))
+  return `#${channels.map((c) => c.toString(16).padStart(2, '0')).join('')}`
 }
 
 /** @param {string} slug @returns {number} */
@@ -37,20 +55,45 @@ function hashSlug(slug) {
 }
 
 /**
- * Deterministic per-game accent, hashed from the game's slug.
+ * The palette entry a game draws its accent from: a valid `overrideColor` when
+ * present, otherwise one deterministically hashed from the slug.
  *
- * `overrideColor` is reserved for a future explicit per-game override (a
- * planned `games.accent_color` field, tracked as a follow-up ticket) and
- * has no effect yet — accepted now so this function's signature won't need
- * to change when that ticket lands.
+ * The override is re-validated here rather than trusted, so bad stored data
+ * degrades to the hashed accent instead of blanking out a card.
  *
  * @param {string} slug
- * @param {string | null} [_overrideColor]
+ * @param {string | null} overrideColor
+ * @returns {{name: string, accent500: string, accent700: string}}
+ */
+function entryFor(slug, overrideColor) {
+  const override = parseHex(overrideColor)
+  if (override) {
+    return { name: 'custom', accent500: override, accent700: darken(override) }
+  }
+  return ACCENT_PALETTE[hashSlug(slug) % ACCENT_PALETTE.length]
+}
+
+/**
+ * Per-game accent as ready-to-use CSS values.
+ *
+ * @param {string} slug
+ * @param {string | null} [overrideColor]
  * @returns {{name: string, badge: string, cardBg: string, border: string, headerBg: string, heroScrim: string}}
  */
-export function accentColorFor(slug, _overrideColor = null) {
-  const entry = ACCENT_PALETTE[hashSlug(slug) % ACCENT_PALETTE.length]
-  return toAccent(entry)
+export function accentColorFor(slug, overrideColor = null) {
+  return toAccent(entryFor(slug, overrideColor))
+}
+
+/**
+ * The same accent as a plain hex, for UI that needs a raw color rather than a
+ * CSS value — a `<input type="color">` swatch, for instance.
+ *
+ * @param {string} slug
+ * @param {string | null} [overrideColor]
+ * @returns {string}
+ */
+export function accentBaseFor(slug, overrideColor = null) {
+  return entryFor(slug, overrideColor).accent500
 }
 
 /** @returns {Array<{name: string, badge: string, cardBg: string, border: string, headerBg: string, heroScrim: string}>} */

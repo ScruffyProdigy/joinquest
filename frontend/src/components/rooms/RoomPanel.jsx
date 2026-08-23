@@ -200,7 +200,10 @@ export default function RoomPanel({ compact = false }) {
 
   const memberCount = room.members?.length ?? 0
   const tables = room.tables ?? []
-  const accent = accentColorFor(tables[0]?.game?.slug || tables[0]?.game?.id || 'room')
+  const accent = accentColorFor(
+    tables[0]?.game?.slug || tables[0]?.game?.id || 'room',
+    tables[0]?.game?.accentColor,
+  )
 
   const membersList = (
     <ul className="flex flex-col gap-2">

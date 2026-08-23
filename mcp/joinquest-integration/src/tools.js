@@ -226,7 +226,7 @@ export function registerJoinQuestIntegrationTools(server, config) {
     'joinquest_integration_update_game_metadata',
     {
       description:
-        'Save catalog listing copy, display name, contact/links, and tags after developer approval. Use catalogTagTaxonomy IDs. Empty websiteUrl/communityUrl clears those fields.',
+        'Save catalog listing copy, display name, contact/links, and tags after developer approval. Use catalogTagTaxonomy IDs. Empty websiteUrl/communityUrl/accentColor clears those fields.',
       inputSchema: z.object({
         gameId: z.string(),
         name: z.string().optional(),
@@ -237,6 +237,7 @@ export function registerJoinQuestIntegrationTools(server, config) {
         contactEmail: z.string().optional(),
         websiteUrl: z.string().optional(),
         communityUrl: z.string().optional(),
+        accentColor: z.string().optional(),
       }),
     },
     async ({
@@ -249,6 +250,7 @@ export function registerJoinQuestIntegrationTools(server, config) {
       contactEmail,
       websiteUrl,
       communityUrl,
+      accentColor,
     }) => {
       const input = { gameId }
       if (name !== undefined) input.name = name
@@ -259,6 +261,7 @@ export function registerJoinQuestIntegrationTools(server, config) {
       if (contactEmail !== undefined) input.contactEmail = contactEmail
       if (websiteUrl !== undefined) input.websiteUrl = websiteUrl
       if (communityUrl !== undefined) input.communityUrl = communityUrl
+      if (accentColor !== undefined) input.accentColor = accentColor
 
       const data = await gql(MUTATIONS.updateMyGameMetadata, { input })
       return textResult(data.updateMyGameMetadata)

@@ -23,7 +23,7 @@ function CardBadges({ genreMode, playerCount }) {
 }
 
 function CardHero({ game, genreMode, playerCount }) {
-  const accent = accentColorFor(game.slug || 'default')
+  const accent = accentColorFor(game.slug || 'default', game.accentColor)
   return (
     <div className="relative overflow-hidden aspect-[5/2]" style={{ background: accent.badge }}>
       <img
@@ -51,7 +51,7 @@ function CardBody({ game }) {
 }
 
 export default function GameCard({ game }) {
-  const accent = accentColorFor(game.slug || 'default')
+  const accent = accentColorFor(game.slug || 'default', game.accentColor)
   const detailPath = gamePagePath(game)
   const genreMode = gameGenreModeLabel(game.tags)
   const playerCount = gamePlayerCountLabel(game.modes)

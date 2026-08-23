@@ -248,11 +248,12 @@ Common fixes:
   "tags": ["party", "quick"],
   "contactEmail": "dev@example.com",
   "websiteUrl": "https://...",
-  "communityUrl": "https://discord.gg/..."
+  "communityUrl": "https://discord.gg/...",
+  "accentColor": "#7c3aed"
 }
 ```
 
-Empty `websiteUrl` / `communityUrl` clears those optional fields. Slug is not editable.
+Empty `websiteUrl` / `communityUrl` / `accentColor` clears those optional fields. Slug is not editable.
 
 **Credentials:** If `webhookSecret` leaks, `joinquest_integration_rotate_webhook_secret` (human approval). `serviceToken` is derived from game id — not rotatable.
 

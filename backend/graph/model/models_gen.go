@@ -107,12 +107,14 @@ type Game struct {
 	// Optional catalog-only hero (5:2). Falls back to heroUrl when unset.
 	CatalogHeroURL *string `json:"catalogHeroUrl,omitempty"`
 	// Long-form copy for the game detail page (maps to games.description).
-	LongDescription   *string                 `json:"longDescription,omitempty"`
-	ShortDescription  *string                 `json:"shortDescription,omitempty"`
-	HowToPlay         *string                 `json:"howToPlay,omitempty"`
-	TutorialURL       *string                 `json:"tutorialUrl,omitempty"`
-	Screenshots       []string                `json:"screenshots"`
-	Tags              []string                `json:"tags"`
+	LongDescription  *string  `json:"longDescription,omitempty"`
+	ShortDescription *string  `json:"shortDescription,omitempty"`
+	HowToPlay        *string  `json:"howToPlay,omitempty"`
+	TutorialURL      *string  `json:"tutorialUrl,omitempty"`
+	Screenshots      []string `json:"screenshots"`
+	Tags             []string `json:"tags"`
+	// Developer-chosen hex accent (#rrggbb). Null falls back to the slug-hashed palette color.
+	AccentColor       *string                 `json:"accentColor,omitempty"`
 	Modes             []*GameMode             `json:"modes"`
 	Visibility        GameVisibility          `json:"visibility"`
 	ContactEmail      *string                 `json:"contactEmail,omitempty"`
@@ -470,6 +472,8 @@ type UpdateMyGameMetadataInput struct {
 	ContactEmail     *string  `json:"contactEmail,omitempty"`
 	WebsiteURL       *string  `json:"websiteUrl,omitempty"`
 	CommunityURL     *string  `json:"communityUrl,omitempty"`
+	// Hex catalog accent (#rrggbb or #rgb). Empty string resets to the default.
+	AccentColor *string `json:"accentColor,omitempty"`
 }
 
 type User struct {

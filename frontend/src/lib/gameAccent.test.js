@@ -1,5 +1,49 @@
 import { describe, it, expect } from 'vitest'
-import { accentColorFor, listAccentColors } from './gameAccent'
+import { accentBaseFor, accentColorFor, listAccentColors, parseHex } from './gameAccent'
+
+describe('parseHex', () => {
+  it('normalizes #rrggbb to lowercase', () => {
+    expect(parseHex('#7C3AED')).toBe('#7c3aed')
+  })
+
+  it('expands #rgb shorthand to lowercase #rrggbb', () => {
+    expect(parseHex('#ABC')).toBe('#aabbcc')
+  })
+
+  it('trims surrounding whitespace', () => {
+    expect(parseHex('  #7c3aed  ')).toBe('#7c3aed')
+  })
+
+  it('returns null for unusable input', () => {
+    for (const bad of ['', 'nope', '#12345', '#gggggg', 'rebeccapurple', 'rgb(1,2,3)', null, undefined]) {
+      expect(parseHex(bad)).toBeNull()
+    }
+  })
+})
+
+describe('accentBaseFor', () => {
+  it('returns the hashed palette entry as a plain hex', () => {
+    expect(accentBaseFor('word-hunt')).toBe('#f59e0b')
+  })
+
+  it('returns a valid override instead of the hashed entry', () => {
+    expect(accentBaseFor('word-hunt', '#7c3aed')).toBe('#7c3aed')
+    expect(accentBaseFor('word-hunt', '#ABC')).toBe('#aabbcc')
+  })
+
+  it('falls back to the hashed entry when the override is unusable', () => {
+    expect(accentBaseFor('word-hunt', '#12345')).toBe('#f59e0b')
+    expect(accentBaseFor('word-hunt', '')).toBe('#f59e0b')
+  })
+
+  it('is the color accentColorFor builds its badge gradient from', () => {
+    for (const override of [null, '#7c3aed']) {
+      expect(accentColorFor('word-hunt', override).badge).toContain(
+        accentBaseFor('word-hunt', override),
+      )
+    }
+  })
+})
 
 describe('accentColorFor', () => {
   it('is deterministic for the same slug', () => {
@@ -32,11 +76,6 @@ describe('accentColorFor', () => {
     expect(result.headerBg).toMatch(/^linear-gradient\(135deg, color-mix\(in oklab, .+ var\(--background\)\), color-mix\(in oklab, .+ var\(--background\)\)\)$/)
   })
 
-  it('ignores the overrideColor param (reserved for a future ticket)', () => {
-    const withoutOverride = accentColorFor('some-game')
-    const withOverride = accentColorFor('some-game', '#000000')
-    expect(withOverride).toEqual(withoutOverride)
-  })
 
   it('does not throw for an empty slug', () => {
     expect(() => accentColorFor('')).not.toThrow()
@@ -51,6 +90,49 @@ describe('accentColorFor', () => {
     expect(result.heroScrim).toMatch(
       /^linear-gradient\(180deg, transparent 0%, color-mix\(in oklab, #[0-9a-f]{6} 55%, black\) 55%, color-mix\(in oklab, #[0-9a-f]{6} 80%, black\) 100%\)$/,
     )
+  })
+})
+
+describe('accentColorFor with an explicit override', () => {
+  it('uses the override instead of the slug-hashed palette entry', () => {
+    const hashed = accentColorFor('some-game')
+    const overridden = accentColorFor('some-game', '#7c3aed')
+
+    expect(overridden).not.toEqual(hashed)
+    expect(overridden.name).toBe('custom')
+    expect(overridden.badge).toContain('#7c3aed')
+  })
+
+  it('derives a darker second gradient stop from the override', () => {
+    // 0xff * 0.65 = 165.75, rounds to 166 = 0xa6
+    expect(accentColorFor('some-game', '#ffffff').badge).toBe(
+      'linear-gradient(135deg, #ffffff, #a6a6a6)',
+    )
+  })
+
+  it('expands #rgb shorthand and ignores case', () => {
+    expect(accentColorFor('some-game', '#ABC')).toEqual(accentColorFor('some-game', '#aabbcc'))
+  })
+
+  it('falls back to the hashed palette entry when the override is unparseable', () => {
+    const hashed = accentColorFor('some-game')
+    for (const bad of ['', 'nope', '#12345', '#gggggg', 'rebeccapurple', 'rgb(1,2,3)']) {
+      expect(accentColorFor('some-game', bad)).toEqual(hashed)
+    }
+  })
+
+  it('falls back to the hashed palette entry for null and undefined', () => {
+    const hashed = accentColorFor('some-game')
+    expect(accentColorFor('some-game', null)).toEqual(hashed)
+    expect(accentColorFor('some-game', undefined)).toEqual(hashed)
+  })
+
+  it('keeps the same derived value shapes as a hashed accent', () => {
+    const result = accentColorFor('some-game', '#7c3aed')
+
+    expect(result.badge).toMatch(/^linear-gradient\(135deg, #[0-9a-f]{6}, #[0-9a-f]{6}\)$/)
+    expect(result.border).toMatch(/^#[0-9a-f]{6}40$/)
+    expect(result.cardBg).toMatch(/^linear-gradient\(160deg, color-mix\(/)
   })
 })
 

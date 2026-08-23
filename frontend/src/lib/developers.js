@@ -9,6 +9,7 @@ const MY_GAME_FIELDS = `
   longDescription
   howToPlay
   tags
+  accentColor
   apiBaseUrl
   visibility
   contactEmail

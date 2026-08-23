@@ -18,6 +18,7 @@ export const TABLE_FIELDS = `
     iconUrl
     shortDescription
     tags
+    accentColor
   }
   mode {
     id

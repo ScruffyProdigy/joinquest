@@ -53,6 +53,8 @@ input UpdateMyGameMetadataInput {
   contactEmail: String
   websiteUrl: String
   communityUrl: String
+  """Hex catalog accent (#rrggbb or #rgb). Empty string resets to the default."""
+  accentColor: String
 }
 
 input ConnectMyGameInput {

@@ -23,7 +23,7 @@ function ModeRow({
   const { refresh: refreshRoom, openRoom } = useActiveRoom()
   const defaultQueue = mode.queues?.find((q) => q.status === 'active') ?? null
   const playerRangeLabel = modePlayerRangeLabel(mode)
-  const accent = prominent ? accentColorFor(game.slug) : null
+  const accent = prominent ? accentColorFor(game.slug, game.accentColor) : null
   const joinOptions = joinGroupOptionsForMode(mode)
   const solo = isSoloMode(mode)
   const [tableBusy, setTableBusy] = useState(false)

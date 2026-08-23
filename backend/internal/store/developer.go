@@ -269,8 +269,10 @@ type UpdateMyGameMetadataParams struct {
 	ContactEmail     *string
 	WebsiteURL       *string
 	CommunityURL     *string
+	AccentColor      *string
 	ClearWebsite     bool
 	ClearCommunity   bool
+	ClearAccentColor bool
 }
 
 // UpdateMyGameMetadata updates owner-editable catalog and contact fields.
@@ -320,6 +322,11 @@ func (s *Store) UpdateMyGameMetadata(ctx context.Context, gameID, ownerUserID uu
 	} else if params.CommunityURL != nil {
 		game.CommunityURL = params.CommunityURL
 	}
+	if params.ClearAccentColor {
+		game.AccentColor = nil
+	} else if params.AccentColor != nil {
+		game.AccentColor = params.AccentColor
+	}
 
 	row := s.db.QueryRowContext(ctx, `
 		UPDATE games SET
@@ -331,10 +338,11 @@ func (s *Store) UpdateMyGameMetadata(ctx context.Context, gameID, ownerUserID uu
 			contact_email = $8,
 			website_url = $9,
 			community_url = $10,
+			accent_color = $11,
 			updated_at = NOW()
 		WHERE id = $1 AND owner_user_id = $2
 		RETURNING `+gameColumns+`
-	`, gameID, ownerUserID, game.Name, game.ShortDescription, game.Description, game.HowToPlay, pq.Array(tags), game.ContactEmail, game.WebsiteURL, game.CommunityURL)
+	`, gameID, ownerUserID, game.Name, game.ShortDescription, game.Description, game.HowToPlay, pq.Array(tags), game.ContactEmail, game.WebsiteURL, game.CommunityURL, game.AccentColor)
 	return scanGame(row)
 }
 
