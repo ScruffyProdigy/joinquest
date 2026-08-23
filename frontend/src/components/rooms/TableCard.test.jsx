@@ -48,7 +48,7 @@ describe('TableCard', () => {
       <TableCard table={table} busy={false} onSit={() => {}} onLeave={() => {}} onStart={() => {}} onDiscard={() => {}} />,
     )
 
-    const avatar = container.querySelector('img.player-avatar[src="/avatars/campfire.png"]')
+    const avatar = container.querySelector('[data-slot="avatar-image"][src="/avatars/campfire.png"]')
     expect(avatar).toBeTruthy()
     expect(screen.getByText('You')).toBeInTheDocument()
     expect(screen.getByText('Red')).toBeInTheDocument()
@@ -209,7 +209,7 @@ describe('TableCard', () => {
       <TableCard table={table} busy={false} onSit={() => {}} onLeave={() => {}} onStart={() => {}} onDiscard={() => {}} />,
     )
 
-    expect(container.querySelectorAll('.player-avatar-frame--king')).toHaveLength(1)
+    expect(container.querySelectorAll('[data-slot="avatar"][data-ring="king"]')).toHaveLength(1)
     expect(screen.getByText(/King: Sam/)).toBeInTheDocument()
   })
 
