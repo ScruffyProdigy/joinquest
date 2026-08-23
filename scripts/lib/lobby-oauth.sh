@@ -3,8 +3,9 @@
 
 apply_lobby_oauth_secret() {
   local secrets_file="${1:-k8s/secrets/lobby-oauth.yaml}"
-  if [ ! -f "$secrets_file" ]; then
-    echo "OAuth: no $secrets_file — Google/Discord sign-in disabled until configured"
+  # -s, not -f: an empty file is unusable too, and kubectl apply would fail on it.
+  if [ ! -s "$secrets_file" ]; then
+    echo "OAuth: $secrets_file missing or empty — Google/Discord sign-in disabled until configured"
     return 0
   fi
 
@@ -20,7 +21,7 @@ apply_lobby_oauth_secret() {
 
 load_lobby_oauth_env_from_file() {
   local secrets_file="${1:-k8s/secrets/lobby-oauth.yaml}"
-  [ -f "$secrets_file" ] || return 0
+  [ -s "$secrets_file" ] || return 0
 
   local google_id google_secret discord_id discord_secret
   google_id="$(grep -E '^[[:space:]]*GOOGLE_OAUTH_CLIENT_ID:' "$secrets_file" | head -1 | sed -E 's/^[[:space:]]*GOOGLE_OAUTH_CLIENT_ID:[[:space:]]*//; s/^["'\''"]//; s/["'\''"]$//')"

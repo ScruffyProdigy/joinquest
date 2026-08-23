@@ -3,8 +3,9 @@
 
 apply_lobby_game_service_secret() {
   local secrets_file="${1:-k8s/secrets/lobby-game-service.yaml}"
-  if [ ! -f "$secrets_file" ]; then
-    echo "Game service token: no $secrets_file — provision/player lookup auth disabled"
+  # -s, not -f: an empty file is unusable too, and kubectl apply would fail on it.
+  if [ ! -s "$secrets_file" ]; then
+    echo "Game service token: $secrets_file missing or empty — provision/player lookup auth disabled"
     return 0
   fi
 

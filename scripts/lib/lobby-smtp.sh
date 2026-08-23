@@ -5,8 +5,9 @@
 
 apply_lobby_smtp_secret() {
   local secrets_file="${1:-k8s/secrets/lobby-smtp.yaml}"
-  if [ ! -f "$secrets_file" ]; then
-    echo "SMTP: no $secrets_file — magic links log to backend stdout only"
+  # -s, not -f: an empty file is unusable too, and kubectl apply would fail on it.
+  if [ ! -s "$secrets_file" ]; then
+    echo "SMTP: $secrets_file missing or empty — magic links log to backend stdout only"
     return 0
   fi
 
@@ -33,7 +34,7 @@ apply_lobby_smtp_secret() {
 # Load SMTP_* from lobby-smtp.yaml for local ./scripts/dev.sh (no kubectl).
 load_lobby_smtp_env_from_file() {
   local secrets_file="${1:-k8s/secrets/lobby-smtp.yaml}"
-  [ -f "$secrets_file" ] || return 0
+  [ -s "$secrets_file" ] || return 0
   if [ -n "${SMTP_PASSWORD:-}" ]; then
     return 0
   fi
