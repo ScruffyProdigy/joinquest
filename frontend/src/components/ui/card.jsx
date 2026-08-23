@@ -24,7 +24,7 @@ function CardHeader({ className, ...props }) {
 }
 
 function CardTitle({ className, as, ...props }) {
-  const Tag = as || 'div'
+  const Tag = as ?? 'div'
   return <Tag data-slot="card-title" className={cn('leading-none font-semibold', className)} {...props} />
 }
 
