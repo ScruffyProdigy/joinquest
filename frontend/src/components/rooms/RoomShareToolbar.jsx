@@ -2,6 +2,9 @@ import { useEffect, useState } from 'react'
 import QRCode from 'qrcode'
 import { roomShareText } from '../../lib/rooms'
 import { IconCopy, IconQr, IconShare } from '../icons/ShareIcons'
+import { Card, CardContent } from '../ui/card'
+import { Button } from '../ui/button'
+import { Dialog, DialogContent, DialogTitle, DialogDescription } from '../ui/dialog'
 
 function IconSms(props) {
   return (
@@ -67,48 +70,50 @@ export default function RoomShareToolbar({ joinUrl, inviteCode }) {
   }
 
   return (
-    <div className="room-share">
-      <p className="room-share__code">
-        Room code: <strong>{inviteCode}</strong>
-      </p>
-      <div className="room-share__actions" role="group" aria-label="Share room">
-        <button type="button" className="room-share__icon-btn" onClick={copyLink} aria-label="Copy invite">
-          <IconCopy />
-          <span className="room-share__icon-label">Copy</span>
-        </button>
-        <button type="button" className="room-share__icon-btn" onClick={() => setQrOpen(true)} aria-label="Show QR code">
-          <IconQr />
-          <span className="room-share__icon-label">QR</span>
-        </button>
-        <button type="button" className="room-share__icon-btn" onClick={nativeShare} aria-label="Share">
-          <IconShare />
-          <span className="room-share__icon-label">Share</span>
-        </button>
-        <button type="button" className="room-share__icon-btn" onClick={openTextMessage} aria-label="Text invite">
-          <IconSms />
-          <span className="room-share__icon-label">Text</span>
-        </button>
-      </div>
-      {copyStatus ? <p className="room-share__status">{copyStatus}</p> : null}
-
-      {qrOpen ? (
-        <div className="room-qr-modal" role="dialog" aria-label="Room QR code">
-          <div className="room-qr-modal__backdrop" onClick={() => setQrOpen(false)} aria-hidden="true" />
-          <div className="room-qr-modal__panel panel-card">
-            <h2>Scan to join</h2>
-            <p className="panel-copy">Friends can open this link to join your room.</p>
-            {qrDataUrl ? (
-              <img className="room-qr-modal__image" src={qrDataUrl} alt={`QR code for ${joinUrl}`} />
-            ) : (
-              <p className="status-message">Generating QR…</p>
-            )}
-            <p className="room-qr-modal__url">{joinUrl}</p>
-            <button type="button" className="game-list-button" onClick={() => setQrOpen(false)}>
-              Close
-            </button>
-          </div>
+    <Card className="gap-3 py-4">
+      <CardContent className="flex flex-col gap-3 px-4">
+        <p className="text-sm text-muted-foreground">
+          Room code: <strong className="font-mono-display text-foreground">{inviteCode}</strong>
+        </p>
+        <div className="flex flex-wrap gap-2" role="group" aria-label="Share room">
+          <Button type="button" variant="secondary" size="sm" onClick={copyLink}>
+            <IconCopy aria-hidden="true" />
+            Copy
+          </Button>
+          <Button type="button" variant="secondary" size="sm" onClick={() => setQrOpen(true)}>
+            <IconQr aria-hidden="true" />
+            QR
+          </Button>
+          <Button type="button" variant="secondary" size="sm" onClick={nativeShare}>
+            <IconShare aria-hidden="true" />
+            Share
+          </Button>
+          <Button type="button" variant="secondary" size="sm" onClick={openTextMessage}>
+            <IconSms aria-hidden="true" />
+            Text
+          </Button>
         </div>
-      ) : null}
-    </div>
+        {copyStatus ? (
+          <p className="text-xs text-muted-foreground" role="status">
+            {copyStatus}
+          </p>
+        ) : null}
+      </CardContent>
+
+      <Dialog open={qrOpen} onOpenChange={setQrOpen}>
+        <DialogContent>
+          <DialogTitle>Scan to join</DialogTitle>
+          <DialogDescription>Friends can open this link to join your room.</DialogDescription>
+          {qrDataUrl ? (
+            <img className="mx-auto h-60 w-60" src={qrDataUrl} alt={`QR code for ${joinUrl}`} />
+          ) : (
+            <p className="status-message" role="status">
+              Generating QR…
+            </p>
+          )}
+          <p className="break-all text-center text-xs text-muted-foreground">{joinUrl}</p>
+        </DialogContent>
+      </Dialog>
+    </Card>
   )
 }

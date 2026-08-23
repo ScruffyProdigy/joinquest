@@ -13,9 +13,9 @@ export const PRIMITIVE_GROUPS = [
       {
         name: 'Badge',
         pillStyle: 'outline',
-        status: 'not-started',
+        status: 'ported',
         prototypeUse: 'Genre/mode tag pills, player-count badge on catalog cards',
-        productionUse: 'Not yet',
+        productionUse: 'Ported (JQ-52) — table card tags',
       },
       {
         name: 'Toggle',
@@ -82,21 +82,21 @@ export const PRIMITIVE_GROUPS = [
     items: [
       {
         name: 'Card',
-        status: 'not-started',
+        status: 'ported',
         prototypeUse: 'Foundation under every composite pattern below',
-        productionUse: 'Not yet',
+        productionUse: 'Ported (JQ-52) — room panel, table card, share toolbar',
       },
       {
         name: 'Dialog',
-        status: 'not-started',
+        status: 'ported',
         prototypeUse: '"Own your handle" account-creation prompt',
-        productionUse: 'Not yet',
+        productionUse: 'Ported (JQ-52) — room QR-code modal',
       },
       {
         name: 'Sheet',
-        status: 'not-started',
+        status: 'ported',
         prototypeUse: 'Bottom-sheet: filters, game modes, account panel',
-        productionUse: 'Not yet',
+        productionUse: 'Ported (JQ-52) — room drawer, seat picker; filters/account panel still not started',
       },
       {
         name: 'Tooltip',

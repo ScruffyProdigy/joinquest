@@ -18,6 +18,10 @@ function toAccent(entry) {
     badge: `linear-gradient(135deg, ${entry.accent500}, ${entry.accent700})`,
     cardBg: `linear-gradient(160deg, color-mix(in oklab, ${entry.accent700} 12%, var(--card)), color-mix(in oklab, ${entry.accent700} 6%, var(--card)))`,
     border: `${entry.accent500}40`,
+    // Blended well toward --background so both gradient stops stay dark
+    // regardless of hue, letting a single fixed light foreground color
+    // (text-foreground) always have strong contrast, at any text position.
+    headerBg: `linear-gradient(135deg, color-mix(in oklab, ${entry.accent500} 35%, var(--background)), color-mix(in oklab, ${entry.accent700} 45%, var(--background)))`,
   }
 }
 
@@ -40,14 +44,14 @@ function hashSlug(slug) {
  *
  * @param {string} slug
  * @param {string | null} [_overrideColor]
- * @returns {{name: string, badge: string, cardBg: string, border: string}}
+ * @returns {{name: string, badge: string, cardBg: string, border: string, headerBg: string}}
  */
 export function accentColorFor(slug, _overrideColor = null) {
   const entry = ACCENT_PALETTE[hashSlug(slug) % ACCENT_PALETTE.length]
   return toAccent(entry)
 }
 
-/** @returns {Array<{name: string, badge: string, cardBg: string, border: string}>} */
+/** @returns {Array<{name: string, badge: string, cardBg: string, border: string, headerBg: string}>} */
 export function listAccentColors() {
   return ACCENT_PALETTE.map(toAccent)
 }

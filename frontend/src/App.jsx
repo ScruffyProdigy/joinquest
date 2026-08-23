@@ -133,7 +133,7 @@ function MainLayout() {
           {gameSlug ? <GameDetailShell slug={gameSlug} /> : <CatalogPage />}
         </div>
         {showDesktopRoom ? (
-          <aside className="app-layout__room panel-card" aria-label="Room chat">
+          <aside className="app-layout__room" aria-label="Room chat">
             <RoomPanel compact />
           </aside>
         ) : null}
