@@ -1,10 +1,10 @@
 import { useEffect, useState } from 'react'
 import { useAuth } from '../auth/AuthProvider'
 import { fetchGames } from '../../lib/games'
-import GameListItem from './GameListItem'
+import GameCard from './GameCard'
 import { GAMES_HEADING, GAMES_INTRO } from '../../lib/playerCopy'
 
-export default function GameLobby({ activeIntent, activeTableSeat, onQueueChange, onQueueJoined, onTableChange }) {
+export default function GameLobby() {
   const { user, loading: authLoading } = useAuth()
   const [games, setGames] = useState([])
   const [status, setStatus] = useState('idle')
@@ -71,15 +71,7 @@ export default function GameLobby({ activeIntent, activeTableSeat, onQueueChange
       {status === 'ready' && games.length > 0 ? (
         <ul className="game-list">
           {games.map((game) => (
-            <GameListItem
-              key={game.id}
-              game={game}
-              activeIntent={activeIntent}
-              activeTableSeat={activeTableSeat}
-              onQueueChange={onQueueChange}
-              onQueueJoined={onQueueJoined}
-              onTableChange={onTableChange}
-            />
+            <GameCard key={game.id} game={game} />
           ))}
         </ul>
       ) : null}
