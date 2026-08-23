@@ -2,15 +2,16 @@ import { expect } from '@playwright/test'
 
 const RPS_GAME_NAME = 'Rock Paper Scissors Lizard Robot'
 
-function rpsGameRow(page) {
-  return page.locator('li.game-list-item').filter({
+function rpsGameCardLink(page) {
+  return page.getByRole('link').filter({
     has: page.getByRole('heading', { name: RPS_GAME_NAME }),
   })
 }
 
 export async function joinRockPaperQueue(page) {
-  const row = rpsGameRow(page)
-  await row.getByRole('button', { name: 'Look for group' }).click()
+  await rpsGameCardLink(page).click()
+  await expect(page.getByRole('heading', { name: RPS_GAME_NAME, level: 1 })).toBeVisible()
+  await page.getByRole('button', { name: 'Look for group' }).click()
 }
 
 export async function expectWaitingBanner(page) {

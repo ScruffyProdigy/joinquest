@@ -144,9 +144,9 @@ export const COMPOSITE_PATTERNS = [
   {
     name: 'Genre-accent catalog card',
     previewKind: 'catalogCard',
-    status: 'not-started',
+    status: 'ported',
     prototypeUse: 'Home → All games grid, every card',
-    productionUse: 'Not started — JQ-48',
+    productionUse: 'GameCard.jsx — home catalog grid (JQ-48)',
   },
   {
     name: 'Game detail hero',

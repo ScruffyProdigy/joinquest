@@ -25,7 +25,7 @@ function CardBadges({ genreMode, playerCount }) {
 function CardHero({ game, genreMode, playerCount }) {
   const accent = accentColorFor(game.slug || 'default')
   return (
-    <div className="relative overflow-hidden" style={{ height: 150, background: accent.badge }}>
+    <div className="relative overflow-hidden aspect-[5/2]" style={{ background: accent.badge }}>
       <img
         className="absolute inset-0 w-full h-full object-cover"
         src={gameCatalogHeroUrl(game)}
@@ -40,9 +40,9 @@ function CardHero({ game, genreMode, playerCount }) {
 function CardBody({ game }) {
   return (
     <div className="px-4 py-3">
-      <h3 className="font-bold text-[15px] text-foreground m-0">{game.name}</h3>
+      <h3 className="font-bold text-base text-foreground m-0">{game.name}</h3>
       {game.shortDescription ? (
-        <p className="text-[13px] text-muted-foreground leading-snug line-clamp-2 mt-1 mb-0">
+        <p className="text-sm text-muted-foreground leading-snug line-clamp-2 mt-1 mb-0">
           {game.shortDescription}
         </p>
       ) : null}
@@ -57,7 +57,7 @@ export default function GameCard({ game }) {
   const playerCount = gamePlayerCountLabel(game.modes)
 
   const shellClassName =
-    'block w-full rounded-2xl overflow-hidden text-left shadow-sm transition-transform hover:-translate-y-0.5 hover:shadow-md active:scale-[0.99]'
+    'block w-full rounded-2xl overflow-hidden text-left shadow-sm transition-transform hover:-translate-y-0.5 hover:shadow-md active:scale-[0.99] focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2'
   const shellStyle = { border: `1.5px solid ${accent.border}`, background: accent.cardBg }
 
   const content = (
