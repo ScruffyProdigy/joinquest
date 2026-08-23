@@ -116,22 +116,24 @@
 
 .app-title {
   margin: 0;
-  font-size: 3.2em;
-  line-height: 1.05;
+  font-family: var(--font-heading);
+  font-weight: 700;
+  font-size: var(--text-3xl);
+  line-height: var(--text-3xl--line-height);
   letter-spacing: -0.02em;
+  color: var(--foreground);
 }
 
-.app-title__join {
-  color: #fff;
-}
-
-.app-title__quest {
-  color: #4349a8;
+@media (max-width: 480px) {
+  .app-title {
+    font-size: var(--text-2xl);
+    line-height: var(--text-2xl--line-height);
+  }
 }
 
 .tagline {
   margin: 0;
-  color: #888;
+  color: var(--muted-foreground);
 }
 
 .panel-card {
