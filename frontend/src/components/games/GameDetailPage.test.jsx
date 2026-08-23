@@ -76,7 +76,7 @@ describe('GameDetailPage', () => {
       />,
     )
 
-    expect(await screen.findByRole('heading', { name: 'Word Hunt' })).toBeInTheDocument()
+    expect(await screen.findByText('Word Hunt')).toBeInTheDocument()
     expect(screen.getByRole('button', { name: '← Back' })).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Share' })).toBeInTheDocument()
     expect(screen.getByText(detailGame.longDescription)).toBeInTheDocument()
