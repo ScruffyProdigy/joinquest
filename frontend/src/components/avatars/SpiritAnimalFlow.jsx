@@ -118,6 +118,24 @@ export default function SpiritAnimalFlow({ onComplete, onCancel }) {
     }
   }
 
+  const handleRegenerateImages = useCallback(async () => {
+    setBusy(true)
+    setError('')
+    try {
+      const started = await regenerateSpiritAnimalImages()
+      if (started.status === 'READY') {
+        applyReadingState(started)
+        return
+      }
+      phaseTimingRef.current = null
+      applyReadingState(started, 'mascots')
+    } catch (err) {
+      handleFlowError(err)
+    } finally {
+      setBusy(false)
+    }
+  }, [handleFlowError])
+
   useEffect(() => {
     let cancelled = false
     void fetchSpiritAnimalJourneyEligibility()
@@ -157,7 +175,7 @@ export default function SpiritAnimalFlow({ onComplete, onCancel }) {
     return () => {
       cancelled = true
     }
-  }, [])
+  }, [handleFlowError])
 
   useEffect(() => {
     if (phase !== 'processing' || !reading?.phaseStartedAt || !reading?.estimatedPhaseSeconds) {
@@ -215,7 +233,7 @@ export default function SpiritAnimalFlow({ onComplete, onCancel }) {
     return () => {
       cancelled = true
     }
-  }, [phase, processingPurpose, reading?.id, refreshReading])
+  }, [phase, processingPurpose, reading?.id, refreshReading, clearSession])
 
   useEffect(() => {
     if (phase !== 'processing') {
@@ -244,25 +262,7 @@ export default function SpiritAnimalFlow({ onComplete, onCancel }) {
     setRegenRequested(true)
     void handleRegenerateImages()
     return undefined
-  }, [phase, reading, regenRequested, busy])
-
-  async function handleRegenerateImages() {
-    setBusy(true)
-    setError('')
-    try {
-      const started = await regenerateSpiritAnimalImages()
-      if (started.status === 'READY') {
-        applyReadingState(started)
-        return
-      }
-      phaseTimingRef.current = null
-      applyReadingState(started, 'mascots')
-    } catch (err) {
-      handleFlowError(err)
-    } finally {
-      setBusy(false)
-    }
-  }
+  }, [phase, reading, regenRequested, busy, handleRegenerateImages])
 
   async function handleBegin({ forceRestart = false } = {}) {
     setBusy(true)
