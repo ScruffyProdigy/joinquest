@@ -32,11 +32,28 @@ embed_body "$PLAYBOOK_SRC" "docs/developer-agent-playbook.md" \
   > "$ROOT/.agents/skills/joinquest-integration/playbook.md"
 echo "Synced docs/developer-agent-playbook.md -> .agents/skills/joinquest-integration/playbook.md"
 
-PLUGIN_SKILL="$ROOT/plugins/joinquest/skills/joinquest-integration"
-mkdir -p "$PLUGIN_SKILL"
-cp "$ROOT/.agents/skills/joinquest-integration/SKILL.md" "$PLUGIN_SKILL/"
-cp "$ROOT/.agents/skills/joinquest-integration/mcp-setup.md" "$PLUGIN_SKILL/"
-cp "$ROOT/.agents/skills/joinquest-integration/playbook.md" "$PLUGIN_SKILL/"
-echo "Synced agent skill -> plugins/joinquest/skills/joinquest-integration/"
+# Mirror every agent skill into the plugin's skills/ directory. Skills are
+# discovered from the filesystem rather than listed here, so adding a skill
+# folder ships it without editing this script.
+PLUGIN_SKILLS="$ROOT/plugins/joinquest/skills"
+mkdir -p "$PLUGIN_SKILLS"
+for skill_dir in "$ROOT/.agents/skills"/*/; do
+  skill="$(basename "$skill_dir")"
+  target="$PLUGIN_SKILLS/$skill"
+  # Replace rather than overlay, so files deleted upstream don't linger here.
+  rm -rf "$target"
+  mkdir -p "$target"
+  cp -R "$skill_dir." "$target/"
+  echo "Synced agent skill -> plugins/joinquest/skills/$skill/"
+done
+
+# Drop plugin copies whose source skill is gone.
+for target in "$PLUGIN_SKILLS"/*/; do
+  skill="$(basename "$target")"
+  if [ ! -d "$ROOT/.agents/skills/$skill" ]; then
+    rm -rf "$target"
+    echo "Removed stale plugin skill copy: $skill"
+  fi
+done
 
 echo "Done."
