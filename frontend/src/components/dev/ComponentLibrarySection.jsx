@@ -50,7 +50,7 @@ function PrimitivePreview({ previewKind, item }) {
       )
     case 'field':
       return (
-        <div className="w-full h-9 rounded-lg bg-background border border-border flex items-center px-2.5 gap-1.5">
+        <div className="w-full h-9 rounded-lg bg-background border flex items-center px-2.5 gap-1.5">
           <svg
             viewBox="0 0 24 24"
             className="w-3.5 h-3.5 stroke-muted-foreground fill-none shrink-0"
@@ -73,7 +73,7 @@ function PrimitivePreview({ previewKind, item }) {
       )
     case 'panel':
       return (
-        <div className="w-full rounded-lg bg-background border border-border overflow-hidden">
+        <div className="w-full rounded-lg bg-background border overflow-hidden">
           <div className="h-3.5 bg-foreground/5" />
           <div className="p-2 flex flex-col gap-1.5">
             <div className="h-1.5 rounded bg-foreground/10" />
@@ -111,7 +111,7 @@ function PrimitivePreview({ previewKind, item }) {
 
 function PrimitiveCard({ group, item }) {
   return (
-    <div className="relative bg-card border border-border rounded-2xl p-4 flex flex-col gap-3">
+    <div className="relative bg-card border rounded-2xl p-4 flex flex-col gap-3">
       <StatusBadge status={item.status} />
       <div className="h-[76px] rounded-xl bg-muted flex items-center justify-center p-3">
         <PrimitivePreview previewKind={group.previewKind} item={item} />
@@ -192,7 +192,7 @@ function CompositePreview({ previewKind }) {
 
 function CompositeCard({ pattern }) {
   return (
-    <div className="relative bg-card border border-border rounded-2xl p-4 flex flex-col gap-3.5">
+    <div className="relative bg-card border rounded-2xl p-4 flex flex-col gap-3.5">
       <StatusBadge status={pattern.status} />
       <div className="h-[140px] rounded-xl bg-muted overflow-hidden">
         <CompositePreview previewKind={pattern.previewKind} />

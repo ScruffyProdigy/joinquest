@@ -7,7 +7,7 @@
    beat every Tailwind utility class regardless of specificity — so legacy
    CSS is imported into its own named layer here rather than left unlayered.
    This does not modify index.css/App.css themselves, only how they load. */
-@layer legacy, theme, utilities;
+@layer legacy, theme, base, utilities;
 
 @import "./index.css" layer(legacy);
 @import "./App.css" layer(legacy);
@@ -111,3 +111,11 @@
    mb-6, etc.) rather than custom tokens — the prototype never deviates from
    it. See the "Spacing" section on /dev/style-preview for the documented
    reference. */
+
+@layer base {
+  *,
+  ::before,
+  ::after {
+    border-color: var(--border);
+  }
+}
