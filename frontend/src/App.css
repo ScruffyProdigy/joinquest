@@ -809,42 +809,6 @@
   gap: 0.5rem;
 }
 
-@keyframes room-sheet-slide-up {
-  from {
-    transform: translateY(100%);
-  }
-  to {
-    transform: translateY(0);
-  }
-}
-
-@keyframes room-sheet-slide-down {
-  from {
-    transform: translateY(0);
-  }
-  to {
-    transform: translateY(100%);
-  }
-}
-
-@keyframes room-sheet-fade-in {
-  from {
-    opacity: 0;
-  }
-  to {
-    opacity: 1;
-  }
-}
-
-@keyframes room-sheet-fade-out {
-  from {
-    opacity: 1;
-  }
-  to {
-    opacity: 0;
-  }
-}
-
 .app-dock {
   position: fixed;
   left: 0;
@@ -1038,70 +1002,13 @@
     color: #666;
   }
 
-  .room-share__status,
-  .room-chat__author {
-    color: #5558aa;
-  }
-
-  .room-chat__panel {
-    border-color: rgba(0, 0, 0, 0.12);
-    background: rgba(0, 0, 0, 0.03);
-  }
-
-  .room-chat__composer {
-    border-top-color: rgba(0, 0, 0, 0.1);
-    background: rgba(0, 0, 0, 0.04);
-  }
-
-  .room-chat__composer .game-list-button {
-    border-left-color: rgba(0, 0, 0, 0.12);
-  }
-
-  .room-chat__unread {
-    border-color: rgba(100, 108, 255, 0.35);
-    color: #5558aa;
-  }
-
-  .room-qr-modal__url {
-    color: #666;
-  }
-
-  .room-share__icon-btn {
-    border-color: rgba(0, 0, 0, 0.12);
-    background: rgba(100, 108, 255, 0.08);
-  }
-
   .app-dock {
     border-top-color: rgba(0, 0, 0, 0.08);
     background: #ffffff;
   }
 
-  .app-layout__room,
-  .room-sheet__panel {
+  .app-layout__room {
     background: #ffffff;
-  }
-
-  .room-sheet .room-panel__share {
-    background: #ffffff;
-  }
-
-  .room-panel__leave {
-    border-top-color: rgba(0, 0, 0, 0.1);
-  }
-
-  .room-panel__leave-btn {
-    border-color: rgba(200, 50, 50, 0.55);
-    background: rgba(255, 90, 90, 0.12);
-    color: #b91c1c;
-  }
-
-  .room-panel__leave-btn:hover:not(:disabled) {
-    background: rgba(255, 90, 90, 0.22);
-  }
-
-  .room-sheet .room-panel__chat .room-chat__log {
-    border-color: rgba(0, 0, 0, 0.1);
-    background: rgba(0, 0, 0, 0.04);
   }
 
   .app-dock__tab {
@@ -1114,23 +1021,6 @@
 
   .game-list-item {
     border-color: rgba(0, 0, 0, 0.08);
-  }
-
-  .table-seat-row {
-    border-color: rgba(0, 0, 0, 0.12);
-    background: rgba(0, 0, 0, 0.03);
-  }
-
-  .table-seat-row__label {
-    color: rgba(0, 0, 0, 0.88);
-  }
-
-  .table-seat-row__occupant {
-    color: rgba(0, 0, 0, 0.72);
-  }
-
-  .table-seat-row--no-label:nth-child(odd) {
-    background: rgba(0, 0, 0, 0.04);
   }
 }
 
@@ -1698,12 +1588,6 @@
 
   .user-card .spirit-animal__hint {
     color: #666;
-  }
-}
-
-@media (max-width: 480px) {
-  .table-seat-row__occupant-name {
-    display: none;
   }
 }
 
