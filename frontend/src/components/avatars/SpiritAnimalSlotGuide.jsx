@@ -1,43 +1,49 @@
 import { JOURNEY_SLOTS } from '../../lib/spiritAnimalSlots'
+import { cn } from '../../lib/utils'
 
 export default function SpiritAnimalSlotGuide({ highlightKey = null, compact = false }) {
   if (compact) {
     return (
-      <ul className="spirit-animal__slot-strip" role="list" aria-label="Journey slots">
-        {JOURNEY_SLOTS.map((slot, index) => (
-          <li
-            key={slot.key}
-            className={
-              highlightKey === slot.key
-                ? 'spirit-animal__slot-strip-item spirit-animal__slot-strip-item--active'
-                : 'spirit-animal__slot-strip-item'
-            }
-            title={`${index + 1}. ${slot.name} — ${slot.prompt}`}
-          >
-            <img src={slot.imageUrl} alt="" className="spirit-animal__slot-strip-icon" />
-            <span className="spirit-animal__slot-strip-name">{slot.name}</span>
-          </li>
-        ))}
+      <ul className="flex flex-wrap gap-2" role="list" aria-label="Journey slots">
+        {JOURNEY_SLOTS.map((slot, index) => {
+          const active = highlightKey === slot.key
+          return (
+            <li
+              key={slot.key}
+              className={cn(
+                'flex items-center gap-1.5 rounded-full border border-border bg-muted/40 px-2.5 py-1',
+                active && 'border-primary bg-primary/10',
+              )}
+              title={`${index + 1}. ${slot.name} — ${slot.prompt}`}
+            >
+              <img src={slot.imageUrl} alt="" className="size-5 rounded-full object-cover" />
+              <span className="text-2xs font-medium text-foreground">{slot.name}</span>
+            </li>
+          )
+        })}
       </ul>
     )
   }
 
   return (
-    <ol className="spirit-animal__slot-guide" aria-label="Five chapters of the journey">
+    <ol className="flex flex-col gap-3" aria-label="Five chapters of the journey">
       {JOURNEY_SLOTS.map((slot, index) => {
         const active = highlightKey === slot.key
         return (
           <li
             key={slot.key}
-            className={active ? 'spirit-animal__slot-guide-item spirit-animal__slot-guide-item--active' : 'spirit-animal__slot-guide-item'}
+            className={cn(
+              'flex items-center gap-3 rounded-xl border border-border bg-muted/40 p-3',
+              active && 'border-primary bg-primary/10',
+            )}
           >
-            <span className="spirit-animal__slot-guide-step" aria-hidden="true">
+            <span className="font-mono-display text-xs text-muted-foreground" aria-hidden="true">
               {index + 1}
             </span>
-            <img src={slot.imageUrl} alt="" className="spirit-animal__slot-guide-icon" />
-            <div className="spirit-animal__slot-guide-copy">
-              <p className="spirit-animal__slot-guide-name">{slot.name}</p>
-              <p className="spirit-animal__slot-guide-prompt">{slot.prompt}</p>
+            <img src={slot.imageUrl} alt="" className="size-8 shrink-0 rounded-full object-cover" />
+            <div className="flex flex-col gap-0.5">
+              <p className="text-sm font-semibold text-foreground">{slot.name}</p>
+              <p className="text-xs text-muted-foreground">{slot.prompt}</p>
             </div>
           </li>
         )
