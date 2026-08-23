@@ -4,12 +4,16 @@ import { useAuth } from '../auth/AuthProvider'
 import { useActiveRoom } from './ActiveRoomProvider'
 import { sendRoomMessage } from '../../lib/rooms'
 import { discardTable, displayName, leaveTable, sitAtTable, startTable, startTableBackfill } from '../../lib/tables'
+import { accentColorFor } from '../../lib/gameAccent'
 import { IconClose } from '../icons/ShareIcons'
 import RoomShareToolbar from './RoomShareToolbar'
 import TableCard from './TableCard'
 import { useActiveTableSeat } from '../games/useActiveTableSeat'
 import { useActiveIntent } from '../games/useActiveIntent'
 import PlayerAvatar from '../avatars/PlayerAvatar'
+import { Card, CardContent } from '../ui/card'
+import { Button } from '../ui/button'
+import { cn } from '../../lib/utils'
 
 function mergeMessage(messages, incoming) {
   if (!incoming?.id) {
@@ -174,8 +178,8 @@ export default function RoomPanel({ compact = false }) {
 
   if (!user) {
     return (
-      <div className="room-panel room-panel--guest">
-        <h2 className="room-panel__title">Join room</h2>
+      <div className="flex flex-col gap-4 p-6">
+        <h2 className="font-heading text-xl text-foreground">Join room</h2>
         <p className="panel-copy">Sign in to enter the chat.</p>
         <SignInPanel />
       </div>
@@ -188,7 +192,7 @@ export default function RoomPanel({ compact = false }) {
 
   if (!room) {
     return (
-      <div className="room-panel room-panel--guest">
+      <div className="flex flex-col gap-4 p-6">
         <p className="status-message status-message-error">{error || 'Could not load room.'}</p>
       </div>
     )
@@ -196,10 +200,12 @@ export default function RoomPanel({ compact = false }) {
 
   const memberCount = room.members?.length ?? 0
   const tables = room.tables ?? []
+  const accent = accentColorFor(tables[0]?.game?.slug || tables[0]?.game?.id || 'room')
+
   const membersList = (
-    <ul className="room-members__list">
+    <ul className="flex flex-col gap-2">
       {room.members.map((member) => (
-        <li key={member.id} className="room-members__item">
+        <li key={member.id} className="flex items-center gap-2 text-sm text-foreground">
           <PlayerAvatar user={member} size="sm" />
           <span>
             {displayName(member)}
@@ -211,7 +217,7 @@ export default function RoomPanel({ compact = false }) {
   )
 
   const tablesList = (
-    <ul className="room-tables__list">
+    <ul className="flex flex-col gap-4">
       {tables.map((table) => (
         <li key={table.id}>
           <TableCard
@@ -229,114 +235,119 @@ export default function RoomPanel({ compact = false }) {
   )
 
   return (
-    <div className={`room-panel ${compact ? 'room-panel--compact' : ''}`}>
-      <div className="room-panel__body">
-        <header className="room-panel__header">
+    <div className={cn('flex h-full flex-col', compact && 'text-sm')}>
+      <div className="flex-1 overflow-y-auto">
+        <header
+          className="flex items-start justify-between gap-3 rounded-b-2xl px-6 py-8 text-primary-foreground"
+          style={{ background: accent.badge }}
+        >
           <div>
-            <h2 className="room-panel__title">Room {room.inviteCode}</h2>
-            <p className="room-panel__meta">
+            <h2 className="font-heading text-2xl font-bold">Room {room.inviteCode}</h2>
+            <p className="text-sm opacity-90">
               {memberCount} {memberCount === 1 ? 'member' : 'members'}
             </p>
           </div>
         </header>
 
-        {error ? <p className="status-message status-message-error">{error}</p> : null}
+        <div className="flex flex-col gap-4 p-4">
+          {error ? <p className="status-message status-message-error">{error}</p> : null}
 
-        {compact ? (
-          <details className="room-panel__section room-panel__collapsible room-members">
-            <summary className="room-panel__section-title">
-              Members ({memberCount})
-            </summary>
-            {membersList}
-          </details>
-        ) : (
-          <section className="room-panel__section room-members">
-            <h3 className="room-panel__section-title">Members</h3>
-            {membersList}
-          </section>
-        )}
-
-        <section className="room-panel__section room-panel__share">
-          <RoomShareToolbar joinUrl={room.joinUrl} inviteCode={room.inviteCode} />
-        </section>
-
-        {tables.length > 0 ? (
-          compact ? (
-            <details className="room-panel__section room-panel__collapsible room-tables" open>
-              <summary className="room-panel__section-title">Tables ({tables.length})</summary>
-              {tablesList}
+          {compact ? (
+            <details className="rounded-xl border border-border bg-card">
+              <summary className="cursor-pointer list-none px-4 py-3 text-sm font-semibold text-foreground">
+                Members ({memberCount})
+              </summary>
+              <div className="px-4 pb-4">{membersList}</div>
             </details>
           ) : (
-            <section className="room-panel__section room-tables">
-              <h3 className="room-panel__section-title">Tables ({tables.length})</h3>
-              {tablesList}
-            </section>
-          )
-        ) : null}
+            <Card>
+              <CardContent className="flex flex-col gap-3 px-4">
+                <h3 className="text-sm font-semibold text-foreground">Members</h3>
+                {membersList}
+              </CardContent>
+            </Card>
+          )}
 
-        <section className="room-panel__section room-panel__chat room-chat">
-          <div className="room-chat__header">
-            <h3 className="room-panel__section-title">Chat</h3>
-            {unreadCount > 0 && !chatAtBottom ? (
-              <button
-                type="button"
-                className="room-chat__unread"
-                onClick={() => scrollChatToBottom()}
-                aria-label={`${unreadCount} unread messages — jump to latest`}
+          <RoomShareToolbar joinUrl={room.joinUrl} inviteCode={room.inviteCode} />
+
+          {tables.length > 0 ? (
+            compact ? (
+              <details className="rounded-xl border border-border bg-card" open>
+                <summary className="cursor-pointer list-none px-4 py-3 text-sm font-semibold text-foreground">
+                  Tables ({tables.length})
+                </summary>
+                <div className="flex flex-col gap-4 px-4 pb-4">{tablesList}</div>
+              </details>
+            ) : (
+              <section className="flex flex-col gap-3">
+                <h3 className="text-sm font-semibold text-foreground">Tables ({tables.length})</h3>
+                {tablesList}
+              </section>
+            )
+          ) : null}
+
+          <Card className="flex flex-1 flex-col gap-3 py-4">
+            <CardContent className="flex flex-1 flex-col gap-3 px-4">
+              <div className="flex items-center justify-between">
+                <h3 className="text-sm font-semibold text-foreground">Chat</h3>
+                {unreadCount > 0 && !chatAtBottom ? (
+                  <button
+                    type="button"
+                    className="rounded-full bg-primary px-3 py-1 text-xs font-semibold text-primary-foreground"
+                    onClick={() => scrollChatToBottom()}
+                    aria-label={`${unreadCount} unread messages — jump to latest`}
+                  >
+                    {unreadCount > 99 ? '99+' : unreadCount} new
+                  </button>
+                ) : null}
+              </div>
+              <div
+                ref={chatLogRef}
+                className="flex max-h-64 flex-col gap-2 overflow-y-auto"
+                aria-live="polite"
+                onScroll={syncChatScrollState}
               >
-                {unreadCount > 99 ? '99+' : unreadCount} new
-              </button>
-            ) : null}
-          </div>
-          <div className="room-chat__panel">
-            <div
-              ref={chatLogRef}
-              className="room-chat__log"
-              aria-live="polite"
-              onScroll={syncChatScrollState}
-            >
-              {messages.length === 0 ? (
-                <p className="panel-copy">Say hello — messages appear here for everyone in the room.</p>
-              ) : (
-                messages.map((msg) => (
-                  <article key={msg.id} className="room-chat__message">
-                    <p className="room-chat__author">{displayName(msg.author)}</p>
-                    <p className="room-chat__body">{msg.body}</p>
-                  </article>
-                ))
-              )}
-            </div>
-            <form className="room-chat__composer auth-form" onSubmit={handleSend}>
-              <label htmlFor="room-message">Message</label>
-              <input
-                id="room-message"
-                type="text"
-                value={draft}
-                onChange={(event) => setDraft(event.target.value)}
-                maxLength={2000}
-                disabled={busy}
-                autoComplete="off"
-                placeholder="Message"
-              />
-              <button type="submit" className="game-list-button" disabled={busy || !draft.trim()}>
-                Send
-              </button>
-            </form>
-          </div>
-        </section>
+                {messages.length === 0 ? (
+                  <p className="panel-copy">Say hello — messages appear here for everyone in the room.</p>
+                ) : (
+                  messages.map((msg) => (
+                    <article key={msg.id} className="rounded-lg bg-secondary/60 px-3 py-2">
+                      <p className="text-xs font-semibold text-muted-foreground">{displayName(msg.author)}</p>
+                      <p className="text-sm text-foreground">{msg.body}</p>
+                    </article>
+                  ))
+                )}
+              </div>
+              <form className="flex items-center gap-2" onSubmit={handleSend}>
+                <label htmlFor="room-message" className="sr-only">
+                  Message
+                </label>
+                <input
+                  id="room-message"
+                  type="text"
+                  className="h-9 flex-1 rounded-md border border-input bg-input-background px-3 text-sm text-foreground outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50"
+                  value={draft}
+                  onChange={(event) => setDraft(event.target.value)}
+                  maxLength={2000}
+                  disabled={busy}
+                  autoComplete="off"
+                  placeholder="Message"
+                />
+                <Button type="submit" size="sm" disabled={busy || !draft.trim()}>
+                  Send
+                </Button>
+              </form>
+            </CardContent>
+          </Card>
+        </div>
       </div>
 
-      <div className="room-panel__leave">
-        <button
-          type="button"
-          className="room-panel__leave-btn"
-          onClick={handleLeave}
-          disabled={busy || loading}
-        >
+      <div className="border-t border-border p-4">
+        <Button type="button" variant="secondary" className="w-full" onClick={handleLeave} disabled={busy || loading}>
           <IconClose aria-hidden="true" />
-          <span>Leave room</span>
+          Leave room
           <IconClose aria-hidden="true" />
-        </button>
+        </Button>
       </div>
     </div>
   )
