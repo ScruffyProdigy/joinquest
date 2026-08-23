@@ -7,7 +7,9 @@ describe('ComponentLibrarySection', () => {
   it('renders the heading and defaults to the Primitives tab', () => {
     render(<ComponentLibrarySection />)
     expect(screen.getByRole('heading', { name: 'Component library' })).toBeInTheDocument()
-    expect(screen.getByText('Button')).toBeInTheDocument()
+    // "Button" appears twice by design (pill preview swatch + card title),
+    // so assert presence rather than a single unique match.
+    expect(screen.getAllByText('Button').length).toBeGreaterThan(0)
     expect(screen.queryByText('Genre-accent catalog card')).not.toBeInTheDocument()
   })
 

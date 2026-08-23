@@ -42,10 +42,7 @@ function PrimitivePreview({ previewKind, item }) {
           : item.pillStyle === 'segment'
             ? 'bg-primary/10 text-primary border border-primary/30'
             : 'border text-foreground'
-      // Demo label, not item.name — the card title below already shows that,
-      // and reusing it here breaks single-match text queries in tests.
-      const demoLabel = item.pillStyle === 'solid' ? 'Continue' : item.pillStyle === 'segment' ? 'Sort' : 'Trivia'
-      return <span className={`px-4 py-2 rounded-full text-xs font-semibold ${pillClass}`}>{demoLabel}</span>
+      return <span className={`px-4 py-2 rounded-full text-xs font-semibold ${pillClass}`}>{item.name}</span>
     }
     case 'circle':
       return (
