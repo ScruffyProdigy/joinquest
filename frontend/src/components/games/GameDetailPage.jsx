@@ -164,7 +164,7 @@ export default function GameDetailPage({
         />
         <div
           className="pointer-events-none absolute inset-0"
-          style={{ background: accentColorFor(game.slug).heroScrim }}
+          style={{ background: accentColorFor(game.slug, game.accentColor).heroScrim }}
         />
         <div className="absolute inset-x-0 bottom-0 flex flex-col gap-2 p-6">
           {tags.length > 0 ? (

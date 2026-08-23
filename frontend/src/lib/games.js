@@ -62,6 +62,7 @@ const GAME_CARD_FIELDS = `
   tutorialUrl
   screenshots
   tags
+  accentColor
   createdAt
   ${GAME_MODE_FIELDS}
 `

@@ -154,7 +154,7 @@ export default function TableCard({ table, busy, onSit, onLeave, onStart, onLook
   const seatedCount = enriched.seats?.length ?? 0
   const gapsLine = formatFormingGapsFromLobbyLine(enriched.formingGaps)
   const game = enriched.game
-  const accent = accentColorFor(game?.slug || game?.id || 'table')
+  const accent = accentColorFor(game?.slug || game?.id || 'table', game?.accentColor)
   const catalogTags = gameTagChips(game?.tags)
   const catalogBlurb = game?.shortDescription?.trim() || ''
   let catalogIcon = null

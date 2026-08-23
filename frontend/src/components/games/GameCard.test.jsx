@@ -73,4 +73,28 @@ describe('GameCard', () => {
 
     expect(screen.queryByText('Fast rounds, random teams, one winner.')).not.toBeInTheDocument()
   })
+
+  it('uses the accentColor override for the card accent when set', () => {
+    const { container } = renderCard({ ...baseGame, accentColor: '#7c3aed' })
+
+    // The hero div is the img's parent; the outer shell also carries a gradient,
+    // so select by structure rather than by [style*="linear-gradient"].
+    // jsdom rewrites plain hex inside a gradient to rgb(), but leaves the
+    // unparseable color-mix() on the shell verbatim -- hence the two forms below.
+    const hero = container.querySelector('img').parentElement
+    expect(hero.getAttribute('style')).toContain('rgb(124, 58, 237)')
+    // 0x7c/0x3a/0xed each * 0.65 -> 0x51/0x26/0x9a, the derived dark stop
+    expect(hero.getAttribute('style')).toContain('rgb(81, 38, 154)')
+
+    const shell = container.querySelector('.rounded-2xl')
+    expect(shell.getAttribute('style')).toContain('#51269a')
+  })
+
+  it('falls back to the hashed accent when no accentColor is set', () => {
+    const { container } = renderCard(baseGame)
+    const hero = container.querySelector('img').parentElement
+
+    expect(hero.getAttribute('style')).toContain('rgb(249, 115, 22)')
+    expect(hero.getAttribute('style')).not.toContain('rgb(124, 58, 237)')
+  })
 })
