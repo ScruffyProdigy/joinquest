@@ -21,6 +21,8 @@ function toAccent(entry) {
     // Blended well toward --background so both gradient stops stay dark
     // regardless of hue, letting a single fixed light foreground color
     // (text-foreground) always have strong contrast, at any text position.
+    // That guarantee holds for the palette above; a developer-supplied
+    // override (e.g. a near-white hex) can still come out lighter.
     headerBg: `linear-gradient(135deg, color-mix(in oklab, ${entry.accent500} 35%, var(--background)), color-mix(in oklab, ${entry.accent700} 45%, var(--background)))`,
     heroScrim: `linear-gradient(180deg, transparent 0%, color-mix(in oklab, ${entry.accent700} 55%, black) 55%, color-mix(in oklab, ${entry.accent700} 80%, black) 100%)`,
   }
