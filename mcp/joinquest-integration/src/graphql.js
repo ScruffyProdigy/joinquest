@@ -136,6 +136,7 @@ export const MUTATIONS = {
         contactEmail
         websiteUrl
         communityUrl
+        accentColor
       }
     }
   `,
