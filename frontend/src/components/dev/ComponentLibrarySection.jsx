@@ -41,7 +41,7 @@ function PrimitivePreview({ previewKind, item }) {
           ? 'bg-primary text-primary-foreground'
           : item.pillStyle === 'segment'
             ? 'bg-primary/10 text-primary border border-primary/30'
-            : 'border text-foreground'
+            : 'border border-border text-foreground'
       return <span className={`px-4 py-2 rounded-full text-xs font-semibold ${pillClass}`}>{item.name}</span>
     }
     case 'circle':
@@ -50,7 +50,7 @@ function PrimitivePreview({ previewKind, item }) {
       )
     case 'field':
       return (
-        <div className="w-full h-9 rounded-lg bg-background border flex items-center px-2.5 gap-1.5">
+        <div className="w-full h-9 rounded-lg bg-background border border-border flex items-center px-2.5 gap-1.5">
           <svg
             viewBox="0 0 24 24"
             className="w-3.5 h-3.5 stroke-muted-foreground fill-none shrink-0"
@@ -73,7 +73,7 @@ function PrimitivePreview({ previewKind, item }) {
       )
     case 'panel':
       return (
-        <div className="w-full rounded-lg bg-background border overflow-hidden">
+        <div className="w-full rounded-lg bg-background border border-border overflow-hidden">
           <div className="h-3.5 bg-foreground/5" />
           <div className="p-2 flex flex-col gap-1.5">
             <div className="h-1.5 rounded bg-foreground/10" />
@@ -111,7 +111,7 @@ function PrimitivePreview({ previewKind, item }) {
 
 function PrimitiveCard({ group, item }) {
   return (
-    <div className="relative bg-card border rounded-2xl p-4 flex flex-col gap-3">
+    <div className="relative bg-card border border-border rounded-2xl p-4 flex flex-col gap-3">
       <StatusBadge status={item.status} />
       <div className="h-[76px] rounded-xl bg-muted flex items-center justify-center p-3">
         <PrimitivePreview previewKind={group.previewKind} item={item} />
@@ -146,7 +146,7 @@ function CompositePreview({ previewKind }) {
     case 'sheet':
       return (
         <div className="w-full h-full flex items-end">
-          <div className="w-full bg-card border-t rounded-t-2xl p-3 flex flex-col gap-1.5">
+          <div className="w-full bg-card border-t border-t-border rounded-t-2xl p-3 flex flex-col gap-1.5">
             <div className="w-8 h-1 rounded-full bg-border self-center" />
             <div className="h-2 rounded bg-foreground/10 w-2/5" />
             <div className="h-1.5 rounded bg-foreground/10 w-1/3" />
@@ -176,7 +176,7 @@ function CompositePreview({ previewKind }) {
             <div className="h-1.5 rounded bg-foreground/10 flex-1" />
           </div>
           <div className="flex items-center gap-2">
-            <div className="w-3.5 h-3.5 rounded border" />
+            <div className="w-3.5 h-3.5 rounded border border-border" />
             <div className="h-1.5 rounded bg-foreground/10 w-3/4" />
           </div>
           <div className="flex items-center gap-2">
@@ -192,7 +192,7 @@ function CompositePreview({ previewKind }) {
 
 function CompositeCard({ pattern }) {
   return (
-    <div className="relative bg-card border rounded-2xl p-4 flex flex-col gap-3.5">
+    <div className="relative bg-card border border-border rounded-2xl p-4 flex flex-col gap-3.5">
       <StatusBadge status={pattern.status} />
       <div className="h-[140px] rounded-xl bg-muted overflow-hidden">
         <CompositePreview previewKind={pattern.previewKind} />
@@ -220,7 +220,7 @@ export default function ComponentLibrarySection() {
         <button
           type="button"
           className={`px-4 py-2 rounded-full text-sm font-semibold ${
-            tab === 'primitives' ? 'bg-background text-primary' : 'text-muted-foreground'
+            tab === 'primitives' ? 'bg-background text-primary' : 'bg-transparent text-muted-foreground'
           }`}
           onClick={() => setTab('primitives')}
         >
@@ -229,7 +229,7 @@ export default function ComponentLibrarySection() {
         <button
           type="button"
           className={`px-4 py-2 rounded-full text-sm font-semibold ${
-            tab === 'composite' ? 'bg-background text-primary' : 'text-muted-foreground'
+            tab === 'composite' ? 'bg-background text-primary' : 'bg-transparent text-muted-foreground'
           }`}
           onClick={() => setTab('composite')}
         >
