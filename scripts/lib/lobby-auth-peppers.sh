@@ -3,8 +3,9 @@
 
 apply_lobby_auth_peppers_secret() {
   local secrets_file="${1:-k8s/secrets/lobby-auth-peppers.yaml}"
-  if [ ! -f "$secrets_file" ]; then
-    echo "Auth peppers: no $secrets_file — using dev defaults (not recommended in production)"
+  # -s, not -f: an empty file is unusable too, and kubectl apply would fail on it.
+  if [ ! -s "$secrets_file" ]; then
+    echo "Auth peppers: $secrets_file missing or empty — using dev defaults (not recommended in production)"
     return 0
   fi
 
@@ -21,7 +22,7 @@ apply_lobby_auth_peppers_secret() {
 # Load pepper env vars from lobby-auth-peppers.yaml for local ./scripts/dev.sh (no kubectl).
 load_lobby_auth_peppers_env_from_file() {
   local secrets_file="${1:-k8s/secrets/lobby-auth-peppers.yaml}"
-  [ -f "$secrets_file" ] || return 0
+  [ -s "$secrets_file" ] || return 0
 
   if [ -n "${MAGIC_LINK_PEPPER:-}" ] && [ -n "${LOBBY_GAME_TOKEN_PEPPER:-}" ]; then
     return 0

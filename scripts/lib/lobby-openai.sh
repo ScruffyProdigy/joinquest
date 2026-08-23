@@ -3,8 +3,9 @@
 
 apply_lobby_openai_secret() {
   local secrets_file="${1:-k8s/secrets/lobby-openai.yaml}"
-  if [ ! -f "$secrets_file" ]; then
-    echo "OpenAI: no $secrets_file — spirit animal flow uses mock LLM/images"
+  # -s, not -f: an empty file is unusable too, and kubectl apply would fail on it.
+  if [ ! -s "$secrets_file" ]; then
+    echo "OpenAI: $secrets_file missing or empty — spirit animal flow uses mock LLM/images"
     return 0
   fi
 
@@ -22,7 +23,7 @@ apply_lobby_openai_secret() {
 # Load OPENAI_* from lobby-openai.yaml for local ./scripts/dev.sh (no kubectl).
 load_lobby_openai_env_from_file() {
   local secrets_file="${1:-k8s/secrets/lobby-openai.yaml}"
-  [ -f "$secrets_file" ] || return 0
+  [ -s "$secrets_file" ] || return 0
 
   if [ -n "${OPENAI_API_KEY:-}" ]; then
     return 0
