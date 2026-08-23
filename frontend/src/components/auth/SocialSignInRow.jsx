@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { fetchEnabledOAuthProviders, startOAuthSignIn } from '../../lib/oauth'
+import { cn } from '../../lib/utils'
 import { Button } from '../ui/button'
 import OAuthProviderIcon, { oauthProviderLabel } from './OAuthProviderIcon'
 
@@ -42,7 +43,11 @@ export default function SocialSignInRow() {
           key={provider}
           type="button"
           variant="outline"
-          className="w-full justify-start gap-3"
+          className={cn(
+            'w-full justify-start gap-3',
+            provider === 'GOOGLE' && '[&_svg]:size-5',
+            provider === 'DISCORD' && '[&_svg]:size-6',
+          )}
           onClick={() => startOAuthSignIn(provider)}
         >
           <OAuthProviderIcon provider={provider} />
