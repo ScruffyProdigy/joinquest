@@ -44,7 +44,17 @@ curl -fsSL https://raw.githubusercontent.com/scruffyprodigy/playhub/main/scripts
 | Component | Purpose |
 |-----------|---------|
 | `skills/joinquest-integration/` | Agent skill — phased playbook for discovery, API, checks, release |
+| `skills/multiplayer-game-design/` | Server authority, disconnect/reconnect, turn structure, competitive balance, hidden information |
+| `skills/game-architecture/` | Code structure — EventBus, centralized state, restart-safety, client-side prediction |
+| `skills/phaser/` | Phaser 3 engine mechanics for 2D games |
+| `skills/threejs-game/` | Three.js engine mechanics for 3D games |
 | `mcp.json` / `.mcp.json` | MCP server via `npx @joinquest/mcp-integration` |
+
+`joinquest-integration` gets you through the handshake. The other four are for
+building the game itself, and they're deliberately generic — no JoinQuest
+specifics — so they apply to any multiplayer browser game. Start with
+`multiplayer-game-design`: every JoinQuest game has more than one real player in
+it, and that's where the decisions that are expensive to reverse live.
 
 ## Local development
 
