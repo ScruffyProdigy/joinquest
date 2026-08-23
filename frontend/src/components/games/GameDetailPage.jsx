@@ -8,13 +8,14 @@ import { accentColorFor } from '../../lib/gameAccent'
 import GameModesPanel from './GameModesPanel'
 import GameShareButton from './GameShareButton'
 import AppFooter from '../legal/AppFooter'
+import { Button } from '../ui/button'
 
 function GameDetailToolbar({ game, onBack = navigateBackToCatalog }) {
   return (
-    <div className="game-detail__toolbar">
-      <button type="button" className="game-detail__toolbar-btn" onClick={onBack}>
+    <div className="mb-3 flex items-center justify-between gap-3">
+      <Button type="button" variant="ghost" size="sm" onClick={onBack}>
         ← Back
-      </button>
+      </Button>
       <GameShareButton game={game} />
     </div>
   )
@@ -108,8 +109,8 @@ export default function GameDetailPage({
 
   if (status === 'loading') {
     return (
-      <main className="app-shell game-detail">
-        <p className="status-message" role="status">
+      <main className="min-h-screen bg-background px-6 py-10 text-foreground">
+        <p className="font-sans text-muted-foreground" role="status">
           Loading game…
         </p>
       </main>
@@ -118,25 +119,25 @@ export default function GameDetailPage({
 
   if (status === 'error') {
     return (
-      <main className="app-shell game-detail">
-        <p className="status-message status-message-error" role="status">
+      <main className="min-h-screen bg-background px-6 py-10 text-foreground">
+        <p className="font-sans text-destructive" role="status">
           {error}
         </p>
-        <button type="button" className="game-detail__toolbar-btn" onClick={navigateBackToCatalog}>
+        <Button type="button" variant="ghost" size="sm" className="mt-3" onClick={navigateBackToCatalog}>
           ← Back to catalog
-        </button>
+        </Button>
       </main>
     )
   }
 
   if (status === 'missing' || !game) {
     return (
-      <main className="app-shell game-detail">
-        <h1>Game not found</h1>
-        <p className="panel-copy">We could not find a game at this address.</p>
-        <button type="button" className="game-detail__toolbar-btn" onClick={navigateBackToCatalog}>
+      <main className="min-h-screen bg-background px-6 py-10 text-foreground">
+        <h1 className="font-heading text-2xl font-bold">Game not found</h1>
+        <p className="font-sans text-muted-foreground">We could not find a game at this address.</p>
+        <Button type="button" variant="ghost" size="sm" className="mt-3" onClick={navigateBackToCatalog}>
           ← Back to catalog
-        </button>
+        </Button>
       </main>
     )
   }
