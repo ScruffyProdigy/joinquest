@@ -34,6 +34,7 @@ type Game struct {
 	ContactEmail     *string
 	WebsiteURL       *string
 	CommunityURL     *string
+	AccentColor      *string
 	ManifestHash     *string
 	ManifestETag     *string
 	ManifestSyncedAt *time.Time
