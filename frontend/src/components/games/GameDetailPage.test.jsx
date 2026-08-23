@@ -76,7 +76,7 @@ describe('GameDetailPage', () => {
       />,
     )
 
-    expect(await screen.findByRole('heading', { name: 'Word Hunt' })).toBeInTheDocument()
+    expect(await screen.findByText('Word Hunt')).toBeInTheDocument()
     expect(screen.getByRole('button', { name: '← Back' })).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Share' })).toBeInTheDocument()
     expect(screen.getByText(detailGame.longDescription)).toBeInTheDocument()
@@ -86,7 +86,7 @@ describe('GameDetailPage', () => {
       'href',
       'https://word-hunt-arena.win',
     )
-    expect(document.querySelector('.game-detail__hero')).toHaveAttribute(
+    expect(screen.getByTestId('game-detail-hero')).toHaveAttribute(
       'src',
       '/games/word-hunt-hero.jpg?v=1',
     )

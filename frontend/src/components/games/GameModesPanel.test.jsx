@@ -25,6 +25,7 @@ vi.mock('../../lib/queue', () => ({
 function baseGame(mode) {
   return {
     id: 'game-1',
+    slug: 'legendary-quest',
     modes: [{ id: 'mode-1', modeKey: 'legendary', displayName: 'Legendary', status: 'active', queues: [], seats: [], queuePaths: [], ...mode }],
   }
 }
@@ -205,5 +206,27 @@ describe('GameModesPanel locked mode', () => {
     await userEvent.click(rowAStandard)
     expect(scrollIntoView).toHaveBeenCalledTimes(1)
     expect(scrollIntoView.mock.contexts[0]).toBe(gameATarget)
+  })
+})
+
+describe('GameModesPanel prominent mode-card badges', () => {
+  it('shows a player-count badge when minPlayers/maxPlayers are known', () => {
+    render(
+      <GameModesPanel
+        game={baseGame({ minPlayers: 2, maxPlayers: 4, eligibility: { accessible: true } })}
+        variant="prominent"
+      />,
+    )
+    expect(screen.getByText('2-4 players')).toBeInTheDocument()
+  })
+
+  it('omits the badge when player counts are unknown', () => {
+    render(
+      <GameModesPanel
+        game={baseGame({ eligibility: { accessible: true } })}
+        variant="prominent"
+      />,
+    )
+    expect(screen.queryByLabelText('Mode details')).not.toBeInTheDocument()
   })
 })

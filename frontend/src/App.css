@@ -483,45 +483,6 @@
   text-decoration: underline;
 }
 
-.game-detail {
-  max-width: none;
-  margin: 0;
-  padding: 0 0 2rem;
-  gap: 0;
-}
-
-.game-detail__inset {
-  padding-left: 1.5rem;
-  padding-right: 1.5rem;
-}
-
-.game-detail__toolbar {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 0.75rem;
-  margin-bottom: 0.75rem;
-}
-
-.game-detail__toolbar-btn {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.4rem;
-  border: 1px solid rgba(255, 255, 255, 0.18);
-  border-radius: 999px;
-  padding: 0.45rem 0.9rem;
-  background: rgba(255, 255, 255, 0.06);
-  color: inherit;
-  cursor: pointer;
-  font: inherit;
-  font-size: 0.92rem;
-  text-decoration: none;
-}
-
-.game-detail__toolbar-btn:hover {
-  background: rgba(255, 255, 255, 0.12);
-}
-
 .game-share {
   display: flex;
   flex-direction: column;
@@ -562,13 +523,6 @@
   gap: 1rem;
 }
 
-.game-mode-row--prominent {
-  padding: 0;
-  border: none;
-  border-radius: 0;
-  background: none;
-}
-
 .game-mode-row--prominent .game-mode-row__title {
   font-size: 1.05rem;
 }
@@ -600,82 +554,6 @@
 
 .join-group-panel--prominent .join-group-panel__actions {
   gap: 0.6rem;
-}
-
-.game-detail__hero-wrap {
-  aspect-ratio: 16 / 9;
-  width: 100%;
-  overflow: hidden;
-  margin-bottom: 1.25rem;
-}
-
-.game-detail__hero {
-  display: block;
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-}
-
-.game-detail__header {
-  margin-bottom: 0.75rem;
-}
-
-.game-detail__title {
-  margin: 0 0 0.5rem;
-  font-size: 1.75rem;
-  line-height: 1.2;
-}
-
-.game-detail__tags {
-  margin-top: 0.35rem;
-}
-
-.game-detail__description {
-  margin: 0 0 1.25rem;
-  color: #ccc;
-  font-size: 1rem;
-  line-height: 1.55;
-}
-
-.game-detail__section {
-  margin-bottom: 1.25rem;
-}
-
-.game-detail__section-title {
-  margin: 0 0 0.5rem;
-  font-size: 1.15rem;
-}
-
-.game-detail__body {
-  margin: 0;
-  color: #bbb;
-  line-height: 1.55;
-  white-space: pre-wrap;
-}
-
-.game-detail__tutorial {
-  margin: 0 0 1.25rem;
-}
-
-.game-detail__screenshots {
-  list-style: none;
-  margin: 0;
-  padding: 0;
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
-  gap: 0.75rem;
-}
-
-.game-detail__screenshot {
-  display: block;
-  width: 100%;
-  border-radius: 8px;
-  border: 1px solid rgba(255, 255, 255, 0.12);
-}
-
-.game-detail__sign-in {
-  padding-top: 0;
-  border-top: none;
 }
 
 .game-modes-panel {

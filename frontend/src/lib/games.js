@@ -117,6 +117,19 @@ export function isSoloMode(mode) {
   return mode?.minPlayers === 1 && mode?.maxPlayers === 1
 }
 
+/** Player-count badge label for a mode, or null when the range isn't known. */
+export function modePlayerRangeLabel(mode) {
+  const min = mode?.minPlayers
+  const max = mode?.maxPlayers
+  if (!Number.isFinite(min) || !Number.isFinite(max)) {
+    return null
+  }
+  if (min === max) {
+    return min === 1 ? '1 player' : `${min} players`
+  }
+  return `${min}-${max} players`
+}
+
 /**
  * Join UI options derived from expanded seat queue paths.
  * @returns {{ kind: 'fifo', paths: [] } | { kind: 'composition', paths: string[] }}

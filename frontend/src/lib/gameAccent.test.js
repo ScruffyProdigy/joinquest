@@ -41,6 +41,17 @@ describe('accentColorFor', () => {
   it('does not throw for an empty slug', () => {
     expect(() => accentColorFor('')).not.toThrow()
   })
+
+  it('does not throw for an undefined slug', () => {
+    expect(() => accentColorFor(undefined)).not.toThrow()
+  })
+
+  it('produces a heroScrim gradient tinted toward black for legibility', () => {
+    const result = accentColorFor('any-slug')
+    expect(result.heroScrim).toMatch(
+      /^linear-gradient\(180deg, transparent 0%, color-mix\(in oklab, #[0-9a-f]{6} 55%, black\) 55%, color-mix\(in oklab, #[0-9a-f]{6} 80%, black\) 100%\)$/,
+    )
+  })
 })
 
 describe('listAccentColors', () => {
@@ -68,6 +79,12 @@ describe('listAccentColors', () => {
       // vivid accent) so text-foreground has strong contrast at any position.
       expect(entry.headerBg).toMatch(/color-mix\(in oklab, #[0-9a-f]{6} 35%, var\(--background\)\)/)
       expect(entry.headerBg).toMatch(/color-mix\(in oklab, #[0-9a-f]{6} 45%, var\(--background\)\)/)
+    })
+  })
+
+  it('gives every entry a heroScrim gradient', () => {
+    listAccentColors().forEach((entry) => {
+      expect(entry.heroScrim).toMatch(/^linear-gradient\(180deg, transparent 0%, color-mix\(/)
     })
   })
 })

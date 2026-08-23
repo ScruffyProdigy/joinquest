@@ -22,14 +22,16 @@ function toAccent(entry) {
     // regardless of hue, letting a single fixed light foreground color
     // (text-foreground) always have strong contrast, at any text position.
     headerBg: `linear-gradient(135deg, color-mix(in oklab, ${entry.accent500} 35%, var(--background)), color-mix(in oklab, ${entry.accent700} 45%, var(--background)))`,
+    heroScrim: `linear-gradient(180deg, transparent 0%, color-mix(in oklab, ${entry.accent700} 55%, black) 55%, color-mix(in oklab, ${entry.accent700} 80%, black) 100%)`,
   }
 }
 
 /** @param {string} slug @returns {number} */
 function hashSlug(slug) {
+  const s = String(slug ?? '')
   let hash = 0
-  for (let i = 0; i < slug.length; i++) {
-    hash = (hash * 31 + slug.charCodeAt(i)) | 0
+  for (let i = 0; i < s.length; i++) {
+    hash = (hash * 31 + s.charCodeAt(i)) | 0
   }
   return Math.abs(hash)
 }
@@ -44,14 +46,14 @@ function hashSlug(slug) {
  *
  * @param {string} slug
  * @param {string | null} [_overrideColor]
- * @returns {{name: string, badge: string, cardBg: string, border: string, headerBg: string}}
+ * @returns {{name: string, badge: string, cardBg: string, border: string, headerBg: string, heroScrim: string}}
  */
 export function accentColorFor(slug, _overrideColor = null) {
   const entry = ACCENT_PALETTE[hashSlug(slug) % ACCENT_PALETTE.length]
   return toAccent(entry)
 }
 
-/** @returns {Array<{name: string, badge: string, cardBg: string, border: string, headerBg: string}>} */
+/** @returns {Array<{name: string, badge: string, cardBg: string, border: string, headerBg: string, heroScrim: string}>} */
 export function listAccentColors() {
   return ACCENT_PALETTE.map(toAccent)
 }

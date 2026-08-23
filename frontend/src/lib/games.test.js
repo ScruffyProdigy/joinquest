@@ -4,6 +4,7 @@ import {
   isSoloMode,
   joinGroupOptionsForGame,
   joinGroupOptionsForMode,
+  modePlayerRangeLabel,
 } from './games'
 
 describe('joinGroupOptionsForMode', () => {
@@ -97,5 +98,31 @@ describe('isSoloMode', () => {
   it('is false when player bounds are missing', () => {
     expect(isSoloMode({})).toBe(false)
     expect(isSoloMode(undefined)).toBe(false)
+  })
+})
+
+describe('modePlayerRangeLabel', () => {
+  it('formats a range when min and max differ', () => {
+    expect(modePlayerRangeLabel({ minPlayers: 2, maxPlayers: 4 })).toBe('2-4 players')
+  })
+
+  it('formats a single count when min and max match and are not 1', () => {
+    expect(modePlayerRangeLabel({ minPlayers: 8, maxPlayers: 8 })).toBe('8 players')
+  })
+
+  it('uses singular "player" for an exact count of 1', () => {
+    expect(modePlayerRangeLabel({ minPlayers: 1, maxPlayers: 1 })).toBe('1 player')
+  })
+
+  it('returns null when minPlayers is missing', () => {
+    expect(modePlayerRangeLabel({ maxPlayers: 4 })).toBeNull()
+  })
+
+  it('returns null when maxPlayers is missing', () => {
+    expect(modePlayerRangeLabel({ minPlayers: 2 })).toBeNull()
+  })
+
+  it('returns null for undefined mode', () => {
+    expect(modePlayerRangeLabel(undefined)).toBeNull()
   })
 })

@@ -4,16 +4,18 @@ import { useAuth } from '../auth/AuthProvider'
 import { navigateBackToCatalog } from '../../lib/catalogNavigation'
 import { gameDetailDescription, gameHeroUrl, gameTagChips } from '../../lib/gameCard'
 import { fetchGameBySlug } from '../../lib/games'
+import { accentColorFor } from '../../lib/gameAccent'
 import GameModesPanel from './GameModesPanel'
 import GameShareButton from './GameShareButton'
 import AppFooter from '../legal/AppFooter'
+import { Button } from '../ui/button'
 
 function GameDetailToolbar({ game, onBack = navigateBackToCatalog }) {
   return (
-    <div className="game-detail__toolbar">
-      <button type="button" className="game-detail__toolbar-btn" onClick={onBack}>
+    <div className="mb-3 flex items-center justify-between gap-3">
+      <Button type="button" variant="ghost" size="sm" onClick={onBack}>
         ← Back
-      </button>
+      </Button>
       <GameShareButton game={game} />
     </div>
   )
@@ -58,7 +60,7 @@ function GameDetailPlaySection({
 
   return (
     <section className="game-detail__play game-detail__sign-in">
-      <h2 className="game-detail__section-title">Ready to play?</h2>
+      <h2 className="font-heading text-lg font-semibold">Ready to play?</h2>
       <p className="panel-copy">Sign in to look for a group or create a private table.</p>
       <SignInPanel />
     </section>
@@ -107,8 +109,8 @@ export default function GameDetailPage({
 
   if (status === 'loading') {
     return (
-      <main className="app-shell game-detail">
-        <p className="status-message" role="status">
+      <main className="min-h-screen bg-background px-6 py-10 text-foreground">
+        <p className="font-sans text-muted-foreground" role="status">
           Loading game…
         </p>
       </main>
@@ -117,25 +119,25 @@ export default function GameDetailPage({
 
   if (status === 'error') {
     return (
-      <main className="app-shell game-detail">
-        <p className="status-message status-message-error" role="status">
+      <main className="min-h-screen bg-background px-6 py-10 text-foreground">
+        <p className="font-sans text-destructive" role="status">
           {error}
         </p>
-        <button type="button" className="game-detail__toolbar-btn" onClick={navigateBackToCatalog}>
+        <Button type="button" variant="ghost" size="sm" className="mt-3" onClick={navigateBackToCatalog}>
           ← Back to catalog
-        </button>
+        </Button>
       </main>
     )
   }
 
   if (status === 'missing' || !game) {
     return (
-      <main className="app-shell game-detail">
-        <h1>Game not found</h1>
-        <p className="panel-copy">We could not find a game at this address.</p>
-        <button type="button" className="game-detail__toolbar-btn" onClick={navigateBackToCatalog}>
+      <main className="min-h-screen bg-background px-6 py-10 text-foreground">
+        <h1 className="font-heading text-2xl font-bold">Game not found</h1>
+        <p className="font-sans text-muted-foreground">We could not find a game at this address.</p>
+        <Button type="button" variant="ghost" size="sm" className="mt-3" onClick={navigateBackToCatalog}>
           ← Back to catalog
-        </button>
+        </Button>
       </main>
     )
   }
@@ -145,36 +147,44 @@ export default function GameDetailPage({
   const screenshots = (game.screenshots ?? []).filter((url) => String(url).trim())
 
   return (
-    <main className="app-shell game-detail">
-      <div className="game-detail__inset">
+    <main className="min-h-screen bg-background pb-8 text-foreground">
+      <div className="px-6 pt-4">
         <GameDetailToolbar game={game} />
       </div>
 
-      <div className="game-detail__hero-wrap">
+      <div className="relative aspect-video w-full overflow-hidden">
         <img
-          className="game-detail__hero"
+          data-testid="game-detail-hero"
+          className="h-full w-full object-cover"
           src={gameHeroUrl(game)}
           alt=""
           width={960}
           height={540}
           loading="eager"
         />
-      </div>
-
-      <div className="game-detail__inset">
-        <header className="game-detail__header">
-          <h1 className="game-detail__title">{game.name}</h1>
+        <div
+          className="pointer-events-none absolute inset-0"
+          style={{ background: accentColorFor(game.slug).heroScrim }}
+        />
+        <div className="absolute inset-x-0 bottom-0 flex flex-col gap-2 p-6">
           {tags.length > 0 ? (
-            <ul className="game-list-item__tags game-detail__tags" aria-label="Game tags">
+            <ul className="flex flex-wrap gap-1" aria-label="Game tags">
               {tags.map((tag) => (
-                <li key={tag} className="game-list-item__tag">
+                <li
+                  key={tag}
+                  className="rounded-full px-2 py-1 text-[11px] font-semibold backdrop-blur-[6px]"
+                  style={{ backgroundColor: 'rgba(0,0,0,0.42)', color: 'rgba(255,255,255,0.92)' }}
+                >
                   {tag}
                 </li>
               ))}
             </ul>
           ) : null}
-        </header>
+          <h1 className="font-heading text-2xl font-bold text-white sm:text-3xl">{game.name}</h1>
+        </div>
+      </div>
 
+      <div className="flex flex-col gap-5 px-6 pt-5">
         <GameDetailPlaySection
           game={game}
           authLoading={authLoading}
@@ -186,30 +196,34 @@ export default function GameDetailPage({
           onTableChange={onTableChange}
         />
 
-        {description ? <p className="game-detail__description">{description}</p> : null}
+        {description ? (
+          <p className="font-sans text-base leading-relaxed text-muted-foreground">{description}</p>
+        ) : null}
 
         {game.howToPlay ? (
-          <section className="game-detail__section">
-            <h2 className="game-detail__section-title">How to play</h2>
-            <p className="game-detail__body">{game.howToPlay}</p>
+          <section>
+            <h2 className="font-heading text-lg font-semibold">How to play</h2>
+            <p className="mt-2 whitespace-pre-wrap font-sans leading-relaxed text-muted-foreground">
+              {game.howToPlay}
+            </p>
           </section>
         ) : null}
 
         {game.tutorialUrl ? (
-          <p className="game-detail__tutorial">
-            <a className="auth-link" href={game.tutorialUrl} target="_blank" rel="noopener noreferrer">
+          <p>
+            <a className="font-sans text-primary underline-offset-4 hover:underline" href={game.tutorialUrl} target="_blank" rel="noopener noreferrer">
               Open tutorial
             </a>
           </p>
         ) : null}
 
         {screenshots.length > 0 ? (
-          <section className="game-detail__section">
-            <h2 className="game-detail__section-title">Screenshots</h2>
-            <ul className="game-detail__screenshots">
+          <section>
+            <h2 className="font-heading text-lg font-semibold">Screenshots</h2>
+            <ul className="mt-2 grid grid-cols-[repeat(auto-fill,minmax(220px,1fr))] gap-3">
               {screenshots.map((url) => (
                 <li key={url}>
-                  <img className="game-detail__screenshot" src={url} alt="" loading="lazy" />
+                  <img className="block w-full rounded-lg border border-border" src={url} alt="" loading="lazy" />
                 </li>
               ))}
             </ul>
