@@ -54,13 +54,13 @@ Each game registered in the catalog must supply **`iconUrl`** and **`heroUrl`** 
 
 ### Dedicated game page (`/games/:slug`)
 
-Each catalog game with a `slug` has a shareable detail page. From the catalog, the **hero image** and **game title** link to this page.
+Each catalog game with a `slug` has a shareable detail page. From the catalog, the **whole card** links to this page.
 
 - **Hero:** **`heroUrl`** in a **16∶9** slot (`aspect-ratio: 16/9`, `object-fit: cover`). Recommended exports: 960×540, 1280×720, 1920×1080.
 - **Description:** **`longDescription`** (GraphQL; stored in `games.description`) when present, otherwise **`shortDescription`**.
 - **Optional sections:** **`howToPlay`**, **`tutorialUrl`** (external link), **`screenshots`** (image URL array).
-- **Play:** signed-in users get the same mode/queue actions as on the catalog card (no section heading on the detail page).
-- **Navigation:** hero and title link from the catalog; **Back** restores catalog scroll position; **Share** copies or opens the page URL.
+- **Play:** signed-in users get mode/queue actions here — the catalog card itself has no queue actions, it's a pure navigation tile (no section heading on the detail page).
+- **Navigation:** the whole catalog card links here; **Back** restores catalog scroll position; **Share** copies or opens the page URL.
 
 Query: `gameBySlug(slug: String!)` on the GraphQL API.
 
@@ -84,7 +84,7 @@ Query: `gameBySlug(slug: String!)` on the GraphQL API.
 - **`shortDescription`** — one-line blurb under the hero on the catalog card.
 - **`longDescription`** — full blurb on the dedicated game page (falls back to `shortDescription`).
 - **`howToPlay`**, **`tutorialUrl`**, **`screenshots`** — optional detail-page content.
-- **`tags`** — up to three tag chips shown on the card (see `gameTagChips` in the frontend).
+- **`tags`** — the first two tags are shown as a combined badge pill on the catalog card (see `gameGenreModeLabel` in the frontend); the detail page shows up to three as separate chips (see `gameTagChips`).
 
 ## Admin registration
 

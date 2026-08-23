@@ -194,7 +194,7 @@ Developer self-service registration can **collect short description + tags** ear
 
 ### UI (sketch)
 
-- **GameListItem:** icon left, title + short description, tags as chips, subtle wait estimate on primary mode
+- **GameCard:** hero art background, per-game accent color, badge pills (genre/mode + player count), title, short description; no wait-estimate data yet (tracked separately, JQ-59)
 - **Game detail** (modal or route `/games/:slug`): screenshots, long description, modes, “who's waiting” / gap summary per queue path
 - Mobile: card height bounded; tags max 3 visible
 

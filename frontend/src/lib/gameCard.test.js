@@ -2,10 +2,12 @@ import { describe, it, expect } from 'vitest'
 import {
   gameCatalogHeroUrl,
   gameDetailDescription,
+  gameGenreModeLabel,
   gameHeroUrl,
   gameIconUrl,
   gamePagePath,
   gamePageShareUrl,
+  gamePlayerCountLabel,
   gameTagChips,
 } from './gameCard'
 
@@ -66,5 +68,41 @@ describe('gameCard', () => {
 
   it('gameTagChips caps at three tags', () => {
     expect(gameTagChips(['a', 'b', 'c', 'd'])).toEqual(['a', 'b', 'c'])
+  })
+
+  it('gameGenreModeLabel joins the first two tags', () => {
+    expect(gameGenreModeLabel(['Trivia', 'Party', 'extra'])).toBe('Trivia · Party')
+  })
+
+  it('gameGenreModeLabel uses a single tag alone', () => {
+    expect(gameGenreModeLabel(['Trivia'])).toBe('Trivia')
+  })
+
+  it('gameGenreModeLabel returns null with no tags', () => {
+    expect(gameGenreModeLabel([])).toBeNull()
+    expect(gameGenreModeLabel(undefined)).toBeNull()
+  })
+
+  it('gamePlayerCountLabel ranges across active modes', () => {
+    expect(
+      gamePlayerCountLabel([
+        { status: 'active', minPlayers: 2, maxPlayers: 8 },
+        { status: 'inactive', minPlayers: 1, maxPlayers: 1 },
+      ]),
+    ).toBe('2–8 players')
+  })
+
+  it('gamePlayerCountLabel collapses to a single count when min equals max', () => {
+    expect(gamePlayerCountLabel([{ status: 'active', minPlayers: 2, maxPlayers: 2 }])).toBe('2 players')
+  })
+
+  it('gamePlayerCountLabel uses singular phrasing for one player', () => {
+    expect(gamePlayerCountLabel([{ status: 'active', minPlayers: 1, maxPlayers: 1 }])).toBe('1 player')
+  })
+
+  it('gamePlayerCountLabel returns null with no active modes', () => {
+    expect(gamePlayerCountLabel([{ status: 'inactive', minPlayers: 2, maxPlayers: 4 }])).toBeNull()
+    expect(gamePlayerCountLabel([])).toBeNull()
+    expect(gamePlayerCountLabel(undefined)).toBeNull()
   })
 })
