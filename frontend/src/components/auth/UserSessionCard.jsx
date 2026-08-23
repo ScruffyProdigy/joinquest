@@ -1,5 +1,4 @@
 import { useEffect, useState } from 'react'
-import { Button } from '../ui/button'
 import { logout } from '../../lib/auth'
 import { needsProfileSetup } from '../../lib/avatars'
 import { fetchSpiritAnimalJourneyEligibility, formatSpiritAnimalJourneyCooldown } from '../../lib/spiritAnimal'
@@ -112,24 +111,24 @@ export default function UserSessionCard({ user, compact = false, showProfileActi
         />
       ) : showProfileActions ? (
         <>
-          <Button asChild variant="secondary">
-            <a href="/account">{ACCOUNT_LINK_LABEL}</a>
-          </Button>
-          <Button
+          <a className="game-list-button game-list-button-secondary" href="/account">
+            {ACCOUNT_LINK_LABEL}
+          </a>
+          <button
             type="button"
-            variant="secondary"
+            className="game-list-button game-list-button-secondary"
             onClick={() => setEditorOpen(true)}
           >
             Change display
-          </Button>
+          </button>
           {eligibilityPending ? null : canBeginSpiritAnimal ? (
-            <Button
+            <button
               type="button"
-              variant="secondary"
+              className="game-list-button game-list-button-secondary"
               onClick={() => setSpiritFlowOpen(true)}
             >
               Find my spirit animal
-            </Button>
+            </button>
           ) : (
             <p className="spirit-animal__hint">
               {formatSpiritAnimalJourneyCooldown(

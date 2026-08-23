@@ -23,7 +23,6 @@ import {
 import { useAuth } from './AuthProvider'
 import { focusCodeInput } from './focusCodeInput'
 import OAuthProviderIcon, { oauthProviderLabel as oauthLabel } from './OAuthProviderIcon'
-import { Button } from '../ui/button'
 
 function normalizeCode(value) {
   return value.replace(/\D/g, '').slice(0, 6)
@@ -335,14 +334,14 @@ export default function AccountPage() {
                   </div>
                   <div className="account-method-list__actions">
                     {!item.isPrimary ? (
-                      <Button type="button" variant="link" onClick={() => void handleSetPrimary(item.id)} disabled={actionStatus === 'loading'}>
+                      <button type="button" className="auth-link-button" onClick={() => void handleSetPrimary(item.id)} disabled={actionStatus === 'loading'}>
                         Make primary
-                      </Button>
+                      </button>
                     ) : null}
                     {canRemove ? (
-                      <Button type="button" variant="link" onClick={() => void handleRemoveEmail(item.id)} disabled={actionStatus === 'loading'}>
+                      <button type="button" className="auth-link-button" onClick={() => void handleRemoveEmail(item.id)} disabled={actionStatus === 'loading'}>
                         Remove
-                      </Button>
+                      </button>
                     ) : null}
                   </div>
                 </li>
@@ -368,9 +367,9 @@ export default function AccountPage() {
                 <button type="button" onClick={() => void handleConfirmMerge()} disabled={linkStatus === 'loading'}>
                   {linkStatus === 'loading' ? 'Sending…' : MERGE_CONFIRM}
                 </button>
-                <Button type="button" variant="secondary" onClick={handleCancelMerge} disabled={linkStatus === 'loading'}>
+                <button type="button" className="button-secondary" onClick={handleCancelMerge} disabled={linkStatus === 'loading'}>
                   {MERGE_CANCEL}
-                </Button>
+                </button>
               </div>
             </div>
           ) : null}
@@ -429,9 +428,9 @@ export default function AccountPage() {
                 <button type="button" onClick={handleConfirmOAuthMerge}>
                   {MERGE_CONFIRM}
                 </button>
-                <Button type="button" variant="secondary" onClick={handleCancelOAuthMerge}>
+                <button type="button" className="button-secondary" onClick={handleCancelOAuthMerge}>
                   {MERGE_CANCEL}
-                </Button>
+                </button>
               </div>
             </div>
           ) : null}
@@ -448,14 +447,14 @@ export default function AccountPage() {
                   </div>
                   {canRemove ? (
                     <div className="account-method-list__actions">
-                      <Button
+                      <button
                         type="button"
-                        variant="link"
+                        className="auth-link-button"
                         onClick={() => void handleRemoveIdentity(item.id)}
                         disabled={actionStatus === 'loading'}
                       >
                         Remove
-                      </Button>
+                      </button>
                     </div>
                   ) : null}
                 </li>
