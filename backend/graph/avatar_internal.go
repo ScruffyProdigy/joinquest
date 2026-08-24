@@ -17,6 +17,8 @@ func toGraphQLAvatarSource(source *string) *model.AvatarSource {
 	switch strings.ToLower(strings.TrimSpace(*source)) {
 	case avatars.SourceStarter:
 		out = model.AvatarSourceStarter
+	case avatars.SourceSigil:
+		out = model.AvatarSourceSigil
 	case "spirit_animal":
 		out = model.AvatarSourceSpiritAnimal
 	default:

@@ -129,11 +129,13 @@ func (s *Store) UpdateUserLastLogin(ctx context.Context, id uuid.UUID) error {
 }
 
 func resolveStarterAvatar(avatarKey, publicOrigin string) (key, source, url string, err error) {
-	entry, ok := avatars.StarterByKey(avatarKey)
-	if !ok {
-		return "", "", "", ErrInvalidAvatarKey
+	if entry, ok := avatars.StarterByKey(avatarKey); ok {
+		return entry.Key, avatars.SourceStarter, avatars.PublicAssetURL(publicOrigin, entry.File), nil
 	}
-	return entry.Key, avatars.SourceStarter, avatars.PublicAssetURL(publicOrigin, entry.File), nil
+	if entry, ok := avatars.SigilByKey(avatarKey); ok {
+		return entry.Key, avatars.SourceSigil, avatars.PublicAssetURL(publicOrigin, entry.File), nil
+	}
+	return "", "", "", ErrInvalidAvatarKey
 }
 
 // UpdateUserProfile sets the player's display name and optionally a starter avatar.

@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64" role="img" aria-label="Bloom canine sigil">
+  <circle cx="32" cy="32" r="32" fill="#db2777"/>
+  <path d="M13 15 L23 25 L41 25 L51 15 L49 31 L44 41 L32 51 L20 41 L15 31 Z" fill="#f8fafc"/>
+  <circle cx="25.5" cy="32" r="2.4" fill="#db2777"/>
+  <circle cx="38.5" cy="32" r="2.4" fill="#db2777"/>
+</svg>

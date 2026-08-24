@@ -55,3 +55,38 @@ func TestAbsolutizePublicAssetURL(t *testing.T) {
 }
 
 func ptr(s string) *string { return &s }
+
+func TestSigilByKeyResolvesEveryFamilyAndTint(t *testing.T) {
+	for _, family := range SigilFamilies {
+		for _, tint := range SigilTints {
+			key := "sigil-" + family + "-" + tint
+			entry, ok := SigilByKey(key)
+			if !ok {
+				t.Fatalf("SigilByKey(%q) not found", key)
+			}
+			want := "sigils/" + family + "-" + tint + ".svg"
+			if entry.File != want {
+				t.Fatalf("SigilByKey(%q) file = %q, want %q", key, entry.File, want)
+			}
+			if _, clash := StarterByKey(key); clash {
+				t.Fatalf("sigil key %q collides with a starter avatar key", key)
+			}
+		}
+	}
+}
+
+func TestSigilByKeyRejectsUnknown(t *testing.T) {
+	for _, key := range []string{
+		"compass",                 // starter avatar, not a sigil
+		"",                        // empty
+		"sigil-canine",            // missing tint
+		"sigil-canine-chartreuse", // unknown tint
+		"sigil-dragon-frost",      // unknown family
+		"canine-frost",            // missing prefix
+		"sigil-canine-frost-extra",
+	} {
+		if _, ok := SigilByKey(key); ok {
+			t.Fatalf("SigilByKey(%q) should not resolve", key)
+		}
+	}
+}
