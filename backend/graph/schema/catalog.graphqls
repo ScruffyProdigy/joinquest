@@ -76,6 +76,14 @@ enum RequirementOperator {
   ANY
 }
 
+"""Players a game has right now. Playing and queued are different people, not two views of one number."""
+type GamePlayerActivity {
+  """Players seated in a live session of this game."""
+  playing: Int!
+  """Players waiting in this game's queues for a match to fill."""
+  queued: Int!
+}
+
 type ModeQueue {
   id: ID!
   name: String!
@@ -105,6 +113,8 @@ extend type Game {
   tags: [String!]!
   """Developer-chosen hex accent (#rrggbb). Null falls back to the slug-hashed palette color."""
   accentColor: String
+  """Live player counts for the catalog card. Served from a short-lived whole-catalog snapshot."""
+  playerActivity: GamePlayerActivity!
   modes: [GameMode!]!
 }
 

@@ -147,6 +147,7 @@ type ComplexityRoot struct {
 		Modes             func(childComplexity int) int
 		Name              func(childComplexity int) int
 		OwnerUserID       func(childComplexity int) int
+		PlayerActivity    func(childComplexity int) int
 		Screenshots       func(childComplexity int) int
 		ShortDescription  func(childComplexity int) int
 		Slug              func(childComplexity int) int
@@ -191,6 +192,11 @@ type ComplexityRoot struct {
 		SeatKey   func(childComplexity int) int
 		SortOrder func(childComplexity int) int
 		Team      func(childComplexity int) int
+	}
+
+	GamePlayerActivity struct {
+		Playing func(childComplexity int) int
+		Queued  func(childComplexity int) int
 	}
 
 	JoinResult struct {
@@ -565,6 +571,7 @@ type ActiveIntentResolver interface {
 type GameResolver interface {
 	ActiveSessions(ctx context.Context, obj *model.Game, limit *int) ([]*model.Session, error)
 
+	PlayerActivity(ctx context.Context, obj *model.Game) (*model.GamePlayerActivity, error)
 	Modes(ctx context.Context, obj *model.Game) ([]*model.GameMode, error)
 
 	IntegrationChecks(ctx context.Context, obj *model.Game) ([]*model.GameIntegrationCheck, error)
@@ -1099,6 +1106,12 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.Game.OwnerUserID(childComplexity), true
+	case "Game.playerActivity":
+		if e.complexity.Game.PlayerActivity == nil {
+			break
+		}
+
+		return e.complexity.Game.PlayerActivity(childComplexity), true
 	case "Game.screenshots":
 		if e.complexity.Game.Screenshots == nil {
 			break
@@ -1300,6 +1313,19 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.GameModeSeat.Team(childComplexity), true
+
+	case "GamePlayerActivity.playing":
+		if e.complexity.GamePlayerActivity.Playing == nil {
+			break
+		}
+
+		return e.complexity.GamePlayerActivity.Playing(childComplexity), true
+	case "GamePlayerActivity.queued":
+		if e.complexity.GamePlayerActivity.Queued == nil {
+			break
+		}
+
+		return e.complexity.GamePlayerActivity.Queued(childComplexity), true
 
 	case "JoinResult.joinUrl":
 		if e.complexity.JoinResult.JoinURL == nil {
@@ -3476,6 +3502,14 @@ enum RequirementOperator {
   ANY
 }
 
+"""Players a game has right now. Playing and queued are different people, not two views of one number."""
+type GamePlayerActivity {
+  """Players seated in a live session of this game."""
+  playing: Int!
+  """Players waiting in this game's queues for a match to fill."""
+  queued: Int!
+}
+
 type ModeQueue {
   id: ID!
   name: String!
@@ -3505,6 +3539,8 @@ extend type Game {
   tags: [String!]!
   """Developer-chosen hex accent (#rrggbb). Null falls back to the slug-hashed palette color."""
   accentColor: String
+  """Live player counts for the catalog card. Served from a short-lived whole-catalog snapshot."""
+  playerActivity: GamePlayerActivity!
   modes: [GameMode!]!
 }
 
@@ -5560,6 +5596,8 @@ func (ec *executionContext) fieldContext_ConnectMyGamePayload_game(_ context.Con
 				return ec.fieldContext_Game_tags(ctx, field)
 			case "accentColor":
 				return ec.fieldContext_Game_accentColor(ctx, field)
+			case "playerActivity":
+				return ec.fieldContext_Game_playerActivity(ctx, field)
 			case "modes":
 				return ec.fieldContext_Game_modes(ctx, field)
 			case "visibility":
@@ -6061,6 +6099,8 @@ func (ec *executionContext) fieldContext_DigitalGood_game(_ context.Context, fie
 				return ec.fieldContext_Game_tags(ctx, field)
 			case "accentColor":
 				return ec.fieldContext_Game_accentColor(ctx, field)
+			case "playerActivity":
+				return ec.fieldContext_Game_playerActivity(ctx, field)
 			case "modes":
 				return ec.fieldContext_Game_modes(ctx, field)
 			case "visibility":
@@ -6838,6 +6878,41 @@ func (ec *executionContext) fieldContext_Game_accentColor(_ context.Context, fie
 		IsResolver: false,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Game_playerActivity(ctx context.Context, field graphql.CollectedField, obj *model.Game) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_Game_playerActivity,
+		func(ctx context.Context) (any, error) {
+			return ec.resolvers.Game().PlayerActivity(ctx, obj)
+		},
+		nil,
+		ec.marshalNGamePlayerActivity2ᚖgithubᚗcomᚋscruffyprodigyᚋplayhubᚋgraphᚋmodelᚐGamePlayerActivity,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_Game_playerActivity(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Game",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "playing":
+				return ec.fieldContext_GamePlayerActivity_playing(ctx, field)
+			case "queued":
+				return ec.fieldContext_GamePlayerActivity_queued(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type GamePlayerActivity", field.Name)
 		},
 	}
 	return fc, nil
@@ -7853,6 +7928,64 @@ func (ec *executionContext) _GameModeSeat_sortOrder(ctx context.Context, field g
 func (ec *executionContext) fieldContext_GameModeSeat_sortOrder(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	fc = &graphql.FieldContext{
 		Object:     "GameModeSeat",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Int does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _GamePlayerActivity_playing(ctx context.Context, field graphql.CollectedField, obj *model.GamePlayerActivity) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_GamePlayerActivity_playing,
+		func(ctx context.Context) (any, error) {
+			return obj.Playing, nil
+		},
+		nil,
+		ec.marshalNInt2int,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_GamePlayerActivity_playing(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "GamePlayerActivity",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Int does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _GamePlayerActivity_queued(ctx context.Context, field graphql.CollectedField, obj *model.GamePlayerActivity) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_GamePlayerActivity_queued,
+		func(ctx context.Context) (any, error) {
+			return obj.Queued, nil
+		},
+		nil,
+		ec.marshalNInt2int,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_GamePlayerActivity_queued(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "GamePlayerActivity",
 		Field:      field,
 		IsMethod:   false,
 		IsResolver: false,
@@ -9301,6 +9434,8 @@ func (ec *executionContext) fieldContext_Mutation_refreshGameManifest(ctx contex
 				return ec.fieldContext_Game_tags(ctx, field)
 			case "accentColor":
 				return ec.fieldContext_Game_accentColor(ctx, field)
+			case "playerActivity":
+				return ec.fieldContext_Game_playerActivity(ctx, field)
 			case "modes":
 				return ec.fieldContext_Game_modes(ctx, field)
 			case "visibility":
@@ -9737,6 +9872,8 @@ func (ec *executionContext) fieldContext_Mutation_updateMyGameMetadata(ctx conte
 				return ec.fieldContext_Game_tags(ctx, field)
 			case "accentColor":
 				return ec.fieldContext_Game_accentColor(ctx, field)
+			case "playerActivity":
+				return ec.fieldContext_Game_playerActivity(ctx, field)
 			case "modes":
 				return ec.fieldContext_Game_modes(ctx, field)
 			case "visibility":
@@ -9832,6 +9969,8 @@ func (ec *executionContext) fieldContext_Mutation_requestPublicRelease(ctx conte
 				return ec.fieldContext_Game_tags(ctx, field)
 			case "accentColor":
 				return ec.fieldContext_Game_accentColor(ctx, field)
+			case "playerActivity":
+				return ec.fieldContext_Game_playerActivity(ctx, field)
 			case "modes":
 				return ec.fieldContext_Game_modes(ctx, field)
 			case "visibility":
@@ -9927,6 +10066,8 @@ func (ec *executionContext) fieldContext_Mutation_reviewGameRelease(ctx context.
 				return ec.fieldContext_Game_tags(ctx, field)
 			case "accentColor":
 				return ec.fieldContext_Game_accentColor(ctx, field)
+			case "playerActivity":
+				return ec.fieldContext_Game_playerActivity(ctx, field)
 			case "modes":
 				return ec.fieldContext_Game_modes(ctx, field)
 			case "visibility":
@@ -11552,6 +11693,8 @@ func (ec *executionContext) fieldContext_Query_games(ctx context.Context, field 
 				return ec.fieldContext_Game_tags(ctx, field)
 			case "accentColor":
 				return ec.fieldContext_Game_accentColor(ctx, field)
+			case "playerActivity":
+				return ec.fieldContext_Game_playerActivity(ctx, field)
 			case "modes":
 				return ec.fieldContext_Game_modes(ctx, field)
 			case "visibility":
@@ -11647,6 +11790,8 @@ func (ec *executionContext) fieldContext_Query_game(ctx context.Context, field g
 				return ec.fieldContext_Game_tags(ctx, field)
 			case "accentColor":
 				return ec.fieldContext_Game_accentColor(ctx, field)
+			case "playerActivity":
+				return ec.fieldContext_Game_playerActivity(ctx, field)
 			case "modes":
 				return ec.fieldContext_Game_modes(ctx, field)
 			case "visibility":
@@ -11742,6 +11887,8 @@ func (ec *executionContext) fieldContext_Query_gameBySlug(ctx context.Context, f
 				return ec.fieldContext_Game_tags(ctx, field)
 			case "accentColor":
 				return ec.fieldContext_Game_accentColor(ctx, field)
+			case "playerActivity":
+				return ec.fieldContext_Game_playerActivity(ctx, field)
 			case "modes":
 				return ec.fieldContext_Game_modes(ctx, field)
 			case "visibility":
@@ -12388,6 +12535,8 @@ func (ec *executionContext) fieldContext_Query_myGames(_ context.Context, field 
 				return ec.fieldContext_Game_tags(ctx, field)
 			case "accentColor":
 				return ec.fieldContext_Game_accentColor(ctx, field)
+			case "playerActivity":
+				return ec.fieldContext_Game_playerActivity(ctx, field)
 			case "modes":
 				return ec.fieldContext_Game_modes(ctx, field)
 			case "visibility":
@@ -12472,6 +12621,8 @@ func (ec *executionContext) fieldContext_Query_myGame(ctx context.Context, field
 				return ec.fieldContext_Game_tags(ctx, field)
 			case "accentColor":
 				return ec.fieldContext_Game_accentColor(ctx, field)
+			case "playerActivity":
+				return ec.fieldContext_Game_playerActivity(ctx, field)
 			case "modes":
 				return ec.fieldContext_Game_modes(ctx, field)
 			case "visibility":
@@ -12778,6 +12929,8 @@ func (ec *executionContext) fieldContext_Query_pendingGameReviews(_ context.Cont
 				return ec.fieldContext_Game_tags(ctx, field)
 			case "accentColor":
 				return ec.fieldContext_Game_accentColor(ctx, field)
+			case "playerActivity":
+				return ec.fieldContext_Game_playerActivity(ctx, field)
 			case "modes":
 				return ec.fieldContext_Game_modes(ctx, field)
 			case "visibility":
@@ -13625,6 +13778,8 @@ func (ec *executionContext) fieldContext_RegisterGamePayload_game(_ context.Cont
 				return ec.fieldContext_Game_tags(ctx, field)
 			case "accentColor":
 				return ec.fieldContext_Game_accentColor(ctx, field)
+			case "playerActivity":
+				return ec.fieldContext_Game_playerActivity(ctx, field)
 			case "modes":
 				return ec.fieldContext_Game_modes(ctx, field)
 			case "visibility":
@@ -13766,6 +13921,8 @@ func (ec *executionContext) fieldContext_RegisterMyGamePayload_game(_ context.Co
 				return ec.fieldContext_Game_tags(ctx, field)
 			case "accentColor":
 				return ec.fieldContext_Game_accentColor(ctx, field)
+			case "playerActivity":
+				return ec.fieldContext_Game_playerActivity(ctx, field)
 			case "modes":
 				return ec.fieldContext_Game_modes(ctx, field)
 			case "visibility":
@@ -14665,6 +14822,8 @@ func (ec *executionContext) fieldContext_Session_game(_ context.Context, field g
 				return ec.fieldContext_Game_tags(ctx, field)
 			case "accentColor":
 				return ec.fieldContext_Game_accentColor(ctx, field)
+			case "playerActivity":
+				return ec.fieldContext_Game_playerActivity(ctx, field)
 			case "modes":
 				return ec.fieldContext_Game_modes(ctx, field)
 			case "visibility":
@@ -16765,6 +16924,8 @@ func (ec *executionContext) fieldContext_SyncMyGameManifestPayload_game(_ contex
 				return ec.fieldContext_Game_tags(ctx, field)
 			case "accentColor":
 				return ec.fieldContext_Game_accentColor(ctx, field)
+			case "playerActivity":
+				return ec.fieldContext_Game_playerActivity(ctx, field)
 			case "modes":
 				return ec.fieldContext_Game_modes(ctx, field)
 			case "visibility":
@@ -16935,6 +17096,8 @@ func (ec *executionContext) fieldContext_Table_game(_ context.Context, field gra
 				return ec.fieldContext_Game_tags(ctx, field)
 			case "accentColor":
 				return ec.fieldContext_Game_accentColor(ctx, field)
+			case "playerActivity":
+				return ec.fieldContext_Game_playerActivity(ctx, field)
 			case "modes":
 				return ec.fieldContext_Game_modes(ctx, field)
 			case "visibility":
@@ -20711,6 +20874,42 @@ func (ec *executionContext) _Game(ctx context.Context, sel ast.SelectionSet, obj
 			}
 		case "accentColor":
 			out.Values[i] = ec._Game_accentColor(ctx, field, obj)
+		case "playerActivity":
+			field := field
+
+			innerFunc := func(ctx context.Context, fs *graphql.FieldSet) (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Game_playerActivity(ctx, field, obj)
+				if res == graphql.Null {
+					atomic.AddUint32(&fs.Invalids, 1)
+				}
+				return res
+			}
+
+			if field.Deferrable != nil {
+				dfs, ok := deferred[field.Deferrable.Label]
+				di := 0
+				if ok {
+					dfs.AddField(field)
+					di = len(dfs.Values) - 1
+				} else {
+					dfs = graphql.NewFieldSet([]graphql.CollectedField{field})
+					deferred[field.Deferrable.Label] = dfs
+				}
+				dfs.Concurrently(di, func(ctx context.Context) graphql.Marshaler {
+					return innerFunc(ctx, dfs)
+				})
+
+				// don't run the out.Concurrently() call below
+				out.Values[i] = graphql.Null
+				continue
+			}
+
+			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
 		case "modes":
 			field := field
 
@@ -21157,6 +21356,50 @@ func (ec *executionContext) _GameModeSeat(ctx context.Context, sel ast.Selection
 			out.Values[i] = ec._GameModeSeat_queuePath(ctx, field, obj)
 		case "sortOrder":
 			out.Values[i] = ec._GameModeSeat_sortOrder(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch(ctx)
+	if out.Invalids > 0 {
+		return graphql.Null
+	}
+
+	atomic.AddInt32(&ec.deferred, int32(len(deferred)))
+
+	for label, dfs := range deferred {
+		ec.processDeferredGroup(graphql.DeferredGroup{
+			Label:    label,
+			Path:     graphql.GetPath(ctx),
+			FieldSet: dfs,
+			Context:  ctx,
+		})
+	}
+
+	return out
+}
+
+var gamePlayerActivityImplementors = []string{"GamePlayerActivity"}
+
+func (ec *executionContext) _GamePlayerActivity(ctx context.Context, sel ast.SelectionSet, obj *model.GamePlayerActivity) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, gamePlayerActivityImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	deferred := make(map[string]*graphql.FieldSet)
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("GamePlayerActivity")
+		case "playing":
+			out.Values[i] = ec._GamePlayerActivity_playing(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "queued":
+			out.Values[i] = ec._GamePlayerActivity_queued(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
@@ -25896,6 +26139,20 @@ func (ec *executionContext) marshalNGameModeSeat2ᚖgithubᚗcomᚋscruffyprodig
 		return graphql.Null
 	}
 	return ec._GameModeSeat(ctx, sel, v)
+}
+
+func (ec *executionContext) marshalNGamePlayerActivity2githubᚗcomᚋscruffyprodigyᚋplayhubᚋgraphᚋmodelᚐGamePlayerActivity(ctx context.Context, sel ast.SelectionSet, v model.GamePlayerActivity) graphql.Marshaler {
+	return ec._GamePlayerActivity(ctx, sel, &v)
+}
+
+func (ec *executionContext) marshalNGamePlayerActivity2ᚖgithubᚗcomᚋscruffyprodigyᚋplayhubᚋgraphᚋmodelᚐGamePlayerActivity(ctx context.Context, sel ast.SelectionSet, v *model.GamePlayerActivity) graphql.Marshaler {
+	if v == nil {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			ec.Errorf(ctx, "the requested element is null which the schema does not allow")
+		}
+		return graphql.Null
+	}
+	return ec._GamePlayerActivity(ctx, sel, v)
 }
 
 func (ec *executionContext) unmarshalNGameVisibility2githubᚗcomᚋscruffyprodigyᚋplayhubᚋgraphᚋmodelᚐGameVisibility(ctx context.Context, v any) (model.GameVisibility, error) {

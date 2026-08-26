@@ -7,6 +7,7 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/scruffyprodigy/playhub/internal/auth"
+	"github.com/scruffyprodigy/playhub/internal/catalogstats"
 	"github.com/scruffyprodigy/playhub/internal/formingworker"
 	"github.com/scruffyprodigy/playhub/internal/gameclient"
 	"github.com/scruffyprodigy/playhub/internal/pubsub"
@@ -33,6 +34,8 @@ type Resolver struct {
 	GameProvisioner gameclient.MatchProvisioner
 	// EligibilityCache resolves GameMode.eligibility; nil uses a default 5s in-memory cache.
 	EligibilityCache *gameclient.EligibilityCache
+	// LiveCountsCache serves Game.playerActivity; nil queries the store on every field read.
+	LiveCountsCache *catalogstats.Cache
 }
 
 // NewResolver creates a resolver backed by the store and auth service.
@@ -42,6 +45,25 @@ func NewResolver(st *store.Store, authService *auth.Service, broker pubsub.Broke
 		Auth:             authService,
 		PubSub:           broker,
 		EligibilityCache: gameclient.NewEligibilityCache(gameclient.NewClient(), 5*time.Second),
+		LiveCountsCache:  catalogstats.NewCache(liveCountsSource(st), 5*time.Second),
+	}
+}
+
+// liveCountsSource adapts the store's grouped aggregate to the cache's Source signature.
+func liveCountsSource(st *store.Store) catalogstats.Source {
+	return func(ctx context.Context) (map[uuid.UUID]catalogstats.Counts, error) {
+		if st == nil {
+			return nil, fmt.Errorf("database store is not configured")
+		}
+		rows, err := st.CountLivePlayersByGame(ctx)
+		if err != nil {
+			return nil, err
+		}
+		counts := make(map[uuid.UUID]catalogstats.Counts, len(rows))
+		for gameID, row := range rows {
+			counts[gameID] = catalogstats.Counts{Playing: row.Playing, Queued: row.Queued}
+		}
+		return counts, nil
 	}
 }
 

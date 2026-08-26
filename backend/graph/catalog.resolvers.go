@@ -16,6 +16,19 @@ import (
 	"github.com/scruffyprodigy/playhub/internal/store"
 )
 
+// PlayerActivity is the resolver for the playerActivity field.
+func (r *gameResolver) PlayerActivity(ctx context.Context, obj *model.Game) (*model.GamePlayerActivity, error) {
+	gameID, err := parseUUID(obj.ID, "game id")
+	if err != nil {
+		return nil, err
+	}
+	counts, err := r.liveCounts(ctx, gameID)
+	if err != nil {
+		return nil, err
+	}
+	return &model.GamePlayerActivity{Playing: counts.Playing, Queued: counts.Queued}, nil
+}
+
 // Modes is the resolver for the modes field.
 func (r *gameResolver) Modes(ctx context.Context, obj *model.Game) ([]*model.GameMode, error) {
 	st, err := r.requireStore()

@@ -63,6 +63,10 @@ const GAME_CARD_FIELDS = `
   screenshots
   tags
   accentColor
+  playerActivity {
+    playing
+    queued
+  }
   createdAt
   ${GAME_MODE_FIELDS}
 `
