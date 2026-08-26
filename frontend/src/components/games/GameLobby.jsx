@@ -10,8 +10,10 @@ export default function GameLobby() {
   const [status, setStatus] = useState('idle')
   const [error, setError] = useState('')
 
+  // The catalog is public. Wait for the session check so the query can carry a
+  // player id when there is one, but render for signed-out visitors either way.
   useEffect(() => {
-    if (authLoading || !user) {
+    if (authLoading) {
       return
     }
 
@@ -19,7 +21,7 @@ export default function GameLobby() {
     setStatus('loading')
     setError('')
 
-    fetchGames(user.id)
+    fetchGames(user?.id ?? '')
       .then((items) => {
         if (cancelled) {
           return
@@ -39,18 +41,14 @@ export default function GameLobby() {
     return () => {
       cancelled = true
     }
-  }, [authLoading, user, user?.id])
-
-  if (authLoading || !user) {
-    return null
-  }
+  }, [authLoading, user?.id])
 
   return (
     <section className="game-lobby panel-card" aria-labelledby="games-heading">
       <h2 id="games-heading">{GAMES_HEADING}</h2>
       <p className="panel-copy">{GAMES_INTRO}</p>
 
-      {status === 'loading' ? (
+      {status === 'idle' || status === 'loading' ? (
         <p className="status-message" role="status">
           Loading games…
         </p>

@@ -31,6 +31,7 @@ describe('GameLobby', () => {
     vi.mocked(games.fetchGames).mockResolvedValue([
       {
         id: 'game-1',
+        slug: 'rock-paper-scissors-lizard-robot',
         name: 'Rock Paper Scissors Lizard Robot',
         iconUrl: '/games/rpslr-icon.png',
         heroUrl: '/games/rpslr-hero.jpg',
@@ -49,14 +50,23 @@ describe('GameLobby', () => {
     ])
   })
 
-  it('does not render when the user is logged out', async () => {
+  it('shows the catalog to signed-out visitors', async () => {
+    mockUnauthenticatedSession()
+    renderGameLobby()
+
+    expect(await screen.findByRole('heading', { name: 'Available games' })).toBeInTheDocument()
+    expect(await screen.findByRole('heading', { name: 'Rock Paper Scissors Lizard Robot' })).toBeInTheDocument()
+  })
+
+  it('queries the catalog without a player id when signed out', async () => {
     mockUnauthenticatedSession()
     renderGameLobby()
 
     await waitFor(() => {
-      expect(screen.queryByRole('heading', { name: 'Available games' })).not.toBeInTheDocument()
+      expect(games.fetchGames).toHaveBeenCalledTimes(1)
     })
-    expect(games.fetchGames).not.toHaveBeenCalled()
+    // No player id means the query drops the per-user eligibility field.
+    expect(games.fetchGames).toHaveBeenCalledWith('')
   })
 
   it('loads and shows catalog games for signed-in users', async () => {
@@ -66,6 +76,7 @@ describe('GameLobby', () => {
     expect(await screen.findByRole('heading', { name: 'Available games' })).toBeInTheDocument()
     expect(await screen.findByRole('heading', { name: 'Rock Paper Scissors Lizard Robot' })).toBeInTheDocument()
     expect(games.fetchGames).toHaveBeenCalledTimes(1)
+    expect(games.fetchGames).toHaveBeenCalledWith('user-1')
   })
 
   it('shows an error when loading games fails', async () => {
