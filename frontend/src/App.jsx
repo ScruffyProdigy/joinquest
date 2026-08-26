@@ -27,6 +27,7 @@ import DeveloperDashboard from './components/developers/DeveloperDashboard'
 import DeveloperLandingPage from './components/developers/DeveloperLandingPage'
 import DeveloperWelcomePage from './components/developers/DeveloperWelcomePage'
 import DeveloperHomeBlock from './components/developers/DeveloperHomeBlock'
+import IdentityGate from './components/avatars/IdentityGate'
 import AppFooter from './components/legal/AppFooter'
 import TermsPage from './components/legal/TermsPage'
 import PrivacyPage from './components/legal/PrivacyPage'
@@ -179,6 +180,7 @@ function MainShell() {
   return (
     <ActiveRoomProvider pendingInviteCode={inviteCode}>
       <MainLayout />
+      <IdentityGate />
     </ActiveRoomProvider>
   )
 }

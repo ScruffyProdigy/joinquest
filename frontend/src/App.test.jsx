@@ -1,7 +1,7 @@
 import { render, screen, waitFor } from '@testing-library/react'
 import { describe, it, expect, beforeEach } from 'vitest'
 import App from './App'
-import { SIGN_IN_HEADING } from './lib/playerCopy'
+import { IDENTITY_GATE_HEADING, SIGN_IN_HEADING } from './lib/playerCopy'
 import { mockAuthenticatedSession, mockDemoGames, mockUnauthenticatedSession } from './test/setup'
 
 describe('App Component', () => {
@@ -18,7 +18,7 @@ describe('App Component', () => {
     })
   })
 
-  it('renders branding and login when signed out', async () => {
+  it('gates a signed-out visitor behind the avatar picker', async () => {
     mockUnauthenticatedSession()
     render(<App />)
 
@@ -26,8 +26,9 @@ describe('App Component', () => {
     expect(screen.getByText('Find your group. Play together.')).toBeInTheDocument()
 
     await waitFor(() => {
-      expect(screen.getByRole('heading', { name: SIGN_IN_HEADING })).toBeInTheDocument()
+      expect(screen.getByRole('heading', { name: IDENTITY_GATE_HEADING })).toBeInTheDocument()
     })
+    expect(screen.getByRole('button', { name: 'Log in or create account' })).toBeInTheDocument()
     expect(screen.queryByRole('heading', { name: 'Room' })).not.toBeInTheDocument()
   })
 
