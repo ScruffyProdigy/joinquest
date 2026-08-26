@@ -6,8 +6,6 @@ import {
   SIGIL_TINTS,
   generateGuestIdentities,
   generateGuestIdentity,
-  isGeneratedDisplayName,
-  needsIdentity,
 } from './guestIdentity'
 
 describe('generateGuestIdentity', () => {
@@ -60,49 +58,6 @@ describe('generateGuestIdentities', () => {
       )
       expect(new Set(tints).size).toBe(tints.length)
     }
-  })
-})
-
-describe('isGeneratedDisplayName', () => {
-  it.each([
-    ['guest#123456', true],
-    ['GUEST#000001', true],
-    ['ryan (new)', true],
-    ['', true],
-    ['   ', true],
-    [undefined, true],
-    ['FrostFox4827', false],
-    ['Ryan', false],
-  ])('treats %s as generated: %s', (name, expected) => {
-    expect(isGeneratedDisplayName(name)).toBe(expected)
-  })
-})
-
-describe('needsIdentity', () => {
-  const complete = { displayName: 'FrostFox4827', avatarKey: 'sigil-canine' }
-
-  it('prompts a visitor with no session', () => {
-    expect(needsIdentity(null)).toBe(true)
-  })
-
-  it('prompts a fresh guest who has neither a chosen name nor an avatar', () => {
-    expect(needsIdentity({ displayName: 'guest#421900', avatarKey: '' })).toBe(true)
-  })
-
-  it('prompts when only the avatar is missing', () => {
-    expect(needsIdentity({ displayName: 'Ryan', avatarKey: '' })).toBe(true)
-  })
-
-  it('prompts when only the name is still generated', () => {
-    expect(needsIdentity({ displayName: 'guest#421900', avatarKey: 'sigil-canine' })).toBe(true)
-  })
-
-  it('leaves a guest who already picked both alone', () => {
-    expect(needsIdentity({ ...complete, isGuest: true })).toBe(false)
-  })
-
-  it('leaves a signed-in player with a spirit animal alone', () => {
-    expect(needsIdentity({ displayName: 'Ryan', avatarUrl: 'https://cdn/spirit.png' })).toBe(false)
   })
 })
 

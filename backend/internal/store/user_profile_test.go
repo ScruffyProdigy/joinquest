@@ -17,15 +17,6 @@ func TestNormalizeDisplayName(t *testing.T) {
 	}
 }
 
-func TestIsProvisionalDisplayName(t *testing.T) {
-	if !IsProvisionalDisplayName("alice (new)") {
-		t.Fatal("expected provisional name")
-	}
-	if IsProvisionalDisplayName("Alice") {
-		t.Fatal("expected custom name")
-	}
-}
-
 func TestUpdateUserProfile(t *testing.T) {
 	st := openTestStore(t)
 	cleaner := st.NewTestCleaner(t)

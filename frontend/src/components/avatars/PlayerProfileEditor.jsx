@@ -1,12 +1,7 @@
 import { useEffect, useState } from 'react'
-import {
-  defaultDisplayNameInput,
-  fetchStarterAvatars,
-  hasExistingAvatar,
-  needsProfileSetup,
-  updatePlayerProfile,
-} from '../../lib/avatars'
+import { defaultDisplayNameInput, fetchStarterAvatars, updatePlayerProfile } from '../../lib/avatars'
 import { cn } from '../../lib/utils'
+import { hasChosenAvatar, needsIdentity } from '../../lib/viewer'
 import { useAuth } from '../auth/AuthProvider'
 import { Button } from '../ui/button'
 import { Input } from '../ui/input'
@@ -38,7 +33,7 @@ export default function PlayerProfileEditor({ user, required = false, onSaved, o
   }, [])
 
   const trimmedName = displayName.trim()
-  const keepingCurrentAvatar = hasExistingAvatar(user) && !selectedKey
+  const keepingCurrentAvatar = hasChosenAvatar(user) && !selectedKey
   const canSave = Boolean(trimmedName && !busy && (selectedKey || keepingCurrentAvatar))
 
   async function handleSave(event) {
@@ -62,7 +57,7 @@ export default function PlayerProfileEditor({ user, required = false, onSaved, o
   return (
     <form className="flex flex-col gap-4" onSubmit={handleSave}>
       <p className="text-sm text-muted-foreground">
-        {required || needsProfileSetup(user)
+        {required || needsIdentity(user)
           ? 'Choose how others will see you in rooms and at tables.'
           : 'Update your display name and journey icon.'}
       </p>

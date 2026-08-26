@@ -15,7 +15,9 @@ type User struct {
 	AvatarKey    *string
 	AvatarSource *string
 	IsGuest      bool
-	CreatedAt    time.Time
+	// Nil until the player picks a name; before that DisplayName is a placeholder.
+	DisplayNameChosenAt *time.Time
+	CreatedAt           time.Time
 }
 
 type CreateUserParams struct {

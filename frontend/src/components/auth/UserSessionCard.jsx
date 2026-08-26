@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { logout } from '../../lib/auth'
-import { needsProfileSetup } from '../../lib/avatars'
+import { needsIdentity } from '../../lib/viewer'
 import { fetchSpiritAnimalJourneyEligibility, formatSpiritAnimalJourneyCooldown } from '../../lib/spiritAnimal'
 import { ACCOUNT_LINK_LABEL, GUEST_BADGE, GUEST_SPIRIT_ANIMAL_HINT } from '../../lib/playerCopy'
 import { cn } from '../../lib/utils'
@@ -15,7 +15,7 @@ export default function UserSessionCard({ user, compact = false, showProfileActi
   const { clearSession } = useAuth()
   const [status, setStatus] = useState('idle')
   const [error, setError] = useState('')
-  const setupRequired = needsProfileSetup(user)
+  const setupRequired = needsIdentity(user)
   const [editorOpen, setEditorOpen] = useState(setupRequired)
   const [spiritFlowOpen, setSpiritFlowOpen] = useState(false)
   const [journeyEligibility, setJourneyEligibility] = useState(null)
@@ -46,7 +46,7 @@ export default function UserSessionCard({ user, compact = false, showProfileActi
   const eligibilityPending = journeyEligibility === null
 
   useEffect(() => {
-    if (needsProfileSetup(user)) {
+    if (needsIdentity(user)) {
       setEditorOpen(true)
     }
   }, [user])
@@ -67,7 +67,7 @@ export default function UserSessionCard({ user, compact = false, showProfileActi
   }
 
   function handleSaved(updated) {
-    if (!needsProfileSetup(updated)) {
+    if (!needsIdentity(updated)) {
       setEditorOpen(false)
       setSpiritFlowOpen(false)
     }

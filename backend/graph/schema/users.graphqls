@@ -5,6 +5,8 @@ type User {
   avatarUrl: String
   avatarKey: String
   avatarSource: AvatarSource
+  # Null until the player picks a name; before that displayName is a placeholder.
+  displayNameChosenAt: Time
   createdAt: Time!
   isAdmin: Boolean!
 }

@@ -10,13 +10,13 @@ import (
 
 func TestDefaultDisplayName(t *testing.T) {
 	got := DefaultDisplayName("coleryanxxx@gmail.com")
-	want := "coleryanxxx (new)"
+	want := "coleryanxxx"
 	if got != want {
 		t.Fatalf("DefaultDisplayName() = %q, want %q", got, want)
 	}
 }
 
-func TestCreateUserUsesProvisionalDisplayName(t *testing.T) {
+func TestCreateUserLeavesDefaultedDisplayNameUnchosen(t *testing.T) {
 	st := openTestStore(t)
 	cleaner := st.NewTestCleaner(t)
 	ctx := t.Context()
@@ -28,9 +28,12 @@ func TestCreateUserUsesProvisionalDisplayName(t *testing.T) {
 	}
 	cleaner.TrackUser(user.ID)
 
-	expectedPrefix := strings.Split(email, "@")[0]
-	if !strings.HasPrefix(user.DisplayName, expectedPrefix+" (new)") {
-		t.Fatalf("expected provisional display name, got %q", user.DisplayName)
+	if user.DisplayName != strings.Split(email, "@")[0] {
+		t.Fatalf("expected display name from the email local part, got %q", user.DisplayName)
+	}
+	// The name is a placeholder, so nothing should claim the player picked it.
+	if user.DisplayNameChosenAt != nil {
+		t.Fatalf("expected DisplayNameChosenAt to be nil, got %v", user.DisplayNameChosenAt)
 	}
 	if user.DisplayName == user.Username {
 		t.Fatalf("expected display name to differ from internal username %q", user.Username)
@@ -51,6 +54,9 @@ func TestCreateUserRespectsExplicitDisplayName(t *testing.T) {
 		t.Fatalf("CreateUser failed: %v", err)
 	}
 	cleaner.TrackUser(user.ID)
+	if user.DisplayNameChosenAt == nil {
+		t.Fatal("expected an explicit display name to be marked as chosen")
+	}
 	if user.DisplayName != "Custom Name" {
 		t.Fatalf("expected explicit display name, got %q", user.DisplayName)
 	}

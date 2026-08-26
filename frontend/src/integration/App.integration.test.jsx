@@ -23,11 +23,11 @@ describe('App Integration Tests', () => {
       mockAuthenticatedSession()
       render(<App />)
 
-      await waitFor(() => {
-        expect(screen.getByRole('link', { name: /player/ })).toHaveAttribute('href', '/account')
-        expect(screen.getByRole('heading', { level: 1, name: 'Find a game' })).toBeInTheDocument()
-        expect(screen.getByRole('heading', { name: 'Rock Paper Scissors Lizard Robot' })).toBeInTheDocument()
-      })
+      expect(await screen.findByRole('link', { name: /player/ })).toHaveAttribute('href', '/account')
+      expect(await screen.findByRole('heading', { level: 1, name: 'Find a game' })).toBeInTheDocument()
+      expect(
+        await screen.findByRole('heading', { name: 'Rock Paper Scissors Lizard Robot' }),
+      ).toBeInTheDocument()
     })
   })
 })

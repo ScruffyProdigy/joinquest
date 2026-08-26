@@ -17,11 +17,6 @@ var ErrInvalidDisplayName = errors.New("store: invalid display name")
 
 const MaxDisplayNameLen = 100
 
-// IsProvisionalDisplayName reports auto-generated names awaiting player customization.
-func IsProvisionalDisplayName(name string) bool {
-	return strings.HasSuffix(strings.TrimSpace(name), ProvisionalDisplayNameSuffix)
-}
-
 // NormalizeDisplayName trims and validates a player-visible display name.
 func NormalizeDisplayName(raw string) (string, error) {
 	name := strings.TrimSpace(raw)
@@ -43,6 +38,7 @@ func scanUser(row interface{ Scan(dest ...any) error }) (*User, error) {
 		&u.AvatarKey,
 		&u.AvatarSource,
 		&u.IsGuest,
+		&u.DisplayNameChosenAt,
 		&u.CreatedAt,
 	); err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
@@ -56,18 +52,16 @@ func scanUser(row interface{ Scan(dest ...any) error }) (*User, error) {
 	return &u, nil
 }
 
-const userColumns = `id, email, username, display_name, avatar_url, avatar_key, avatar_source, is_guest, created_at`
+const userColumns = `id, email, username, display_name, avatar_url, avatar_key, avatar_source, is_guest, display_name_chosen_at, created_at`
 
-// ProvisionalDisplayNameSuffix marks auto-generated display names until the user picks one.
-const ProvisionalDisplayNameSuffix = " (new)"
-
-// DefaultDisplayName builds the initial visible name for a new player.
+// DefaultDisplayName builds the initial visible name for a new player. It is a
+// placeholder until they pick one, which display_name_chosen_at records.
 func DefaultDisplayName(email string) string {
 	local := strings.Split(strings.ToLower(strings.TrimSpace(email)), "@")[0]
 	if local == "" {
 		local = "player"
 	}
-	return local + ProvisionalDisplayNameSuffix
+	return local
 }
 
 func (s *Store) GetUserByID(ctx context.Context, id uuid.UUID) (*User, error) {
@@ -96,16 +90,19 @@ func (s *Store) CreateUser(ctx context.Context, params CreateUserParams) (*User,
 		return nil, err
 	}
 
+	// A name the caller supplied is one the player chose; a defaulted one is not,
+	// and stays unstamped so the identity prompt still asks for it.
 	displayName := strings.TrimSpace(params.DisplayName)
-	if displayName == "" {
+	chosen := displayName != ""
+	if !chosen {
 		displayName = DefaultDisplayName(email)
 	}
 
 	row := s.db.QueryRowContext(ctx, `
-		INSERT INTO users (email, username, display_name, is_guest)
-		VALUES ($1, $2, $3, false)
+		INSERT INTO users (email, username, display_name, is_guest, display_name_chosen_at)
+		VALUES ($1, $2, $3, false, CASE WHEN $4 THEN NOW() END)
 		RETURNING `+userColumns+`
-	`, email, username, displayName)
+	`, email, username, displayName, chosen)
 	user, err := scanUser(row)
 	if err != nil {
 		return nil, err
@@ -148,7 +145,7 @@ func (s *Store) UpdateUserProfile(ctx context.Context, userID uuid.UUID, display
 	if strings.TrimSpace(avatarKey) == "" {
 		row := s.db.QueryRowContext(ctx, `
 			UPDATE users
-			SET display_name = $2, updated_at = NOW()
+			SET display_name = $2, display_name_chosen_at = NOW(), updated_at = NOW()
 			WHERE id = $1 AND is_active = true
 			RETURNING `+userColumns+`
 		`, userID, name)
@@ -162,7 +159,7 @@ func (s *Store) UpdateUserProfile(ctx context.Context, userID uuid.UUID, display
 
 	row := s.db.QueryRowContext(ctx, `
 		UPDATE users
-		SET display_name = $2, avatar_key = $3, avatar_source = $4, avatar_url = $5, updated_at = NOW()
+		SET display_name = $2, display_name_chosen_at = NOW(), avatar_key = $3, avatar_source = $4, avatar_url = $5, updated_at = NOW()
 		WHERE id = $1 AND is_active = true
 		RETURNING `+userColumns+`
 	`, userID, name, key, source, url)

@@ -81,6 +81,7 @@ function createFetchMock(handlers) {
           id: 'guest-1',
           email: null,
           displayName: 'guest#123456',
+          displayNameChosenAt: null,
           isGuest: true,
           createdAt: '2026-01-01T00:00:00Z',
         },
@@ -131,6 +132,8 @@ function createFetchMock(handlers) {
         updatePlayerProfile: handlers.updatePlayerProfile ?? {
           ...handlers.me,
           displayName: body.variables?.displayName ?? handlers.me?.displayName,
+          // Saving through this mutation is what marks a name as chosen.
+          displayNameChosenAt: '2026-01-01T00:00:00Z',
           avatarKey: body.variables?.avatarKey ?? handlers.me?.avatarKey,
         },
       }
@@ -174,6 +177,7 @@ export function mockAuthenticatedSession(
     avatarKey: 'compass',
     avatarUrl: '/avatars/compass.png',
     avatarSource: 'STARTER',
+    displayNameChosenAt: '2026-01-01T00:00:00Z',
     isGuest: false,
     createdAt: '2026-01-01T00:00:00Z',
   },

@@ -22,14 +22,15 @@ func ToGraphQLUser(user *store.User) *model.User {
 	}
 	displayName := user.DisplayName
 	return &model.User{
-		ID:           user.ID.String(),
-		Email:        emailPtr,
-		DisplayName:  &displayName,
-		AvatarURL:    userAvatarURL(user),
-		AvatarKey:    user.AvatarKey,
-		AvatarSource: toGraphQLAvatarSource(user.AvatarSource),
-		CreatedAt:    user.CreatedAt,
-		IsGuest:      user.IsGuest,
+		ID:                  user.ID.String(),
+		Email:               emailPtr,
+		DisplayName:         &displayName,
+		AvatarURL:           userAvatarURL(user),
+		AvatarKey:           user.AvatarKey,
+		AvatarSource:        toGraphQLAvatarSource(user.AvatarSource),
+		DisplayNameChosenAt: user.DisplayNameChosenAt,
+		CreatedAt:           user.CreatedAt,
+		IsGuest:             user.IsGuest,
 	}
 }
 

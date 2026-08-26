@@ -1,6 +1,6 @@
 import { homeGreetingLine } from '../../lib/greeting'
-import { isGeneratedDisplayName } from '../../lib/guestIdentity'
 import { FIND_A_GAME_HEADING } from '../../lib/playerCopy'
+import { chosenDisplayName } from '../../lib/viewer'
 import { useAuth } from '../auth/AuthProvider'
 import AccountChip from './AccountChip'
 
@@ -13,9 +13,9 @@ export const HOME_HEADING_ID = 'find-a-game-heading'
  */
 export default function HomeHeader() {
   const { user, loading } = useAuth()
-  // A placeholder like "guest#135780" is not a name to greet someone by; the
-  // first-entry gate is busy collecting the real one.
-  const name = loading || isGeneratedDisplayName(user?.displayName) ? '' : user.displayName
+  // Empty until the player picks a name, so we never greet someone by a
+  // placeholder the backend handed out.
+  const name = loading ? '' : chosenDisplayName(user)
 
   return (
     <header className="home-header">

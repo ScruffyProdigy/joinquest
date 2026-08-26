@@ -56,12 +56,6 @@ const NUMBER_MAX = 9999
 /** How many identities the picker offers at once. */
 export const GUEST_IDENTITY_CHOICES = 6
 
-/** Guest display names the backend hands out before a player picks one. */
-const GENERATED_GUEST_NAME = /^guest#\d+$/i
-
-/** Names still carrying the backend's provisional marker. */
-const PROVISIONAL_SUFFIX = ' (new)'
-
 function randomInt(max) {
   return Math.floor(Math.random() * max)
 }
@@ -104,21 +98,3 @@ export function generateGuestIdentities(count = GUEST_IDENTITY_CHOICES) {
   return families.map((family, index) => generateGuestIdentity(family, tints[index]))
 }
 
-/** True while a display name is still a placeholder the player never chose. */
-export function isGeneratedDisplayName(name) {
-  const trimmed = name?.trim() ?? ''
-  return trimmed === '' || GENERATED_GUEST_NAME.test(trimmed) || trimmed.endsWith(PROVISIONAL_SUFFIX)
-}
-
-/**
- * The single trigger for the picker overlay. Timing is still under discussion, so
- * keep the whole condition here — moving the overlay later means changing this
- * function and nothing else.
- */
-export function needsIdentity(user) {
-  if (!user) {
-    return true
-  }
-  const hasAvatar = Boolean(user.avatarKey?.trim()) || Boolean(user.avatarUrl?.trim())
-  return !hasAvatar || isGeneratedDisplayName(user.displayName)
-}

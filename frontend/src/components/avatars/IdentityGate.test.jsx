@@ -167,6 +167,7 @@ describe('IdentityGate', () => {
     mockAuthenticatedSession({
       ...NAMELESS_GUEST,
       displayName: 'FrostFox4827',
+      displayNameChosenAt: '2026-01-01T00:00:00Z',
       avatarKey: 'sigil-canine-frost',
       avatarUrl: '/avatars/sigils/canine-frost.svg',
     })
