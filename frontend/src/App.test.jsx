@@ -1,7 +1,7 @@
 import { render, screen, waitFor } from '@testing-library/react'
 import { describe, it, expect, beforeEach } from 'vitest'
 import App from './App'
-import { IDENTITY_GATE_HEADING, SIGN_IN_HEADING } from './lib/playerCopy'
+import { IDENTITY_GATE_HEADING } from './lib/playerCopy'
 import { mockAuthenticatedSession, mockDemoGames, mockUnauthenticatedSession } from './test/setup'
 
 describe('App Component', () => {
@@ -22,9 +22,6 @@ describe('App Component', () => {
     mockUnauthenticatedSession()
     render(<App />)
 
-    expect(screen.getByRole('heading', { level: 1, name: 'JoinQuest' })).toBeInTheDocument()
-    expect(screen.getByText('Find your group. Play together.')).toBeInTheDocument()
-
     await waitFor(() => {
       expect(screen.getByRole('heading', { name: IDENTITY_GATE_HEADING })).toBeInTheDocument()
     })
@@ -36,13 +33,15 @@ describe('App Component', () => {
     mockUnauthenticatedSession({ games: mockDemoGames })
     render(<App />)
 
-    expect(await screen.findByRole('heading', { name: 'Available games' })).toBeInTheDocument()
+    // The identity gate is a modal, so it marks the page behind it aria-hidden.
+    // The catalog is still rendered underneath — that is what JQ-67 asked for.
+    expect(await screen.findByRole('heading', { level: 1, name: 'Find a game', hidden: true })).toBeInTheDocument()
     expect(
-      await screen.findByRole('heading', { name: 'Rock Paper Scissors Lizard Robot' }),
+      await screen.findByRole('heading', { name: 'Rock Paper Scissors Lizard Robot', hidden: true }),
     ).toBeInTheDocument()
     // Browsing is open to guests; the account prompt lives on the game page.
     expect(
-      screen.getByRole('link', { name: /Rock Paper Scissors Lizard Robot/ }),
+      screen.getByRole('link', { name: /Rock Paper Scissors Lizard Robot/, hidden: true }),
     ).toHaveAttribute('href', '/games/rock-paper-scissors-lizard-robot')
   })
 
@@ -50,10 +49,11 @@ describe('App Component', () => {
     mockAuthenticatedSession()
     render(<App />)
 
-    expect(await screen.findByText('Welcome back')).toBeInTheDocument()
-    expect(screen.getByText('player@example.com')).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: 'Log out' })).toBeInTheDocument()
-    expect(await screen.findByRole('heading', { name: 'Available games' })).toBeInTheDocument()
+    // Home no longer carries a session card; the avatar chip is the way to the account.
+    expect(await screen.findByRole('link', { name: /player/ })).toHaveAttribute('href', '/account')
+    expect(screen.queryByText('Welcome back')).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Log out' })).not.toBeInTheDocument()
+    expect(await screen.findByRole('heading', { level: 1, name: 'Find a game' })).toBeInTheDocument()
     expect(screen.getByRole('link', { name: /get started for developers/i })).toBeInTheDocument()
     expect(screen.queryByRole('button', { name: 'Create room' })).not.toBeInTheDocument()
     expect(await screen.findByRole('heading', { name: 'Rock Paper Scissors Lizard Robot' })).toBeInTheDocument()

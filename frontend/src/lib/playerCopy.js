@@ -2,6 +2,16 @@
 
 export const APP_TAGLINE = 'Find your group. Play together.'
 
+/** Home page: the greeting row and the heading that leads the catalog. */
+export const GREETING_MORNING = 'Good morning'
+export const GREETING_AFTERNOON = 'Good afternoon'
+export const GREETING_EVENING = 'Good evening'
+export const FIND_A_GAME_HEADING = 'Find a game'
+export const SIGN_IN_OR_JOIN = 'Sign in or Join'
+export const SIGN_IN_DIALOG_TITLE = 'Sign in or create an account'
+export const SIGN_IN_DIALOG_HINT =
+  'Keep your name, avatar, and progress on every device you play from.'
+
 export const SIGN_IN_HEADING = 'Get in the game'
 export const JUMP_IN = 'Jump in'
 export const JUMP_IN_HINT = 'Play now, make your account later.'
@@ -51,10 +61,6 @@ export function waitingAsRoleLine(queuePath) {
 export const LAUNCH_GAME = 'Launch game'
 export const LEAVE_GAME = 'Leave game'
 export const LEAVE_MATCH = 'Leave match'
-
-export const GAMES_HEADING = 'Available games'
-export const GAMES_INTRO =
-  'Pick a game and look for a group. Starting a new search moves you out of any other group you were waiting for.'
 
 export function waitingForGroupLine(count) {
   const n = count ?? 0

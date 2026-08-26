@@ -2,9 +2,8 @@ import { useEffect, useState } from 'react'
 import { useAuth } from '../auth/AuthProvider'
 import { fetchGames } from '../../lib/games'
 import GameCard from './GameCard'
-import { GAMES_HEADING, GAMES_INTRO } from '../../lib/playerCopy'
 
-export default function GameLobby() {
+export default function GameLobby({ headingId }) {
   const { user, loading: authLoading } = useAuth()
   const [games, setGames] = useState([])
   const [status, setStatus] = useState('idle')
@@ -44,10 +43,9 @@ export default function GameLobby() {
   }, [authLoading, user?.id])
 
   return (
-    <section className="game-lobby panel-card" aria-labelledby="games-heading">
-      <h2 id="games-heading">{GAMES_HEADING}</h2>
-      <p className="panel-copy">{GAMES_INTRO}</p>
-
+    // The visible heading lives in the page header above, so point at it rather
+    // than repeating it here.
+    <section className="game-lobby" aria-labelledby={headingId}>
       {status === 'idle' || status === 'loading' ? (
         <p className="status-message" role="status">
           Loading games…

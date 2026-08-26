@@ -132,6 +132,47 @@
   color: var(--muted-foreground);
 }
 
+/* Home leads with the catalog, so its header is a single greeting row plus the
+   catalog's own heading — no wordmark, no tagline. */
+.home-header {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  text-align: left;
+}
+
+.home-header__row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+
+.home-header__greeting {
+  margin: 0;
+  min-width: 0;
+  overflow-wrap: anywhere;
+  font-weight: 600;
+  color: var(--muted-foreground);
+}
+
+.home-header__heading {
+  margin: 0;
+  font-family: var(--font-heading);
+  font-weight: 700;
+  font-size: var(--text-3xl);
+  line-height: var(--text-3xl--line-height);
+  letter-spacing: -0.02em;
+  color: var(--foreground);
+}
+
+@media (max-width: 480px) {
+  .home-header__heading {
+    font-size: var(--text-2xl);
+    line-height: var(--text-2xl--line-height);
+  }
+}
+
 .panel-card {
   border: 1px solid rgba(255, 255, 255, 0.12);
   border-radius: 12px;
@@ -440,6 +481,7 @@
   }
 
   .tagline,
+  .home-header__greeting,
   .panel-copy,
   .game-list-meta {
     color: #666;
