@@ -3,7 +3,7 @@ import { SIGN_IN_OR_JOIN } from '../../lib/playerCopy'
 import { Button } from '../ui/button'
 import { useAuth } from '../auth/AuthProvider'
 import PlayerAvatar from '../avatars/PlayerAvatar'
-import SignInDialog from './SignInDialog'
+import SignInDialog from '../auth/SignInDialog'
 
 /**
  * The one auth control on home. A guest gets the sign-in pill; someone with a

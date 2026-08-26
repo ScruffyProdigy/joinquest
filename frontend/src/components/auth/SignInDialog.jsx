@@ -1,11 +1,11 @@
 import { SIGN_IN_DIALOG_HINT, SIGN_IN_DIALOG_TITLE } from '../../lib/playerCopy'
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from '../ui/dialog'
-import SignInPanel from '../auth/SignInPanel'
+import SignInPanel from './SignInPanel'
 
 /**
- * Sign-in reached from the home header. The guest option is left out on purpose:
- * anyone who can see this already has a guest session from the first-entry gate,
- * so "Jump in" would do nothing for them.
+ * Sign-in as a modal, for anywhere a page needs to offer it without navigating.
+ * The guest option is left out on purpose: anyone who can open this already has
+ * a guest session from the first-entry gate, so "Jump in" would do nothing.
  */
 export default function SignInDialog({ open, onOpenChange }) {
   return (
