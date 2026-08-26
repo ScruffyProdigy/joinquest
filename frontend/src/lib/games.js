@@ -190,3 +190,29 @@ export async function fetchGameBySlug(slug, playerId = '') {
   })
   return data.gameBySlug ?? null
 }
+
+/** Text a catalog search matches against: the game name plus its tags. */
+function gameSearchHaystack(game) {
+  const parts = [game?.name ?? '', ...(Array.isArray(game?.tags) ? game.tags : [])]
+  return parts.join(' ').toLowerCase()
+}
+
+/**
+ * Filter catalog games by a free-text query.
+ * Every whitespace-separated term must appear somewhere in the game's name or tags.
+ * An empty query returns the list unchanged.
+ */
+export function filterGamesBySearch(games, query) {
+  const list = Array.isArray(games) ? games : []
+  const terms = String(query || '')
+    .toLowerCase()
+    .split(/\s+/)
+    .filter(Boolean)
+  if (terms.length === 0) {
+    return list
+  }
+  return list.filter((game) => {
+    const haystack = gameSearchHaystack(game)
+    return terms.every((term) => haystack.includes(term))
+  })
+}
