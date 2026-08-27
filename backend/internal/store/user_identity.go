@@ -201,13 +201,10 @@ func isLockOrTimeout(err error) bool {
 func (s *Store) CompleteOAuthSignUp(ctx context.Context, provider, subject, displayName string, email *string) (*User, error) {
 	provider = strings.ToLower(strings.TrimSpace(provider))
 	subject = strings.TrimSpace(subject)
-	displayName = strings.TrimSpace(displayName)
-	if displayName == "" {
-		var err error
-		displayName, err = RandomGuestDisplayName()
-		if err != nil {
-			return nil, err
-		}
+	// Providers do not always give us a name; leave it null rather than invent one.
+	var name *string
+	if trimmed := strings.TrimSpace(displayName); trimmed != "" {
+		name = &trimmed
 	}
 	if provider == "" || subject == "" {
 		return nil, fmt.Errorf("store: provider and subject are required")
@@ -240,7 +237,7 @@ func (s *Store) CompleteOAuthSignUp(ctx context.Context, provider, subject, disp
 		INSERT INTO users (username, display_name, is_guest)
 		VALUES ($1, $2, false)
 		RETURNING `+userColumns+`
-	`, username, displayName)
+	`, username, name)
 	user, err := scanUser(row)
 	if err != nil {
 		if isLockOrTimeout(err) {

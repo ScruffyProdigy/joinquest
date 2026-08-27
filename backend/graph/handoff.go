@@ -79,7 +79,7 @@ func provisionPlayerFromUser(user *store.User) *gameclient.ProvisionPlayer {
 		return nil
 	}
 	out := &gameclient.ProvisionPlayer{}
-	if name := strings.TrimSpace(user.DisplayName); name != "" {
+	if name := user.ChosenDisplayName(); name != "" {
 		out.DisplayName = name
 	}
 	if url := userAvatarURL(user); url != nil {

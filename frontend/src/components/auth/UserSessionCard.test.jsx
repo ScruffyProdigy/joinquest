@@ -17,7 +17,6 @@ describe('UserSessionCard', () => {
     displayName: 'player',
     avatarKey: 'compass',
     avatarUrl: '/avatars/compass.png',
-    displayNameChosenAt: '2026-01-01T00:00:00Z',
     createdAt: '2026-01-01T00:00:00Z',
   }
 

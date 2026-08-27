@@ -16,12 +16,9 @@ describe('avatars', () => {
     expect(STARTER_AVATAR_FALLBACK).toHaveLength(18)
   })
 
-  it('prefills only a name the player actually chose', () => {
-    expect(
-      defaultDisplayNameInput({ displayName: 'River', displayNameChosenAt: '2026-01-01T00:00:00Z' }),
-    ).toBe('River')
-    // A placeholder gives an empty field rather than something to delete.
-    expect(defaultDisplayNameInput({ displayName: 'guest#421900' })).toBe('')
+  it('prefills the name, or nothing when there is none yet', () => {
+    expect(defaultDisplayNameInput({ displayName: 'River' })).toBe('River')
+    expect(defaultDisplayNameInput({ displayName: null })).toBe('')
     expect(defaultDisplayNameInput(null)).toBe('')
   })
 

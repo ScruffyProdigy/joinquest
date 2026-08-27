@@ -9,7 +9,7 @@ import { mockAuthenticatedSession, mockUnauthenticatedSession } from '../../test
 const NAMELESS_GUEST = {
   id: 'guest-1',
   email: null,
-  displayName: 'guest#123456',
+  displayName: null,
   avatarKey: '',
   avatarUrl: '',
   avatarSource: null,
@@ -167,8 +167,7 @@ describe('IdentityGate', () => {
     mockAuthenticatedSession({
       ...NAMELESS_GUEST,
       displayName: 'FrostFox4827',
-      displayNameChosenAt: '2026-01-01T00:00:00Z',
-      avatarKey: 'sigil-canine-frost',
+        avatarKey: 'sigil-canine-frost',
       avatarUrl: '/avatars/sigils/canine-frost.svg',
     })
     renderGate()

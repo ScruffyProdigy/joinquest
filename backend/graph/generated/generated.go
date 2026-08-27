@@ -531,18 +531,17 @@ type ComplexityRoot struct {
 	}
 
 	User struct {
-		AvatarKey           func(childComplexity int) int
-		AvatarSource        func(childComplexity int) int
-		AvatarURL           func(childComplexity int) int
-		CreatedAt           func(childComplexity int) int
-		DisplayName         func(childComplexity int) int
-		DisplayNameChosenAt func(childComplexity int) int
-		Email               func(childComplexity int) int
-		Emails              func(childComplexity int) int
-		ID                  func(childComplexity int) int
-		Identities          func(childComplexity int) int
-		IsAdmin             func(childComplexity int) int
-		IsGuest             func(childComplexity int) int
+		AvatarKey    func(childComplexity int) int
+		AvatarSource func(childComplexity int) int
+		AvatarURL    func(childComplexity int) int
+		CreatedAt    func(childComplexity int) int
+		DisplayName  func(childComplexity int) int
+		Email        func(childComplexity int) int
+		Emails       func(childComplexity int) int
+		ID           func(childComplexity int) int
+		Identities   func(childComplexity int) int
+		IsAdmin      func(childComplexity int) int
+		IsGuest      func(childComplexity int) int
 	}
 
 	UserEmail struct {
@@ -3100,12 +3099,6 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.User.DisplayName(childComplexity), true
-	case "User.displayNameChosenAt":
-		if e.complexity.User.DisplayNameChosenAt == nil {
-			break
-		}
-
-		return e.complexity.User.DisplayNameChosenAt(childComplexity), true
 	case "User.email":
 		if e.complexity.User.Email == nil {
 			break
@@ -4040,8 +4033,6 @@ extend type Subscription {
   avatarUrl: String
   avatarKey: String
   avatarSource: AvatarSource
-  # Null until the player picks a name; before that displayName is a placeholder.
-  displayNameChosenAt: Time
   createdAt: Time!
   isAdmin: Boolean!
 }
@@ -4967,8 +4958,6 @@ func (ec *executionContext) fieldContext_Account_user(_ context.Context, field g
 				return ec.fieldContext_User_avatarKey(ctx, field)
 			case "avatarSource":
 				return ec.fieldContext_User_avatarSource(ctx, field)
-			case "displayNameChosenAt":
-				return ec.fieldContext_User_displayNameChosenAt(ctx, field)
 			case "createdAt":
 				return ec.fieldContext_User_createdAt(ctx, field)
 			case "isAdmin":
@@ -8552,8 +8541,6 @@ func (ec *executionContext) fieldContext_Mutation_createGuestSession(_ context.C
 				return ec.fieldContext_User_avatarKey(ctx, field)
 			case "avatarSource":
 				return ec.fieldContext_User_avatarSource(ctx, field)
-			case "displayNameChosenAt":
-				return ec.fieldContext_User_displayNameChosenAt(ctx, field)
 			case "createdAt":
 				return ec.fieldContext_User_createdAt(ctx, field)
 			case "isAdmin":
@@ -8649,8 +8636,6 @@ func (ec *executionContext) fieldContext_Mutation_completeLinkEmailWithCode(ctx 
 				return ec.fieldContext_User_avatarKey(ctx, field)
 			case "avatarSource":
 				return ec.fieldContext_User_avatarSource(ctx, field)
-			case "displayNameChosenAt":
-				return ec.fieldContext_User_displayNameChosenAt(ctx, field)
 			case "createdAt":
 				return ec.fieldContext_User_createdAt(ctx, field)
 			case "isAdmin":
@@ -8716,8 +8701,6 @@ func (ec *executionContext) fieldContext_Mutation_completeLinkEmailWithLink(ctx 
 				return ec.fieldContext_User_avatarKey(ctx, field)
 			case "avatarSource":
 				return ec.fieldContext_User_avatarSource(ctx, field)
-			case "displayNameChosenAt":
-				return ec.fieldContext_User_displayNameChosenAt(ctx, field)
 			case "createdAt":
 				return ec.fieldContext_User_createdAt(ctx, field)
 			case "isAdmin":
@@ -8783,8 +8766,6 @@ func (ec *executionContext) fieldContext_Mutation_removeLinkedEmail(ctx context.
 				return ec.fieldContext_User_avatarKey(ctx, field)
 			case "avatarSource":
 				return ec.fieldContext_User_avatarSource(ctx, field)
-			case "displayNameChosenAt":
-				return ec.fieldContext_User_displayNameChosenAt(ctx, field)
 			case "createdAt":
 				return ec.fieldContext_User_createdAt(ctx, field)
 			case "isAdmin":
@@ -8850,8 +8831,6 @@ func (ec *executionContext) fieldContext_Mutation_setPrimaryEmail(ctx context.Co
 				return ec.fieldContext_User_avatarKey(ctx, field)
 			case "avatarSource":
 				return ec.fieldContext_User_avatarSource(ctx, field)
-			case "displayNameChosenAt":
-				return ec.fieldContext_User_displayNameChosenAt(ctx, field)
 			case "createdAt":
 				return ec.fieldContext_User_createdAt(ctx, field)
 			case "isAdmin":
@@ -8917,8 +8896,6 @@ func (ec *executionContext) fieldContext_Mutation_removeLinkedIdentity(ctx conte
 				return ec.fieldContext_User_avatarKey(ctx, field)
 			case "avatarSource":
 				return ec.fieldContext_User_avatarSource(ctx, field)
-			case "displayNameChosenAt":
-				return ec.fieldContext_User_displayNameChosenAt(ctx, field)
 			case "createdAt":
 				return ec.fieldContext_User_createdAt(ctx, field)
 			case "isAdmin":
@@ -9025,8 +9002,6 @@ func (ec *executionContext) fieldContext_Mutation_completeSignInWithLink(ctx con
 				return ec.fieldContext_User_avatarKey(ctx, field)
 			case "avatarSource":
 				return ec.fieldContext_User_avatarSource(ctx, field)
-			case "displayNameChosenAt":
-				return ec.fieldContext_User_displayNameChosenAt(ctx, field)
 			case "createdAt":
 				return ec.fieldContext_User_createdAt(ctx, field)
 			case "isAdmin":
@@ -9092,8 +9067,6 @@ func (ec *executionContext) fieldContext_Mutation_completeSignInWithCode(ctx con
 				return ec.fieldContext_User_avatarKey(ctx, field)
 			case "avatarSource":
 				return ec.fieldContext_User_avatarSource(ctx, field)
-			case "displayNameChosenAt":
-				return ec.fieldContext_User_displayNameChosenAt(ctx, field)
 			case "createdAt":
 				return ec.fieldContext_User_createdAt(ctx, field)
 			case "isAdmin":
@@ -9188,8 +9161,6 @@ func (ec *executionContext) fieldContext_Mutation_updatePlayerProfile(ctx contex
 				return ec.fieldContext_User_avatarKey(ctx, field)
 			case "avatarSource":
 				return ec.fieldContext_User_avatarSource(ctx, field)
-			case "displayNameChosenAt":
-				return ec.fieldContext_User_displayNameChosenAt(ctx, field)
 			case "createdAt":
 				return ec.fieldContext_User_createdAt(ctx, field)
 			case "isAdmin":
@@ -10478,8 +10449,6 @@ func (ec *executionContext) fieldContext_Mutation_selectSpiritAnimalTotem(ctx co
 				return ec.fieldContext_User_avatarKey(ctx, field)
 			case "avatarSource":
 				return ec.fieldContext_User_avatarSource(ctx, field)
-			case "displayNameChosenAt":
-				return ec.fieldContext_User_displayNameChosenAt(ctx, field)
 			case "createdAt":
 				return ec.fieldContext_User_createdAt(ctx, field)
 			case "isAdmin":
@@ -12272,8 +12241,6 @@ func (ec *executionContext) fieldContext_Query_me(_ context.Context, field graph
 				return ec.fieldContext_User_avatarKey(ctx, field)
 			case "avatarSource":
 				return ec.fieldContext_User_avatarSource(ctx, field)
-			case "displayNameChosenAt":
-				return ec.fieldContext_User_displayNameChosenAt(ctx, field)
 			case "createdAt":
 				return ec.fieldContext_User_createdAt(ctx, field)
 			case "isAdmin":
@@ -14291,8 +14258,6 @@ func (ec *executionContext) fieldContext_Room_host(_ context.Context, field grap
 				return ec.fieldContext_User_avatarKey(ctx, field)
 			case "avatarSource":
 				return ec.fieldContext_User_avatarSource(ctx, field)
-			case "displayNameChosenAt":
-				return ec.fieldContext_User_displayNameChosenAt(ctx, field)
 			case "createdAt":
 				return ec.fieldContext_User_createdAt(ctx, field)
 			case "isAdmin":
@@ -14346,8 +14311,6 @@ func (ec *executionContext) fieldContext_Room_members(_ context.Context, field g
 				return ec.fieldContext_User_avatarKey(ctx, field)
 			case "avatarSource":
 				return ec.fieldContext_User_avatarSource(ctx, field)
-			case "displayNameChosenAt":
-				return ec.fieldContext_User_displayNameChosenAt(ctx, field)
 			case "createdAt":
 				return ec.fieldContext_User_createdAt(ctx, field)
 			case "isAdmin":
@@ -14536,8 +14499,6 @@ func (ec *executionContext) fieldContext_RoomMessage_author(_ context.Context, f
 				return ec.fieldContext_User_avatarKey(ctx, field)
 			case "avatarSource":
 				return ec.fieldContext_User_avatarSource(ctx, field)
-			case "displayNameChosenAt":
-				return ec.fieldContext_User_displayNameChosenAt(ctx, field)
 			case "createdAt":
 				return ec.fieldContext_User_createdAt(ctx, field)
 			case "isAdmin":
@@ -14819,8 +14780,6 @@ func (ec *executionContext) fieldContext_Session_players(_ context.Context, fiel
 				return ec.fieldContext_User_avatarKey(ctx, field)
 			case "avatarSource":
 				return ec.fieldContext_User_avatarSource(ctx, field)
-			case "displayNameChosenAt":
-				return ec.fieldContext_User_displayNameChosenAt(ctx, field)
 			case "createdAt":
 				return ec.fieldContext_User_createdAt(ctx, field)
 			case "isAdmin":
@@ -17113,8 +17072,6 @@ func (ec *executionContext) fieldContext_Table_king(_ context.Context, field gra
 				return ec.fieldContext_User_avatarKey(ctx, field)
 			case "avatarSource":
 				return ec.fieldContext_User_avatarSource(ctx, field)
-			case "displayNameChosenAt":
-				return ec.fieldContext_User_displayNameChosenAt(ctx, field)
 			case "createdAt":
 				return ec.fieldContext_User_createdAt(ctx, field)
 			case "isAdmin":
@@ -17556,8 +17513,6 @@ func (ec *executionContext) fieldContext_TableSeat_user(_ context.Context, field
 				return ec.fieldContext_User_avatarKey(ctx, field)
 			case "avatarSource":
 				return ec.fieldContext_User_avatarSource(ctx, field)
-			case "displayNameChosenAt":
-				return ec.fieldContext_User_displayNameChosenAt(ctx, field)
 			case "createdAt":
 				return ec.fieldContext_User_createdAt(ctx, field)
 			case "isAdmin":
@@ -17756,8 +17711,6 @@ func (ec *executionContext) fieldContext_TableSeatSlot_user(_ context.Context, f
 				return ec.fieldContext_User_avatarKey(ctx, field)
 			case "avatarSource":
 				return ec.fieldContext_User_avatarSource(ctx, field)
-			case "displayNameChosenAt":
-				return ec.fieldContext_User_displayNameChosenAt(ctx, field)
 			case "createdAt":
 				return ec.fieldContext_User_createdAt(ctx, field)
 			case "isAdmin":
@@ -17944,35 +17897,6 @@ func (ec *executionContext) fieldContext_User_avatarSource(_ context.Context, fi
 		IsResolver: false,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			return nil, errors.New("field of type AvatarSource does not have child fields")
-		},
-	}
-	return fc, nil
-}
-
-func (ec *executionContext) _User_displayNameChosenAt(ctx context.Context, field graphql.CollectedField, obj *model.User) (ret graphql.Marshaler) {
-	return graphql.ResolveField(
-		ctx,
-		ec.OperationContext,
-		field,
-		ec.fieldContext_User_displayNameChosenAt,
-		func(ctx context.Context) (any, error) {
-			return obj.DisplayNameChosenAt, nil
-		},
-		nil,
-		ec.marshalOTime2ᚖtimeᚐTime,
-		true,
-		false,
-	)
-}
-
-func (ec *executionContext) fieldContext_User_displayNameChosenAt(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "User",
-		Field:      field,
-		IsMethod:   false,
-		IsResolver: false,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return nil, errors.New("field of type Time does not have child fields")
 		},
 	}
 	return fc, nil
@@ -24767,8 +24691,6 @@ func (ec *executionContext) _User(ctx context.Context, sel ast.SelectionSet, obj
 			out.Values[i] = ec._User_avatarKey(ctx, field, obj)
 		case "avatarSource":
 			out.Values[i] = ec._User_avatarSource(ctx, field, obj)
-		case "displayNameChosenAt":
-			out.Values[i] = ec._User_displayNameChosenAt(ctx, field, obj)
 		case "createdAt":
 			out.Values[i] = ec._User_createdAt(ctx, field, obj)
 			if out.Values[i] == graphql.Null {

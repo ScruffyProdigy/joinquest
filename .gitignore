@@ -99,7 +99,9 @@ frontend/public/*
 !frontend/public/games/**
 !frontend/public/fonts/
 !frontend/public/fonts/**
-data/spirit-avatars/
+# Spirit-avatar renders are generated at runtime. The leading slash-free form
+# matters: backend tests write them under backend/graph/data/ too.
+**/data/spirit-avatars/
 
 # Storybook build outputs
 .out

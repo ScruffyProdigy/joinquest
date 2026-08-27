@@ -38,7 +38,6 @@ func scanUser(row interface{ Scan(dest ...any) error }) (*User, error) {
 		&u.AvatarKey,
 		&u.AvatarSource,
 		&u.IsGuest,
-		&u.DisplayNameChosenAt,
 		&u.CreatedAt,
 	); err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
@@ -52,17 +51,7 @@ func scanUser(row interface{ Scan(dest ...any) error }) (*User, error) {
 	return &u, nil
 }
 
-const userColumns = `id, email, username, display_name, avatar_url, avatar_key, avatar_source, is_guest, display_name_chosen_at, created_at`
-
-// DefaultDisplayName builds the initial visible name for a new player. It is a
-// placeholder until they pick one, which display_name_chosen_at records.
-func DefaultDisplayName(email string) string {
-	local := strings.Split(strings.ToLower(strings.TrimSpace(email)), "@")[0]
-	if local == "" {
-		local = "player"
-	}
-	return local
-}
+const userColumns = `id, email, username, display_name, avatar_url, avatar_key, avatar_source, is_guest, created_at`
 
 func (s *Store) GetUserByID(ctx context.Context, id uuid.UUID) (*User, error) {
 	row := s.db.QueryRowContext(ctx, `
@@ -90,19 +79,17 @@ func (s *Store) CreateUser(ctx context.Context, params CreateUserParams) (*User,
 		return nil, err
 	}
 
-	// A name the caller supplied is one the player chose; a defaulted one is not,
-	// and stays unstamped so the identity prompt still asks for it.
-	displayName := strings.TrimSpace(params.DisplayName)
-	chosen := displayName != ""
-	if !chosen {
-		displayName = DefaultDisplayName(email)
+	// No name unless the caller supplied one; the identity prompt collects it.
+	var displayName *string
+	if trimmed := strings.TrimSpace(params.DisplayName); trimmed != "" {
+		displayName = &trimmed
 	}
 
 	row := s.db.QueryRowContext(ctx, `
-		INSERT INTO users (email, username, display_name, is_guest, display_name_chosen_at)
-		VALUES ($1, $2, $3, false, CASE WHEN $4 THEN NOW() END)
+		INSERT INTO users (email, username, display_name, is_guest)
+		VALUES ($1, $2, $3, false)
 		RETURNING `+userColumns+`
-	`, email, username, displayName, chosen)
+	`, email, username, displayName)
 	user, err := scanUser(row)
 	if err != nil {
 		return nil, err
@@ -145,7 +132,7 @@ func (s *Store) UpdateUserProfile(ctx context.Context, userID uuid.UUID, display
 	if strings.TrimSpace(avatarKey) == "" {
 		row := s.db.QueryRowContext(ctx, `
 			UPDATE users
-			SET display_name = $2, display_name_chosen_at = NOW(), updated_at = NOW()
+			SET display_name = $2, updated_at = NOW()
 			WHERE id = $1 AND is_active = true
 			RETURNING `+userColumns+`
 		`, userID, name)
@@ -159,7 +146,7 @@ func (s *Store) UpdateUserProfile(ctx context.Context, userID uuid.UUID, display
 
 	row := s.db.QueryRowContext(ctx, `
 		UPDATE users
-		SET display_name = $2, display_name_chosen_at = NOW(), avatar_key = $3, avatar_source = $4, avatar_url = $5, updated_at = NOW()
+		SET display_name = $2, avatar_key = $3, avatar_source = $4, avatar_url = $5, updated_at = NOW()
 		WHERE id = $1 AND is_active = true
 		RETURNING `+userColumns+`
 	`, userID, name, key, source, url)

@@ -33,13 +33,13 @@ describe('HomeHeader', () => {
     expect(await screen.findByText('Good afternoon, player')).toBeInTheDocument()
   })
 
-  it('does not greet a visitor by a placeholder guest name', async () => {
+  it('greets a guest who has no name yet without a trailing comma', async () => {
     vi.useFakeTimers({ shouldAdvanceTime: true })
     vi.setSystemTime(new Date(2026, 0, 1, 14, 0))
     mockAuthenticatedSession({
       id: 'guest-1',
       email: null,
-      displayName: 'guest#135780',
+      displayName: null,
       isGuest: true,
       createdAt: '2026-01-01T00:00:00Z',
     })

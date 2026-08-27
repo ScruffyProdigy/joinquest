@@ -10,8 +10,6 @@ import {
   VIEWER_PASSIVE,
 } from './viewer'
 
-const CHOSEN_AT = '2026-01-01T00:00:00Z'
-
 describe('viewerTier', () => {
   it('reads no session as a passive viewer', () => {
     expect(viewerTier(null)).toBe(VIEWER_PASSIVE)
@@ -24,22 +22,21 @@ describe('viewerTier', () => {
   })
 
   it('does not consult the display name', () => {
-    // A guest-looking name on a real account is still a full account.
-    expect(viewerTier({ isGuest: false, displayName: 'guest#421900' })).toBe(VIEWER_MEMBER)
-    // ...and a real-looking name on a guest is still a guest.
+    // A nameless account is still a full account.
+    expect(viewerTier({ isGuest: false, displayName: null })).toBe(VIEWER_MEMBER)
+    // ...and a named guest is still a guest.
     expect(viewerTier({ isGuest: true, displayName: 'Ryan' })).toBe(VIEWER_GUEST)
   })
 })
 
 describe('hasChosenDisplayName', () => {
-  it('follows the timestamp, not the string', () => {
-    expect(hasChosenDisplayName({ displayName: 'Ryan', displayNameChosenAt: CHOSEN_AT })).toBe(true)
-    expect(hasChosenDisplayName({ displayName: 'Ryan' })).toBe(false)
-    // The shape that used to slip past the guest#NNNNNN regex.
-    expect(hasChosenDisplayName({ displayName: 'guest#135780Tester' })).toBe(false)
-    expect(
-      hasChosenDisplayName({ displayName: 'guest#135780Tester', displayNameChosenAt: CHOSEN_AT }),
-    ).toBe(true)
+  it('is simply whether there is a name', () => {
+    expect(hasChosenDisplayName({ displayName: 'Ryan' })).toBe(true)
+    // A name that merely looks generated is still a name the player chose.
+    expect(hasChosenDisplayName({ displayName: 'guest#135780Tester' })).toBe(true)
+    expect(hasChosenDisplayName({ displayName: null })).toBe(false)
+    expect(hasChosenDisplayName({ displayName: '   ' })).toBe(false)
+    expect(hasChosenDisplayName({})).toBe(false)
     expect(hasChosenDisplayName(null)).toBe(false)
   })
 })
@@ -56,29 +53,29 @@ describe('hasChosenAvatar', () => {
 
 describe('chosenDisplayName', () => {
   it('gives back a name only once it was chosen', () => {
-    expect(chosenDisplayName({ displayName: 'Ryan', displayNameChosenAt: CHOSEN_AT })).toBe('Ryan')
-    expect(chosenDisplayName({ displayName: 'guest#421900' })).toBe('')
+    expect(chosenDisplayName({ displayName: 'Ryan' })).toBe('Ryan')
+    expect(chosenDisplayName({ displayName: null })).toBe('')
     expect(chosenDisplayName(null)).toBe('')
   })
 })
 
 describe('needsIdentity', () => {
-  const complete = { displayName: 'FrostFox4827', displayNameChosenAt: CHOSEN_AT, avatarKey: 'sigil-canine' }
+  const complete = { displayName: 'FrostFox4827', avatarKey: 'sigil-canine' }
 
   it('prompts a visitor with no session', () => {
     expect(needsIdentity(null)).toBe(true)
   })
 
   it('prompts a fresh guest who has neither', () => {
-    expect(needsIdentity({ displayName: 'guest#421900', avatarKey: '' })).toBe(true)
+    expect(needsIdentity({ displayName: null, avatarKey: '' })).toBe(true)
   })
 
   it('prompts when only the avatar is missing', () => {
-    expect(needsIdentity({ displayName: 'Ryan', displayNameChosenAt: CHOSEN_AT, avatarKey: '' })).toBe(true)
+    expect(needsIdentity({ displayName: 'Ryan', avatarKey: '' })).toBe(true)
   })
 
-  it('prompts when only the name was never chosen', () => {
-    expect(needsIdentity({ displayName: 'guest#421900', avatarKey: 'sigil-canine' })).toBe(true)
+  it('prompts when only the name is missing', () => {
+    expect(needsIdentity({ displayName: null, avatarKey: 'sigil-canine' })).toBe(true)
   })
 
   it('leaves a guest who already picked both alone', () => {
@@ -86,8 +83,6 @@ describe('needsIdentity', () => {
   })
 
   it('leaves a signed-in player with a spirit animal alone', () => {
-    expect(
-      needsIdentity({ displayName: 'Ryan', displayNameChosenAt: CHOSEN_AT, avatarUrl: 'https://cdn/spirit.png' }),
-    ).toBe(false)
+    expect(needsIdentity({ displayName: 'Ryan', avatarUrl: 'https://cdn/spirit.png' })).toBe(false)
   })
 })

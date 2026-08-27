@@ -8,7 +8,6 @@ const USER_FIELDS = `
   avatarUrl
   avatarKey
   avatarSource
-  displayNameChosenAt
   createdAt
   isGuest
 `

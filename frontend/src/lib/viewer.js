@@ -22,11 +22,11 @@ export function viewerTier(user) {
 }
 
 /**
- * True once the player has picked a name themselves. Until then displayName is
- * a placeholder the backend handed out, and displayNameChosenAt is null.
+ * True once the player has picked a name. There is no placeholder to see
+ * through — the backend leaves displayName null until they choose one.
  */
 export function hasChosenDisplayName(user) {
-  return Boolean(user?.displayNameChosenAt)
+  return Boolean(user?.displayName?.trim())
 }
 
 export function hasChosenAvatar(user) {
@@ -37,7 +37,7 @@ export function hasChosenAvatar(user) {
 
 /** The name to greet someone by, or '' when we do not have one yet. */
 export function chosenDisplayName(user) {
-  return hasChosenDisplayName(user) ? (user.displayName?.trim() ?? '') : ''
+  return user?.displayName?.trim() ?? ''
 }
 
 /**

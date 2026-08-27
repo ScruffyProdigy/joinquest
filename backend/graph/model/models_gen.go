@@ -477,18 +477,17 @@ type UpdateMyGameMetadataInput struct {
 }
 
 type User struct {
-	ID                  string          `json:"id"`
-	Email               *string         `json:"email,omitempty"`
-	DisplayName         *string         `json:"displayName,omitempty"`
-	AvatarURL           *string         `json:"avatarUrl,omitempty"`
-	AvatarKey           *string         `json:"avatarKey,omitempty"`
-	AvatarSource        *AvatarSource   `json:"avatarSource,omitempty"`
-	DisplayNameChosenAt *time.Time      `json:"displayNameChosenAt,omitempty"`
-	CreatedAt           time.Time       `json:"createdAt"`
-	IsAdmin             bool            `json:"isAdmin"`
-	IsGuest             bool            `json:"isGuest"`
-	Emails              []*UserEmail    `json:"emails"`
-	Identities          []*UserIdentity `json:"identities"`
+	ID           string          `json:"id"`
+	Email        *string         `json:"email,omitempty"`
+	DisplayName  *string         `json:"displayName,omitempty"`
+	AvatarURL    *string         `json:"avatarUrl,omitempty"`
+	AvatarKey    *string         `json:"avatarKey,omitempty"`
+	AvatarSource *AvatarSource   `json:"avatarSource,omitempty"`
+	CreatedAt    time.Time       `json:"createdAt"`
+	IsAdmin      bool            `json:"isAdmin"`
+	IsGuest      bool            `json:"isGuest"`
+	Emails       []*UserEmail    `json:"emails"`
+	Identities   []*UserIdentity `json:"identities"`
 }
 
 type UserEmail struct {

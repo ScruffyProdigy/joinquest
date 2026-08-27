@@ -13,13 +13,13 @@ import (
 	"github.com/99designs/gqlgen/client"
 	"github.com/99designs/gqlgen/graphql/handler"
 	"github.com/google/uuid"
+	_ "github.com/lib/pq"
 	"github.com/scruffyprodigy/playhub/graph/generated"
 	"github.com/scruffyprodigy/playhub/internal/auth"
 	"github.com/scruffyprodigy/playhub/internal/email"
 	"github.com/scruffyprodigy/playhub/internal/pubsub"
 	"github.com/scruffyprodigy/playhub/internal/store"
 	"github.com/scruffyprodigy/playhub/internal/testdb"
-	_ "github.com/lib/pq"
 )
 
 func newAuthGraphQLTestClient(t *testing.T) (*client.Client, http.Handler, *store.Store) {
@@ -154,8 +154,9 @@ func TestAuthGraphQLFlow(t *testing.T) {
 	if completeResp.Data.CompleteSignInWithLink.Email == nil || *completeResp.Data.CompleteSignInWithLink.Email != email {
 		t.Fatalf("expected completed user email %q, got %+v", email, completeResp.Data.CompleteSignInWithLink.Email)
 	}
-	if completeResp.Data.CompleteSignInWithLink.DisplayName == nil || *completeResp.Data.CompleteSignInWithLink.DisplayName != store.DefaultDisplayName(email) {
-		t.Fatalf("expected provisional display name, got %+v", completeResp.Data.CompleteSignInWithLink.DisplayName)
+	// Signing in does not invent a name; the identity prompt collects one.
+	if completeResp.Data.CompleteSignInWithLink.DisplayName != nil {
+		t.Fatalf("expected no display name, got %+v", completeResp.Data.CompleteSignInWithLink.DisplayName)
 	}
 
 	user, err := st.GetUserByEmail(ctx, email)
@@ -301,4 +302,3 @@ func TestAuthGraphQLRejectsInvalidLoginCode(t *testing.T) {
 		t.Fatalf("expected friendly invalid code error, got: %v", err)
 	}
 }
-

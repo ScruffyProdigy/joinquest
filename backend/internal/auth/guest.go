@@ -109,7 +109,7 @@ func (s *Service) PreviewLinkEmail(ctx context.Context, userID uuid.UUID, emailA
 	}
 
 	preview.WillMergeAccounts = true
-	preview.MergeSourceDisplayName = strings.TrimSpace(source.DisplayName)
+	preview.MergeSourceDisplayName = source.ChosenDisplayName()
 	return preview, nil
 }
 

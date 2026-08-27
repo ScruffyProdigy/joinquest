@@ -1,5 +1,4 @@
 import { graphqlRequest } from './graphql'
-import { hasChosenDisplayName } from './viewer'
 
 export const USER_AVATAR_FIELDS = `
   id
@@ -68,13 +67,9 @@ export function resolveUserAvatarUrl(user) {
   return known?.imageUrl ?? `/avatars/${key}.png`
 }
 
-/**
- * What the editor should prefill. A name the player never chose is a
- * placeholder, so start them on an empty field rather than making them
- * delete it.
- */
+/** What the editor should prefill — empty for a player who has no name yet. */
 export function defaultDisplayNameInput(user) {
-  return hasChosenDisplayName(user) ? (user.displayName?.trim() || '') : ''
+  return user?.displayName?.trim() || ''
 }
 
 export async function fetchStarterAvatars() {
