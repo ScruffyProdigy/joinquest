@@ -153,3 +153,6 @@ k8s/secrets/*.yaml
 
 # Subagent-driven-development scratch workspaces (per-plan ledgers, briefs, review packages)
 .superpowers/
+
+# Raw art working material — winners are committed as webp in frontend/public/games/
+docs/catalog-art-raw/
