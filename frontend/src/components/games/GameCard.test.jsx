@@ -68,6 +68,26 @@ describe('GameCard', () => {
     expect(screen.queryByText('2–8 players')).not.toBeInTheDocument()
   })
 
+  it('renders the live-activity pill', () => {
+    renderCard({ ...baseGame, playerActivity: { playing: 4, queued: 2 } })
+
+    expect(screen.getByText('4 playing')).toBeInTheDocument()
+  })
+
+  it('shows the queue instead when nobody is in a session yet', () => {
+    renderCard({ ...baseGame, playerActivity: { playing: 0, queued: 3 } })
+
+    expect(screen.getByText('3 waiting')).toBeInTheDocument()
+    expect(screen.queryByText('0 playing')).not.toBeInTheDocument()
+  })
+
+  it('omits the live pill for a quiet game', () => {
+    const { container } = renderCard(baseGame)
+
+    // Only the left-hand genre/player badges should render.
+    expect(container.querySelectorAll('.rounded-full')).toHaveLength(2)
+  })
+
   it('omits the blurb with no shortDescription', () => {
     renderCard({ ...baseGame, shortDescription: '' })
 

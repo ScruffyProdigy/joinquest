@@ -2,6 +2,7 @@ import { accentColorFor } from '../../lib/gameAccent'
 import {
   gameCatalogHeroUrl,
   gameGenreModeLabel,
+  gameLiveActivityLabel,
   gamePagePath,
   gamePlayerCountLabel,
 } from '../../lib/gameCard'
@@ -10,19 +11,21 @@ import CatalogGameLink from './CatalogGameLink'
 const BADGE_CLASS =
   'inline-flex items-center px-2 py-1 rounded-full text-[11px] font-semibold leading-none bg-black/[0.42] backdrop-blur-[6px] text-white/[0.92]'
 
-function CardBadges({ genreMode, playerCount }) {
-  if (!genreMode && !playerCount) {
-    return null
-  }
+// Always renders its box, even when empty, so the two groups keep their sides of the
+// justify-between row instead of one sliding over when the other has nothing to show.
+function CardBadges({ labels, className }) {
   return (
-    <div className="absolute top-2.5 left-2.5 flex flex-wrap gap-1">
-      {genreMode ? <span className={BADGE_CLASS}>{genreMode}</span> : null}
-      {playerCount ? <span className={BADGE_CLASS}>{playerCount}</span> : null}
+    <div className={className}>
+      {labels.filter(Boolean).map((label) => (
+        <span key={label} className={BADGE_CLASS}>
+          {label}
+        </span>
+      ))}
     </div>
   )
 }
 
-function CardHero({ game, genreMode, playerCount }) {
+function CardHero({ game, genreMode, playerCount, liveActivity }) {
   const accent = accentColorFor(game.slug || 'default', game.accentColor)
   return (
     <div className="relative overflow-hidden aspect-[5/2]" style={{ background: accent.badge }}>
@@ -32,7 +35,12 @@ function CardHero({ game, genreMode, playerCount }) {
         alt=""
         loading="lazy"
       />
-      <CardBadges genreMode={genreMode} playerCount={playerCount} />
+      {/* What the game is on the left, who is on it right now on the right. One row so the
+          two groups can never overlap on a narrow card. */}
+      <div className="absolute top-2.5 left-2.5 right-2.5 flex items-start justify-between gap-2">
+        <CardBadges labels={[genreMode, playerCount]} className="flex flex-wrap gap-1" />
+        <CardBadges labels={[liveActivity]} className="flex flex-wrap justify-end gap-1" />
+      </div>
     </div>
   )
 }
@@ -55,6 +63,7 @@ export default function GameCard({ game }) {
   const detailPath = gamePagePath(game)
   const genreMode = gameGenreModeLabel(game.tags)
   const playerCount = gamePlayerCountLabel(game.modes)
+  const liveActivity = gameLiveActivityLabel(game.playerActivity)
 
   const shellClassName =
     'block w-full rounded-2xl overflow-hidden text-left shadow-sm transition-transform hover:-translate-y-0.5 hover:shadow-md active:scale-[0.99] focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2'
@@ -62,7 +71,12 @@ export default function GameCard({ game }) {
 
   const content = (
     <>
-      <CardHero game={game} genreMode={genreMode} playerCount={playerCount} />
+      <CardHero
+        game={game}
+        genreMode={genreMode}
+        playerCount={playerCount}
+        liveActivity={liveActivity}
+      />
       <CardBody game={game} />
     </>
   )

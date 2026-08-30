@@ -114,7 +114,9 @@ type Game struct {
 	Screenshots      []string `json:"screenshots"`
 	Tags             []string `json:"tags"`
 	// Developer-chosen hex accent (#rrggbb). Null falls back to the slug-hashed palette color.
-	AccentColor       *string                 `json:"accentColor,omitempty"`
+	AccentColor *string `json:"accentColor,omitempty"`
+	// Live player counts for the catalog card. Served from a short-lived whole-catalog snapshot.
+	PlayerActivity    *GamePlayerActivity     `json:"playerActivity"`
 	Modes             []*GameMode             `json:"modes"`
 	Visibility        GameVisibility          `json:"visibility"`
 	ContactEmail      *string                 `json:"contactEmail,omitempty"`
@@ -162,6 +164,14 @@ type GameModeSeat struct {
 	// Lobby join bucket derived from seatTemplate (empty for fifo modes).
 	QueuePath *string `json:"queuePath,omitempty"`
 	SortOrder int     `json:"sortOrder"`
+}
+
+// Players a game has right now. Playing and queued are different people, not two views of one number.
+type GamePlayerActivity struct {
+	// Players seated in a live session of this game.
+	Playing int `json:"playing"`
+	// Players waiting in this game's queues for a match to fill.
+	Queued int `json:"queued"`
 }
 
 type JoinResult struct {
