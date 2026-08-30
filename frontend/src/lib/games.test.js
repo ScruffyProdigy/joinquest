@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest'
 import {
   defaultModeForGame,
+  filterGamesBySearch,
   isSoloMode,
   joinGroupOptionsForGame,
   joinGroupOptionsForMode,
@@ -124,5 +125,45 @@ describe('modePlayerRangeLabel', () => {
 
   it('returns null for undefined mode', () => {
     expect(modePlayerRangeLabel(undefined)).toBeNull()
+  })
+})
+
+describe('filterGamesBySearch', () => {
+  const games = [
+    { id: '1', name: 'Spyfall', tags: ['Social', 'Deduction'] },
+    { id: '2', name: 'Word Ladder', tags: ['Word', 'Strategy'] },
+    { id: '3', name: 'Rock Paper Scissors Lizard Robot' },
+  ]
+
+  it('returns every game for an empty or whitespace-only query', () => {
+    expect(filterGamesBySearch(games, '')).toEqual(games)
+    expect(filterGamesBySearch(games, '   ')).toEqual(games)
+    expect(filterGamesBySearch(games, null)).toEqual(games)
+  })
+
+  it('matches game titles case-insensitively', () => {
+    expect(filterGamesBySearch(games, 'spyFALL').map((g) => g.id)).toEqual(['1'])
+  })
+
+  it('matches partial titles', () => {
+    expect(filterGamesBySearch(games, 'lad').map((g) => g.id)).toEqual(['2'])
+  })
+
+  it('matches tags as well as titles', () => {
+    expect(filterGamesBySearch(games, 'deduction').map((g) => g.id)).toEqual(['1'])
+  })
+
+  it('requires every term to match', () => {
+    expect(filterGamesBySearch(games, 'word strategy').map((g) => g.id)).toEqual(['2'])
+    expect(filterGamesBySearch(games, 'word deduction')).toEqual([])
+  })
+
+  it('returns an empty list when nothing matches', () => {
+    expect(filterGamesBySearch(games, 'zzzzz')).toEqual([])
+  })
+
+  it('tolerates games without tags and a missing list', () => {
+    expect(filterGamesBySearch(games, 'lizard').map((g) => g.id)).toEqual(['3'])
+    expect(filterGamesBySearch(undefined, 'lizard')).toEqual([])
   })
 })

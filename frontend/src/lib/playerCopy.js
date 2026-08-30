@@ -62,6 +62,15 @@ export const LAUNCH_GAME = 'Launch game'
 export const LEAVE_GAME = 'Leave game'
 export const LEAVE_MATCH = 'Leave match'
 
+export const GAMES_HEADING = 'Available games'
+export const GAMES_INTRO =
+  'Pick a game and look for a group. Starting a new search moves you out of any other group you were waiting for.'
+
+export const GAMES_SEARCH_LABEL = 'Search games'
+export const GAMES_SEARCH_PLACEHOLDER = 'Search games…'
+export const GAMES_SEARCH_EMPTY = 'No games found'
+export const GAMES_SEARCH_EMPTY_HINT = 'Try a different search term'
+
 export function waitingForGroupLine(count) {
   const n = count ?? 0
   return `Looking for players… (${n} ${n === 1 ? 'player' : 'players'} looking)`
