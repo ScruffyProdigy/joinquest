@@ -65,7 +65,7 @@ fi
 
 # Run different types of tests
 print_info "Running unit tests..."
-if go test -v ./...; then
+if go test -p 1 -v ./...; then
     print_status "Unit tests passed"
 else
     print_error "Unit tests failed"
@@ -94,7 +94,7 @@ fi
 echo ""
 
 print_info "Running with coverage..."
-if go test -cover ./...; then
+if go test -p 1 -cover ./...; then
     print_status "Coverage analysis completed"
 else
     print_error "Coverage analysis failed"

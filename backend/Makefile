@@ -8,9 +8,11 @@ generate:
 	go run github.com/99designs/gqlgen@v0.17.81 generate
 
 # Run all tests
+# -p 1: the graph and store packages share one Postgres and drive the same
+# seeded demo queue, so running them at the same time makes them fight.
 test:
 	@echo "Running all tests..."
-	go test ./... -v
+	go test -p 1 ./... -v
 
 # Run only drift detection tests
 test-drift:
