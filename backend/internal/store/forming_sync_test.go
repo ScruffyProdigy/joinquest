@@ -50,19 +50,25 @@ func TestJoinModeQueueSyncHealsMissedFormingPlacements(t *testing.T) {
 	`, queueID, userA.ID, userB.ID); err != nil {
 		t.Fatalf("reset queue rows: %v", err)
 	}
+	// Scoped to this test's own players. The demo queue is shared, so touching
+	// every party or forming match in it would fight other tests running
+	// against the same database.
 	if _, err := st.db.ExecContext(ctx, `
 		UPDATE parties SET status = 'waiting'
 		WHERE mode_queue_id = $1
-	`, queueID); err != nil {
+		  AND id IN (SELECT party_id FROM party_members WHERE user_id IN ($2, $3))
+	`, queueID, userA.ID, userB.ID); err != nil {
 		t.Fatalf("reset party status: %v", err)
 	}
 	var formingMatchID uuid.UUID
 	if err := st.db.QueryRowContext(ctx, `
-		SELECT id FROM forming_matches
-		WHERE mode_queue_id = $1
-		ORDER BY created_at DESC
+		SELECT fm.id
+		FROM forming_matches fm
+		JOIN forming_match_assignments fma ON fma.forming_match_id = fm.id
+		WHERE fm.mode_queue_id = $1 AND fma.user_id IN ($2, $3)
+		ORDER BY fm.created_at DESC
 		LIMIT 1
-	`, queueID).Scan(&formingMatchID); err != nil {
+	`, queueID, userA.ID, userB.ID).Scan(&formingMatchID); err != nil {
 		t.Fatalf("forming match: %v", err)
 	}
 	if _, err := st.db.ExecContext(ctx, `
@@ -91,11 +97,13 @@ func TestJoinModeQueueSyncHealsMissedFormingPlacements(t *testing.T) {
 	`, queueID, userA.ID, userB.ID); err != nil {
 		t.Fatalf("finish session participants: %v", err)
 	}
+	// Only the session these two were matched into — not every active session
+	// in the demo queue.
 	if _, err := st.db.ExecContext(ctx, `
 		UPDATE game_sessions
 		SET status = 'completed', ended_at = NOW()
-		WHERE mode_queue_id = $1 AND status = 'active'
-	`, queueID); err != nil {
+		WHERE id = $1 AND status = 'active'
+	`, *rec.SessionID); err != nil {
 		t.Fatalf("complete sessions: %v", err)
 	}
 
