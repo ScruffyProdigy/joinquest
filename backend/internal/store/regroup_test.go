@@ -169,6 +169,123 @@ func TestClaimRegroupTableRefusesFullTableWithoutOptingIn(t *testing.T) {
 	}
 }
 
+func TestGetRegroupRosterThreeStates(t *testing.T) {
+	st := openTestStore(t)
+	cleaner := st.NewTestCleaner(t)
+	ctx := context.Background()
+
+	sessionID, userA, userB := seedMatchedSession(t, st, ctx, cleaner)
+	if err := st.CompleteSession(ctx, sessionID, time.Now()); err != nil {
+		t.Fatalf("CompleteSession: %v", err)
+	}
+
+	roster, err := st.GetRegroupRoster(ctx, sessionID)
+	if err != nil {
+		t.Fatalf("GetRegroupRoster: %v", err)
+	}
+	if roster[userA] != RegroupPending || roster[userB] != RegroupPending {
+		t.Fatalf("before anyone acts both should be PENDING, got %v / %v", roster[userA], roster[userB])
+	}
+
+	if _, _, err := st.ClaimRegroupTable(ctx, sessionID, userA); err != nil {
+		t.Fatalf("ClaimRegroupTable: %v", err)
+	}
+	if err := st.DeclineRegroup(ctx, sessionID, userB, time.Now()); err != nil {
+		t.Fatalf("DeclineRegroup: %v", err)
+	}
+
+	roster, err = st.GetRegroupRoster(ctx, sessionID)
+	if err != nil {
+		t.Fatalf("GetRegroupRoster: %v", err)
+	}
+	if roster[userA] != RegroupIn {
+		t.Errorf("userA = %v, want IN", roster[userA])
+	}
+	if roster[userB] != RegroupOut {
+		t.Errorf("userB = %v, want OUT", roster[userB])
+	}
+}
+
+// TestGetRegroupRosterDoesNotInferInFromSeat proves the crux of the design: a room-table
+// group is re-seated by resetRoomTableAfterSessionTx the instant their match completes,
+// before either player has clicked anything. If GetRegroupRoster ever derived IN from
+// holding a seat at the regroup table (an earlier, wrong draft of this design), this test
+// would catch it — both players hold seats here yet neither has opted in.
+func TestGetRegroupRosterDoesNotInferInFromSeat(t *testing.T) {
+	st := openTestStore(t)
+	cleaner := st.NewTestCleaner(t)
+	ctx := context.Background()
+
+	host, err := st.CreateUser(ctx, CreateUserParams{Email: "regroup-host-" + uuid.NewString() + "@example.com"})
+	if err != nil {
+		t.Fatalf("CreateUser host: %v", err)
+	}
+	cleaner.TrackUser(host.ID)
+	guest, err := st.CreateUser(ctx, CreateUserParams{Email: "regroup-guest-" + uuid.NewString() + "@example.com"})
+	if err != nil {
+		t.Fatalf("CreateUser guest: %v", err)
+	}
+	cleaner.TrackUser(guest.ID)
+
+	game, mode := setupDuelMode(t, st, cleaner)
+
+	room, err := st.CreateRoom(ctx, host.ID)
+	if err != nil {
+		t.Fatalf("CreateRoom: %v", err)
+	}
+	if err := st.addRoomMemberDirect(ctx, room.ID, guest.ID); err != nil {
+		t.Fatalf("add guest: %v", err)
+	}
+
+	table, err := st.CreateTable(ctx, room.ID, game.ID, mode.ID, host.ID)
+	if err != nil {
+		t.Fatalf("CreateTable: %v", err)
+	}
+
+	seats, err := st.ListGameModeSeats(ctx, mode.ID)
+	if err != nil {
+		t.Fatalf("ListGameModeSeats: %v", err)
+	}
+	if len(seats) < 2 {
+		t.Fatalf("need at least 2 seats, got %d", len(seats))
+	}
+
+	if _, err := st.SitAtTable(ctx, table.ID, host.ID, seats[0].SeatKey); err != nil {
+		t.Fatalf("host sit: %v", err)
+	}
+	if _, err := st.SitAtTable(ctx, table.ID, guest.ID, seats[1].SeatKey); err != nil {
+		t.Fatalf("guest sit: %v", err)
+	}
+
+	result, err := st.StartTable(ctx, table.ID, host.ID)
+	if err != nil {
+		t.Fatalf("StartTable: %v", err)
+	}
+
+	if err := st.CompleteSession(ctx, result.SessionID, time.Now()); err != nil {
+		t.Fatalf("CompleteSession: %v", err)
+	}
+
+	seated, err := st.ListTableSeats(ctx, table.ID)
+	if err != nil {
+		t.Fatalf("ListTableSeats: %v", err)
+	}
+	if len(seated) != 2 {
+		t.Fatalf("expected both players re-seated after completion, got %d", len(seated))
+	}
+
+	roster, err := st.GetRegroupRoster(ctx, result.SessionID)
+	if err != nil {
+		t.Fatalf("GetRegroupRoster: %v", err)
+	}
+	if roster[host.ID] != RegroupPending {
+		t.Errorf("seated-but-unconfirmed host = %v, want PENDING", roster[host.ID])
+	}
+	if roster[guest.ID] != RegroupPending {
+		t.Errorf("seated-but-unconfirmed guest = %v, want PENDING", roster[guest.ID])
+	}
+}
+
 // onlyOpenSeatKey returns the remaining open seat key on the regroup table.
 func onlyOpenSeatKey(t *testing.T, st *Store, ctx context.Context, table *RoomTable) string {
 	t.Helper()

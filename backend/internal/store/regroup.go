@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"errors"
+	"time"
 
 	"github.com/google/uuid"
 )
@@ -183,4 +184,100 @@ func (s *Store) firstOpenSeatKeyTx(ctx context.Context, tx *sql.Tx, table *RoomT
 		}
 	}
 	return "", ErrTableFull
+}
+
+// RegroupState is a participant's answer to "playing again?".
+type RegroupState string
+
+const (
+	RegroupIn      RegroupState = "IN"      // explicitly opted in via playAgain
+	RegroupOut     RegroupState = "OUT"     // explicitly declined
+	RegroupPending RegroupState = "PENDING" // neither — has not returned or has not chosen
+)
+
+// GetRegroupRoster derives each participant's regroup state from explicit markers.
+// IN is NOT "seated": resetRoomTableAfterSessionTx re-seats a room-table group the moment
+// their match completes, before anyone has chosen. Only regroup_opted_in_at means yes.
+func (s *Store) GetRegroupRoster(ctx context.Context, sessionID uuid.UUID) (map[uuid.UUID]RegroupState, error) {
+	rows, err := s.db.QueryContext(ctx, `
+		SELECT p.user_id,
+		       p.regroup_opted_in_at IS NOT NULL AS opted_in,
+		       p.regroup_declined_at IS NOT NULL AS declined
+		FROM game_session_participants p
+		WHERE p.session_id = $1
+	`, sessionID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	roster := make(map[uuid.UUID]RegroupState)
+	for rows.Next() {
+		var (
+			userID   uuid.UUID
+			optedIn  bool
+			declined bool
+		)
+		if err := rows.Scan(&userID, &optedIn, &declined); err != nil {
+			return nil, err
+		}
+		switch {
+		case optedIn:
+			roster[userID] = RegroupIn
+		case declined:
+			roster[userID] = RegroupOut
+		default:
+			roster[userID] = RegroupPending
+		}
+	}
+	return roster, rows.Err()
+}
+
+// DeclineRegroup records that a participant is not playing again and frees the seat they
+// may be holding. A room-table group is re-seated automatically when the match completes,
+// so someone who says no is still sitting there — leaving them seated would block the
+// king's Look for group backfill from filling the seat.
+func (s *Store) DeclineRegroup(ctx context.Context, sessionID, userID uuid.UUID, at time.Time) error {
+	tx, err := s.db.BeginTx(ctx, nil)
+	if err != nil {
+		return err
+	}
+	defer func() { _ = tx.Rollback() }()
+
+	result, err := tx.ExecContext(ctx, `
+		UPDATE game_session_participants
+		SET regroup_declined_at = $3, regroup_opted_in_at = NULL
+		WHERE session_id = $1 AND user_id = $2
+	`, sessionID, userID, at)
+	if err != nil {
+		return err
+	}
+	if err := ensureRowsAffected(result, ErrNotFound); err != nil {
+		return err
+	}
+
+	if _, err := tx.ExecContext(ctx, `
+		DELETE FROM table_seats
+		WHERE user_id = $2
+		  AND table_id = (SELECT regroup_table_id FROM game_sessions WHERE id = $1)
+	`, sessionID, userID); err != nil {
+		return err
+	}
+
+	return tx.Commit()
+}
+
+// GetRegroupTableID returns the claimed regroup table, or nil when none exists yet.
+func (s *Store) GetRegroupTableID(ctx context.Context, sessionID uuid.UUID) (*uuid.UUID, error) {
+	var id *uuid.UUID
+	err := s.db.QueryRowContext(ctx, `
+		SELECT regroup_table_id FROM game_sessions WHERE id = $1
+	`, sessionID).Scan(&id)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return nil, ErrNotFound
+		}
+		return nil, err
+	}
+	return id, nil
 }
