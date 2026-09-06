@@ -38,6 +38,9 @@ func (r *mutationResolver) ReportPlayerFinished(ctx context.Context, matchID str
 	if err := st.MarkParticipantFinished(ctx, sessionID, playerID, now); err != nil {
 		return false, err
 	}
+	if err := st.RecordPlayerFinish(ctx, sessionID, playerID, string(reason), placement, metadata); err != nil {
+		return false, err
+	}
 	if session.ModeQueueID != nil {
 		if err := st.ReleaseUserMatchedQueue(ctx, *session.ModeQueueID, playerID); err != nil {
 			return false, err
@@ -54,9 +57,6 @@ func (r *mutationResolver) ReportPlayerFinished(ctx context.Context, matchID str
 		}
 	}
 
-	_ = reason
-	_ = placement
-	_ = metadata
 	return true, nil
 }
 
@@ -75,6 +75,18 @@ func (r *mutationResolver) ReportMatchResult(ctx context.Context, matchID string
 		return false, err
 	}
 
+	winnerIDs := make([]uuid.UUID, 0, len(winnerLobbyUserIds))
+	for _, raw := range winnerLobbyUserIds {
+		id, err := parseUUID(raw, "winner lobby user id")
+		if err != nil {
+			return false, err
+		}
+		winnerIDs = append(winnerIDs, id)
+	}
+	if err := st.RecordMatchResult(ctx, sessionID, string(status), winnerIDs, metadata, time.Now()); err != nil {
+		return false, err
+	}
+
 	table, _ := st.GetRoomTableBySessionID(ctx, sessionID)
 
 	if err := st.CompleteSession(ctx, sessionID, time.Now()); err != nil {
@@ -88,9 +100,6 @@ func (r *mutationResolver) ReportMatchResult(ctx context.Context, matchID string
 		_ = r.publishTableUpdated(ctx, table.RoomID, table.ID)
 	}
 
-	_ = status
-	_ = winnerLobbyUserIds
-	_ = metadata
 	return true, nil
 }
 
