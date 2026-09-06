@@ -1,12 +1,12 @@
 import { render, screen } from '@testing-library/react'
 import { describe, expect, it } from 'vitest'
 import DeveloperPromoCard from './DeveloperPromoCard'
-import { DEVELOPER_PROMO_TITLE } from '../../lib/playerCopy'
+import { DEVELOPER_PROMO_TITLE, DEVELOPER_PROMO_TITLE_NO_RESULTS } from '../../lib/playerCopy'
 
-function renderPromoCard() {
+function renderPromoCard(props = {}) {
   return render(
     <ul>
-      <DeveloperPromoCard />
+      <DeveloperPromoCard {...props} />
     </ul>,
   )
 }
@@ -38,5 +38,22 @@ describe('DeveloperPromoCard', () => {
     renderPromoCard()
 
     expect(screen.getByRole('listitem')).toBeInTheDocument()
+  })
+  it('retitles itself when a search leaves nothing to show', () => {
+    renderPromoCard({ noResults: true })
+
+    expect(
+      screen.getByRole('heading', { name: DEVELOPER_PROMO_TITLE_NO_RESULTS }),
+    ).toBeInTheDocument()
+    expect(screen.queryByRole('heading', { name: DEVELOPER_PROMO_TITLE })).not.toBeInTheDocument()
+  })
+
+  it('keeps the same destination in both states', () => {
+    renderPromoCard({ noResults: true })
+
+    expect(screen.getByRole('link', { name: /get started for developers/i })).toHaveAttribute(
+      'href',
+      '/developers',
+    )
   })
 })

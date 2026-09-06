@@ -58,8 +58,9 @@ export default function GameLobby({ headingId }) {
   // Only show search once there is a catalog to search through.
   const hasCatalog = status === 'ready' && games.length > 0
   const visibleGames = filterGamesBySearch(games, search)
-  // The promo is not a search result, so it stays out of a filtered list.
-  const showPromo = search.trim() === ''
+  // The promo rides along through a search. With nothing left it is all that remains,
+  // and retitles itself rather than leaving the player at a dead end.
+  const noResults = visibleGames.length === 0
   const promoSlot = Math.min(DEVELOPER_PROMO_SLOT, visibleGames.length)
 
   return (
@@ -101,19 +102,19 @@ export default function GameLobby({ headingId }) {
         </div>
       ) : null}
 
-      {hasCatalog && visibleGames.length === 0 ? (
+      {hasCatalog && noResults ? (
         <div className="py-8 text-center" role="status">
           <p className="m-0 font-semibold text-foreground">{GAMES_SEARCH_EMPTY}</p>
           <p className="mt-1 mb-0 text-sm text-muted-foreground">{GAMES_SEARCH_EMPTY_HINT}</p>
         </div>
       ) : null}
 
-      {hasCatalog && visibleGames.length > 0 ? (
+      {hasCatalog ? (
         <ul className="game-list">
           {visibleGames.slice(0, promoSlot).map((game) => (
             <GameCard key={game.id} game={game} />
           ))}
-          {showPromo ? <DeveloperPromoCard /> : null}
+          <DeveloperPromoCard noResults={noResults} />
           {visibleGames.slice(promoSlot).map((game) => (
             <GameCard key={game.id} game={game} />
           ))}

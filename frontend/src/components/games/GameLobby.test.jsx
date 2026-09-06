@@ -6,6 +6,7 @@ import { AuthProvider } from '../auth/AuthProvider'
 import { ActiveRoomProvider } from '../rooms/ActiveRoomProvider'
 import { mockAuthenticatedSession, mockUnauthenticatedSession } from '../../test/setup'
 import * as games from '../../lib/games'
+import { DEVELOPER_PROMO_TITLE, DEVELOPER_PROMO_TITLE_NO_RESULTS } from '../../lib/playerCopy'
 
 vi.mock('../../lib/games', async (importOriginal) => {
   const actual = await importOriginal()
@@ -256,17 +257,48 @@ describe('GameLobby', () => {
       expect(items[2]).toContainElement(promoLink())
     })
 
-    it('stays out of filtered results, and comes back when the search clears', async () => {
+    it('rides along through a filtered search', async () => {
       mockAuthenticatedSession()
       mockGames(10)
       renderGameLobby()
 
       const input = await screen.findByLabelText('Search games')
       await userEvent.type(input, 'Game 1')
-      expect(promoLink()).not.toBeInTheDocument()
 
-      await userEvent.clear(input)
       expect(promoLink()).toBeInTheDocument()
+      expect(screen.getByRole('heading', { name: DEVELOPER_PROMO_TITLE })).toBeInTheDocument()
+    })
+
+    // Matches the prototype: the dead end becomes the pitch.
+    it('retitles itself when the search clears the list, and is all that is left', async () => {
+      mockAuthenticatedSession()
+      mockGames(10)
+      renderGameLobby()
+
+      const input = await screen.findByLabelText('Search games')
+      await userEvent.type(input, 'zzzzz')
+
+      expect(screen.getByText('No games found')).toBeInTheDocument()
+      expect(
+        screen.getByRole('heading', { name: DEVELOPER_PROMO_TITLE_NO_RESULTS }),
+      ).toBeInTheDocument()
+      expect(screen.queryByRole('heading', { name: DEVELOPER_PROMO_TITLE })).not.toBeInTheDocument()
+      expect(screen.getAllByRole('listitem')).toHaveLength(1)
+    })
+
+    it('goes back to its usual title once the search clears', async () => {
+      mockAuthenticatedSession()
+      mockGames(10)
+      renderGameLobby()
+
+      const input = await screen.findByLabelText('Search games')
+      await userEvent.type(input, 'zzzzz')
+      await userEvent.clear(input)
+
+      expect(screen.getByRole('heading', { name: DEVELOPER_PROMO_TITLE })).toBeInTheDocument()
+      expect(
+        screen.queryByRole('heading', { name: DEVELOPER_PROMO_TITLE_NO_RESULTS }),
+      ).not.toBeInTheDocument()
     })
 
     it('is absent when the catalog itself is empty', async () => {
