@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test'
-import { signInWithEmailCode } from './helpers/auth.js'
+import { setUserDisplayName, signInWithEmailCode } from './helpers/auth.js'
 import {
   clearDemoMatchmakingState,
   restorePrimaryGameHandoffUrls,
@@ -14,6 +14,16 @@ import {
   readLaunchMatchId,
   returnFromMatch,
 } from './helpers/queue.js'
+
+/**
+ * Signing in leaves display_name and avatar null — the identity prompt is what
+ * fills them in. Play entry requires both (JQ-126), so a fixture that queues has
+ * to finish that step the way a real player would before reaching a queue.
+ */
+async function identifyPlayer(page, email, displayName) {
+  setUserDisplayName(email, displayName)
+  await page.reload()
+}
 
 test.describe('Game loop', () => {
   /** @type {import('node:http').Server | undefined} */
@@ -48,8 +58,10 @@ test.describe('Game loop', () => {
     try {
       await pageA.goto('/')
       await signInWithEmailCode(pageA, emailA)
+      await identifyPlayer(pageA, emailA, 'Loop A')
       await pageB.goto('/')
       await signInWithEmailCode(pageB, emailB)
+      await identifyPlayer(pageB, emailB, 'Loop B')
 
       await joinRockPaperQueue(pageA)
       await expectWaitingBanner(pageA)
