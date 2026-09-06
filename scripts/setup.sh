@@ -68,7 +68,7 @@ go run github.com/99designs/gqlgen@v0.17.81 generate
 
 # Run backend tests
 print_status "Running backend tests..."
-go test ./...
+go test -p 1 ./...
 
 print_status "Backend setup complete!"
 

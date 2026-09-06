@@ -18,12 +18,14 @@ describe('App Component', () => {
     })
   })
 
-  it('gates a signed-out visitor behind the avatar picker', async () => {
+  it('gates a signed-out visitor arriving on a room invite behind the avatar picker', async () => {
+    window.history.replaceState({}, '', '/room/ABC123')
+    Object.defineProperty(window, 'location', {
+      configurable: true,
+      value: { ...window.location, pathname: '/room/ABC123', search: '', assign: vi.fn() },
+    })
     mockUnauthenticatedSession()
     render(<App />)
-
-    expect(screen.getByRole('heading', { level: 1, name: 'JoinQuest' })).toBeInTheDocument()
-    expect(screen.getByText('Find your group. Play together.')).toBeInTheDocument()
 
     await waitFor(() => {
       expect(screen.getByRole('heading', { name: IDENTITY_GATE_HEADING })).toBeInTheDocument()
@@ -44,6 +46,7 @@ describe('App Component', () => {
     expect(
       screen.getByRole('link', { name: /Rock Paper Scissors Lizard Robot/ }),
     ).toHaveAttribute('href', '/games/rock-paper-scissors-lizard-robot')
+    expect(screen.queryByRole('heading', { name: IDENTITY_GATE_HEADING })).not.toBeInTheDocument()
   })
 
   it('shows the signed-in user when authenticated', async () => {

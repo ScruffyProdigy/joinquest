@@ -78,7 +78,7 @@ echo "🔧 Backend Tests"
 echo "=================="
 
 # Backend unit tests
-if ! run_tests "Backend Unit Tests" "go test ./..." "backend"; then
+if ! run_tests "Backend Unit Tests" "go test -p 1 ./..." "backend"; then
     OVERALL_RESULT=1
 fi
 
@@ -124,7 +124,7 @@ else
     print_error "Some tests failed. Please fix the issues before committing."
     echo ""
     echo "Run individual test suites for more details:"
-    echo "  • Backend: cd backend && go test ./..."
+    echo "  • Backend: cd backend && go test -p 1 ./..."
     echo "  • Frontend: cd frontend && npm run test:run"
     echo "  • E2E: cd frontend && npm run test:e2e"
 fi
