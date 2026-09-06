@@ -1,0 +1,160 @@
+package store
+
+import (
+	"context"
+	"database/sql"
+	"errors"
+
+	"github.com/google/uuid"
+)
+
+// ErrNoRegroupMode is returned when a finished session has no mode to rebuild a table from.
+// game_sessions.mode_id is nullable and sessions outlive their modes (JQ-134).
+var ErrNoRegroupMode = errors.New("store: session has no mode to regroup into")
+
+// ClaimRegroupTable returns the single forming table for a finished match, creating it on
+// first call, and seats the caller. The SELECT ... FOR UPDATE is what makes every player
+// converge on one table instead of each creating their own.
+func (s *Store) ClaimRegroupTable(ctx context.Context, sessionID, userID uuid.UUID) (*RoomTable, *Room, error) {
+	tx, err := s.db.BeginTx(ctx, nil)
+	if err != nil {
+		return nil, nil, err
+	}
+	defer func() { _ = tx.Rollback() }()
+
+	var (
+		gameID    *uuid.UUID
+		modeID    *uuid.UUID
+		regroupID *uuid.UUID
+	)
+	err = tx.QueryRowContext(ctx, `
+		SELECT game_id, mode_id, regroup_table_id
+		FROM game_sessions
+		WHERE id = $1
+		FOR UPDATE
+	`, sessionID).Scan(&gameID, &modeID, &regroupID)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return nil, nil, ErrNotFound
+		}
+		return nil, nil, err
+	}
+
+	var participates bool
+	if err := tx.QueryRowContext(ctx, `
+		SELECT EXISTS(SELECT 1 FROM game_session_participants WHERE session_id = $1 AND user_id = $2)
+	`, sessionID, userID).Scan(&participates); err != nil {
+		return nil, nil, err
+	}
+	if !participates {
+		return nil, nil, ErrNotFound
+	}
+	if modeID == nil || gameID == nil {
+		return nil, nil, ErrNoRegroupMode
+	}
+
+	table, err := s.loadFormingRegroupTableTx(ctx, tx, regroupID)
+	if err != nil {
+		return nil, nil, err
+	}
+	if table == nil {
+		room, err := s.getUserRoomTx(ctx, tx, userID)
+		if err != nil {
+			if !errors.Is(err, ErrNotFound) {
+				return nil, nil, err
+			}
+			room, err = s.createRoomTx(ctx, tx, userID)
+			if err != nil {
+				return nil, nil, err
+			}
+		}
+		table, err = s.createTableTx(ctx, tx, room.ID, *gameID, *modeID)
+		if err != nil {
+			return nil, nil, err
+		}
+		if _, err := tx.ExecContext(ctx, `
+			UPDATE game_sessions SET regroup_table_id = $2 WHERE id = $1
+		`, sessionID, table.ID); err != nil {
+			return nil, nil, err
+		}
+	}
+
+	if err := s.ensureRoomMemberTx(ctx, tx, table.RoomID, userID); err != nil {
+		return nil, nil, err
+	}
+
+	seatKey, err := s.firstOpenSeatKeyTx(ctx, tx, table, userID)
+	if err != nil {
+		return nil, nil, err
+	}
+	if seatKey != "" {
+		if _, err := s.sitAtTableTx(ctx, tx, table.ID, userID, seatKey); err != nil {
+			return nil, nil, err
+		}
+	}
+
+	if _, err := tx.ExecContext(ctx, `
+		UPDATE game_session_participants
+		SET regroup_opted_in_at = NOW(), regroup_declined_at = NULL
+		WHERE session_id = $1 AND user_id = $2
+	`, sessionID, userID); err != nil {
+		return nil, nil, err
+	}
+
+	room, err := s.getRoomByIDTx(ctx, tx, table.RoomID)
+	if err != nil {
+		return nil, nil, err
+	}
+	if err := tx.Commit(); err != nil {
+		return nil, nil, err
+	}
+	return table, room, nil
+}
+
+// loadFormingRegroupTableTx returns the claimed table only if it still exists and is
+// forming. A swept or started table reads as unclaimed so the caller creates a fresh one.
+func (s *Store) loadFormingRegroupTableTx(ctx context.Context, tx *sql.Tx, regroupID *uuid.UUID) (*RoomTable, error) {
+	if regroupID == nil {
+		return nil, nil
+	}
+	row := tx.QueryRowContext(ctx, `
+		SELECT `+roomTableColumns+`
+		FROM room_tables
+		WHERE id = $1 AND status = $2
+	`, *regroupID, TableStatusForming)
+	table, err := scanRoomTable(row)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) || errors.Is(err, ErrNotFound) {
+			return nil, nil
+		}
+		return nil, err
+	}
+	return table, nil
+}
+
+// firstOpenSeatKeyTx picks the first unoccupied seat, or "" when the table is full.
+// Returns "" for a caller who already holds a seat here — a room-table group is re-seated
+// by resetRoomTableAfterSessionTx, so opting in must not move anyone.
+func (s *Store) firstOpenSeatKeyTx(ctx context.Context, tx *sql.Tx, table *RoomTable, userID uuid.UUID) (string, error) {
+	modeSeats, err := listGameModeSeats(ctx, tx, table.ModeID)
+	if err != nil {
+		return "", err
+	}
+	seated, err := s.listTableSeatsTx(ctx, tx, table.ID)
+	if err != nil {
+		return "", err
+	}
+	taken := make(map[string]bool, len(seated))
+	for _, seat := range seated {
+		if seat.UserID == userID {
+			return "", nil
+		}
+		taken[seat.SeatKey] = true
+	}
+	for _, seat := range modeSeats {
+		if !taken[seat.SeatKey] {
+			return seat.SeatKey, nil
+		}
+	}
+	return "", nil
+}

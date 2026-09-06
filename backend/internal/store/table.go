@@ -580,7 +580,9 @@ func (s *Store) sitAtTableTx(ctx context.Context, tx *sql.Tx, tableID, userID uu
 	if table.Status != TableStatusForming {
 		return nil, fmt.Errorf("store: table is not accepting seats")
 	}
-	member, err := s.IsRoomMember(ctx, table.RoomID, userID)
+	// Read membership through tx: a caller that joined the room earlier in this same
+	// transaction has not committed yet, and s.db would not see them.
+	member, err := s.isRoomMemberTx(ctx, tx, table.RoomID, userID)
 	if err != nil {
 		return nil, err
 	}

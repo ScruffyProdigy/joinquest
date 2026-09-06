@@ -148,6 +148,14 @@ func resetRoomTableAfterSessionTx(ctx context.Context, tx *sql.Tx, sessionID uui
 		}
 	}
 
+	// A room-table group regroups at the table they already have, so record it as the
+	// one table the finished match converges on (JQ-135).
+	if _, err := tx.ExecContext(ctx, `
+		UPDATE game_sessions SET regroup_table_id = $2 WHERE id = $1
+	`, sessionID, tableID); err != nil {
+		return err
+	}
+
 	return nil
 }
 
