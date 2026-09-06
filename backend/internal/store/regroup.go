@@ -12,6 +12,16 @@ import (
 // game_sessions.mode_id is nullable and sessions outlive their modes (JQ-134).
 var ErrNoRegroupMode = errors.New("store: session has no mode to regroup into")
 
+// ErrSessionNotFinished is returned when a claim arrives before the match is over. Claiming
+// early would race CompleteSession: resetRoomTableAfterSessionTx overwrites regroup_table_id
+// with the original room table, so the early claimant would be stranded on a table of their
+// own while everyone else adopts the original (JQ-135).
+var ErrSessionNotFinished = errors.New("store: session is still in progress")
+
+// ErrTableFull is returned when the regroup table has no seat left for the caller. The
+// caller is not opted in: regroup_opted_in_at must only ever mark a real seat holder.
+var ErrTableFull = errors.New("store: table has no open seat")
+
 // ClaimRegroupTable returns the single forming table for a finished match, creating it on
 // first call, and seats the caller. The SELECT ... FOR UPDATE is what makes every player
 // converge on one table instead of each creating their own.
@@ -23,16 +33,17 @@ func (s *Store) ClaimRegroupTable(ctx context.Context, sessionID, userID uuid.UU
 	defer func() { _ = tx.Rollback() }()
 
 	var (
+		status    string
 		gameID    *uuid.UUID
 		modeID    *uuid.UUID
 		regroupID *uuid.UUID
 	)
 	err = tx.QueryRowContext(ctx, `
-		SELECT game_id, mode_id, regroup_table_id
+		SELECT status, game_id, mode_id, regroup_table_id
 		FROM game_sessions
 		WHERE id = $1
 		FOR UPDATE
-	`, sessionID).Scan(&gameID, &modeID, &regroupID)
+	`, sessionID).Scan(&status, &gameID, &modeID, &regroupID)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return nil, nil, ErrNotFound
@@ -48,6 +59,14 @@ func (s *Store) ClaimRegroupTable(ctx context.Context, sessionID, userID uuid.UU
 	}
 	if !participates {
 		return nil, nil, ErrNotFound
+	}
+	// Only a finished match regroups. The row lock serializes concurrent claims but does
+	// not order this transaction against CompleteSession, so a claim on a still-active
+	// session could stamp regroup_table_id only for CompleteSession to overwrite it with
+	// the original room table, splitting the players across two tables. 'cancelled' is not
+	// a match to replay either.
+	if status != "completed" {
+		return nil, nil, ErrSessionNotFinished
 	}
 	if modeID == nil || gameID == nil {
 		return nil, nil, ErrNoRegroupMode
@@ -83,6 +102,9 @@ func (s *Store) ClaimRegroupTable(ctx context.Context, sessionID, userID uuid.UU
 		return nil, nil, err
 	}
 
+	// A full table is an error, not a silent seatless opt-in: the stamp below must only
+	// ever mark a real seat holder, or the roster reads IN for someone the king cannot
+	// actually start with.
 	seatKey, err := s.firstOpenSeatKeyTx(ctx, tx, table, userID)
 	if err != nil {
 		return nil, nil, err
@@ -132,9 +154,13 @@ func (s *Store) loadFormingRegroupTableTx(ctx context.Context, tx *sql.Tx, regro
 	return table, nil
 }
 
-// firstOpenSeatKeyTx picks the first unoccupied seat, or "" when the table is full.
-// Returns "" for a caller who already holds a seat here — a room-table group is re-seated
-// by resetRoomTableAfterSessionTx, so opting in must not move anyone.
+// firstOpenSeatKeyTx picks the first unoccupied seat key.
+//
+// The two "no seat key to take" outcomes are deliberately distinct. A caller who already
+// holds a seat here gets ("", nil) — a room-table group is re-seated by
+// resetRoomTableAfterSessionTx, so opting in must not move anyone. A caller who cannot be
+// seated because every seat is taken gets ErrTableFull, because the regroup table lives in
+// a pre-existing room whose other members can take its seats through SitAtTable.
 func (s *Store) firstOpenSeatKeyTx(ctx context.Context, tx *sql.Tx, table *RoomTable, userID uuid.UUID) (string, error) {
 	modeSeats, err := listGameModeSeats(ctx, tx, table.ModeID)
 	if err != nil {
@@ -156,5 +182,5 @@ func (s *Store) firstOpenSeatKeyTx(ctx context.Context, tx *sql.Tx, table *RoomT
 			return seat.SeatKey, nil
 		}
 	}
-	return "", nil
+	return "", ErrTableFull
 }
