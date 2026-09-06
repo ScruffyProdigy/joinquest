@@ -210,6 +210,10 @@ export function useActiveIntent() {
       queueUnsubRef.current?.()
       queueUnsubRef.current = null
     }
+    // activeIntent?.status is read only to label the debug log above. Listing it
+    // would tear down and re-open the queue subscription on every WAITING ->
+    // MATCHED transition, so it stays out of the deps on purpose.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user, activeIntent?.queueId, refreshIntent])
 
   useEffect(() => {
