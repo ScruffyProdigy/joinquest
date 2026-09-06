@@ -236,12 +236,13 @@ export function setUserDisplayName(email, displayName, { avatarKey = 'compass' }
 }
 
 async function expectSignedIn(page) {
-  await expect(page.getByRole('button', { name: 'Log out' })).toBeVisible({ timeout: 30000 })
+  // The account chip in the home header, matched by href so it holds whether or
+  // not the player has picked a display name yet.
+  await expect(page.locator('a[href="/account"]')).toBeVisible({ timeout: 30000 })
 }
 
 async function refreshSignedInUi(page) {
-  // The session card moved off home; /account is where it lives.
-  await page.goto('/account')
+  await page.goto('/')
   await expectSignedIn(page)
 }
 

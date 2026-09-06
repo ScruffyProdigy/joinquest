@@ -91,7 +91,7 @@ test.describe('Environment Configuration E2E Tests', () => {
     })
     
     // The page should still load without crashing
-    await expect(page.getByRole('heading', { name: 'JoinQuest' })).toBeVisible()
+    await expect(page.getByRole('heading', { level: 1, name: 'Find a game' })).toBeVisible()
   })
 })
 

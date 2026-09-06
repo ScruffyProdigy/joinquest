@@ -8,6 +8,8 @@ export const GREETING_AFTERNOON = 'Good afternoon'
 export const GREETING_EVENING = 'Good evening'
 export const FIND_A_GAME_HEADING = 'Find a game'
 export const SIGN_IN_OR_JOIN = 'Sign in or Join'
+/** Chip label for a signed-in player who has not picked a name yet. */
+export const ACCOUNT_CHIP_FALLBACK = 'Account'
 export const SIGN_IN_DIALOG_TITLE = 'Sign in or create an account'
 export const SIGN_IN_DIALOG_HINT =
   'Keep your name, avatar, and progress on every device you play from.'

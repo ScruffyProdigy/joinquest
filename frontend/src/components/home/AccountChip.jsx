@@ -1,5 +1,6 @@
 import { useState } from 'react'
-import { SIGN_IN_OR_JOIN } from '../../lib/playerCopy'
+import { ACCOUNT_CHIP_FALLBACK, SIGN_IN_OR_JOIN } from '../../lib/playerCopy'
+import { chosenDisplayName } from '../../lib/viewer'
 import { Button } from '../ui/button'
 import { useAuth } from '../auth/AuthProvider'
 import PlayerAvatar from '../avatars/PlayerAvatar'
@@ -33,7 +34,9 @@ export default function AccountChip() {
     <Button variant="ghost" className="h-auto shrink-0 gap-2 rounded-full py-1 pr-3 pl-1" asChild>
       <a href="/account">
         <PlayerAvatar user={user} size="sm" />
-        <span className="max-w-32 truncate">{user.displayName}</span>
+        {/* Without a fallback the link would have no accessible name at all
+            for someone who signed in but has not picked a name yet. */}
+        <span className="max-w-32 truncate">{chosenDisplayName(user) || ACCOUNT_CHIP_FALLBACK}</span>
       </a>
     </Button>
   )

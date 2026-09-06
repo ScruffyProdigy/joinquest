@@ -17,6 +17,21 @@ function sessionCard(page, heading) {
   return page.getByLabel(heading)
 }
 
+/** The session card lives on /account now, so go there to inspect it. */
+async function openAccount(page) {
+  await page.goto('/account')
+}
+
+/**
+ * Log out from /account. The starter avatars load after the card renders and
+ * shift it downwards, so wait for them before clicking or the click can land
+ * where the button used to be.
+ */
+async function logOut(page) {
+  await expect(page.getByRole('button', { name: 'Compass' })).toBeVisible()
+  await page.getByRole('button', { name: 'Log out' }).click()
+}
+
 /** What /account shows once nobody is signed in. */
 async function expectSignedOut(page) {
   await expect(page.getByText('Sign in to manage your account.')).toBeVisible()
@@ -29,13 +44,14 @@ test.describe('Auth flow', () => {
     await openSignIn(page)
 
     await signInWithEmailLink(page, email)
+    await openAccount(page)
 
     await expect(page.getByRole('heading', { name: 'Set up your display' })).toBeVisible()
     await expect(sessionCard(page, 'Set up your display').getByText(email)).toBeVisible()
     // Nothing invents a name any more, so the field starts empty.
     await expect(page.getByLabel('Display name')).toHaveValue('')
 
-    await page.getByRole('button', { name: 'Log out' }).click()
+    await logOut(page)
     await expectSignedOut(page)
     await expect(page.getByText(email)).not.toBeVisible()
   })
@@ -45,6 +61,7 @@ test.describe('Auth flow', () => {
 
     await openSignIn(page)
     await signInWithEmailCode(page, email)
+    await openAccount(page)
 
     await expect(page.getByRole('heading', { name: 'Set up your display' })).toBeVisible()
     await expect(sessionCard(page, 'Set up your display').getByText(email)).toBeVisible()
@@ -57,13 +74,15 @@ test.describe('Auth flow', () => {
 
     await openSignIn(page)
     await signInWithEmailLink(page, email)
+    await openAccount(page)
 
     setUserDisplayName(email, customDisplayName)
 
-    await page.getByRole('button', { name: 'Log out' }).click()
+    await logOut(page)
     await expectSignedOut(page)
 
     await signInWithEmailLink(page, email)
+    await openAccount(page)
 
     await expect(page.getByRole('heading', { name: 'Welcome back' })).toBeVisible()
     await expect(page.getByText(customDisplayName)).toBeVisible()
