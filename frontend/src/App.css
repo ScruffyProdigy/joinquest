@@ -495,27 +495,6 @@
     color: #5558aa;
   }
 
-  .developer-home-block {
-    border-color: rgba(85, 88, 170, 0.25);
-    background: rgba(85, 88, 170, 0.08);
-  }
-
-  .developer-home-block__link {
-    border-color: rgba(85, 88, 170, 0.45);
-    background: rgba(85, 88, 170, 0.12);
-    color: #4346a8;
-  }
-
-  .developer-home-block__link:hover {
-    border-color: rgba(85, 88, 170, 0.65);
-    background: rgba(85, 88, 170, 0.18);
-    color: #2f3288;
-  }
-
-  .your-games-strip--embedded {
-    border-top-color: rgba(0, 0, 0, 0.08);
-  }
-
   .developer-home-cta {
     border-color: rgba(85, 88, 170, 0.25);
     background: rgba(85, 88, 170, 0.08);
@@ -726,55 +705,6 @@
 
 .developer-auth-gate__account {
   margin: 0;
-}
-
-.developer-home-block {
-  border-color: rgba(100, 108, 255, 0.35);
-  background: rgba(100, 108, 255, 0.1);
-}
-
-.developer-home-block__cta {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  justify-content: space-between;
-  gap: 0.75rem 1rem;
-}
-
-.developer-home-block__copy {
-  margin: 0;
-  font-size: 1rem;
-  line-height: 1.45;
-}
-
-.developer-home-block__link {
-  display: inline-flex;
-  align-items: center;
-  padding: 0.55rem 1rem;
-  border-radius: 8px;
-  border: 1px solid rgba(100, 108, 255, 0.55);
-  background: rgba(100, 108, 255, 0.22);
-  color: #c4c8ff;
-  font-weight: 600;
-  text-decoration: none;
-  white-space: nowrap;
-}
-
-.developer-home-block__link:hover {
-  border-color: rgba(100, 108, 255, 0.85);
-  background: rgba(100, 108, 255, 0.32);
-  color: #e8eaff;
-}
-
-.your-games-strip--embedded {
-  margin-top: 1rem;
-  padding-top: 1rem;
-  border-top: 1px solid rgba(255, 255, 255, 0.12);
-}
-
-.your-games-strip--embedded h2 {
-  margin: 0 0 0.5rem;
-  font-size: 1rem;
 }
 
 .auth-panel--developer {

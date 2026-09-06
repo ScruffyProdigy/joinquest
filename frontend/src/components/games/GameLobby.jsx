@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { useAuth } from '../auth/AuthProvider'
 import { fetchGames, filterGamesBySearch } from '../../lib/games'
 import GameCard from './GameCard'
+import DeveloperPromoCard from '../developers/DeveloperPromoCard'
 import { Input } from '../ui/input'
 import {
   GAMES_SEARCH_EMPTY,
@@ -9,6 +10,10 @@ import {
   GAMES_SEARCH_LABEL,
   GAMES_SEARCH_PLACEHOLDER,
 } from '../../lib/playerCopy'
+
+// A fixed slot keeps the promo in the same place whether the catalog holds three
+// games or thirty. Clamped below, so a shorter catalog still ends with it.
+const DEVELOPER_PROMO_SLOT = 3
 
 export default function GameLobby({ headingId }) {
   const { user, loading: authLoading } = useAuth()
@@ -53,6 +58,9 @@ export default function GameLobby({ headingId }) {
   // Only show search once there is a catalog to search through.
   const hasCatalog = status === 'ready' && games.length > 0
   const visibleGames = filterGamesBySearch(games, search)
+  // The promo is not a search result, so it stays out of a filtered list.
+  const showPromo = search.trim() === ''
+  const promoSlot = Math.min(DEVELOPER_PROMO_SLOT, visibleGames.length)
 
   return (
     // The visible heading lives in the page header above, so point at it rather
@@ -102,7 +110,11 @@ export default function GameLobby({ headingId }) {
 
       {hasCatalog && visibleGames.length > 0 ? (
         <ul className="game-list">
-          {visibleGames.map((game) => (
+          {visibleGames.slice(0, promoSlot).map((game) => (
+            <GameCard key={game.id} game={game} />
+          ))}
+          {showPromo ? <DeveloperPromoCard /> : null}
+          {visibleGames.slice(promoSlot).map((game) => (
             <GameCard key={game.id} game={game} />
           ))}
         </ul>

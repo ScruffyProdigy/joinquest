@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { fetchMyGames, developerDashboardPath, visibilityLabel } from '../../lib/developers'
 import { navigateTo } from '../../lib/usePathname'
 
-export default function YourGamesStrip({ embedded = false }) {
+export default function YourGamesStrip() {
   const [games, setGames] = useState([])
   const [status, setStatus] = useState('idle')
 
@@ -50,10 +50,6 @@ export default function YourGamesStrip({ embedded = false }) {
       </ul>
     </>
   )
-
-  if (embedded) {
-    return <div className="your-games-strip your-games-strip--embedded">{content}</div>
-  }
 
   return (
     <section className="your-games-strip panel-card" aria-labelledby="your-games-heading">
