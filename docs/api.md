@@ -419,6 +419,7 @@ GraphQL returns errors in a standardized format:
 GraphQL errors use plain `message` strings from resolvers, for example:
 
 - `authentication required`
+- `identity required` — the caller has a session but has not picked both a display name and an avatar. Returned by every mutation that puts a player into play (`joinQueue`, `createRoom`, `joinRoom`, `createTable`, `createPrivateTable`, `sitAtTable`, `startTable`, `startTableBackfill`). Distinct from `authentication required` so clients can raise the identity prompt rather than a sign-in flow. Leaving a queue, table or room is never gated this way.
 - `game not found`
 - `database store is not configured`
 

@@ -23,7 +23,7 @@ func (r *mutationResolver) CreateRoom(ctx context.Context) (*model.Room, error) 
 	if err != nil {
 		return nil, err
 	}
-	userID, err := requireAuthUserID(ctx)
+	userID, err := r.requireIdentityUserID(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -40,7 +40,7 @@ func (r *mutationResolver) JoinRoom(ctx context.Context, inviteCode string) (*mo
 	if err != nil {
 		return nil, err
 	}
-	userID, err := requireAuthUserID(ctx)
+	userID, err := r.requireIdentityUserID(ctx)
 	if err != nil {
 		return nil, err
 	}

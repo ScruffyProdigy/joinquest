@@ -29,6 +29,29 @@ func (u *User) ChosenDisplayName() string {
 	return strings.TrimSpace(*u.DisplayName)
 }
 
+// HasChosenAvatar reports whether the player picked a face. A spirit animal
+// clears avatar_key and stores a URL instead, so all three fields count.
+// Mirrors hasChosenAvatar in frontend/src/lib/viewer.js.
+func (u *User) HasChosenAvatar() bool {
+	if u == nil {
+		return false
+	}
+	if u.AvatarKey != nil && strings.TrimSpace(*u.AvatarKey) != "" {
+		return true
+	}
+	if u.AvatarURL != nil && strings.TrimSpace(*u.AvatarURL) != "" {
+		return true
+	}
+	return u.AvatarSource != nil && *u.AvatarSource == SourceSpiritAnimal
+}
+
+// HasChosenIdentity is the single gate for entering play: a player is known
+// once they have both a name and a face. Mirrors needsIdentity in
+// frontend/src/lib/viewer.js, inverted.
+func (u *User) HasChosenIdentity() bool {
+	return u.ChosenDisplayName() != "" && u.HasChosenAvatar()
+}
+
 type CreateUserParams struct {
 	Email       string
 	DisplayName string

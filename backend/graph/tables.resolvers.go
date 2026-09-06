@@ -21,7 +21,7 @@ func (r *mutationResolver) CreatePrivateTable(ctx context.Context, gameID string
 	if err != nil {
 		return nil, err
 	}
-	userID, err := requireAuthUserID(ctx)
+	userID, err := r.requireIdentityUserID(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -49,7 +49,7 @@ func (r *mutationResolver) CreateTable(ctx context.Context, roomID string, gameI
 	if err != nil {
 		return nil, err
 	}
-	userID, err := requireAuthUserID(ctx)
+	userID, err := r.requireIdentityUserID(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -84,7 +84,7 @@ func (r *mutationResolver) SitAtTable(ctx context.Context, tableID string, seatK
 	if err != nil {
 		return nil, err
 	}
-	userID, err := requireAuthUserID(ctx)
+	userID, err := r.requireIdentityUserID(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -171,7 +171,7 @@ func (r *mutationResolver) StartTable(ctx context.Context, tableID string) (*mod
 	if err != nil {
 		return nil, err
 	}
-	userID, err := requireAuthUserID(ctx)
+	userID, err := r.requireIdentityUserID(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -187,7 +187,7 @@ func (r *mutationResolver) StartTableBackfill(ctx context.Context, tableID strin
 	if err != nil {
 		return nil, err
 	}
-	userID, err := requireAuthUserID(ctx)
+	userID, err := r.requireIdentityUserID(ctx)
 	if err != nil {
 		return nil, err
 	}

@@ -16,7 +16,7 @@ func (r *mutationResolver) joinQueueInternal(ctx context.Context, modeQueueID uu
 		return nil, err
 	}
 
-	userID, err := requireAuthUserID(ctx)
+	userID, err := r.requireIdentityUserID(ctx)
 	if err != nil {
 		return nil, err
 	}
