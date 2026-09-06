@@ -73,30 +73,30 @@ func main() {
 func b64url(b []byte) string { return base64.RawURLEncoding.EncodeToString(b) }
 
 func genKeyPair() (string, string, error) {
-		// Generate Ed25519 keypair
-		pub, priv, err := ed25519.GenerateKey(rand.Reader)
-		if err != nil {
-			fmt.Fprintf(os.Stderr, "keygen error: %v\n", err)
-			return "", "", err
-		}
+	// Generate Ed25519 keypair
+	pub, priv, err := ed25519.GenerateKey(rand.Reader)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "keygen error: %v\n", err)
+		return "", "", err
+	}
 
-		// Public key (x) for JWKS
-		pubX := b64url(pub)
+	// Public key (x) for JWKS
+	pubX := b64url(pub)
 
-		// Private key (PKCS#8) in PEM for signing
-		privBytes, err := x509.MarshalPKCS8PrivateKey(priv)
-		if err != nil {
-			fmt.Fprintf(os.Stderr, "marshal error: %v\n", err)
-			return "", "", err
-		}
-		privPEM := pem.EncodeToMemory(&pem.Block{Type: "PRIVATE KEY", Bytes: privBytes})
+	// Private key (PKCS#8) in PEM for signing
+	privBytes, err := x509.MarshalPKCS8PrivateKey(priv)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "marshal error: %v\n", err)
+		return "", "", err
+	}
+	privPEM := pem.EncodeToMemory(&pem.Block{Type: "PRIVATE KEY", Bytes: privBytes})
 
-		// Make sure PEM ends with newline
-		if !strings.HasSuffix(string(privPEM), "\n") {
-			privPEM = append(privPEM, '\n')
-		}
+	// Make sure PEM ends with newline
+	if !strings.HasSuffix(string(privPEM), "\n") {
+		privPEM = append(privPEM, '\n')
+	}
 
-		return pubX, string(privPEM), nil
+	return pubX, string(privPEM), nil
 }
 
 func writeToFile(out *string, data string) error {

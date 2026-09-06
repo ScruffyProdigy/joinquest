@@ -98,8 +98,8 @@ func TestCatalogRegisterAndRefreshManifest(t *testing.T) {
 			ServiceToken  string `json:"serviceToken"`
 			WebhookSecret string `json:"webhookSecret"`
 			Game          struct {
-				ID   string  `json:"id"`
-				Slug *string `json:"slug"`
+				ID    string  `json:"id"`
+				Slug  *string `json:"slug"`
 				Modes []struct {
 					ModeKey string `json:"modeKey"`
 					Seats   []struct {

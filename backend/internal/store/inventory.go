@@ -9,10 +9,10 @@ import (
 
 func (s *Store) ListUserInventory(ctx context.Context, userID uuid.UUID, gameID *uuid.UUID) ([]InventoryItem, error) {
 	var (
-		rows    *sql.Rows
-		err     error
-		query   string
-		args    []any
+		rows  *sql.Rows
+		err   error
+		query string
+		args  []any
 	)
 
 	baseQuery := `

@@ -8,12 +8,12 @@ import (
 	"github.com/99designs/gqlgen/client"
 	"github.com/99designs/gqlgen/graphql/handler"
 	"github.com/google/uuid"
+	_ "github.com/lib/pq"
 	"github.com/scruffyprodigy/playhub/graph/generated"
 	"github.com/scruffyprodigy/playhub/internal/auth"
 	"github.com/scruffyprodigy/playhub/internal/pubsub"
 	"github.com/scruffyprodigy/playhub/internal/store"
 	"github.com/scruffyprodigy/playhub/internal/testdb"
-	_ "github.com/lib/pq"
 )
 
 func newGamesGraphQLTestClient(t *testing.T) (*client.Client, *store.Store) {
@@ -86,9 +86,9 @@ func TestGameGraphQLReturnsDemoGameByID(t *testing.T) {
 
 	var resp struct {
 		Game struct {
-			ID              string
-			Name            string
-			ActiveSessions  []struct {
+			ID             string
+			Name           string
+			ActiveSessions []struct {
 				ID string
 			} `json:"activeSessions"`
 		} `json:"game"`
@@ -153,9 +153,9 @@ func TestSessionGraphQLLoadsNestedGameAndPlayers(t *testing.T) {
 
 	var resp struct {
 		Session struct {
-			ID      string
-			Status  string
-			Game    struct {
+			ID     string
+			Status string
+			Game   struct {
 				ID   string
 				Name string
 			}

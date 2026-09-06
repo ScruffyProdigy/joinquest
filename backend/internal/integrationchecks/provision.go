@@ -15,11 +15,11 @@ import (
 )
 
 const (
-	checkMatchIDPrefix     = "joinquest-check-"
-	checkUserOne           = "a0000000-0000-4000-8000-000000000001"
-	checkUserTwo           = "a0000000-0000-4000-8000-000000000002"
-	checkBannedUser        = "a0000000-0000-4000-8000-000000000099"
-	wrongAudienceBaseURL   = "https://joinquest-check-invalid.example"
+	checkMatchIDPrefix   = "joinquest-check-"
+	checkUserOne         = "a0000000-0000-4000-8000-000000000001"
+	checkUserTwo         = "a0000000-0000-4000-8000-000000000002"
+	checkBannedUser      = "a0000000-0000-4000-8000-000000000099"
+	wrongAudienceBaseURL = "https://joinquest-check-invalid.example"
 )
 
 // ProvisionConfig carries Lobby-side values for synthetic provision checks.

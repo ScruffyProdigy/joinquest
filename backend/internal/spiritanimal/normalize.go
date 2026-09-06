@@ -10,12 +10,12 @@ import (
 )
 
 type questionCard struct {
-	Slot                 string `json:"slot"`
-	SlotName             string `json:"slot_name"`
-	Card                 string `json:"card"`
-	CardMeaningInGeneral string `json:"card_meaning_in_general"`
-	CardMeaningForSlot   string `json:"card_meaning_for_slot"`
-	Question             string `json:"question"`
+	Slot                 string           `json:"slot"`
+	SlotName             string           `json:"slot_name"`
+	Card                 string           `json:"card"`
+	CardMeaningInGeneral string           `json:"card_meaning_in_general"`
+	CardMeaningForSlot   string           `json:"card_meaning_for_slot"`
+	Question             string           `json:"question"`
 	Answers              []questionAnswer `json:"answers"`
 }
 

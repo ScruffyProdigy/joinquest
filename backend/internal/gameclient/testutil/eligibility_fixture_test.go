@@ -9,28 +9,28 @@ import (
 
 func TestEligibilityFixtureHandlerLockStateMatching(t *testing.T) {
 	tests := []struct {
-		name          string
-		lobbyUserId   string
+		name             string
+		lobbyUserId      string
 		expectedUnlocked bool
 	}{
 		{
-			name:          "suffix -unlocked is treated as unlocked",
-			lobbyUserId:   "player-legendary-unlocked",
+			name:             "suffix -unlocked is treated as unlocked",
+			lobbyUserId:      "player-legendary-unlocked",
 			expectedUnlocked: true,
 		},
 		{
-			name:          "substring -unlocked in middle is treated as locked",
-			lobbyUserId:   "bob-unlocked-002",
+			name:             "substring -unlocked in middle is treated as locked",
+			lobbyUserId:      "bob-unlocked-002",
 			expectedUnlocked: false,
 		},
 		{
-			name:          "suffix -locked is treated as locked",
-			lobbyUserId:   "player-arena-locked",
+			name:             "suffix -locked is treated as locked",
+			lobbyUserId:      "player-arena-locked",
 			expectedUnlocked: false,
 		},
 		{
-			name:          "no suffix defaults to locked",
-			lobbyUserId:   "regular-player",
+			name:             "no suffix defaults to locked",
+			lobbyUserId:      "regular-player",
 			expectedUnlocked: false,
 		},
 	}

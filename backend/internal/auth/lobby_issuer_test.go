@@ -1,6 +1,7 @@
 package auth
 
 import "testing"
+
 func TestLobbyGraphQLURL(t *testing.T) {
 	t.Setenv("LOBBY_ISSUER_URL", "https://joinquest.cc")
 	if got := LobbyGraphQLURL(); got != "https://joinquest.cc/graphql" {

@@ -54,9 +54,9 @@ func validateQuestionsJSON(raw json.RawMessage) error {
 
 func validatePersonalityJSON(raw json.RawMessage) error {
 	var payload struct {
-		Overview      string         `json:"overview"`
+		Overview       string            `json:"overview"`
 		JourneySummary map[string]string `json:"journey_summary"`
-		AvatarSignals map[string]any `json:"avatar_signals"`
+		AvatarSignals  map[string]any    `json:"avatar_signals"`
 	}
 	if err := json.Unmarshal(raw, &payload); err != nil {
 		return fmt.Errorf("invalid personality json: %w", err)

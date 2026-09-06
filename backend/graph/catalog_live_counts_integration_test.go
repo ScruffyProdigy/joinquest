@@ -7,11 +7,11 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	_ "github.com/lib/pq"
 	"github.com/scruffyprodigy/playhub/graph/model"
 	"github.com/scruffyprodigy/playhub/internal/catalogstats"
 	"github.com/scruffyprodigy/playhub/internal/store"
 	"github.com/scruffyprodigy/playhub/internal/testdb"
-	_ "github.com/lib/pq"
 )
 
 func newLiveCountsResolver(t *testing.T) (*Resolver, *store.Store) {

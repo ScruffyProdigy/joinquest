@@ -101,4 +101,3 @@ func TestValidateModesRejectsFlatSeats(t *testing.T) {
 		t.Fatal("expected validation error for flat seats[]")
 	}
 }
-

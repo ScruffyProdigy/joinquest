@@ -101,7 +101,7 @@ func TestPlayerLookupRequiresServiceTokenWithPepperOnly(t *testing.T) {
 	t.Setenv("LOBBY_GAME_SERVICE_TOKEN", "")
 
 	user, err := env.Store.CreateUser(ctx, store.CreateUserParams{
-		Email: "player-pepper-" + uuid.NewString() + "@example.com",
+		Email:       "player-pepper-" + uuid.NewString() + "@example.com",
 		DisplayName: "Pepper Auth Player",
 	})
 	if err != nil {

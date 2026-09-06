@@ -98,9 +98,9 @@ type RegisterGameParams struct {
 	Slug        string
 	Name        string
 	Description *string
-	IconURL    string
-	HeroURL    string
-	APIBaseURL string
+	IconURL     string
+	HeroURL     string
+	APIBaseURL  string
 }
 
 type KickedWaiter struct {
