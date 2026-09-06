@@ -3,6 +3,7 @@ import {
   gameCatalogHeroUrl,
   gameDetailDescription,
   gameGenreModeLabel,
+  gameLiveActivityLabel,
   gameHeroUrl,
   gameIconUrl,
   gamePagePath,
@@ -104,5 +105,19 @@ describe('gameCard', () => {
     expect(gamePlayerCountLabel([{ status: 'inactive', minPlayers: 2, maxPlayers: 4 }])).toBeNull()
     expect(gamePlayerCountLabel([])).toBeNull()
     expect(gamePlayerCountLabel(undefined)).toBeNull()
+  })
+
+  it('gameLiveActivityLabel prefers players in a session', () => {
+    expect(gameLiveActivityLabel({ playing: 4, queued: 2 })).toBe('4 playing')
+    expect(gameLiveActivityLabel({ playing: 1, queued: 0 })).toBe('1 playing')
+  })
+
+  it('gameLiveActivityLabel falls back to the queue when nobody is playing', () => {
+    expect(gameLiveActivityLabel({ playing: 0, queued: 2 })).toBe('2 waiting')
+  })
+
+  it('gameLiveActivityLabel returns null for a quiet game', () => {
+    expect(gameLiveActivityLabel({ playing: 0, queued: 0 })).toBeNull()
+    expect(gameLiveActivityLabel(undefined)).toBeNull()
   })
 })

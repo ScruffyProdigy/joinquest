@@ -175,7 +175,9 @@ function MainShell() {
   return (
     <ActiveRoomProvider pendingInviteCode={inviteCode}>
       <MainLayout />
-      <IdentityGate />
+      {/* Browsing the catalog and game pages stays open to guests, so the picker
+          only blocks a room invite, where the visitor is joining a table. */}
+      {inviteCode ? <IdentityGate /> : null}
     </ActiveRoomProvider>
   )
 }

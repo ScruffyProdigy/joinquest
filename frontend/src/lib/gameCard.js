@@ -96,3 +96,20 @@ export function gamePlayerCountLabel(modes) {
   }
   return `${min}–${max} players`
 }
+
+/**
+ * Live activity badge label. Prefers players in a session ("4 playing"); with nobody playing
+ * but people queued it shows "2 waiting", which reads as an invitation to join rather than a
+ * dead card. Null when the game is quiet.
+ */
+export function gameLiveActivityLabel(playerActivity) {
+  const playing = Number(playerActivity?.playing) || 0
+  if (playing > 0) {
+    return `${playing} playing`
+  }
+  const queued = Number(playerActivity?.queued) || 0
+  if (queued > 0) {
+    return `${queued} waiting`
+  }
+  return null
+}

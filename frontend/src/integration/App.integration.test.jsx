@@ -2,7 +2,7 @@ import { render, screen, waitFor } from '@testing-library/react'
 import { describe, it, expect, beforeEach } from 'vitest'
 import App from '../App'
 import { IDENTITY_GATE_HEADING } from '../lib/playerCopy'
-import { mockAuthenticatedSession, mockUnauthenticatedSession } from '../test/setup'
+import { mockAuthenticatedSession, mockDemoGames, mockUnauthenticatedSession } from '../test/setup'
 
 describe('App Integration Tests', () => {
   beforeEach(() => {
@@ -10,13 +10,14 @@ describe('App Integration Tests', () => {
   })
 
   describe('User Journey: Content Discovery', () => {
-    it('asks a logged-out visitor for a name and avatar before anything else', async () => {
-      mockUnauthenticatedSession()
+    it('lets a logged-out visitor browse the catalog without picking a name first', async () => {
+      mockUnauthenticatedSession({ games: mockDemoGames })
       render(<App />)
 
       await waitFor(() => {
-        expect(screen.getByRole('heading', { name: IDENTITY_GATE_HEADING })).toBeInTheDocument()
+        expect(screen.getByRole('heading', { name: 'Rock Paper Scissors Lizard Robot' })).toBeInTheDocument()
       })
+      expect(screen.queryByRole('heading', { name: IDENTITY_GATE_HEADING })).not.toBeInTheDocument()
     })
 
     it('leads with the catalog and an account chip when logged in', async () => {

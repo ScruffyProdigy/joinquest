@@ -1,6 +1,11 @@
 import '@testing-library/jest-dom'
+import { configure } from '@testing-library/react'
 import { beforeEach, vi } from 'vitest'
 import { clearSubscriptionAuthCache } from '../lib/queue'
+
+// findBy*/waitFor default to 1s, which is too tight for the catalog's fetch chain
+// once coverage instrumentation slows things down, so the suite flakes in CI.
+configure({ asyncUtilTimeout: 5000 })
 
 vi.mock('graphql-ws', () => ({
   createClient: vi.fn(() => ({

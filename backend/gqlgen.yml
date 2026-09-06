@@ -19,6 +19,8 @@ models:
     fields:
       activeSessions:
         resolver: true
+      playerActivity:
+        resolver: true
       integrationChecks:
         resolver: true
       modes:
