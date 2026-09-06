@@ -78,6 +78,8 @@ func (r *mutationResolver) LeaveActiveGame(ctx context.Context) (bool, error) {
 	tableID, err := st.LeaveActiveGame(ctx, userID)
 	if err != nil {
 		if errors.Is(err, store.ErrNotFound) {
+			// false means "there was nothing to leave" — distinct from the true
+			// returned below, so the banner can tell a stale click from a real one.
 			return false, nil
 		}
 		return false, err

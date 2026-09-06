@@ -20,13 +20,20 @@ type ActiveSessionParticipation struct {
 }
 
 // GetUserActiveSessionParticipation returns the user's in-progress game session, if any.
+// The catalog mode is joined loosely on purpose: game_sessions.mode_id is nullable, and a
+// session that outlives its mode row must still be visible here. Joining it strictly hid
+// such sessions from both the intent banner and LeaveActiveGame, stranding the player
+// on a playing banner nothing could clear (JQ-134).
 func (s *Store) GetUserActiveSessionParticipation(ctx context.Context, userID uuid.UUID) (*ActiveSessionParticipation, error) {
 	row := s.db.QueryRowContext(ctx, `
-		SELECT gs.id, gs.game_id, g.name, gm.id, gm.display_name, gsp.role
+		SELECT gs.id, gs.game_id, g.name,
+		       COALESCE(gm.id, '00000000-0000-0000-0000-000000000000'::uuid),
+		       COALESCE(gm.display_name, ''),
+		       gsp.role
 		FROM game_session_participants gsp
 		INNER JOIN game_sessions gs ON gs.id = gsp.session_id AND gs.status = 'active'
 		INNER JOIN games g ON g.id = gs.game_id
-		INNER JOIN game_modes gm ON gm.id = gs.mode_id
+		LEFT JOIN game_modes gm ON gm.id = gs.mode_id
 		WHERE gsp.user_id = $1
 		  AND gsp.left_at IS NULL
 		  AND gsp.finished_at IS NULL
@@ -169,13 +176,14 @@ func listSessionParticipantsTx(ctx context.Context, tx *sql.Tx, sessionID uuid.U
 }
 
 // LeaveActiveGame clears the user's playing intent before the game reports a result.
+// It returns ErrNotFound only when the user had nothing to leave.
 func (s *Store) LeaveActiveGame(ctx context.Context, userID uuid.UUID) (*uuid.UUID, error) {
 	participation, err := s.GetUserActiveSessionParticipation(ctx, userID)
 	if err != nil {
 		return nil, err
 	}
 	if participation == nil {
-		return nil, ErrNotFound
+		return s.leaveMatchedModeQueueWithoutSession(ctx, userID)
 	}
 
 	now := time.Now()
@@ -207,6 +215,31 @@ func (s *Store) LeaveActiveGame(ctx context.Context, userID uuid.UUID) (*uuid.UU
 	if table, tableErr := s.GetRoomTableBySessionID(ctx, participation.SessionID); tableErr == nil && table != nil {
 		tableID = table.ID
 	}
+	return &tableID, nil
+}
+
+// leaveMatchedModeQueueWithoutSession unwinds a matched game_queues row that has no
+// session participation behind it. GetUserActiveIntent reports such a row as MATCHED,
+// so without this the leave-game button had nothing to act on (JQ-134).
+func (s *Store) leaveMatchedModeQueueWithoutSession(ctx context.Context, userID uuid.UUID) (*uuid.UUID, error) {
+	row := s.db.QueryRowContext(ctx, `
+		SELECT mode_queue_id
+		FROM game_queues
+		WHERE user_id = $1 AND status = 'matched' AND mode_queue_id IS NOT NULL
+		ORDER BY matched_at DESC NULLS LAST, joined_at DESC
+		LIMIT 1
+	`, userID)
+	var modeQueueID uuid.UUID
+	if err := row.Scan(&modeQueueID); err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return nil, ErrNotFound
+		}
+		return nil, err
+	}
+	if err := s.ReleaseUserMatchedQueue(ctx, modeQueueID, userID); err != nil {
+		return nil, err
+	}
+	var tableID uuid.UUID
 	return &tableID, nil
 }
 

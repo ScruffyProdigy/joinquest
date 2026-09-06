@@ -34,7 +34,7 @@ import { useEffect } from 'react'
 
 function CatalogPage() {
   const { user, loading: authLoading } = useAuth()
-  const { activeIntent, activeTableSeat, busy, queueWsConnected, handleLeave } =
+  const { activeIntent, activeTableSeat, busy, queueWsConnected, leaveError, handleLeave } =
     useActiveIntent()
   const liveUpdatesConnected = !activeIntent?.queueId || activeIntent.status !== 'WAITING' || queueWsConnected
 
@@ -50,6 +50,7 @@ function CatalogPage() {
           activeTableSeat={activeTableSeat}
           busy={busy}
           liveUpdatesConnected={liveUpdatesConnected}
+          leaveError={leaveError}
           onLeave={handleLeave}
         />
       ) : null}
@@ -66,7 +67,7 @@ function CatalogPage() {
 
 function GameDetailShell({ slug }) {
   const { user, loading: authLoading } = useAuth()
-  const { activeIntent, activeTableSeat, busy, queueWsConnected, refresh, notifyQueueJoined, handleLeave } =
+  const { activeIntent, activeTableSeat, busy, queueWsConnected, leaveError, refresh, notifyQueueJoined, handleLeave } =
     useActiveIntent()
   const liveUpdatesConnected = !activeIntent?.queueId || activeIntent.status !== 'WAITING' || queueWsConnected
 
@@ -78,6 +79,7 @@ function GameDetailShell({ slug }) {
           activeTableSeat={activeTableSeat}
           busy={busy}
           liveUpdatesConnected={liveUpdatesConnected}
+          leaveError={leaveError}
           onLeave={handleLeave}
         />
       ) : null}

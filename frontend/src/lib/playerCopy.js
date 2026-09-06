@@ -70,6 +70,9 @@ export function waitingAsRoleLine(queuePath) {
 export const LAUNCH_GAME = 'Launch game'
 export const LEAVE_GAME = 'Leave game'
 export const LEAVE_MATCH = 'Leave match'
+export const LEAVE_GAME_FAILED = 'Could not leave right now. Please try again.'
+export const LEAVE_GAME_NOT_FOUND =
+  'We could not find that game to leave. Reload the page if this banner stays.'
 
 
 export const GAMES_SEARCH_LABEL = 'Search games'

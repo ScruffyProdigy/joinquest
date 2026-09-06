@@ -2,6 +2,7 @@ import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { describe, it, expect, vi } from 'vitest'
 import IntentBanner from './IntentBanner'
+import { LEAVE_GAME_FAILED } from '../../lib/playerCopy'
 
 describe('IntentBanner', () => {
   it('renders nothing without an active intent', () => {
@@ -9,6 +10,59 @@ describe('IntentBanner', () => {
       <IntentBanner activeIntent={null} activeTableSeat={null} busy={false} onLeave={vi.fn()} />,
     )
     expect(container).toBeEmptyDOMElement()
+  })
+
+  it('shows a leave failure alongside the playing intent', () => {
+    render(
+      <IntentBanner
+        activeIntent={{
+          queueId: 'q1',
+          gameName: 'Demo Game',
+          modeName: 'Duel',
+          status: 'MATCHED',
+        }}
+        activeTableSeat={null}
+        busy={false}
+        leaveError={LEAVE_GAME_FAILED}
+        onLeave={vi.fn()}
+      />,
+    )
+    expect(screen.getByRole('alert')).toHaveTextContent(LEAVE_GAME_FAILED)
+  })
+
+  it('shows a leave failure alongside the waiting intent', () => {
+    render(
+      <IntentBanner
+        activeIntent={{
+          queueId: 'q1',
+          gameName: 'Demo Game',
+          status: 'WAITING',
+          queuedCount: 2,
+        }}
+        activeTableSeat={null}
+        busy={false}
+        leaveError={LEAVE_GAME_FAILED}
+        onLeave={vi.fn()}
+      />,
+    )
+    expect(screen.getByRole('alert')).toHaveTextContent(LEAVE_GAME_FAILED)
+  })
+
+  it('shows no alert when leaving has not failed', () => {
+    render(
+      <IntentBanner
+        activeIntent={{
+          queueId: 'q1',
+          gameName: 'Demo Game',
+          modeName: 'Duel',
+          status: 'MATCHED',
+        }}
+        activeTableSeat={null}
+        busy={false}
+        onLeave={vi.fn()}
+      />,
+    )
+    expect(screen.queryByRole('alert')).toBeNull()
   })
 
   it('shows waiting intent with stop looking', () => {

@@ -10,6 +10,7 @@ import {
 } from '../../lib/queue'
 import { subscribeToMyTableSeat, TABLE_UPDATED_EVENT, fetchMyTableSeat } from '../../lib/tables'
 import { lobbyDebug } from '../../lib/lobbyDebug'
+import { LEAVE_GAME_FAILED, LEAVE_GAME_NOT_FOUND } from '../../lib/playerCopy'
 import { onTabVisible } from '../../lib/tabVisibility'
 import { useActiveTableSeat } from './useActiveTableSeat'
 
@@ -25,6 +26,7 @@ export function useActiveIntent() {
   const [activeIntent, setActiveIntent] = useState(null)
   const [loading, setLoading] = useState(false)
   const [busy, setBusy] = useState(false)
+  const [leaveError, setLeaveError] = useState(null)
   const [queueWsConnected, setQueueWsConnected] = useState(false)
   const queueUnsubRef = useRef(null)
   const seatUnsubRef = useRef(null)
@@ -286,22 +288,45 @@ export function useActiveIntent() {
   }, [activeIntent?.queueId, refreshIntent])
 
   const handleLeave = useCallback(async () => {
+    setLeaveError(null)
     if (activeIntent?.status === 'MATCHED' || activeTableSeat?.status === 'started') {
       setBusy(true)
       try {
-        await leaveActiveGame()
+        const left = await leaveActiveGame()
         await refresh()
+        // The server tells us whether it actually unwound anything. When it did
+        // not, the banner we just acted on was stale: the refresh normally clears
+        // it, and this message only stays on screen if the player is still stuck.
+        if (!left) {
+          lobbyDebug('intent:leave:nothing-to-leave', { queueId: activeIntent?.queueId ?? null })
+          setLeaveError(LEAVE_GAME_NOT_FOUND)
+        }
+      } catch (err) {
+        lobbyDebug('intent:leave:failed', { error: err?.message || String(err) })
+        setLeaveError(LEAVE_GAME_FAILED)
       } finally {
         setBusy(false)
       }
       return
     }
-    if (activeIntent?.status === 'WAITING') {
-      await leaveQueueIntent()
-      return
+    try {
+      if (activeIntent?.status === 'WAITING') {
+        await leaveQueueIntent()
+        return
+      }
+      await leaveTableSeat()
+    } catch (err) {
+      lobbyDebug('intent:leave:failed', { error: err?.message || String(err) })
+      setLeaveError(LEAVE_GAME_FAILED)
     }
-    await leaveTableSeat()
-  }, [activeIntent?.status, activeTableSeat?.status, leaveQueueIntent, leaveTableSeat, refresh])
+  }, [
+    activeIntent?.queueId,
+    activeIntent?.status,
+    activeTableSeat?.status,
+    leaveQueueIntent,
+    leaveTableSeat,
+    refresh,
+  ])
 
   const notifyQueueJoined = useCallback((queueId, result, { gameId, gameName, modeName, queuePathDisplayName } = {}) => {
     if (!result) {
@@ -344,6 +369,7 @@ export function useActiveIntent() {
     activeTableSeat,
     loading: loading || tableLoading,
     busy: busy || tableBusy,
+    leaveError,
     queueWsConnected,
     refresh,
     notifyQueueJoined,
