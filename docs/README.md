@@ -4,6 +4,16 @@ Documentation for **JoinQuest** — the platform that connects players to third-
 
 **New here?** Read **[Product vision](vision.md)** first.
 
+> **Design precedence.** The Figma Make prototype published to
+> [demo.joinquest.cc](https://demo.joinquest.cc) is the **newer standard**. Where a document
+> in this folder disagrees with the prototype on product or UX design, the prototype wins and
+> the document is stale. Design docs here record earlier thinking; they remain authoritative
+> for shipped API contracts and implementation detail, not for design intent.
+>
+> **Plans and specs do not live here.** They are working artefacts and belong in Notion
+> (JoinQuest HQ). `docs/superpowers/` is gitignored. Markdown that helps a new engineer get
+> productive does belong in this folder, and should be kept current.
+
 ## Who should read what
 
 | You are… | Start with |

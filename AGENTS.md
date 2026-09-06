@@ -6,6 +6,10 @@ This repository is the **JoinQuest platform** (player shell + GraphQL API + deve
 
 **Game integration:** use [`.agents/skills/joinquest-integration/`](.agents/skills/joinquest-integration/) — typically installed into a *game* repo via `install-joinquest-dev.sh`, not the primary workflow here.
 
+**Design precedence:** the Figma Make prototype at [demo.joinquest.cc](https://demo.joinquest.cc) is the **newer standard**. When a doc in `docs/` disagrees with the prototype about product or UX design, follow the prototype and treat the doc as stale — do not cite it as authority for design intent. This does not override shipped behaviour or API contracts.
+
+**Plans and specs stay out of the tree.** Write them to Notion (JoinQuest HQ), not to `docs/`. `docs/superpowers/` is gitignored. Documentation that helps a new engineer onboard *is* wanted in the repo — keep it current, and it does not need to go through a PR.
+
 ## Naming
 
 | Term | Meaning |

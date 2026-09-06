@@ -2,6 +2,24 @@
 
 Social **rooms** for friends to gather; **tables** are forming private games inside a room.
 
+> **Superseded on design by the prototype (2026-09-06).** The Figma Make prototype at
+> [demo.joinquest.cc](https://demo.joinquest.cc) is the newer standard, and it replaces the
+> two-level room→table model with a single per-mode **"Your Group"** screen, reached from a
+> **Play with friends** action beside **Jump in** on each mode row. That screen shows seat
+> occupancy ("4 of 4 seats · ready to start" / "Still need: Player"), a roster, per-seat claiming,
+> and a **Share Link** — with no chat, no invite code, no QR, no king, and nothing persisting
+> past the match.
+>
+> The intent is **not** to delete the room model. Rooms and tables remain the substrate; the group
+> screen is a simpler presentation over them, so chat, invite codes, QR, the king role and
+> multi-table rooms can be surfaced again as the UX matures rather than rebuilt. Tracked in JQ-131
+> (entry point) and JQ-132 (backing it with an implicit room + table).
+>
+> Note one place production is arguably ahead: the prototype has only a share link, while
+> production also has QR — the better mechanic for players in the same room, and being kept.
+>
+> The rest of this document remains accurate as the description of the shipped model.
+
 **Related:** [seat-templates-and-matchmaking.md](./seat-templates-and-matchmaking.md) · [game-catalog-architecture.md](./game-catalog-architecture.md) · [player-return-routing.md](./player-return-routing.md) · [composition-and-join-options.md](./composition-and-join-options.md)
 
 ---

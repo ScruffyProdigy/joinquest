@@ -161,3 +161,8 @@ docs/catalog-art-raw/
 
 # Worktrees created by the Claude Code harness live inside the checkout
 .claude/worktrees/
+
+# Plans and specs are working artefacts, not repo documentation. They live in
+# Notion (JoinQuest HQ), not here. Markdown that helps a new engineer onboard
+# does belong in the tree — see docs/README.md.
+docs/superpowers/

@@ -63,7 +63,7 @@ Those should come from the **game server**, not from a fixed list in `seatTempla
 2. Before or during join, Lobby calls the game (authenticated as that player), e.g.  
    `GET /api/v1/players/{lobbyUserId}/queue-options?modeKey=…&queuePath=…`
 3. Game returns allowed options: `{ "choices": [{ "id": "wizard", "label": "Wizard", "locked": false }, …] }`
-4. JoinQuest UI shows only allowed choices; `joinQueue` sends the selected `queuePath`. Optional `party: PartyNodeInput` tree for API/tests; friends use table backfill instead.
+4. JoinQuest UI shows the choices, **including locked ones with their unlock requirement** (see the prototype note below — this reverses the earlier "only show unlocked" guidance); `joinQueue` sends the selected `queuePath`. Optional `party: PartyNodeInput` tree for API/tests; friends use table backfill instead.
 5. After matchmaking, provision still sends **`seatKey`** — the game maps role → concrete character in-client if needed.
 
 Lobby caches responses **briefly** (seconds), not as source of truth. DLC and unlock changes stay on the game.
@@ -96,9 +96,49 @@ So: **not** replacing the game’s character select — **optional** pre-queue e
   **`GameMode.queuePaths`** with display names; composition modes show **Join as …** from that metadata;
   in-queue **role switching**; sticky banner cohort label; `joinQueue(queueId, queuePath)`
   and path-aware matchmaking with per-path **`sizeForQueue`** fire thresholds.
-- **Deferred (Phase C+):** weighted dequeue, `allocations` by affinity, game `queue-options` API, DLC-aware polling,
-  unlock progression.
+- **Deferred (Phase C+):** weighted dequeue, `allocations` by affinity, DLC-aware polling.
+- **Now MVP (2026-09-06):** pre-queue options as a platform capability, including game-reported
+  locked choices and progression unlocks. Previously listed as Phase C+ here; superseded — see JQ-163.
+  Only *purchase-derived* entitlements (which need the lobby to own entitlement data) remain deferred.
 - **Rooms & tables:** Step 1 = chat **rooms** (invite, QR, share); Step 2 = **tables** for forming games — [rooms-and-tables.md](./rooms-and-tables.md).
 
 For new composition demos, start with **static paths from `seatTemplate`**; add **game-backed options**
 before production titles with progression.
+
+---
+
+## Prototype model (2026-09-06) — newer standard
+
+The Figma Make prototype at [demo.joinquest.cc](https://demo.joinquest.cc) is the newer standard;
+where this document disagrees with it on design, the prototype wins. Each mode there carries:
+
+```js
+{
+  key, name, default, blurb,
+  minPlayers, maxPlayers,
+  typicalMinutes,        // duration, per mode (2, 5, 12, 45 …)
+  socialMode,            // Free-for-all | 1v1 | Teams | Hidden roles | Co-op
+  roleSelect,            // null, or "Crew (4–6) · Saboteur (1)"
+  preQueue,              // null, or { kind, label, options, locking }
+  partyFit,              // Stays together | Solo only | May be split | Can fill a side
+  access,                // Open | Locked
+  unlockRequirement,     // "Win 5 Casual matches"
+  composition            // FIFO | Seat template
+}
+```
+
+Four things this settles that the sections above got wrong or left open:
+
+1. **Selection order is mode → role → options.** Which options exist can depend on the mode, so a
+   mode must be chosen first. `preQueue` is a property of the mode.
+2. **Options are mode-scoped, not role-scoped.** `roleSelect` and `preQueue` are sibling fields;
+   picking a role does not narrow the option roster.
+3. **Locked options are shown with a reason**, not hidden. The prototype renders
+   `lockedReason: "Unlock by playing more matches"`. Step 4 above has been corrected accordingly.
+4. **Unlocks are usually not purchases.** Every unlock condition in the prototype is progression —
+   "Finish one Settlement game", "Reach account level 12", "Win 5 Casual matches". Option locking
+   therefore has no dependency on payments, which is why it is MVP scope.
+
+`preQueue` is `{ kind, label, options, locking }`, where `kind` is `Loadout` or `Character`, `label`
+is the player-facing prompt ("Choose your champion"), and `locking` is `none` or `some` — `some`
+meaning part of the roster is locked for this player, not that the mode is.
