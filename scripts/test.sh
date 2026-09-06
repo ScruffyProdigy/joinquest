@@ -62,13 +62,21 @@ fi
 # Track overall test results
 OVERALL_RESULT=0
 
-# Start shared PostgreSQL for backend integration tests
-if command -v docker &> /dev/null; then
+# Start this working copy's PostgreSQL for backend integration tests. A fresh run
+# id gives this run its own database so concurrent runs stay isolated (JQ-128).
+if command -v docker &> /dev/null && [ -z "${DATABASE_URL:-}" ]; then
+    # shellcheck source=scripts/lib/db-runtime.sh
+    source ./scripts/lib/db-runtime.sh
+    export LOBBY_TEST_RUN_ID="${LOBBY_TEST_RUN_ID:-$(lobby_new_run_id)}"
+    trap './scripts/db.sh test-drop >/dev/null 2>&1 || true' EXIT
+
     print_info "Starting PostgreSQL for tests..."
     ./scripts/db.sh up
     ./scripts/db.sh test-migrate
     export DATABASE_URL="$(./scripts/db.sh test-url)"
     print_info "Backend integration tests use DATABASE_URL=$DATABASE_URL"
+elif [ -n "${DATABASE_URL:-}" ]; then
+    print_info "Using DATABASE_URL from the environment: $DATABASE_URL"
 else
     print_warning "Docker not found. Backend migration tests will be skipped without DATABASE_URL."
 fi

@@ -45,10 +45,32 @@ plugins/joinquest/                Cursor/Claude plugin bundle
 ```
 
 - GraphQL codegen: `cd backend && make generate` (required after schema edits)
-- Backend tests only: `./scripts/test-backend.sh` (uses isolated `playhub_test` DB)
+- Backend tests only: `./scripts/test-backend.sh` (uses an isolated per-run test DB)
 - MCP tests: `cd mcp/joinquest-integration && npm test`
 
 See [docs/development.md](docs/development.md) for details.
+
+### Running alongside other agents
+
+Several agents run this repo at once, so the test stack is isolated per working
+copy. **You do not need to coordinate, wait, or invent a workaround** — just run
+the suite.
+
+- Postgres and Redis publish on **ephemeral** host ports. Never hardcode 5432 or
+  6379; ask for the address: `./scripts/db.sh url`, `./scripts/db.sh redis-url`.
+- Each working copy gets its own compose project (`./scripts/db.sh compose-project`),
+  so `docker compose down` here cannot stop another agent's stack. Any direct
+  `docker compose` call must run with that project name — prefer `db.sh`.
+- Each suite run gets its own `playhub_test_<run id>` database, created and
+  dropped by the harness. Do not target a bare `playhub_test`.
+- A stray container holding a port is reported by name with the fix. If you hit
+  a port or database conflict, read the message — do not add sleeps, retries, or
+  a hand-rolled second stack.
+- Verify isolation with `./scripts/check-concurrent-test-isolation.sh`.
+
+The dev database (`playhub`) is intentionally shared and long-lived within a
+working copy; only the test database is per-run. See
+[docs/development.md](docs/development.md#running-suites-concurrently).
 
 ## Change checklists
 

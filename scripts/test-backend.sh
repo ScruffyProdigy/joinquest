@@ -38,18 +38,29 @@ if [ ! -d "backend" ]; then
     exit 1
 fi
 
-cd backend
+ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 
-# Start shared PostgreSQL for integration tests
-if command -v docker &> /dev/null; then
+# Start this working copy's PostgreSQL for integration tests. A fresh run id per
+# invocation gives the run its own database, so a second agent running the suite
+# at the same time cannot truncate our fixtures mid-test (JQ-128).
+if command -v docker &> /dev/null && [ -z "${DATABASE_URL:-}" ]; then
+    # shellcheck source=lib/db-runtime.sh
+    source "$ROOT/scripts/lib/db-runtime.sh"
+    export LOBBY_TEST_RUN_ID="${LOBBY_TEST_RUN_ID:-$(lobby_new_run_id)}"
+    trap '"$ROOT/scripts/db.sh" test-drop >/dev/null 2>&1 || true' EXIT
+
     print_info "Starting PostgreSQL for tests..."
-    ../scripts/db.sh up
-    ../scripts/db.sh test-migrate
-    export DATABASE_URL="$(../scripts/db.sh test-url)"
+    "$ROOT/scripts/db.sh" up
+    "$ROOT/scripts/db.sh" test-migrate
+    export DATABASE_URL="$("$ROOT/scripts/db.sh" test-url)"
     print_info "Integration tests use DATABASE_URL=$DATABASE_URL"
+elif [ -n "${DATABASE_URL:-}" ]; then
+    print_info "Using DATABASE_URL from the environment: $DATABASE_URL"
 else
     print_warning "Docker not found. Migration integration tests will be skipped without DATABASE_URL."
 fi
+
+cd backend
 
 # Check if Go is available
 if ! command -v go &> /dev/null; then

@@ -10,8 +10,13 @@ import (
 
 const testDBName = "playhub_test"
 
+// testDBPrefix matches the per-run databases the harness creates so concurrent
+// runs cannot share fixtures: playhub_test_<run id>. See scripts/lib/db-runtime.sh.
+const testDBPrefix = testDBName + "_"
+
 // RequireURL returns DATABASE_URL for integration tests. It skips unless the database
-// name is playhub_test, so go test does not mutate the dev playhub database by accident.
+// is playhub_test or a per-run playhub_test_<run id>, so go test does not mutate the
+// dev playhub database by accident.
 // Override with ALLOW_TESTS_ON_DEV_DB=1 when intentionally testing against playhub.
 func RequireURL(t *testing.T) string {
 	t.Helper()
@@ -27,8 +32,8 @@ func RequireURL(t *testing.T) string {
 	if err != nil {
 		t.Fatalf("parse DATABASE_URL: %v", err)
 	}
-	if dbName != testDBName {
-		t.Skip("integration tests require database " + testDBName +
+	if !isTestDatabaseName(dbName) {
+		t.Skip("integration tests require database " + testDBName + " or " + testDBPrefix + "<run id>" +
 			" (run ./scripts/test-backend.sh or: export DATABASE_URL=$(./scripts/db.sh test-url))")
 	}
 	return raw
@@ -50,8 +55,12 @@ func DatabaseName(raw string) (string, error) {
 	return name, nil
 }
 
-// IsTestDatabase reports whether raw points at the integration-test database.
+// IsTestDatabase reports whether raw points at an integration-test database.
 func IsTestDatabase(raw string) bool {
 	name, err := DatabaseName(raw)
-	return err == nil && name == testDBName
+	return err == nil && isTestDatabaseName(name)
+}
+
+func isTestDatabaseName(name string) bool {
+	return name == testDBName || strings.HasPrefix(name, testDBPrefix)
 }

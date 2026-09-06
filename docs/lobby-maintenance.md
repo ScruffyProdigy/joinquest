@@ -28,9 +28,9 @@ cd playhub    # folder may be named lobby locally
 |---------|-----|
 | Frontend | http://localhost:5173 |
 | GraphQL | http://localhost:8080/graphql |
-| Postgres | `playhub` (dev), `playhub_test` (backend tests) |
+| Postgres | `playhub` (dev), `playhub_test_<run id>` (backend tests). Ephemeral host port — get it with `./scripts/db.sh url` |
 
-Stop: Ctrl+C in the dev terminal, or `docker compose down`.
+Stop: Ctrl+C in the dev terminal, or `./scripts/db.sh down` (a bare `docker compose down` misses this working copy's compose project).
 
 ## Testing
 
