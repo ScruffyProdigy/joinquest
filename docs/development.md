@@ -146,11 +146,52 @@ Production deploys also run `k8s/jobs/patch-game-handoff-urls.yaml` via `./scrip
 
 ### Testing
 
-- **Backend tests**: `./scripts/test-backend.sh` (uses isolated `playhub_test` DB; does not touch dev `playhub`)
+- **Backend tests**: `./scripts/test-backend.sh` (uses an isolated per-run test DB; does not touch dev `playhub`)
 - **Frontend unit tests**: `cd frontend && npm run test:run`
 - **Frontend E2E tests**: `cd frontend && npm run test:e2e` (uses dev `playhub` via running backend)
 - **All tests**: `./scripts/test.sh`
 - **Test DB only**: `./scripts/db.sh test-migrate` then `export DATABASE_URL="$(./scripts/db.sh test-url)"`
+- **Concurrency isolation check**: `./scripts/check-concurrent-test-isolation.sh` (add `--docker` to start two real stacks side by side)
+
+#### Running suites concurrently
+
+Several agents or terminals can run the backend suite at the same time. Nothing
+needs coordinating — isolation comes from three things, all handled by
+[`scripts/lib/db-runtime.sh`](../scripts/lib/db-runtime.sh):
+
+| Layer | How it is isolated |
+|-------|--------------------|
+| Docker Compose project | `lobby-<dir>-<hash of the working copy path>`, so `docker compose down` in one checkout never tears down another's stack |
+| Host ports | Postgres and Redis publish on **ephemeral** ports (`0:5432`, `0:6379`). Discover them with `./scripts/db.sh url` and `./scripts/db.sh redis-url` — never assume 5432 or 6379 |
+| Test database | `playhub_test_<run id>`. `test-backend.sh` and `test.sh` mint a fresh run id per invocation and drop the database when the run exits |
+
+Useful commands:
+
+```bash
+./scripts/db.sh url               # dev database URL, with the real published port
+./scripts/db.sh redis-url         # Redis URL, with the real published port
+./scripts/db.sh test-url          # this working copy's test database URL
+./scripts/db.sh test-db           # just the test database name
+./scripts/db.sh compose-project   # this working copy's compose project name
+./scripts/db.sh test-drop         # drop the test database
+```
+
+Standalone `db.sh test-*` commands use a **stable** run id derived from the
+working copy path, so `test-url` is repeatable between calls. Set
+`LOBBY_TEST_RUN_ID` to force a different database.
+
+Need a fixed address for an external client (a psql GUI, say)? Pin it:
+
+```bash
+LOBBY_POSTGRES_HOST_PORT=5432 ./scripts/db.sh up
+```
+
+If that port is taken, `db.sh` says so by name and lists the ways out, rather
+than surfacing a raw `Bind for 0.0.0.0:5432 failed` from Docker.
+
+The long-lived dev database (`playhub`) is deliberately **not** per-run — it is
+shared dev state, and each working copy already has its own container holding
+its own copy of it.
 - **JoinQuest integration MCP**: `cd mcp/joinquest-integration && npm test` — see [mcp/joinquest-integration/README.md](../mcp/joinquest-integration/README.md)
 - **Developer doc sync check**: `./scripts/check-developer-docs-sync.sh`
 - **Pre-ship checks**: `./scripts/ship-joinquest.sh --check`

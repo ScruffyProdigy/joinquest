@@ -47,11 +47,13 @@ backend/
 ├── cmd/
 │   └── syncmanifest/                  # One-off: pull manifest from game api_base_url
 ├── internal/
-│   ├── store/*_test.go                # Store layer (uses playhub_test DB)
+│   ├── store/*_test.go                # Store layer (uses the per-run test DB)
 │   └── auth/*_test.go                 # JWT, cookies, issuer URLs
 ```
 
-Integration tests require PostgreSQL. `./scripts/test-backend.sh` migrates and uses the isolated `playhub_test` database.
+Integration tests require PostgreSQL. `./scripts/test-backend.sh` migrates and uses an isolated
+`playhub_test_<run id>` database, created and dropped per run so concurrent runs never share fixtures.
+See [development.md](./development.md#running-suites-concurrently).
 
 ### Running Backend Tests
 
@@ -94,13 +96,13 @@ GitHub Actions run backend tests, frontend unit tests, gqlgen drift checks, and 
 
 ```bash
 ./scripts/test.sh           # All tests
-./scripts/test-backend.sh   # Backend (playhub_test DB)
+./scripts/test-backend.sh   # Backend (per-run test DB)
 ./scripts/test-frontend.sh  # Frontend unit tests
 ```
 
 ## Best Practices
 
-1. **Backend integration tests** must not mutate the dev `playhub` database — use `playhub_test` via `./scripts/test-backend.sh`.
+1. **Backend integration tests** must not mutate the dev `playhub` database — use the per-run test database via `./scripts/test-backend.sh`. `testdb.RequireURL` skips any run pointed at something other than `playhub_test` or `playhub_test_<run id>`.
 2. **Queue/handoff tests** restore seeded game 001 handoff URLs after runs (`RestorePrimaryGameHandoffURLs`).
 3. After GraphQL schema changes, run `go run github.com/99designs/gqlgen@v0.17.81 generate` in `backend/` and commit generated files.
 4. **Frontend tests** mock `fetch` / GraphQL in `src/test/setup.js`; E2E uses the real API.

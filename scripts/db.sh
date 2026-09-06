@@ -1,24 +1,109 @@
 #!/bin/bash
-# Manage the shared PlayHub PostgreSQL instance (docker compose).
+# Manage this working copy's PlayHub PostgreSQL instance (docker compose).
+#
+# Each working copy gets its own compose project and an ephemeral host port, and
+# each test run gets its own database, so several agents can run the suite at
+# once without colliding (JQ-128). See scripts/lib/db-runtime.sh.
 set -e
 
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 cd "$ROOT"
 
-export DATABASE_URL="${DATABASE_URL:-postgres://app:app-pass@127.0.0.1:5432/playhub?sslmode=disable}"
-export TEST_DATABASE_URL="${TEST_DATABASE_URL:-postgres://app:app-pass@127.0.0.1:5432/playhub_test?sslmode=disable}"
-# macOS often resolves localhost to ::1 while Docker publishes Postgres on IPv4.
-if [[ "$DATABASE_URL" == *"@localhost:"* ]]; then
-  export DATABASE_URL="${DATABASE_URL/@localhost:/@127.0.0.1:}"
-fi
-if [[ "$TEST_DATABASE_URL" == *"@localhost:"* ]]; then
-  export TEST_DATABASE_URL="${TEST_DATABASE_URL/@localhost:/@127.0.0.1:}"
-fi
+# shellcheck source=lib/db-runtime.sh
+source "$ROOT/scripts/lib/db-runtime.sh"
+
+# Keying the compose project to this directory means `docker compose down` here
+# can never tear down another working copy's stack.
+export COMPOSE_PROJECT_NAME="${COMPOSE_PROJECT_NAME:-$(lobby_compose_project "$ROOT")}"
+
+# A run id makes the test database unique. test-backend.sh exports a fresh one
+# per invocation; standalone use falls back to a stable per-working-copy id so
+# `db.sh test-url` is repeatable.
+LOBBY_TEST_RUN_ID="${LOBBY_TEST_RUN_ID:-$(lobby_workspace_id "$ROOT")}"
+TEST_DB_NAME="$(lobby_test_database "$LOBBY_TEST_RUN_ID")"
+
+pg_host_port() {
+  if [ -n "${LOBBY_POSTGRES_HOST_PORT:-}" ]; then
+    printf '%s' "$LOBBY_POSTGRES_HOST_PORT"
+    return 0
+  fi
+  lobby_host_port postgres 5432
+}
+
+# Fails loudly rather than emitting a URL with an empty port, which produces a
+# baffling "connection refused" several layers away.
+require_pg_host_port() {
+  local port
+  port="$(pg_host_port)"
+  if [ -z "$port" ]; then
+    echo "Postgres is not running for this working copy (compose project $COMPOSE_PROJECT_NAME)." >&2
+    echo "Start it first:  ./scripts/db.sh up" >&2
+    exit 1
+  fi
+  printf '%s' "$port"
+}
+
+# macOS often resolves localhost to ::1 while Docker publishes on IPv4, so build
+# URLs against 127.0.0.1 and rewrite any inherited localhost.
+build_url() {
+  local db="$1" port
+  port="$(require_pg_host_port)"
+  printf 'postgres://app:app-pass@127.0.0.1:%s/%s?sslmode=disable' "$port" "$db"
+}
+
+normalize_url() {
+  printf '%s' "${1/@localhost:/@127.0.0.1:}"
+}
+
+redis_url() {
+  if [ -n "${REDIS_URL:-}" ]; then
+    normalize_url "$REDIS_URL"
+    return 0
+  fi
+  local port
+  if [ -n "${LOBBY_REDIS_HOST_PORT:-}" ]; then
+    port="$LOBBY_REDIS_HOST_PORT"
+  else
+    port="$(lobby_host_port redis 6379)"
+  fi
+  if [ -z "$port" ]; then
+    echo "Redis is not running for this working copy (compose project $COMPOSE_PROJECT_NAME)." >&2
+    echo "Start it first:  ./scripts/db.sh up" >&2
+    exit 1
+  fi
+  printf 'redis://127.0.0.1:%s/0' "$port"
+}
+
+database_url() {
+  if [ -n "${DATABASE_URL:-}" ]; then
+    normalize_url "$DATABASE_URL"
+    return 0
+  fi
+  normalize_url "$(build_url playhub)"
+}
+
+test_database_url() {
+  if [ -n "${TEST_DATABASE_URL:-}" ]; then
+    normalize_url "$TEST_DATABASE_URL"
+    return 0
+  fi
+  normalize_url "$(build_url "$TEST_DB_NAME")"
+}
+
+psql_postgres() {
+  docker compose exec -T postgres psql -U app -d postgres -v ON_ERROR_STOP=1 "$@"
+}
 
 ensure_test_database() {
-  docker compose exec -T postgres psql -U app -d postgres -v ON_ERROR_STOP=1 <<'SQL'
-SELECT 'CREATE DATABASE playhub_test OWNER app'
-WHERE NOT EXISTS (SELECT FROM pg_database WHERE datname = 'playhub_test')\gexec
+  psql_postgres -v dbname="$TEST_DB_NAME" <<'SQL'
+SELECT format('CREATE DATABASE %I OWNER app', :'dbname')
+WHERE NOT EXISTS (SELECT FROM pg_database WHERE datname = :'dbname')\gexec
+SQL
+}
+
+drop_test_database() {
+  psql_postgres -v dbname="$TEST_DB_NAME" <<'SQL'
+DROP DATABASE IF EXISTS :"dbname" WITH (FORCE);
 SQL
 }
 
@@ -44,6 +129,32 @@ require_docker() {
   fi
 }
 
+# Only pinned ports can conflict — the default is ephemeral. Report the conflict
+# by name so nobody has to decode a raw "Bind for 0.0.0.0:5432 failed".
+check_pinned_port() {
+  local var="$1" service="$2" container_port="$3" pinned="$4"
+  [ -n "$pinned" ] || return 0
+  # Our own already-running stack holding the port is not a conflict.
+  [ "$(lobby_host_port "$service" "$container_port")" = "$pinned" ] && return 0
+  lobby_port_in_use "$pinned" || return 0
+
+  echo "Port $pinned is already in use, so the $service container cannot bind it." >&2
+  echo "" >&2
+  echo "You set $var=$pinned. Something else already holds that port —" >&2
+  echo "often another working copy's stack, a sibling game repo, or a local $service." >&2
+  echo "" >&2
+  echo "Resolve it by one of:" >&2
+  echo "  • unset $var        — take an ephemeral port instead (the default)" >&2
+  echo "  • $var=<free port>  — pin a different port" >&2
+  echo "  • docker ps         — find and stop whatever holds $pinned" >&2
+  exit 1
+}
+
+preflight_ports() {
+  check_pinned_port LOBBY_POSTGRES_HOST_PORT postgres 5432 "${LOBBY_POSTGRES_HOST_PORT:-}"
+  check_pinned_port LOBBY_REDIS_HOST_PORT redis 6379 "${LOBBY_REDIS_HOST_PORT:-}"
+}
+
 wait_for_postgres() {
   echo "Waiting for PostgreSQL..."
   for i in {1..30}; do
@@ -58,21 +169,26 @@ wait_for_postgres() {
   done
 
   echo "Waiting for PostgreSQL port on host..."
+  local port
   for i in {1..30}; do
-    if nc -z 127.0.0.1 5432 >/dev/null 2>&1; then
-      echo "PostgreSQL is ready"
+    port="$(pg_host_port)"
+    if [ -n "$port" ] && nc -z 127.0.0.1 "$port" >/dev/null 2>&1; then
+      echo "PostgreSQL is ready on 127.0.0.1:$port (compose project $COMPOSE_PROJECT_NAME)"
       return 0
     fi
     sleep 1
   done
 
-  echo "PostgreSQL is running in Docker but port 5432 is not reachable on 127.0.0.1"
+  echo "PostgreSQL is running in Docker but its published port is not reachable on 127.0.0.1"
+  echo "Published ports for this stack:"
+  docker compose ps --format '  {{.Service}}\t{{.Ports}}' 2>/dev/null
   exit 1
 }
 
 case "${1:-}" in
   up)
     require_docker
+    preflight_ports
     docker compose up -d postgres redis
     wait_for_postgres
     ;;
@@ -87,34 +203,47 @@ case "${1:-}" in
   migrate)
     require_docker
     wait_for_postgres
-    (cd backend && DATABASE_URL="$DATABASE_URL" make migrate-up)
+    (cd backend && DATABASE_URL="$(database_url)" make migrate-up)
     ;;
   test-url)
-    echo "$TEST_DATABASE_URL"
+    test_database_url
+    echo ""
+    ;;
+  test-db)
+    echo "$TEST_DB_NAME"
     ;;
   test-migrate)
     require_docker
     wait_for_postgres
     ensure_test_database
-    (cd backend && DATABASE_URL="$TEST_DATABASE_URL" make migrate-up)
-    echo "Migrations applied to playhub_test (dev database playhub unchanged)."
+    (cd backend && DATABASE_URL="$(test_database_url)" make migrate-up)
+    echo "Migrations applied to $TEST_DB_NAME (dev database playhub unchanged)."
     ;;
   test-reset)
     require_docker
     wait_for_postgres
-    docker compose exec -T postgres psql -U app -d postgres -v ON_ERROR_STOP=1 <<'SQL'
-DROP DATABASE IF EXISTS playhub_test WITH (FORCE);
-CREATE DATABASE playhub_test OWNER app;
+    drop_test_database
+    psql_postgres -v dbname="$TEST_DB_NAME" <<'SQL'
+CREATE DATABASE :"dbname" OWNER app;
 SQL
-    (cd backend && DATABASE_URL="$TEST_DATABASE_URL" make migrate-up)
-    echo "Reset and migrated playhub_test."
+    (cd backend && DATABASE_URL="$(test_database_url)" make migrate-up)
+    echo "Reset and migrated $TEST_DB_NAME."
+    ;;
+  test-drop)
+    require_docker
+    drop_test_database
+    echo "Dropped $TEST_DB_NAME."
+    ;;
+  compose-project)
+    echo "$COMPOSE_PROJECT_NAME"
     ;;
   reset)
     require_docker
+    preflight_ports
     docker compose down -v
     docker compose up -d postgres redis
     wait_for_postgres
-    (cd backend && DATABASE_URL="$DATABASE_URL" make migrate-up)
+    (cd backend && DATABASE_URL="$(database_url)" make migrate-up)
     ;;
   clean-test-data)
     require_docker
@@ -130,7 +259,7 @@ SQL
     echo "Demo games and real user accounts were kept."
     ;;
   reset-demo-handoff)
-    # Dev database only (playhub). Integration tests use playhub_test and restore URLs in cleanup.
+    # Dev database only (playhub). Integration tests use their own per-run database.
     require_docker
     wait_for_postgres
     docker compose exec -T postgres psql -U app -d playhub <<'SQL'
@@ -142,15 +271,28 @@ SQL
     echo "Restored demo quick-match handoff URLs (play :5174, API :3001)."
     ;;
   url)
-    echo "$DATABASE_URL"
+    database_url
+    echo ""
+    ;;
+  redis-url)
+    redis_url
+    echo ""
     ;;
   *)
-    echo "Usage: $0 {up|down|wait|migrate|reset|test-url|test-migrate|test-reset|clean-test-data|reset-demo-handoff|url}"
+    echo "Usage: $0 {up|down|wait|migrate|reset|url|redis-url|test-url|test-db|test-migrate|test-reset|test-drop|compose-project|clean-test-data|reset-demo-handoff}"
     echo ""
     echo "  url / migrate     — development database (playhub)"
-    echo "  test-url          — integration test database URL (playhub_test)"
-    echo "  test-migrate      — migrate playhub_test only"
-    echo "  test-reset        — drop and recreate playhub_test, then migrate"
+    echo "  redis-url         — this working copy's Redis URL"
+    echo "  test-url          — integration test database URL ($TEST_DB_NAME)"
+    echo "  test-db           — integration test database name"
+    echo "  test-migrate      — migrate the test database only"
+    echo "  test-reset        — drop and recreate the test database, then migrate"
+    echo "  test-drop         — drop the test database"
+    echo "  compose-project   — this working copy's compose project name"
+    echo ""
+    echo "Host ports are ephemeral by default so working copies do not collide."
+    echo "Pin one with LOBBY_POSTGRES_HOST_PORT / LOBBY_REDIS_HOST_PORT if an"
+    echo "external client needs a fixed address."
     exit 1
     ;;
 esac
