@@ -1,4 +1,5 @@
 import { getGraphQLUrl } from './env'
+import { notifyIdentityRequired } from './identityPrompt'
 
 export function isTransientServerError(message) {
   const text = (message || '').toLowerCase()
@@ -13,6 +14,24 @@ export function isTransientServerError(message) {
 
 export function isAuthRequiredError(message) {
   return /authentication required/i.test(message || '')
+}
+
+/**
+ * The caller has a session but has not finished picking a name and an avatar.
+ * Deliberately distinct from isAuthRequiredError so the shell raises the
+ * identity prompt rather than a sign-in error — matches ErrIdentityRequired in
+ * backend/graph/auth_helpers.go.
+ */
+export function isIdentityRequiredError(message) {
+  return /identity required/i.test(message || '')
+}
+
+/** Raises the identity prompt on the way out, so no call site has to remember to. */
+function graphqlError(message) {
+  if (isIdentityRequiredError(message)) {
+    notifyIdentityRequired()
+  }
+  return new Error(message)
 }
 
 export async function graphqlRequest(query, variables = {}) {
@@ -33,12 +52,12 @@ export async function graphqlRequest(query, variables = {}) {
     } catch {
       // ignore parse errors
     }
-    throw new Error(detail || `API request failed (${response.status})`)
+    throw graphqlError(detail || `API request failed (${response.status})`)
   }
 
   const payload = await response.json()
   if (payload.errors?.length) {
-    throw new Error(payload.errors[0]?.message || 'GraphQL request failed')
+    throw graphqlError(payload.errors[0]?.message || 'GraphQL request failed')
   }
 
   return payload.data

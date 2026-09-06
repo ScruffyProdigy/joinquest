@@ -122,8 +122,10 @@ func (env *queueIntegrationEnv) resolverWithProvisioner(t *testing.T, provisione
 func createTestUserSession(t *testing.T, ctx context.Context, env *queueIntegrationEnv, cleaner *store.TestCleaner) (bearer string, cookie *http.Cookie) {
 	t.Helper()
 
-	// Named on purpose: a player only reaches a queue or table after the
-	// identity prompt, so a nameless one is not a state worth exercising here.
+	// Fully identified on purpose: a player only reaches a queue or table after
+	// the identity prompt, so a half-finished one is not a state worth
+	// exercising here. Play entry needs a name and a face (JQ-126) —
+	// identity_guard_integration_test.go covers the rejection cases.
 	user, err := env.Store.CreateUser(ctx, store.CreateUserParams{
 		Email:       "queue-ws-" + uuid.NewString() + "@example.com",
 		DisplayName: "Queue Tester",
@@ -132,6 +134,9 @@ func createTestUserSession(t *testing.T, ctx context.Context, env *queueIntegrat
 		t.Fatalf("CreateUser: %v", err)
 	}
 	cleaner.TrackUser(user.ID)
+	if _, err := env.Store.UpdateUserProfile(ctx, user.ID, "Queue Tester", testAvatarKey, "http://localhost:5173"); err != nil {
+		t.Fatalf("UpdateUserProfile: %v", err)
+	}
 
 	token, err := env.Signer.SignUserToken(user.ID, time.Hour)
 	if err != nil {

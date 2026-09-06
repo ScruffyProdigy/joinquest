@@ -15,6 +15,7 @@ import RoomSheet from './components/rooms/RoomSheet'
 import { AuthProvider, useAuth } from './components/auth/AuthProvider'
 import { useActiveIntent } from './components/games/useActiveIntent'
 import { APP_NAME } from './lib/brand'
+import { onIdentityRequired } from './lib/identityPrompt'
 import { parseRoomInviteCode } from './lib/rooms'
 import { parseGameSlug } from './lib/games'
 import { MOBILE_ROOM_QUERY, useMediaQuery } from './lib/useMediaQuery'
@@ -30,7 +31,7 @@ import IdentityGate from './components/avatars/IdentityGate'
 import AppFooter from './components/legal/AppFooter'
 import TermsPage from './components/legal/TermsPage'
 import PrivacyPage from './components/legal/PrivacyPage'
-import { useEffect } from 'react'
+import { useEffect, useState } from 'react'
 
 function CatalogPage() {
   const { user, loading: authLoading } = useAuth()
@@ -173,13 +174,19 @@ function DeveloperShell() {
 function MainShell() {
   const pathname = usePathname()
   const inviteCode = parseRoomInviteCode(pathname)
+  // The backend turns away anyone without a name and an avatar at every queue,
+  // room and seat. That rejection is a cue to finish the identity prompt, not an
+  // error to print, so raise the same picker here. IdentityGate hides itself
+  // once both are chosen.
+  const [identityRequired, setIdentityRequired] = useState(false)
+  useEffect(() => onIdentityRequired(() => setIdentityRequired(true)), [])
 
   return (
     <ActiveRoomProvider pendingInviteCode={inviteCode}>
       <MainLayout />
       {/* Browsing the catalog and game pages stays open to guests, so the picker
           only blocks a room invite, where the visitor is joining a table. */}
-      {inviteCode ? <IdentityGate /> : null}
+      {inviteCode || identityRequired ? <IdentityGate /> : null}
     </ActiveRoomProvider>
   )
 }
