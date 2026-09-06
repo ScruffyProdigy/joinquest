@@ -158,3 +158,6 @@ k8s/secrets/*.yaml
 
 # Raw art working material — winners are committed as webp in frontend/public/games/
 docs/catalog-art-raw/
+
+# Worktrees created by the Claude Code harness live inside the checkout
+.claude/worktrees/

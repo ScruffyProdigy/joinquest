@@ -152,6 +152,7 @@ type ComplexityRoot struct {
 		ShortDescription  func(childComplexity int) int
 		Slug              func(childComplexity int) int
 		Tags              func(childComplexity int) int
+		TitleArt          func(childComplexity int) int
 		TutorialURL       func(childComplexity int) int
 		Visibility        func(childComplexity int) int
 		WebsiteURL        func(childComplexity int) int
@@ -197,6 +198,12 @@ type ComplexityRoot struct {
 	GamePlayerActivity struct {
 		Playing func(childComplexity int) int
 		Queued  func(childComplexity int) int
+	}
+
+	GameTitleArt struct {
+		Anchor   func(childComplexity int) int
+		URL      func(childComplexity int) int
+		WidthPct func(childComplexity int) int
 	}
 
 	JoinResult struct {
@@ -1136,6 +1143,12 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.Game.Tags(childComplexity), true
+	case "Game.titleArt":
+		if e.complexity.Game.TitleArt == nil {
+			break
+		}
+
+		return e.complexity.Game.TitleArt(childComplexity), true
 	case "Game.tutorialUrl":
 		if e.complexity.Game.TutorialURL == nil {
 			break
@@ -1326,6 +1339,25 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.GamePlayerActivity.Queued(childComplexity), true
+
+	case "GameTitleArt.anchor":
+		if e.complexity.GameTitleArt.Anchor == nil {
+			break
+		}
+
+		return e.complexity.GameTitleArt.Anchor(childComplexity), true
+	case "GameTitleArt.url":
+		if e.complexity.GameTitleArt.URL == nil {
+			break
+		}
+
+		return e.complexity.GameTitleArt.URL(childComplexity), true
+	case "GameTitleArt.widthPct":
+		if e.complexity.GameTitleArt.WidthPct == nil {
+			break
+		}
+
+		return e.complexity.GameTitleArt.WidthPct(childComplexity), true
 
 	case "JoinResult.joinUrl":
 		if e.complexity.JoinResult.JoinURL == nil {
@@ -3502,6 +3534,22 @@ enum RequirementOperator {
   ANY
 }
 
+"""
+The game's name as artwork, drawn over the catalog card's hero.
+
+Placement travels with the mark because it varies per lockup: a wide one wants
+most of the card's width, a compact one a third of it. Insets and the height cap
+are constant across the design and live in the client.
+"""
+type GameTitleArt {
+  """Transparent image (typically .webp) carrying the game's name."""
+  url: String!
+  """Corner the mark is pinned to: top-left, top-center, bottom-left, bottom-center or middle-center."""
+  anchor: String!
+  """Rendered width as a percentage of the card's width, so the mark scales with the card."""
+  widthPct: Float!
+}
+
 """Players a game has right now. Playing and queued are different people, not two views of one number."""
 type GamePlayerActivity {
   """Players seated in a live session of this game."""
@@ -3526,10 +3574,12 @@ extend type Game {
   gameVersion: String
   """Square catalog icon (1:1). Used on room table cards."""
   iconUrl: String!
-  """Wide catalog hero banner (5:2). Top of catalog game card."""
+  """Wide hero banner for the game detail page."""
   heroUrl: String!
-  """Optional catalog-only hero (5:2). Falls back to heroUrl when unset."""
+  """Optional catalog-only hero (4:3). Falls back to heroUrl when unset."""
   catalogHeroUrl: String
+  """Transparent wordmark composited over the catalog card art. Null when the game has none."""
+  titleArt: GameTitleArt
   """Long-form copy for the game detail page (maps to games.description)."""
   longDescription: String
   shortDescription: String
@@ -5582,6 +5632,8 @@ func (ec *executionContext) fieldContext_ConnectMyGamePayload_game(_ context.Con
 				return ec.fieldContext_Game_heroUrl(ctx, field)
 			case "catalogHeroUrl":
 				return ec.fieldContext_Game_catalogHeroUrl(ctx, field)
+			case "titleArt":
+				return ec.fieldContext_Game_titleArt(ctx, field)
 			case "longDescription":
 				return ec.fieldContext_Game_longDescription(ctx, field)
 			case "shortDescription":
@@ -6085,6 +6137,8 @@ func (ec *executionContext) fieldContext_DigitalGood_game(_ context.Context, fie
 				return ec.fieldContext_Game_heroUrl(ctx, field)
 			case "catalogHeroUrl":
 				return ec.fieldContext_Game_catalogHeroUrl(ctx, field)
+			case "titleArt":
+				return ec.fieldContext_Game_titleArt(ctx, field)
 			case "longDescription":
 				return ec.fieldContext_Game_longDescription(ctx, field)
 			case "shortDescription":
@@ -6675,6 +6729,43 @@ func (ec *executionContext) fieldContext_Game_catalogHeroUrl(_ context.Context, 
 		IsResolver: false,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Game_titleArt(ctx context.Context, field graphql.CollectedField, obj *model.Game) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_Game_titleArt,
+		func(ctx context.Context) (any, error) {
+			return obj.TitleArt, nil
+		},
+		nil,
+		ec.marshalOGameTitleArt2ᚖgithubᚗcomᚋscruffyprodigyᚋplayhubᚋgraphᚋmodelᚐGameTitleArt,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_Game_titleArt(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Game",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "url":
+				return ec.fieldContext_GameTitleArt_url(ctx, field)
+			case "anchor":
+				return ec.fieldContext_GameTitleArt_anchor(ctx, field)
+			case "widthPct":
+				return ec.fieldContext_GameTitleArt_widthPct(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type GameTitleArt", field.Name)
 		},
 	}
 	return fc, nil
@@ -7991,6 +8082,93 @@ func (ec *executionContext) fieldContext_GamePlayerActivity_queued(_ context.Con
 		IsResolver: false,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			return nil, errors.New("field of type Int does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _GameTitleArt_url(ctx context.Context, field graphql.CollectedField, obj *model.GameTitleArt) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_GameTitleArt_url,
+		func(ctx context.Context) (any, error) {
+			return obj.URL, nil
+		},
+		nil,
+		ec.marshalNString2string,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_GameTitleArt_url(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "GameTitleArt",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _GameTitleArt_anchor(ctx context.Context, field graphql.CollectedField, obj *model.GameTitleArt) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_GameTitleArt_anchor,
+		func(ctx context.Context) (any, error) {
+			return obj.Anchor, nil
+		},
+		nil,
+		ec.marshalNString2string,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_GameTitleArt_anchor(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "GameTitleArt",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _GameTitleArt_widthPct(ctx context.Context, field graphql.CollectedField, obj *model.GameTitleArt) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_GameTitleArt_widthPct,
+		func(ctx context.Context) (any, error) {
+			return obj.WidthPct, nil
+		},
+		nil,
+		ec.marshalNFloat2float64,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_GameTitleArt_widthPct(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "GameTitleArt",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Float does not have child fields")
 		},
 	}
 	return fc, nil
@@ -9420,6 +9598,8 @@ func (ec *executionContext) fieldContext_Mutation_refreshGameManifest(ctx contex
 				return ec.fieldContext_Game_heroUrl(ctx, field)
 			case "catalogHeroUrl":
 				return ec.fieldContext_Game_catalogHeroUrl(ctx, field)
+			case "titleArt":
+				return ec.fieldContext_Game_titleArt(ctx, field)
 			case "longDescription":
 				return ec.fieldContext_Game_longDescription(ctx, field)
 			case "shortDescription":
@@ -9858,6 +10038,8 @@ func (ec *executionContext) fieldContext_Mutation_updateMyGameMetadata(ctx conte
 				return ec.fieldContext_Game_heroUrl(ctx, field)
 			case "catalogHeroUrl":
 				return ec.fieldContext_Game_catalogHeroUrl(ctx, field)
+			case "titleArt":
+				return ec.fieldContext_Game_titleArt(ctx, field)
 			case "longDescription":
 				return ec.fieldContext_Game_longDescription(ctx, field)
 			case "shortDescription":
@@ -9955,6 +10137,8 @@ func (ec *executionContext) fieldContext_Mutation_requestPublicRelease(ctx conte
 				return ec.fieldContext_Game_heroUrl(ctx, field)
 			case "catalogHeroUrl":
 				return ec.fieldContext_Game_catalogHeroUrl(ctx, field)
+			case "titleArt":
+				return ec.fieldContext_Game_titleArt(ctx, field)
 			case "longDescription":
 				return ec.fieldContext_Game_longDescription(ctx, field)
 			case "shortDescription":
@@ -10052,6 +10236,8 @@ func (ec *executionContext) fieldContext_Mutation_reviewGameRelease(ctx context.
 				return ec.fieldContext_Game_heroUrl(ctx, field)
 			case "catalogHeroUrl":
 				return ec.fieldContext_Game_catalogHeroUrl(ctx, field)
+			case "titleArt":
+				return ec.fieldContext_Game_titleArt(ctx, field)
 			case "longDescription":
 				return ec.fieldContext_Game_longDescription(ctx, field)
 			case "shortDescription":
@@ -11679,6 +11865,8 @@ func (ec *executionContext) fieldContext_Query_games(ctx context.Context, field 
 				return ec.fieldContext_Game_heroUrl(ctx, field)
 			case "catalogHeroUrl":
 				return ec.fieldContext_Game_catalogHeroUrl(ctx, field)
+			case "titleArt":
+				return ec.fieldContext_Game_titleArt(ctx, field)
 			case "longDescription":
 				return ec.fieldContext_Game_longDescription(ctx, field)
 			case "shortDescription":
@@ -11776,6 +11964,8 @@ func (ec *executionContext) fieldContext_Query_game(ctx context.Context, field g
 				return ec.fieldContext_Game_heroUrl(ctx, field)
 			case "catalogHeroUrl":
 				return ec.fieldContext_Game_catalogHeroUrl(ctx, field)
+			case "titleArt":
+				return ec.fieldContext_Game_titleArt(ctx, field)
 			case "longDescription":
 				return ec.fieldContext_Game_longDescription(ctx, field)
 			case "shortDescription":
@@ -11873,6 +12063,8 @@ func (ec *executionContext) fieldContext_Query_gameBySlug(ctx context.Context, f
 				return ec.fieldContext_Game_heroUrl(ctx, field)
 			case "catalogHeroUrl":
 				return ec.fieldContext_Game_catalogHeroUrl(ctx, field)
+			case "titleArt":
+				return ec.fieldContext_Game_titleArt(ctx, field)
 			case "longDescription":
 				return ec.fieldContext_Game_longDescription(ctx, field)
 			case "shortDescription":
@@ -12521,6 +12713,8 @@ func (ec *executionContext) fieldContext_Query_myGames(_ context.Context, field 
 				return ec.fieldContext_Game_heroUrl(ctx, field)
 			case "catalogHeroUrl":
 				return ec.fieldContext_Game_catalogHeroUrl(ctx, field)
+			case "titleArt":
+				return ec.fieldContext_Game_titleArt(ctx, field)
 			case "longDescription":
 				return ec.fieldContext_Game_longDescription(ctx, field)
 			case "shortDescription":
@@ -12607,6 +12801,8 @@ func (ec *executionContext) fieldContext_Query_myGame(ctx context.Context, field
 				return ec.fieldContext_Game_heroUrl(ctx, field)
 			case "catalogHeroUrl":
 				return ec.fieldContext_Game_catalogHeroUrl(ctx, field)
+			case "titleArt":
+				return ec.fieldContext_Game_titleArt(ctx, field)
 			case "longDescription":
 				return ec.fieldContext_Game_longDescription(ctx, field)
 			case "shortDescription":
@@ -12915,6 +13111,8 @@ func (ec *executionContext) fieldContext_Query_pendingGameReviews(_ context.Cont
 				return ec.fieldContext_Game_heroUrl(ctx, field)
 			case "catalogHeroUrl":
 				return ec.fieldContext_Game_catalogHeroUrl(ctx, field)
+			case "titleArt":
+				return ec.fieldContext_Game_titleArt(ctx, field)
 			case "longDescription":
 				return ec.fieldContext_Game_longDescription(ctx, field)
 			case "shortDescription":
@@ -13764,6 +13962,8 @@ func (ec *executionContext) fieldContext_RegisterGamePayload_game(_ context.Cont
 				return ec.fieldContext_Game_heroUrl(ctx, field)
 			case "catalogHeroUrl":
 				return ec.fieldContext_Game_catalogHeroUrl(ctx, field)
+			case "titleArt":
+				return ec.fieldContext_Game_titleArt(ctx, field)
 			case "longDescription":
 				return ec.fieldContext_Game_longDescription(ctx, field)
 			case "shortDescription":
@@ -13907,6 +14107,8 @@ func (ec *executionContext) fieldContext_RegisterMyGamePayload_game(_ context.Co
 				return ec.fieldContext_Game_heroUrl(ctx, field)
 			case "catalogHeroUrl":
 				return ec.fieldContext_Game_catalogHeroUrl(ctx, field)
+			case "titleArt":
+				return ec.fieldContext_Game_titleArt(ctx, field)
 			case "longDescription":
 				return ec.fieldContext_Game_longDescription(ctx, field)
 			case "shortDescription":
@@ -14808,6 +15010,8 @@ func (ec *executionContext) fieldContext_Session_game(_ context.Context, field g
 				return ec.fieldContext_Game_heroUrl(ctx, field)
 			case "catalogHeroUrl":
 				return ec.fieldContext_Game_catalogHeroUrl(ctx, field)
+			case "titleArt":
+				return ec.fieldContext_Game_titleArt(ctx, field)
 			case "longDescription":
 				return ec.fieldContext_Game_longDescription(ctx, field)
 			case "shortDescription":
@@ -16910,6 +17114,8 @@ func (ec *executionContext) fieldContext_SyncMyGameManifestPayload_game(_ contex
 				return ec.fieldContext_Game_heroUrl(ctx, field)
 			case "catalogHeroUrl":
 				return ec.fieldContext_Game_catalogHeroUrl(ctx, field)
+			case "titleArt":
+				return ec.fieldContext_Game_titleArt(ctx, field)
 			case "longDescription":
 				return ec.fieldContext_Game_longDescription(ctx, field)
 			case "shortDescription":
@@ -17082,6 +17288,8 @@ func (ec *executionContext) fieldContext_Table_game(_ context.Context, field gra
 				return ec.fieldContext_Game_heroUrl(ctx, field)
 			case "catalogHeroUrl":
 				return ec.fieldContext_Game_catalogHeroUrl(ctx, field)
+			case "titleArt":
+				return ec.fieldContext_Game_titleArt(ctx, field)
 			case "longDescription":
 				return ec.fieldContext_Game_longDescription(ctx, field)
 			case "shortDescription":
@@ -20854,6 +21062,8 @@ func (ec *executionContext) _Game(ctx context.Context, sel ast.SelectionSet, obj
 			}
 		case "catalogHeroUrl":
 			out.Values[i] = ec._Game_catalogHeroUrl(ctx, field, obj)
+		case "titleArt":
+			out.Values[i] = ec._Game_titleArt(ctx, field, obj)
 		case "longDescription":
 			out.Values[i] = ec._Game_longDescription(ctx, field, obj)
 		case "shortDescription":
@@ -21400,6 +21610,55 @@ func (ec *executionContext) _GamePlayerActivity(ctx context.Context, sel ast.Sel
 			}
 		case "queued":
 			out.Values[i] = ec._GamePlayerActivity_queued(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch(ctx)
+	if out.Invalids > 0 {
+		return graphql.Null
+	}
+
+	atomic.AddInt32(&ec.deferred, int32(len(deferred)))
+
+	for label, dfs := range deferred {
+		ec.processDeferredGroup(graphql.DeferredGroup{
+			Label:    label,
+			Path:     graphql.GetPath(ctx),
+			FieldSet: dfs,
+			Context:  ctx,
+		})
+	}
+
+	return out
+}
+
+var gameTitleArtImplementors = []string{"GameTitleArt"}
+
+func (ec *executionContext) _GameTitleArt(ctx context.Context, sel ast.SelectionSet, obj *model.GameTitleArt) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, gameTitleArtImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	deferred := make(map[string]*graphql.FieldSet)
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("GameTitleArt")
+		case "url":
+			out.Values[i] = ec._GameTitleArt_url(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "anchor":
+			out.Values[i] = ec._GameTitleArt_anchor(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "widthPct":
+			out.Values[i] = ec._GameTitleArt_widthPct(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
@@ -25863,6 +26122,22 @@ func (ec *executionContext) marshalNEntitlement2ᚖgithubᚗcomᚋscruffyprodigy
 	return ec._Entitlement(ctx, sel, v)
 }
 
+func (ec *executionContext) unmarshalNFloat2float64(ctx context.Context, v any) (float64, error) {
+	res, err := graphql.UnmarshalFloatContext(ctx, v)
+	return res, graphql.ErrorOnPath(ctx, err)
+}
+
+func (ec *executionContext) marshalNFloat2float64(ctx context.Context, sel ast.SelectionSet, v float64) graphql.Marshaler {
+	_ = sel
+	res := graphql.MarshalFloatContext(v)
+	if res == graphql.Null {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			ec.Errorf(ctx, "the requested element is null which the schema does not allow")
+		}
+	}
+	return graphql.WrapContextMarshaler(ctx, res)
+}
+
 func (ec *executionContext) marshalNGame2githubᚗcomᚋscruffyprodigyᚋplayhubᚋgraphᚋmodelᚐGame(ctx context.Context, sel ast.SelectionSet, v model.Game) graphql.Marshaler {
 	return ec._Game(ctx, sel, &v)
 }
@@ -27684,6 +27959,13 @@ func (ec *executionContext) marshalOGame2ᚖgithubᚗcomᚋscruffyprodigyᚋplay
 		return graphql.Null
 	}
 	return ec._Game(ctx, sel, v)
+}
+
+func (ec *executionContext) marshalOGameTitleArt2ᚖgithubᚗcomᚋscruffyprodigyᚋplayhubᚋgraphᚋmodelᚐGameTitleArt(ctx context.Context, sel ast.SelectionSet, v *model.GameTitleArt) graphql.Marshaler {
+	if v == nil {
+		return graphql.Null
+	}
+	return ec._GameTitleArt(ctx, sel, v)
 }
 
 func (ec *executionContext) unmarshalOID2ᚕstringᚄ(ctx context.Context, v any) ([]string, error) {

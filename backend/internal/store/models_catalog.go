@@ -21,6 +21,9 @@ type Game struct {
 	IconURL          string
 	HeroURL          string
 	CatalogHeroURL   *string
+	TitleURL         *string
+	TitleAnchor      *string
+	TitleWidthPct    *float64
 	ShortDescription *string
 	HowToPlay        *string
 	TutorialURL      *string

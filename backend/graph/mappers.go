@@ -86,6 +86,7 @@ func ToGraphQLGame(game *store.Game) *model.Game {
 	if game.CatalogHeroURL != nil {
 		result.CatalogHeroURL = game.CatalogHeroURL
 	}
+	result.TitleArt = gameTitleArt(game)
 	if game.HowToPlay != nil {
 		result.HowToPlay = game.HowToPlay
 	}
@@ -355,4 +356,24 @@ func ToGraphQLUsers(users []store.User) []*model.User {
 		result[i] = ToGraphQLUser(&users[i])
 	}
 	return result
+}
+
+// gameTitleArt builds the catalog card's wordmark, or nil when the game has no
+// usable one. Placement is required alongside the URL: a mark drawn at the wrong
+// anchor or width lands over the card's own text, so a row missing either half is
+// treated as having no mark at all rather than guessed at.
+func gameTitleArt(game *store.Game) *model.GameTitleArt {
+	if game == nil || game.TitleURL == nil || game.TitleAnchor == nil || game.TitleWidthPct == nil {
+		return nil
+	}
+	url := strings.TrimSpace(*game.TitleURL)
+	anchor := strings.TrimSpace(*game.TitleAnchor)
+	if url == "" || anchor == "" || *game.TitleWidthPct <= 0 {
+		return nil
+	}
+	return &model.GameTitleArt{
+		URL:      url,
+		Anchor:   anchor,
+		WidthPct: *game.TitleWidthPct,
+	}
 }
