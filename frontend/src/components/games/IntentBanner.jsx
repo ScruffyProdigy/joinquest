@@ -21,7 +21,25 @@ import {
 } from '../../lib/intent'
 import { Button } from '../ui/button'
 
-export default function IntentBanner({ activeIntent, activeTableSeat, busy, liveUpdatesConnected = true, onLeave }) {
+function LeaveError({ message }) {
+  if (!message) {
+    return null
+  }
+  return (
+    <p className="intent-banner__error" role="alert">
+      {message}
+    </p>
+  )
+}
+
+export default function IntentBanner({
+  activeIntent,
+  activeTableSeat,
+  busy,
+  liveUpdatesConnected = true,
+  leaveError = null,
+  onLeave,
+}) {
   if (hasWaitingIntent(activeIntent)) {
     return (
       <aside className="intent-banner" role="region" aria-live="polite" aria-label="Your intent">
@@ -37,6 +55,7 @@ export default function IntentBanner({ activeIntent, activeTableSeat, busy, live
           <p className="intent-banner__hint">
             {liveUpdatesConnected ? bannerIntentWaitingHint() : bannerLiveUpdatesPausedHint()}
           </p>
+          <LeaveError message={leaveError} />
         </div>
         <div className="intent-banner__actions">
           <Button type="button" variant="default" onClick={onLeave} disabled={busy}>
@@ -58,6 +77,7 @@ export default function IntentBanner({ activeIntent, activeTableSeat, busy, live
           <p className="intent-banner__hint">
             {launchUrl ? bannerIntentPlayingHint() : bannerIntentLaunchPendingHint()}
           </p>
+          <LeaveError message={leaveError} />
         </div>
         <div className="intent-banner__actions">
           {launchUrl ? (
@@ -97,6 +117,7 @@ export default function IntentBanner({ activeIntent, activeTableSeat, busy, live
             ? bannerTableBackfillHint(activeTableSeat.formingGaps)
             : bannerTableSeatHint()}
         </p>
+        <LeaveError message={leaveError} />
       </div>
       <div className="intent-banner__actions">
         <Button type="button" variant="secondary" onClick={onLeave} disabled={busy}>

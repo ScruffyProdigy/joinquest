@@ -97,6 +97,12 @@
   font-size: 0.9rem;
 }
 
+.intent-banner__error {
+  margin: 0.35rem 0 0;
+  color: #ffb4b4;
+  font-size: 0.9rem;
+}
+
 .intent-banner__actions {
   display: flex;
   flex-shrink: 0;
