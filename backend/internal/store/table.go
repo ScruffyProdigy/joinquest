@@ -544,6 +544,22 @@ func (s *Store) SitAtTable(ctx context.Context, tableID, userID uuid.UUID, seatK
 	}
 	defer tx.Rollback()
 
+	table, err := s.sitAtTableTx(ctx, tx, tableID, userID, seatKey)
+	if err != nil {
+		return nil, err
+	}
+	if err := tx.Commit(); err != nil {
+		return nil, err
+	}
+	return table, nil
+}
+
+func (s *Store) sitAtTableTx(ctx context.Context, tx *sql.Tx, tableID, userID uuid.UUID, seatKey string) (*RoomTable, error) {
+	seatKey = strings.TrimSpace(seatKey)
+	if seatKey == "" {
+		return nil, fmt.Errorf("store: seat key is required")
+	}
+
 	if err := ensureNotQueueMatchedTx(ctx, tx, userID); err != nil {
 		return nil, err
 	}
@@ -634,9 +650,6 @@ func (s *Store) SitAtTable(ctx context.Context, tableID, userID uuid.UUID, seatK
 	if _, err := tx.ExecContext(ctx, `
 		UPDATE room_tables SET updated_at = NOW() WHERE id = $1
 	`, tableID); err != nil {
-		return nil, err
-	}
-	if err := tx.Commit(); err != nil {
 		return nil, err
 	}
 	return table, nil

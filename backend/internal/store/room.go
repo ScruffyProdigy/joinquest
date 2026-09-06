@@ -180,6 +180,18 @@ func (s *Store) CreateRoom(ctx context.Context, hostUserID uuid.UUID) (*Room, er
 	}
 	defer func() { _ = tx.Rollback() }()
 
+	room, err := s.createRoomTx(ctx, tx, hostUserID)
+	if err != nil {
+		return nil, err
+	}
+
+	if err := tx.Commit(); err != nil {
+		return nil, err
+	}
+	return room, nil
+}
+
+func (s *Store) createRoomTx(ctx context.Context, tx *sql.Tx, hostUserID uuid.UUID) (*Room, error) {
 	if _, err := s.leaveRoomTx(ctx, tx, hostUserID); err != nil {
 		return nil, err
 	}
@@ -203,9 +215,6 @@ func (s *Store) CreateRoom(ctx context.Context, hostUserID uuid.UUID) (*Room, er
 		return nil, err
 	}
 
-	if err := tx.Commit(); err != nil {
-		return nil, err
-	}
 	return room, nil
 }
 
@@ -308,7 +317,11 @@ func (s *Store) GetRoomByInviteCode(ctx context.Context, inviteCode string) (*Ro
 
 // GetUserRoom returns the room the user is currently in, if any.
 func (s *Store) GetUserRoom(ctx context.Context, userID uuid.UUID) (*Room, error) {
-	row := s.db.QueryRowContext(ctx, `
+	return s.getUserRoomTx(ctx, s.db, userID)
+}
+
+func (s *Store) getUserRoomTx(ctx context.Context, q sqlQueryRowContext, userID uuid.UUID) (*Room, error) {
+	row := q.QueryRowContext(ctx, `
 		SELECT r.id, r.invite_code, r.host_user_id, r.status, r.created_at, r.updated_at
 		FROM rooms r
 		INNER JOIN room_members rm ON rm.room_id = r.id
