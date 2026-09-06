@@ -14,6 +14,13 @@ export const SIGN_IN_DIALOG_TITLE = 'Sign in or create an account'
 export const SIGN_IN_DIALOG_HINT =
   'Keep your name, avatar, and progress on every device you play from.'
 
+/** Catalog: the developer pitch that sits in the game list as its own card. */
+export const DEVELOPER_PROMO_TITLE = 'Your game could live here'
+/** Same card, retitled when a search or filter leaves nothing to show. */
+export const DEVELOPER_PROMO_TITLE_NO_RESULTS = 'Don’t see your game? Build it.'
+export const DEVELOPER_PROMO_BODY = 'List it on JoinQuest via the developer portal'
+export const DEVELOPER_PROMO_CTA = 'Get started for developers →'
+
 export const SIGN_IN_HEADING = 'Get in the game'
 export const JUMP_IN = 'Jump in'
 export const JUMP_IN_HINT = 'Play now, make your account later.'

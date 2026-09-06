@@ -24,7 +24,7 @@ import { parseDeveloperRoute } from './lib/developers'
 import DeveloperDashboard from './components/developers/DeveloperDashboard'
 import DeveloperLandingPage from './components/developers/DeveloperLandingPage'
 import DeveloperWelcomePage from './components/developers/DeveloperWelcomePage'
-import DeveloperHomeBlock from './components/developers/DeveloperHomeBlock'
+import YourGamesStrip from './components/developers/YourGamesStrip'
 import HomeHeader, { HOME_HEADING_ID } from './components/home/HomeHeader'
 import IdentityGate from './components/avatars/IdentityGate'
 import AppFooter from './components/legal/AppFooter'
@@ -57,7 +57,7 @@ function CatalogPage() {
       <HomeHeader />
 
       <GameLobby headingId={HOME_HEADING_ID} />
-      <DeveloperHomeBlock />
+      <YourGamesStrip />
 
       <AppFooter />
     </main>

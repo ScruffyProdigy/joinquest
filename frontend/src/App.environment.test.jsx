@@ -22,10 +22,9 @@ describe('App Environment Integration', () => {
     
     // The app should render without crashing
     expect(screen.getByRole('heading', { level: 1, name: 'Find a game' })).toBeInTheDocument()
-    expect(screen.getByRole('link', { name: /get started for developers/i })).toHaveAttribute(
-      'href',
-      '/developers',
-    )
+    // JQ-71 moved the developer promo into the catalog list, so it arrives with the
+    // games rather than on first paint. Its own coverage lives in DeveloperPromoCard
+    // and GameLobby; this test is about the environment config.
     
     // Environment should be available
     expect(window.env).toBeDefined()

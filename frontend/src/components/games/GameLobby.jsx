@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { useAuth } from '../auth/AuthProvider'
 import { fetchGames, filterGamesBySearch } from '../../lib/games'
 import GameCard from './GameCard'
+import DeveloperPromoCard from '../developers/DeveloperPromoCard'
 import { Input } from '../ui/input'
 import {
   GAMES_SEARCH_EMPTY,
@@ -9,6 +10,10 @@ import {
   GAMES_SEARCH_LABEL,
   GAMES_SEARCH_PLACEHOLDER,
 } from '../../lib/playerCopy'
+
+// A fixed slot keeps the promo in the same place whether the catalog holds three
+// games or thirty. Clamped below, so a shorter catalog still ends with it.
+const DEVELOPER_PROMO_SLOT = 3
 
 export default function GameLobby({ headingId }) {
   const { user, loading: authLoading } = useAuth()
@@ -53,6 +58,10 @@ export default function GameLobby({ headingId }) {
   // Only show search once there is a catalog to search through.
   const hasCatalog = status === 'ready' && games.length > 0
   const visibleGames = filterGamesBySearch(games, search)
+  // The promo rides along through a search. With nothing left it is all that remains,
+  // and retitles itself rather than leaving the player at a dead end.
+  const noResults = visibleGames.length === 0
+  const promoSlot = Math.min(DEVELOPER_PROMO_SLOT, visibleGames.length)
 
   return (
     // The visible heading lives in the page header above, so point at it rather
@@ -93,16 +102,20 @@ export default function GameLobby({ headingId }) {
         </div>
       ) : null}
 
-      {hasCatalog && visibleGames.length === 0 ? (
+      {hasCatalog && noResults ? (
         <div className="py-8 text-center" role="status">
           <p className="m-0 font-semibold text-foreground">{GAMES_SEARCH_EMPTY}</p>
           <p className="mt-1 mb-0 text-sm text-muted-foreground">{GAMES_SEARCH_EMPTY_HINT}</p>
         </div>
       ) : null}
 
-      {hasCatalog && visibleGames.length > 0 ? (
+      {hasCatalog ? (
         <ul className="game-list">
-          {visibleGames.map((game) => (
+          {visibleGames.slice(0, promoSlot).map((game) => (
+            <GameCard key={game.id} game={game} />
+          ))}
+          <DeveloperPromoCard noResults={noResults} />
+          {visibleGames.slice(promoSlot).map((game) => (
             <GameCard key={game.id} game={game} />
           ))}
         </ul>

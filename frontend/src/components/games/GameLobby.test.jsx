@@ -6,6 +6,7 @@ import { AuthProvider } from '../auth/AuthProvider'
 import { ActiveRoomProvider } from '../rooms/ActiveRoomProvider'
 import { mockAuthenticatedSession, mockUnauthenticatedSession } from '../../test/setup'
 import * as games from '../../lib/games'
+import { DEVELOPER_PROMO_TITLE, DEVELOPER_PROMO_TITLE_NO_RESULTS } from '../../lib/playerCopy'
 
 vi.mock('../../lib/games', async (importOriginal) => {
   const actual = await importOriginal()
@@ -182,6 +183,131 @@ describe('GameLobby', () => {
 
       expect(screen.getByRole('heading', { name: 'Word Ladder' })).toBeInTheDocument()
       expect(screen.queryByRole('heading', { name: 'Spyfall' })).not.toBeInTheDocument()
+    })
+  })
+  // JQ-71: the promo used to be a stacked block below the catalog. It now sits in the
+  // list itself, and JQ-41 settled that the dev portal stays open to everyone.
+  describe('developer promo card', () => {
+    function mockGames(count) {
+      vi.mocked(games.fetchGames).mockResolvedValue(
+        Array.from({ length: count }, (_, i) => ({
+          id: `game-${i + 1}`,
+          slug: `game-${i + 1}`,
+          name: `Game ${i + 1}`,
+          iconUrl: `/games/game-${i + 1}-icon.png`,
+          heroUrl: `/games/game-${i + 1}-hero.jpg`,
+          tags: [],
+          createdAt: '2026-01-01T00:00:00Z',
+          modes: [],
+        })),
+      )
+    }
+
+    function promoLink() {
+      return screen.queryByRole('link', { name: /get started for developers/i })
+    }
+
+    it('shows the promo to a signed-out visitor', async () => {
+      mockUnauthenticatedSession()
+      renderGameLobby()
+
+      await waitFor(() => expect(promoLink()).toHaveAttribute('href', '/developers'))
+    })
+
+    it('shows the promo to a guest', async () => {
+      mockAuthenticatedSession({
+        id: 'guest-1',
+        email: null,
+        displayName: null,
+        isGuest: true,
+        createdAt: '2026-01-01T00:00:00Z',
+      })
+      renderGameLobby()
+
+      await waitFor(() => expect(promoLink()).toHaveAttribute('href', '/developers'))
+    })
+
+    it('shows the promo to a signed-in account', async () => {
+      mockAuthenticatedSession()
+      renderGameLobby()
+
+      await waitFor(() => expect(promoLink()).toHaveAttribute('href', '/developers'))
+    })
+
+    it('sits in a fixed slot regardless of how many games load', async () => {
+      mockAuthenticatedSession()
+      mockGames(10)
+      renderGameLobby()
+
+      await waitFor(() => expect(promoLink()).toBeInTheDocument())
+      // Fourth item: three game cards ahead of it, the rest behind.
+      const items = screen.getAllByRole('listitem')
+      expect(items[3]).toContainElement(promoLink())
+      expect(items).toHaveLength(11)
+    })
+
+    it('falls to the end of a catalog shorter than its slot', async () => {
+      mockAuthenticatedSession()
+      mockGames(2)
+      renderGameLobby()
+
+      await waitFor(() => expect(promoLink()).toBeInTheDocument())
+      const items = screen.getAllByRole('listitem')
+      expect(items).toHaveLength(3)
+      expect(items[2]).toContainElement(promoLink())
+    })
+
+    it('rides along through a filtered search', async () => {
+      mockAuthenticatedSession()
+      mockGames(10)
+      renderGameLobby()
+
+      const input = await screen.findByLabelText('Search games')
+      await userEvent.type(input, 'Game 1')
+
+      expect(promoLink()).toBeInTheDocument()
+      expect(screen.getByRole('heading', { name: DEVELOPER_PROMO_TITLE })).toBeInTheDocument()
+    })
+
+    // Matches the prototype: the dead end becomes the pitch.
+    it('retitles itself when the search clears the list, and is all that is left', async () => {
+      mockAuthenticatedSession()
+      mockGames(10)
+      renderGameLobby()
+
+      const input = await screen.findByLabelText('Search games')
+      await userEvent.type(input, 'zzzzz')
+
+      expect(screen.getByText('No games found')).toBeInTheDocument()
+      expect(
+        screen.getByRole('heading', { name: DEVELOPER_PROMO_TITLE_NO_RESULTS }),
+      ).toBeInTheDocument()
+      expect(screen.queryByRole('heading', { name: DEVELOPER_PROMO_TITLE })).not.toBeInTheDocument()
+      expect(screen.getAllByRole('listitem')).toHaveLength(1)
+    })
+
+    it('goes back to its usual title once the search clears', async () => {
+      mockAuthenticatedSession()
+      mockGames(10)
+      renderGameLobby()
+
+      const input = await screen.findByLabelText('Search games')
+      await userEvent.type(input, 'zzzzz')
+      await userEvent.clear(input)
+
+      expect(screen.getByRole('heading', { name: DEVELOPER_PROMO_TITLE })).toBeInTheDocument()
+      expect(
+        screen.queryByRole('heading', { name: DEVELOPER_PROMO_TITLE_NO_RESULTS }),
+      ).not.toBeInTheDocument()
+    })
+
+    it('is absent when the catalog itself is empty', async () => {
+      mockAuthenticatedSession()
+      vi.mocked(games.fetchGames).mockResolvedValue([])
+      renderGameLobby()
+
+      expect(await screen.findByText('No games available yet.')).toBeInTheDocument()
+      expect(promoLink()).not.toBeInTheDocument()
     })
   })
 })
