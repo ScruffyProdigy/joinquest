@@ -76,6 +76,22 @@ enum RequirementOperator {
   ANY
 }
 
+"""
+The game's name as artwork, drawn over the catalog card's hero.
+
+Placement travels with the mark because it varies per lockup: a wide one wants
+most of the card's width, a compact one a third of it. Insets and the height cap
+are constant across the design and live in the client.
+"""
+type GameTitleArt {
+  """Transparent image (typically .webp) carrying the game's name."""
+  url: String!
+  """Corner the mark is pinned to: top-left, top-center, bottom-left, bottom-center or middle-center."""
+  anchor: String!
+  """Rendered width as a percentage of the card's width, so the mark scales with the card."""
+  widthPct: Float!
+}
+
 """Players a game has right now. Playing and queued are different people, not two views of one number."""
 type GamePlayerActivity {
   """Players seated in a live session of this game."""
@@ -100,10 +116,12 @@ extend type Game {
   gameVersion: String
   """Square catalog icon (1:1). Used on room table cards."""
   iconUrl: String!
-  """Wide catalog hero banner (5:2). Top of catalog game card."""
+  """Wide hero banner for the game detail page."""
   heroUrl: String!
-  """Optional catalog-only hero (5:2). Falls back to heroUrl when unset."""
+  """Optional catalog-only hero (4:3). Falls back to heroUrl when unset."""
   catalogHeroUrl: String
+  """Transparent wordmark composited over the catalog card art. Null when the game has none."""
+  titleArt: GameTitleArt
   """Long-form copy for the game detail page (maps to games.description)."""
   longDescription: String
   shortDescription: String

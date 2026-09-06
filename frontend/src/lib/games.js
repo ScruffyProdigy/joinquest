@@ -56,6 +56,11 @@ const GAME_CARD_FIELDS = `
   iconUrl
   heroUrl
   catalogHeroUrl
+  titleArt {
+    url
+    anchor
+    widthPct
+  }
   shortDescription
   longDescription
   howToPlay

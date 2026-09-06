@@ -102,10 +102,12 @@ type Game struct {
 	GameVersion      *string    `json:"gameVersion,omitempty"`
 	// Square catalog icon (1:1). Used on room table cards.
 	IconURL string `json:"iconUrl"`
-	// Wide catalog hero banner (5:2). Top of catalog game card.
+	// Wide hero banner for the game detail page.
 	HeroURL string `json:"heroUrl"`
-	// Optional catalog-only hero (5:2). Falls back to heroUrl when unset.
+	// Optional catalog-only hero (4:3). Falls back to heroUrl when unset.
 	CatalogHeroURL *string `json:"catalogHeroUrl,omitempty"`
+	// Transparent wordmark composited over the catalog card art. Null when the game has none.
+	TitleArt *GameTitleArt `json:"titleArt,omitempty"`
 	// Long-form copy for the game detail page (maps to games.description).
 	LongDescription  *string  `json:"longDescription,omitempty"`
 	ShortDescription *string  `json:"shortDescription,omitempty"`
@@ -172,6 +174,20 @@ type GamePlayerActivity struct {
 	Playing int `json:"playing"`
 	// Players waiting in this game's queues for a match to fill.
 	Queued int `json:"queued"`
+}
+
+// The game's name as artwork, drawn over the catalog card's hero.
+//
+// Placement travels with the mark because it varies per lockup: a wide one wants
+// most of the card's width, a compact one a third of it. Insets and the height cap
+// are constant across the design and live in the client.
+type GameTitleArt struct {
+	// Transparent image (typically .webp) carrying the game's name.
+	URL string `json:"url"`
+	// Corner the mark is pinned to: top-left, top-center, bottom-left, bottom-center or middle-center.
+	Anchor string `json:"anchor"`
+	// Rendered width as a percentage of the card's width, so the mark scales with the card.
+	WidthPct float64 `json:"widthPct"`
 }
 
 type JoinResult struct {

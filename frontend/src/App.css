@@ -10,6 +10,12 @@
 }
 
 #root {
+  /* body is a centred flex container, so #root is shrink-to-fit. Catalog cards size
+     themselves from the column rather than from their own text, and would otherwise
+     collapse it -- take the free space and let max-width do the capping. Growing
+     rather than width:100% because #root is content-box: a percentage width would
+     add its padding on top and overflow the viewport on a phone. */
+  flex-grow: 1;
   max-width: 720px;
   margin: 0 auto;
   padding: 2rem 1.5rem;
@@ -211,6 +217,18 @@
   color: #646cff;
   cursor: pointer;
   font: inherit;
+}
+
+/* The catalog column, capped at the prototype's grid width. The card's type is a
+   fixed scale, so a wider column does not make the card bigger -- it makes the
+   type look smaller inside it. The page heading above stays full width, as the
+   prototype's own filter strip does. */
+.game-lobby {
+  /* Explicit width because the auto margins below opt this out of the column
+     flex container's default stretch, leaving it shrink-to-fit otherwise. */
+  width: 100%;
+  max-width: 32rem;
+  margin-inline: auto;
 }
 
 .game-list {
