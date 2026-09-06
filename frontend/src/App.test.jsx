@@ -38,15 +38,13 @@ describe('App Component', () => {
     mockUnauthenticatedSession({ games: mockDemoGames })
     render(<App />)
 
-    // The identity gate is a modal, so it marks the page behind it aria-hidden.
-    // The catalog is still rendered underneath — that is what JQ-67 asked for.
-    expect(await screen.findByRole('heading', { level: 1, name: 'Find a game', hidden: true })).toBeInTheDocument()
+    expect(await screen.findByRole('heading', { level: 1, name: 'Find a game' })).toBeInTheDocument()
     expect(
-      await screen.findByRole('heading', { name: 'Rock Paper Scissors Lizard Robot', hidden: true }),
+      await screen.findByRole('heading', { name: 'Rock Paper Scissors Lizard Robot' }),
     ).toBeInTheDocument()
     // Browsing is open to guests; the account prompt lives on the game page.
     expect(
-      screen.getByRole('link', { name: /Rock Paper Scissors Lizard Robot/, hidden: true }),
+      screen.getByRole('link', { name: /Rock Paper Scissors Lizard Robot/ }),
     ).toHaveAttribute('href', '/games/rock-paper-scissors-lizard-robot')
     expect(screen.queryByRole('heading', { name: IDENTITY_GATE_HEADING })).not.toBeInTheDocument()
   })

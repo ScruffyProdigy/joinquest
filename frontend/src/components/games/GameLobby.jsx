@@ -4,8 +4,6 @@ import { fetchGames, filterGamesBySearch } from '../../lib/games'
 import GameCard from './GameCard'
 import { Input } from '../ui/input'
 import {
-  GAMES_HEADING,
-  GAMES_INTRO,
   GAMES_SEARCH_EMPTY,
   GAMES_SEARCH_EMPTY_HINT,
   GAMES_SEARCH_LABEL,

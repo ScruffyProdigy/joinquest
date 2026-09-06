@@ -240,7 +240,8 @@ async function expectSignedIn(page) {
 }
 
 async function refreshSignedInUi(page) {
-  await page.goto('/')
+  // The session card moved off home; /account is where it lives.
+  await page.goto('/account')
   await expectSignedIn(page)
 }
 
