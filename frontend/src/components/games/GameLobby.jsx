@@ -4,15 +4,13 @@ import { fetchGames, filterGamesBySearch } from '../../lib/games'
 import GameCard from './GameCard'
 import { Input } from '../ui/input'
 import {
-  GAMES_HEADING,
-  GAMES_INTRO,
   GAMES_SEARCH_EMPTY,
   GAMES_SEARCH_EMPTY_HINT,
   GAMES_SEARCH_LABEL,
   GAMES_SEARCH_PLACEHOLDER,
 } from '../../lib/playerCopy'
 
-export default function GameLobby() {
+export default function GameLobby({ headingId }) {
   const { user, loading: authLoading } = useAuth()
   const [games, setGames] = useState([])
   const [status, setStatus] = useState('idle')
@@ -57,10 +55,9 @@ export default function GameLobby() {
   const visibleGames = filterGamesBySearch(games, search)
 
   return (
-    <section className="game-lobby panel-card" aria-labelledby="games-heading">
-      <h2 id="games-heading">{GAMES_HEADING}</h2>
-      <p className="panel-copy">{GAMES_INTRO}</p>
-
+    // The visible heading lives in the page header above, so point at it rather
+    // than repeating it here.
+    <section className="game-lobby" aria-labelledby={headingId}>
       {status === 'idle' || status === 'loading' ? (
         <p className="status-message" role="status">
           Loading games…

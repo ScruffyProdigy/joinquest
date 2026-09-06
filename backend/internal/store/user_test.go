@@ -8,15 +8,7 @@ import (
 	"github.com/google/uuid"
 )
 
-func TestDefaultDisplayName(t *testing.T) {
-	got := DefaultDisplayName("coleryanxxx@gmail.com")
-	want := "coleryanxxx (new)"
-	if got != want {
-		t.Fatalf("DefaultDisplayName() = %q, want %q", got, want)
-	}
-}
-
-func TestCreateUserUsesProvisionalDisplayName(t *testing.T) {
+func TestCreateUserLeavesDisplayNameUnset(t *testing.T) {
 	st := openTestStore(t)
 	cleaner := st.NewTestCleaner(t)
 	ctx := t.Context()
@@ -28,12 +20,9 @@ func TestCreateUserUsesProvisionalDisplayName(t *testing.T) {
 	}
 	cleaner.TrackUser(user.ID)
 
-	expectedPrefix := strings.Split(email, "@")[0]
-	if !strings.HasPrefix(user.DisplayName, expectedPrefix+" (new)") {
-		t.Fatalf("expected provisional display name, got %q", user.DisplayName)
-	}
-	if user.DisplayName == user.Username {
-		t.Fatalf("expected display name to differ from internal username %q", user.Username)
+	// Signing up does not invent a name; the identity prompt collects one.
+	if user.DisplayName != nil {
+		t.Fatalf("expected no display name, got %q", *user.DisplayName)
 	}
 }
 
@@ -51,8 +40,8 @@ func TestCreateUserRespectsExplicitDisplayName(t *testing.T) {
 		t.Fatalf("CreateUser failed: %v", err)
 	}
 	cleaner.TrackUser(user.ID)
-	if user.DisplayName != "Custom Name" {
-		t.Fatalf("expected explicit display name, got %q", user.DisplayName)
+	if user.ChosenDisplayName() != "Custom Name" {
+		t.Fatalf("expected explicit display name, got %q", user.ChosenDisplayName())
 	}
 }
 

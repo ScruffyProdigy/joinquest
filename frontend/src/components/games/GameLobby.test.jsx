@@ -20,7 +20,7 @@ function renderGameLobby() {
   return render(
     <AuthProvider>
       <ActiveRoomProvider>
-        <GameLobby />
+        <GameLobby headingId="find-a-game-heading" />
       </ActiveRoomProvider>
     </AuthProvider>,
   )
@@ -55,7 +55,6 @@ describe('GameLobby', () => {
     mockUnauthenticatedSession()
     renderGameLobby()
 
-    expect(await screen.findByRole('heading', { name: 'Available games' })).toBeInTheDocument()
     expect(await screen.findByRole('heading', { name: 'Rock Paper Scissors Lizard Robot' })).toBeInTheDocument()
   })
 
@@ -74,7 +73,6 @@ describe('GameLobby', () => {
     mockAuthenticatedSession()
     renderGameLobby()
 
-    expect(await screen.findByRole('heading', { name: 'Available games' })).toBeInTheDocument()
     expect(await screen.findByRole('heading', { name: 'Rock Paper Scissors Lizard Robot' })).toBeInTheDocument()
     expect(games.fetchGames).toHaveBeenCalledTimes(1)
     expect(games.fetchGames).toHaveBeenCalledWith('user-1')

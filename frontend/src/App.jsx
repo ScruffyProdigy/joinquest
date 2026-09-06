@@ -3,7 +3,6 @@ import LinkEmailPage from './components/auth/LinkEmailPage'
 import OAuthCompletePage from './components/auth/OAuthCompletePage'
 import AccountPage from './components/auth/AccountPage'
 import ReturnPage from './components/auth/ReturnPage'
-import AuthPanel from './components/auth/AuthPanel'
 import StylePreviewPage from './components/dev/StylePreviewPage'
 import { isStylePreviewEnabled } from './lib/stylePreview'
 import IntentBanner from './components/games/IntentBanner'
@@ -15,8 +14,7 @@ import RoomPanel from './components/rooms/RoomPanel'
 import RoomSheet from './components/rooms/RoomSheet'
 import { AuthProvider, useAuth } from './components/auth/AuthProvider'
 import { useActiveIntent } from './components/games/useActiveIntent'
-import { APP_NAME, APP_TAGLINE } from './lib/brand'
-import AppTitle from './components/brand/AppTitle'
+import { APP_NAME } from './lib/brand'
 import { parseRoomInviteCode } from './lib/rooms'
 import { parseGameSlug } from './lib/games'
 import { MOBILE_ROOM_QUERY, useMediaQuery } from './lib/useMediaQuery'
@@ -27,6 +25,7 @@ import DeveloperDashboard from './components/developers/DeveloperDashboard'
 import DeveloperLandingPage from './components/developers/DeveloperLandingPage'
 import DeveloperWelcomePage from './components/developers/DeveloperWelcomePage'
 import DeveloperHomeBlock from './components/developers/DeveloperHomeBlock'
+import HomeHeader, { HOME_HEADING_ID } from './components/home/HomeHeader'
 import IdentityGate from './components/avatars/IdentityGate'
 import AppFooter from './components/legal/AppFooter'
 import TermsPage from './components/legal/TermsPage'
@@ -55,14 +54,10 @@ function CatalogPage() {
         />
       ) : null}
 
-      <header className="app-header">
-        <AppTitle />
-        <p className="tagline">{APP_TAGLINE}</p>
-      </header>
+      <HomeHeader />
 
-      <AuthPanel />
+      <GameLobby headingId={HOME_HEADING_ID} />
       <DeveloperHomeBlock />
-      <GameLobby />
 
       <AppFooter />
     </main>

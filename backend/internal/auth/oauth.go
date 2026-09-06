@@ -30,11 +30,11 @@ var oauthHTTPClient = &http.Client{
 }
 
 var (
-	ErrOAuthNotConfigured        = errors.New("This sign-in provider is not available right now.")
-	ErrOAuthInvalidState         = errors.New("Sign-in session expired. Please try again.")
-	ErrOAuthProviderError        = errors.New("Could not sign in with that provider. Please try again.")
-	ErrIdentityAlreadyLinked     = errors.New("That account is already linked to another JoinQuest profile.")
-	ErrOAuthMergeConfirmation    = errors.New("This account belongs to another JoinQuest profile. Confirm the merge to continue.")
+	ErrOAuthNotConfigured     = errors.New("This sign-in provider is not available right now.")
+	ErrOAuthInvalidState      = errors.New("Sign-in session expired. Please try again.")
+	ErrOAuthProviderError     = errors.New("Could not sign in with that provider. Please try again.")
+	ErrIdentityAlreadyLinked  = errors.New("That account is already linked to another JoinQuest profile.")
+	ErrOAuthMergeConfirmation = errors.New("This account belongs to another JoinQuest profile. Confirm the merge to continue.")
 )
 
 type OAuthProfile struct {
@@ -63,13 +63,13 @@ func oauthProviderFromName(name string) (*oauthProviderConfig, error) {
 	switch name {
 	case "google":
 		cfg := oauthProviderConfig{
-			name:     "google",
-			clientID: strings.TrimSpace(os.Getenv("GOOGLE_OAUTH_CLIENT_ID")),
+			name:         "google",
+			clientID:     strings.TrimSpace(os.Getenv("GOOGLE_OAUTH_CLIENT_ID")),
 			clientSecret: strings.TrimSpace(os.Getenv("GOOGLE_OAUTH_CLIENT_SECRET")),
-			scopes:   []string{"openid", "email", "profile"},
-			authURL:  "https://accounts.google.com/o/oauth2/v2/auth",
-			tokenURL: "https://oauth2.googleapis.com/token",
-			userInfoURL: "https://openidconnect.googleapis.com/v1/userinfo",
+			scopes:       []string{"openid", "email", "profile"},
+			authURL:      "https://accounts.google.com/o/oauth2/v2/auth",
+			tokenURL:     "https://oauth2.googleapis.com/token",
+			userInfoURL:  "https://openidconnect.googleapis.com/v1/userinfo",
 		}
 		if cfg.clientID == "" || cfg.clientSecret == "" {
 			return nil, ErrOAuthNotConfigured
@@ -442,7 +442,7 @@ func (s *Service) finishOAuthLink(ctx context.Context, targetUserID uuid.UUID, p
 			}
 			return nil, "", &OAuthMergeRequired{
 				Provider:               provider,
-				MergeSourceDisplayName: strings.TrimSpace(source.DisplayName),
+				MergeSourceDisplayName: source.ChosenDisplayName(),
 			}, nil
 		}
 		if err := s.store.MergeUserInto(ctx, existing.UserID, targetUserID); err != nil {

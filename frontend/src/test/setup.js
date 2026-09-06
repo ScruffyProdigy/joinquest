@@ -85,7 +85,7 @@ function createFetchMock(handlers) {
         createGuestSession: handlers.me ?? {
           id: 'guest-1',
           email: null,
-          displayName: 'guest#123456',
+          displayName: null,
           isGuest: true,
           createdAt: '2026-01-01T00:00:00Z',
         },
@@ -136,7 +136,8 @@ function createFetchMock(handlers) {
         updatePlayerProfile: handlers.updatePlayerProfile ?? {
           ...handlers.me,
           displayName: body.variables?.displayName ?? handlers.me?.displayName,
-          avatarKey: body.variables?.avatarKey ?? handlers.me?.avatarKey,
+          // Saving through this mutation is what marks a name as chosen.
+                avatarKey: body.variables?.avatarKey ?? handlers.me?.avatarKey,
         },
       }
     } else if (query.includes('me {') || query.includes('query Me')) {

@@ -2,51 +2,34 @@ package store
 
 import (
 	"context"
-	"crypto/rand"
 	"database/sql"
 	"errors"
 	"fmt"
-	"math/big"
 	"strings"
 
 	"github.com/google/uuid"
 	"github.com/lib/pq"
 )
 
-// RandomGuestDisplayName returns guest#NNNNNN with a random 6-digit suffix.
-func RandomGuestDisplayName() (string, error) {
-	n, err := rand.Int(rand.Reader, big.NewInt(900000))
-	if err != nil {
-		return "", err
-	}
-	return fmt.Sprintf("guest#%06d", n.Int64()+100000), nil
-}
-
+// CreateGuestUser starts a nameless session. The identity prompt collects the
+// name and avatar; until then display_name stays null.
 func (s *Store) CreateGuestUser(ctx context.Context) (*User, error) {
-	displayName, err := RandomGuestDisplayName()
-	if err != nil {
-		return nil, err
-	}
-
 	for i := 0; i < 8; i++ {
 		username, err := s.uniqueGuestUsername(ctx)
 		if err != nil {
 			return nil, err
 		}
 		row := s.db.QueryRowContext(ctx, `
-			INSERT INTO users (username, display_name, is_guest)
-			VALUES ($1, $2, true)
+			INSERT INTO users (username, is_guest)
+			VALUES ($1, true)
 			RETURNING `+userColumns+`
-		`, username, displayName)
+		`, username)
 		user, err := scanUser(row)
 		if err == nil {
 			return user, nil
 		}
+		// Only username is unique-constrained, so a clash means try another.
 		if isUniqueViolation(err) {
-			displayName, err = RandomGuestDisplayName()
-			if err != nil {
-				return nil, err
-			}
 			continue
 		}
 		return nil, err

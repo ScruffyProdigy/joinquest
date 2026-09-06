@@ -2,19 +2,8 @@ package store
 
 import (
 	"context"
-	"regexp"
 	"testing"
 )
-
-func TestRandomGuestDisplayName(t *testing.T) {
-	name, err := RandomGuestDisplayName()
-	if err != nil {
-		t.Fatalf("RandomGuestDisplayName: %v", err)
-	}
-	if !regexp.MustCompile(`^guest#[0-9]{6}$`).MatchString(name) {
-		t.Fatalf("expected guest#NNNNNN format, got %q", name)
-	}
-}
 
 func TestCreateGuestUser(t *testing.T) {
 	st := openTestStore(t)
@@ -33,11 +22,9 @@ func TestCreateGuestUser(t *testing.T) {
 	if user.Email != "" {
 		t.Fatalf("expected empty email, got %q", user.Email)
 	}
-	if user.DisplayName == "" {
-		t.Fatal("expected display name")
-	}
-	if !regexp.MustCompile(`^guest#[0-9]{6}$`).MatchString(user.DisplayName) {
-		t.Fatalf("expected guest display name, got %q", user.DisplayName)
+	// A fresh guest is nameless until the identity prompt collects one.
+	if user.DisplayName != nil {
+		t.Fatalf("expected no display name, got %q", *user.DisplayName)
 	}
 }
 

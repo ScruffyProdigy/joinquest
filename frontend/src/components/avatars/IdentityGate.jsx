@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { createGuestSession } from '../../lib/auth'
 import { notifyAuthComplete } from '../../lib/authBroadcast'
 import { updatePlayerProfile } from '../../lib/avatars'
-import { generateGuestIdentities, needsIdentity } from '../../lib/guestIdentity'
+import { generateGuestIdentities } from '../../lib/guestIdentity'
 import {
   IDENTITY_GATE_DIVIDER,
   IDENTITY_GATE_ERROR,
@@ -12,6 +12,7 @@ import {
   IDENTITY_GATE_SIGN_IN,
   IDENTITY_GATE_TAGLINE,
 } from '../../lib/playerCopy'
+import { needsIdentity } from '../../lib/viewer'
 import { Button } from '../ui/button'
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from '../ui/dialog'
 import { useAuth } from '../auth/AuthProvider'

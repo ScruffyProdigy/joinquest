@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { logout } from '../../lib/auth'
-import { needsProfileSetup } from '../../lib/avatars'
+import { needsIdentity } from '../../lib/viewer'
 import { fetchSpiritAnimalJourneyEligibility, formatSpiritAnimalJourneyCooldown } from '../../lib/spiritAnimal'
 import { ACCOUNT_LINK_LABEL, GUEST_BADGE, GUEST_SPIRIT_ANIMAL_HINT } from '../../lib/playerCopy'
 import { cn } from '../../lib/utils'
@@ -11,11 +11,11 @@ import PlayerProfileEditor from '../avatars/PlayerProfileEditor'
 import SpiritAnimalFlow from '../avatars/SpiritAnimalFlow'
 import PlayerAvatar from '../avatars/PlayerAvatar'
 
-export default function UserSessionCard({ user, compact = false, showProfileActions = true }) {
+export default function UserSessionCard({ user, compact = false, showProfileActions = true, showAccountLink = true }) {
   const { clearSession } = useAuth()
   const [status, setStatus] = useState('idle')
   const [error, setError] = useState('')
-  const setupRequired = needsProfileSetup(user)
+  const setupRequired = needsIdentity(user)
   const [editorOpen, setEditorOpen] = useState(setupRequired)
   const [spiritFlowOpen, setSpiritFlowOpen] = useState(false)
   const [journeyEligibility, setJourneyEligibility] = useState(null)
@@ -46,7 +46,7 @@ export default function UserSessionCard({ user, compact = false, showProfileActi
   const eligibilityPending = journeyEligibility === null
 
   useEffect(() => {
-    if (needsProfileSetup(user)) {
+    if (needsIdentity(user)) {
       setEditorOpen(true)
     }
   }, [user])
@@ -67,7 +67,7 @@ export default function UserSessionCard({ user, compact = false, showProfileActi
   }
 
   function handleSaved(updated) {
-    if (!needsProfileSetup(updated)) {
+    if (!needsIdentity(updated)) {
       setEditorOpen(false)
       setSpiritFlowOpen(false)
     }
@@ -117,9 +117,12 @@ export default function UserSessionCard({ user, compact = false, showProfileActi
           />
         ) : showProfileActions ? (
           <div className="flex flex-col gap-2">
-            <Button variant="secondary" asChild>
-              <a href="/account">{ACCOUNT_LINK_LABEL}</a>
-            </Button>
+            {/* Hidden on the account page itself, where the link goes nowhere. */}
+            {showAccountLink ? (
+              <Button variant="secondary" asChild>
+                <a href="/account">{ACCOUNT_LINK_LABEL}</a>
+              </Button>
+            ) : null}
             <Button variant="secondary" onClick={() => setEditorOpen(true)}>
               Change display
             </Button>

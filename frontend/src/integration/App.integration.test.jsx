@@ -14,24 +14,21 @@ describe('App Integration Tests', () => {
       mockUnauthenticatedSession({ games: mockDemoGames })
       render(<App />)
 
-      expect(screen.getByRole('heading', { level: 1, name: 'JoinQuest' })).toBeInTheDocument()
-      expect(screen.getByText('Find your group. Play together.')).toBeInTheDocument()
-
       await waitFor(() => {
         expect(screen.getByRole('heading', { name: 'Rock Paper Scissors Lizard Robot' })).toBeInTheDocument()
       })
       expect(screen.queryByRole('heading', { name: IDENTITY_GATE_HEADING })).not.toBeInTheDocument()
     })
 
-    it('shows account details when logged in', async () => {
+    it('leads with the catalog and an account chip when logged in', async () => {
       mockAuthenticatedSession()
       render(<App />)
 
-      await waitFor(() => {
-        expect(screen.getByText('player@example.com')).toBeInTheDocument()
-        expect(screen.getByRole('heading', { name: 'Available games' })).toBeInTheDocument()
-        expect(screen.getByRole('heading', { name: 'Rock Paper Scissors Lizard Robot' })).toBeInTheDocument()
-      })
+      expect(await screen.findByRole('link', { name: /player/ })).toHaveAttribute('href', '/account')
+      expect(await screen.findByRole('heading', { level: 1, name: 'Find a game' })).toBeInTheDocument()
+      expect(
+        await screen.findByRole('heading', { name: 'Rock Paper Scissors Lizard Robot' }),
+      ).toBeInTheDocument()
     })
   })
 })

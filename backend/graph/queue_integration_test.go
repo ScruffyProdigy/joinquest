@@ -16,6 +16,7 @@ import (
 	"github.com/99designs/gqlgen/client"
 	"github.com/google/uuid"
 	"github.com/gorilla/websocket"
+	_ "github.com/lib/pq"
 	"github.com/scruffyprodigy/playhub/internal/auth"
 	"github.com/scruffyprodigy/playhub/internal/formingworker"
 	"github.com/scruffyprodigy/playhub/internal/gameclient"
@@ -23,7 +24,6 @@ import (
 	"github.com/scruffyprodigy/playhub/internal/spiritanimal"
 	"github.com/scruffyprodigy/playhub/internal/store"
 	"github.com/scruffyprodigy/playhub/internal/testdb"
-	_ "github.com/lib/pq"
 )
 
 const (
@@ -122,8 +122,11 @@ func (env *queueIntegrationEnv) resolverWithProvisioner(t *testing.T, provisione
 func createTestUserSession(t *testing.T, ctx context.Context, env *queueIntegrationEnv, cleaner *store.TestCleaner) (bearer string, cookie *http.Cookie) {
 	t.Helper()
 
+	// Named on purpose: a player only reaches a queue or table after the
+	// identity prompt, so a nameless one is not a state worth exercising here.
 	user, err := env.Store.CreateUser(ctx, store.CreateUserParams{
-		Email: "queue-ws-" + uuid.NewString() + "@example.com",
+		Email:       "queue-ws-" + uuid.NewString() + "@example.com",
+		DisplayName: "Queue Tester",
 	})
 	if err != nil {
 		t.Fatalf("CreateUser: %v", err)

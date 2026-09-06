@@ -17,15 +17,6 @@ func TestNormalizeDisplayName(t *testing.T) {
 	}
 }
 
-func TestIsProvisionalDisplayName(t *testing.T) {
-	if !IsProvisionalDisplayName("alice (new)") {
-		t.Fatal("expected provisional name")
-	}
-	if IsProvisionalDisplayName("Alice") {
-		t.Fatal("expected custom name")
-	}
-}
-
 func TestUpdateUserProfile(t *testing.T) {
 	st := openTestStore(t)
 	cleaner := st.NewTestCleaner(t)
@@ -43,8 +34,8 @@ func TestUpdateUserProfile(t *testing.T) {
 	if err != nil {
 		t.Fatalf("UpdateUserProfile: %v", err)
 	}
-	if updated.DisplayName != "River" {
-		t.Fatalf("display name: %q", updated.DisplayName)
+	if updated.ChosenDisplayName() != "River" {
+		t.Fatalf("display name: %q", updated.ChosenDisplayName())
 	}
 	if updated.AvatarKey == nil || *updated.AvatarKey != "beacon" {
 		t.Fatalf("avatar key: %+v", updated.AvatarKey)
@@ -91,8 +82,8 @@ func TestUpdateUserProfileNameOnlyPreservesSpiritAnimal(t *testing.T) {
 	if err != nil {
 		t.Fatalf("UpdateUserProfile: %v", err)
 	}
-	if updated.DisplayName != "River" {
-		t.Fatalf("display name: %q", updated.DisplayName)
+	if updated.ChosenDisplayName() != "River" {
+		t.Fatalf("display name: %q", updated.ChosenDisplayName())
 	}
 	if updated.AvatarKey != nil {
 		t.Fatalf("avatar key should stay nil, got %+v", updated.AvatarKey)

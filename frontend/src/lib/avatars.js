@@ -1,7 +1,5 @@
 import { graphqlRequest } from './graphql'
 
-export const PROVISIONAL_DISPLAY_SUFFIX = ' (new)'
-
 export const USER_AVATAR_FIELDS = `
   id
   displayName
@@ -69,26 +67,9 @@ export function resolveUserAvatarUrl(user) {
   return known?.imageUrl ?? `/avatars/${key}.png`
 }
 
-export function isProvisionalDisplayName(name) {
-  return Boolean(name?.trim().endsWith(PROVISIONAL_DISPLAY_SUFFIX))
-}
-
-export function hasExistingAvatar(user) {
-  return Boolean(user?.avatarKey?.trim())
-    || Boolean(user?.avatarUrl?.trim())
-    || user?.avatarSource === 'SPIRIT_ANIMAL'
-}
-
-export function needsProfileSetup(user) {
-  return !hasExistingAvatar(user) || isProvisionalDisplayName(user?.displayName)
-}
-
+/** What the editor should prefill — empty for a player who has no name yet. */
 export function defaultDisplayNameInput(user) {
-  const name = user?.displayName?.trim() || ''
-  if (isProvisionalDisplayName(name)) {
-    return name.slice(0, -PROVISIONAL_DISPLAY_SUFFIX.length).trim()
-  }
-  return name
+  return user?.displayName?.trim() || ''
 }
 
 export async function fetchStarterAvatars() {

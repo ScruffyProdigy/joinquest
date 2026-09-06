@@ -48,7 +48,7 @@ export async function readLaunchMatchId(page) {
 
 export async function returnFromMatch(page, matchId) {
   await page.goto(`/return?match=${encodeURIComponent(matchId)}`)
-  await expect(page.getByRole('heading', { name: 'Available games' })).toBeVisible({
+  await expect(page.getByRole('heading', { level: 1, name: 'Find a game' })).toBeVisible({
     timeout: 20000,
   })
 }

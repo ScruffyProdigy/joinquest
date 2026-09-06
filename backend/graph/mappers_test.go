@@ -18,7 +18,7 @@ func TestToGraphQLUser(t *testing.T) {
 		ID:          uuid.MustParse("550e8400-e29b-41d4-a716-446655440000"),
 		Email:       email,
 		Username:    "user",
-		DisplayName: displayName,
+		DisplayName: &displayName,
 		CreatedAt:   createdAt,
 	})
 
@@ -27,6 +27,12 @@ func TestToGraphQLUser(t *testing.T) {
 	}
 	if user.DisplayName == nil || *user.DisplayName != displayName {
 		t.Fatalf("unexpected display name: %+v", user.DisplayName)
+	}
+
+	// A player who never picked one maps through as absent, not as a placeholder.
+	nameless := ToGraphQLUser(&store.User{ID: uuid.New(), Username: "guest_x", IsGuest: true})
+	if nameless.DisplayName != nil {
+		t.Fatalf("expected no display name, got %q", *nameless.DisplayName)
 	}
 }
 

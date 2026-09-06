@@ -1,0 +1,88 @@
+import { describe, it, expect } from 'vitest'
+import {
+  chosenDisplayName,
+  hasChosenAvatar,
+  hasChosenDisplayName,
+  needsIdentity,
+  viewerTier,
+  VIEWER_GUEST,
+  VIEWER_MEMBER,
+  VIEWER_PASSIVE,
+} from './viewer'
+
+describe('viewerTier', () => {
+  it('reads no session as a passive viewer', () => {
+    expect(viewerTier(null)).toBe(VIEWER_PASSIVE)
+    expect(viewerTier(undefined)).toBe(VIEWER_PASSIVE)
+  })
+
+  it('separates guests from full accounts on isGuest alone', () => {
+    expect(viewerTier({ isGuest: true })).toBe(VIEWER_GUEST)
+    expect(viewerTier({ isGuest: false })).toBe(VIEWER_MEMBER)
+  })
+
+  it('does not consult the display name', () => {
+    // A nameless account is still a full account.
+    expect(viewerTier({ isGuest: false, displayName: null })).toBe(VIEWER_MEMBER)
+    // ...and a named guest is still a guest.
+    expect(viewerTier({ isGuest: true, displayName: 'Ryan' })).toBe(VIEWER_GUEST)
+  })
+})
+
+describe('hasChosenDisplayName', () => {
+  it('is simply whether there is a name', () => {
+    expect(hasChosenDisplayName({ displayName: 'Ryan' })).toBe(true)
+    // A name that merely looks generated is still a name the player chose.
+    expect(hasChosenDisplayName({ displayName: 'guest#135780Tester' })).toBe(true)
+    expect(hasChosenDisplayName({ displayName: null })).toBe(false)
+    expect(hasChosenDisplayName({ displayName: '   ' })).toBe(false)
+    expect(hasChosenDisplayName({})).toBe(false)
+    expect(hasChosenDisplayName(null)).toBe(false)
+  })
+})
+
+describe('hasChosenAvatar', () => {
+  it('accepts a key, a url, or a spirit animal', () => {
+    expect(hasChosenAvatar({ avatarKey: 'compass' })).toBe(true)
+    expect(hasChosenAvatar({ avatarUrl: 'https://joinquest.cc/avatars/spirit/wolf.png' })).toBe(true)
+    expect(hasChosenAvatar({ avatarSource: 'SPIRIT_ANIMAL' })).toBe(true)
+    expect(hasChosenAvatar({ displayName: 'Pat' })).toBe(false)
+    expect(hasChosenAvatar({ avatarKey: '   ' })).toBe(false)
+  })
+})
+
+describe('chosenDisplayName', () => {
+  it('gives back a name only once it was chosen', () => {
+    expect(chosenDisplayName({ displayName: 'Ryan' })).toBe('Ryan')
+    expect(chosenDisplayName({ displayName: null })).toBe('')
+    expect(chosenDisplayName(null)).toBe('')
+  })
+})
+
+describe('needsIdentity', () => {
+  const complete = { displayName: 'FrostFox4827', avatarKey: 'sigil-canine' }
+
+  it('prompts a visitor with no session', () => {
+    expect(needsIdentity(null)).toBe(true)
+  })
+
+  it('prompts a fresh guest who has neither', () => {
+    expect(needsIdentity({ displayName: null, avatarKey: '' })).toBe(true)
+  })
+
+  it('prompts when only the avatar is missing', () => {
+    expect(needsIdentity({ displayName: 'Ryan', avatarKey: '' })).toBe(true)
+  })
+
+  it('prompts when only the name is missing', () => {
+    expect(needsIdentity({ displayName: null, avatarKey: 'sigil-canine' })).toBe(true)
+  })
+
+  it('leaves a guest who already picked both alone', () => {
+    expect(needsIdentity({ ...complete, isGuest: true })).toBe(false)
+  })
+
+  it('leaves a signed-in player with a spirit animal alone', () => {
+    expect(needsIdentity({ displayName: 'Ryan', avatarUrl: 'https://cdn/spirit.png' })).toBe(false)
+  })
+})

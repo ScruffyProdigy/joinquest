@@ -14,9 +14,9 @@ test.describe('Debug Tests', () => {
       console.log('Page content length:', content.length)
       console.log('Page content preview:', content.substring(0, 500))
       
-      console.log('Checking if JoinQuest text exists...')
-      const hasJoinQuest = await page.getByText('JoinQuest').isVisible()
-      console.log('JoinQuest text visible:', hasJoinQuest)
+      console.log('Checking if the catalog heading exists...')
+      const hasCatalog = await page.getByRole('heading', { level: 1, name: 'Find a game' }).isVisible()
+      console.log('Catalog heading visible:', hasCatalog)
       
       console.log('Checking page title...')
       const title = await page.title()

@@ -17,11 +17,6 @@ var ErrInvalidDisplayName = errors.New("store: invalid display name")
 
 const MaxDisplayNameLen = 100
 
-// IsProvisionalDisplayName reports auto-generated names awaiting player customization.
-func IsProvisionalDisplayName(name string) bool {
-	return strings.HasSuffix(strings.TrimSpace(name), ProvisionalDisplayNameSuffix)
-}
-
 // NormalizeDisplayName trims and validates a player-visible display name.
 func NormalizeDisplayName(raw string) (string, error) {
 	name := strings.TrimSpace(raw)
@@ -58,18 +53,6 @@ func scanUser(row interface{ Scan(dest ...any) error }) (*User, error) {
 
 const userColumns = `id, email, username, display_name, avatar_url, avatar_key, avatar_source, is_guest, created_at`
 
-// ProvisionalDisplayNameSuffix marks auto-generated display names until the user picks one.
-const ProvisionalDisplayNameSuffix = " (new)"
-
-// DefaultDisplayName builds the initial visible name for a new player.
-func DefaultDisplayName(email string) string {
-	local := strings.Split(strings.ToLower(strings.TrimSpace(email)), "@")[0]
-	if local == "" {
-		local = "player"
-	}
-	return local + ProvisionalDisplayNameSuffix
-}
-
 func (s *Store) GetUserByID(ctx context.Context, id uuid.UUID) (*User, error) {
 	row := s.db.QueryRowContext(ctx, `
 		SELECT `+userColumns+`
@@ -96,9 +79,10 @@ func (s *Store) CreateUser(ctx context.Context, params CreateUserParams) (*User,
 		return nil, err
 	}
 
-	displayName := strings.TrimSpace(params.DisplayName)
-	if displayName == "" {
-		displayName = DefaultDisplayName(email)
+	// No name unless the caller supplied one; the identity prompt collects it.
+	var displayName *string
+	if trimmed := strings.TrimSpace(params.DisplayName); trimmed != "" {
+		displayName = &trimmed
 	}
 
 	row := s.db.QueryRowContext(ctx, `
