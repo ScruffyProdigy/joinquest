@@ -368,4 +368,3 @@ func queuePaths(node map[string]any, path []string) ([]string, error) {
 		return out, nil
 	}
 }
-

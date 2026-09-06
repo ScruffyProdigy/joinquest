@@ -13,13 +13,13 @@ import (
 	"github.com/99designs/gqlgen/client"
 	"github.com/99designs/gqlgen/graphql/handler"
 	"github.com/google/uuid"
+	_ "github.com/lib/pq"
 	"github.com/scruffyprodigy/playhub/graph/generated"
 	"github.com/scruffyprodigy/playhub/internal/auth"
 	"github.com/scruffyprodigy/playhub/internal/email"
 	"github.com/scruffyprodigy/playhub/internal/pubsub"
 	"github.com/scruffyprodigy/playhub/internal/store"
 	"github.com/scruffyprodigy/playhub/internal/testdb"
-	_ "github.com/lib/pq"
 )
 
 func newAuthGraphQLTestClient(t *testing.T) (*client.Client, http.Handler, *store.Store) {
@@ -301,4 +301,3 @@ func TestAuthGraphQLRejectsInvalidLoginCode(t *testing.T) {
 		t.Fatalf("expected friendly invalid code error, got: %v", err)
 	}
 }
-

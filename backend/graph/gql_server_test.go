@@ -57,7 +57,7 @@ func TestNewDefaultServerWebSocketPreventsLoopbackOriginFix(t *testing.T) {
 		Upgrader: websocket.Upgrader{
 			CheckOrigin: auth.WebSocketOriginAllowed,
 		},
-		InitFunc:              WebsocketInitFunc(signer, nil),
+		InitFunc: WebsocketInitFunc(signer, nil),
 	})
 
 	srv := httptest.NewServer(auth.Middleware(signer, nil, broken))

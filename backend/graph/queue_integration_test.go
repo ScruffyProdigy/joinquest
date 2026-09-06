@@ -16,6 +16,7 @@ import (
 	"github.com/99designs/gqlgen/client"
 	"github.com/google/uuid"
 	"github.com/gorilla/websocket"
+	_ "github.com/lib/pq"
 	"github.com/scruffyprodigy/playhub/internal/auth"
 	"github.com/scruffyprodigy/playhub/internal/formingworker"
 	"github.com/scruffyprodigy/playhub/internal/gameclient"
@@ -23,7 +24,6 @@ import (
 	"github.com/scruffyprodigy/playhub/internal/spiritanimal"
 	"github.com/scruffyprodigy/playhub/internal/store"
 	"github.com/scruffyprodigy/playhub/internal/testdb"
-	_ "github.com/lib/pq"
 )
 
 const (

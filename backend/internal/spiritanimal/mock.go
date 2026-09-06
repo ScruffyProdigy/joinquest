@@ -103,12 +103,12 @@ func mockQuestionsJSON(userPrompt string) json.RawMessage {
 		}
 		name, _ := tarot.CardName(idx)
 		cards = append(cards, map[string]any{
-			"slot":                      slot.Key,
-			"slot_name":                 slot.Name,
-			"card":                      name,
-			"card_meaning_in_general":   "A symbolic turning point.",
-			"card_meaning_for_slot":     fmt.Sprintf("In the %s position, %s speaks to the journey.", slot.Name, name),
-			"question":                  fmt.Sprintf("When the path bends toward %s, what do you trust first?", slot.Name),
+			"slot":                    slot.Key,
+			"slot_name":               slot.Name,
+			"card":                    name,
+			"card_meaning_in_general": "A symbolic turning point.",
+			"card_meaning_for_slot":   fmt.Sprintf("In the %s position, %s speaks to the journey.", slot.Name, name),
+			"question":                fmt.Sprintf("When the path bends toward %s, what do you trust first?", slot.Name),
 			"answers": []map[string]string{
 				{"id": "A", "label": "Instinct"},
 				{"id": "B", "label": "Memory"},
@@ -137,18 +137,18 @@ func mockPersonalityJSON() json.RawMessage {
 		"tensions":        []string{"restlessness"},
 		"social_identity": "The friend who makes room for everyone.",
 		"avatar_signals": map[string]any{
-			"leadership_style":        "collaborative",
-			"group_role":              "connector",
-			"decision_style":          "intuitive",
-			"relationship_to_change":  "adaptive",
-			"creative_style":          "expressive",
-			"social_energy":           "bright but gentle",
-			"candidate_animals":       []string{"fox", "otter", "owl", "rabbit", "deer"},
-			"candidate_palettes":      []string{"amber", "seafoam", "violet", "rose", "sage"},
-			"candidate_symbols":           []string{"lantern", "leaf", "star"},
-			"candidate_magical_effects":   []string{"soft lantern glow aura", "floating leaf sparkle motes", "gentle star halo ring"},
-			"shadow_traits":               []string{"overthinking"},
-			"beacon_themes":           []string{"guidance"},
+			"leadership_style":          "collaborative",
+			"group_role":                "connector",
+			"decision_style":            "intuitive",
+			"relationship_to_change":    "adaptive",
+			"creative_style":            "expressive",
+			"social_energy":             "bright but gentle",
+			"candidate_animals":         []string{"fox", "otter", "owl", "rabbit", "deer"},
+			"candidate_palettes":        []string{"amber", "seafoam", "violet", "rose", "sage"},
+			"candidate_symbols":         []string{"lantern", "leaf", "star"},
+			"candidate_magical_effects": []string{"soft lantern glow aura", "floating leaf sparkle motes", "gentle star halo ring"},
+			"shadow_traits":             []string{"overthinking"},
+			"beacon_themes":             []string{"guidance"},
 		},
 	})
 	return out
@@ -168,20 +168,20 @@ func mockTotemsJSON() json.RawMessage {
 	totems := make([]map[string]any, 0, 5)
 	for i, name := range names {
 		totems = append(totems, map[string]any{
-			"name":                 name,
-			"animal":               animals[i],
-			"social_archetype":     fmt.Sprintf("Archetype %d", i+1),
-			"core_concept":         "A playful companion for the journey.",
-			"color_palette":        []string{"amber", "cream"},
-			"pose":                 poses[i],
-			"expression":           expressions[i],
-			"accessory":            "scarf",
-			"shadow_element":       "a tiny cloud",
-			"beacon_ornament":      "star charm",
-			"personality_summary":  "Warm, curious, and easy to spot in a crowd.",
-			"why_this_animal":      "Matches the reading's social energy.",
-			"origin_story":         "Found at a crossroads of lantern light.",
-			"image_prompt":         fmt.Sprintf("Cute chibi %s mascot with large expressive eyes, simplified shapes, strong silhouette, oversized head and tiny body. %s with %s. Friendly approachable game avatar style.", animals[i], poses[i], expressions[i]),
+			"name":                name,
+			"animal":              animals[i],
+			"social_archetype":    fmt.Sprintf("Archetype %d", i+1),
+			"core_concept":        "A playful companion for the journey.",
+			"color_palette":       []string{"amber", "cream"},
+			"pose":                poses[i],
+			"expression":          expressions[i],
+			"accessory":           "scarf",
+			"shadow_element":      "a tiny cloud",
+			"beacon_ornament":     "star charm",
+			"personality_summary": "Warm, curious, and easy to spot in a crowd.",
+			"why_this_animal":     "Matches the reading's social energy.",
+			"origin_story":        "Found at a crossroads of lantern light.",
+			"image_prompt":        fmt.Sprintf("Cute chibi %s mascot with large expressive eyes, simplified shapes, strong silhouette, oversized head and tiny body. %s with %s. Friendly approachable game avatar style.", animals[i], poses[i], expressions[i]),
 		})
 	}
 	out, _ := json.Marshal(map[string]any{"totems": totems})
@@ -193,12 +193,12 @@ func mockRankingJSON() json.RawMessage {
 	avatars := make([]map[string]any, 0, 5)
 	for i, name := range names {
 		avatars = append(avatars, map[string]any{
-			"name":                                  name,
-			"fit_score":                             95 - i*5,
-			"affinity":                              "Strong match",
+			"name":                                   name,
+			"fit_score":                              95 - i*5,
+			"affinity":                               "Strong match",
 			"what_part_of_the_reading_it_emphasizes": "Warmth and curiosity",
-			"why_this_animal_makes_sense":           "Reflects your group role.",
-			"why_someone_might_choose_this_avatar":  "Feels welcoming at a table.",
+			"why_this_animal_makes_sense":            "Reflects your group role.",
+			"why_someone_might_choose_this_avatar":   "Feels welcoming at a table.",
 		})
 	}
 	out, _ := json.Marshal(map[string]any{

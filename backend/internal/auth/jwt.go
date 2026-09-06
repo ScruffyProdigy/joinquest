@@ -20,9 +20,9 @@ import (
 )
 
 const (
-	defaultJWTKID   = "lobby-dev"
-	devJWTKeyFile   = ".dev-jwt-key.pem"
-	devJWTKeyPerms  = 0o600
+	defaultJWTKID  = "lobby-dev"
+	devJWTKeyFile  = ".dev-jwt-key.pem"
+	devJWTKeyPerms = 0o600
 )
 
 // Signer creates and verifies session JWTs.

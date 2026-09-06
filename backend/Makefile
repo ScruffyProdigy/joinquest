@@ -1,11 +1,34 @@
 # GraphQL Code Generation, Testing, and Database Migrations
 
-.PHONY: generate test test-drift test-all migrate-up migrate-down migrate-version migrate-force
+.PHONY: generate fmt fmt-check test test-drift test-all migrate-up migrate-down migrate-version migrate-force
 
 # Generate GraphQL code
 generate:
 	@echo "Generating GraphQL code..."
 	go run github.com/99designs/gqlgen@v0.17.81 generate
+
+# Format Go sources (graph/generated is owned by gqlgen, so it is left alone)
+fmt:
+	@files=$$(gofmt -l . | grep -v '^graph/generated/' || true); \
+	if [ -n "$$files" ]; then \
+		gofmt -w $$files; \
+		echo "Formatted:"; \
+		echo "$$files"; \
+	else \
+		echo "✅ Nothing to format."; \
+	fi
+
+# Fail if any Go file is not gofmt'd (useful for CI)
+fmt-check:
+	@echo "Checking gofmt formatting..."
+	@files=$$(gofmt -l . | grep -v '^graph/generated/' || true); \
+	if [ -n "$$files" ]; then \
+		echo "❌ These files are not gofmt'd:"; \
+		echo "$$files"; \
+		echo "Run 'make fmt' to fix."; \
+		exit 1; \
+	fi
+	@echo "✅ All Go files are gofmt'd."
 
 # Run all tests
 test:
@@ -59,6 +82,8 @@ migrate-force:
 help:
 	@echo "Available targets:"
 	@echo "  generate        - Generate GraphQL code using gqlgen"
+	@echo "  fmt            - Format Go sources with gofmt"
+	@echo "  fmt-check      - Fail if any Go file is not gofmt'd (for CI)"
 	@echo "  test           - Run all tests"
 	@echo "  test-drift     - Run only drift detection tests"
 	@echo "  test-all       - Run drift detection and all tests"

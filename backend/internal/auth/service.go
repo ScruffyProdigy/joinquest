@@ -16,12 +16,12 @@ import (
 )
 
 var (
-	ErrInvalidEmail          = errors.New("auth: invalid email address")
-	ErrInvalidMagicLink      = errors.New("Invalid or expired sign-in link. Request a new sign-in email.")
-	ErrInvalidLoginCode      = errors.New("Invalid or expired code. Try again or use the sign-in link in your email.")
-	ErrMagicLinkRateLimit    = errors.New("Too many sign-in emails requested. Please wait and try again.")
-	ErrTooManyLoginAttempts  = errors.New("Too many incorrect codes. Request a new sign-in email.")
-	ErrSignInEmailNotSent    = errors.New("Could not send sign-in email. Please try again in a few minutes.")
+	ErrInvalidEmail         = errors.New("auth: invalid email address")
+	ErrInvalidMagicLink     = errors.New("Invalid or expired sign-in link. Request a new sign-in email.")
+	ErrInvalidLoginCode     = errors.New("Invalid or expired code. Try again or use the sign-in link in your email.")
+	ErrMagicLinkRateLimit   = errors.New("Too many sign-in emails requested. Please wait and try again.")
+	ErrTooManyLoginAttempts = errors.New("Too many incorrect codes. Request a new sign-in email.")
+	ErrSignInEmailNotSent   = errors.New("Could not send sign-in email. Please try again in a few minutes.")
 )
 
 const (

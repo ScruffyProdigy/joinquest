@@ -10,17 +10,17 @@ import (
 
 // UserActiveIntent is the user's catalog play intent: waiting or matched queue membership.
 type UserActiveIntent struct {
-	GameID          uuid.UUID
-	GameName        string
-	ModeQueueID     uuid.UUID
-	ModeID          uuid.UUID
-	ModeName        string
-	SeatKey         string
-	Waiting         bool
-	Matched         bool
-	QueuedCount     int
-	QueuePath       *string
-	SessionID       *uuid.UUID
+	GameID      uuid.UUID
+	GameName    string
+	ModeQueueID uuid.UUID
+	ModeID      uuid.UUID
+	ModeName    string
+	SeatKey     string
+	Waiting     bool
+	Matched     bool
+	QueuedCount int
+	QueuePath   *string
+	SessionID   *uuid.UUID
 }
 
 // GetUserActiveIntent returns the user's catalog play intent. An in-progress game session

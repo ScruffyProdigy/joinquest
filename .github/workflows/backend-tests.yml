@@ -38,6 +38,11 @@ jobs:
         cd backend
         go mod download
 
+    - name: Check gofmt formatting
+      run: |
+        cd backend
+        make fmt-check
+
     - name: Run go vet
       run: |
         cd backend

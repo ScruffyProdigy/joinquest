@@ -7,8 +7,8 @@ import (
 	"os"
 	"time"
 
-	"github.com/scruffyprodigy/playhub/internal/migrate"
 	_ "github.com/lib/pq"
+	"github.com/scruffyprodigy/playhub/internal/migrate"
 )
 
 var DB *sql.DB
