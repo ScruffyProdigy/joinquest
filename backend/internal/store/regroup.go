@@ -286,10 +286,22 @@ func (s *Store) GetRegroupTableID(ctx context.Context, sessionID uuid.UUID) (*uu
 // finished match it originated from. Returns nil, not an error, when no session points at
 // this table — an ordinary table (created directly, never reached via playAgain) is the
 // normal case, not a failure.
+//
+// regroup_table_id is not unique and is never cleared, so a room that plays more than once
+// at its persistent table accumulates one matching row per match: CompleteSession stamps
+// the finished session via resetRoomTableAfterSessionTx without touching the previous
+// ones. The most recently started match is the one this table is regrouping from, so the
+// ordering is load-bearing — without it Postgres is free to return the oldest row, which
+// would name players who already left and omit anyone who backfilled since. The id
+// tiebreak only keeps the answer stable if two sessions somehow share a started_at.
 func (s *Store) GetSessionIDByRegroupTable(ctx context.Context, tableID uuid.UUID) (*uuid.UUID, error) {
 	var id uuid.UUID
 	err := s.db.QueryRowContext(ctx, `
-		SELECT id FROM game_sessions WHERE regroup_table_id = $1
+		SELECT id
+		FROM game_sessions
+		WHERE regroup_table_id = $1
+		ORDER BY started_at DESC NULLS LAST, id DESC
+		LIMIT 1
 	`, tableID).Scan(&id)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
