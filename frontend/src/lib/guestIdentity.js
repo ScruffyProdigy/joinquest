@@ -38,6 +38,16 @@ export const SIGIL_FAMILIES = [
 ]
 
 /**
+ * The face a guest wears, drawn by the renderer over the family's eye positions.
+ * It is drawn independently of the colour on purpose: an expression derived from
+ * the colour would land the same way on exactly the two guests a shared colour
+ * already makes hard to tell apart, so it would add no variety where it is needed.
+ * Matches SigilExpressions in backend/internal/avatars/sigil.go, first entry
+ * first — that one is the plain face, and the face a key without one still gets.
+ */
+export const SIGIL_EXPRESSIONS = ['wide', 'bright', 'squint', 'wink', 'sleepy']
+
+/**
  * Only the disc colour is chosen here. The mark drawn on top of it, and the hue
  * sweep across it, are derived from this colour by the renderer in
  * backend/internal/avatars/sigil.go, which is what guarantees their contrast.
@@ -255,24 +265,24 @@ function spreadHues(count) {
   return sampleWithoutReplacement(positions, positions.length)
 }
 
-export function sigilAvatarKey(familyKey, hex) {
-  return `sigil-${familyKey}-${hex}`
+export function sigilAvatarKey(familyKey, hex, expression) {
+  return `sigil-${familyKey}-${hex}-${expression}`
 }
 
-export function sigilImageUrl(familyKey, hex) {
-  return `/avatars/sigils/${familyKey}-${hex}.svg`
+export function sigilImageUrl(familyKey, hex, expression) {
+  return `/avatars/sigils/${familyKey}-${hex}-${expression}.svg`
 }
 
 /**
  * Builds one identity: a tint word, a noun from `family`, and a 4-digit number.
  * The number is what keeps two guests from colliding on the same name.
  */
-export function generateGuestIdentity(family, tint = generateTint()) {
+export function generateGuestIdentity(family, tint = generateTint(), expression = pickOne(SIGIL_EXPRESSIONS)) {
   const number = NUMBER_MIN + randomInt(NUMBER_MAX - NUMBER_MIN + 1)
   return {
     name: `${tint.word}${pickOne(family.nouns)}${number}`,
-    avatarKey: sigilAvatarKey(family.key, tint.hex),
-    imageUrl: sigilImageUrl(family.key, tint.hex),
+    avatarKey: sigilAvatarKey(family.key, tint.hex, expression),
+    imageUrl: sigilImageUrl(family.key, tint.hex, expression),
   }
 }
 

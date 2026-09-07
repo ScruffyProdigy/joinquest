@@ -15,7 +15,7 @@ func TestSigilByKeyResolvesEveryFamily(t *testing.T) {
 		if !ok {
 			t.Fatalf("SigilByKey(%q) not found", key)
 		}
-		want := "sigils/" + family + "-3b82f6.svg"
+		want := "sigils/" + family + "-3b82f6-wide.svg"
 		if entry.File != want {
 			t.Fatalf("SigilByKey(%q) file = %q, want %q", key, entry.File, want)
 		}
@@ -34,7 +34,7 @@ func TestSigilByKeyResolvesLegacyTintNames(t *testing.T) {
 		if !ok {
 			t.Fatalf("SigilByKey(%q) not found", key)
 		}
-		if want := "sigils/canine-" + hex + ".svg"; entry.File != want {
+		if want := "sigils/canine-" + hex + "-wide.svg"; entry.File != want {
 			t.Fatalf("SigilByKey(%q) file = %q, want %q", key, entry.File, want)
 		}
 	}
@@ -61,11 +61,11 @@ func TestSigilByKeyRejectsUnknown(t *testing.T) {
 
 func TestRenderSigilDrawsEveryFamilyInItsColour(t *testing.T) {
 	for _, family := range SigilFamilies {
-		svg, ok := RenderSigil(family, "3b82f6")
+		svg, ok := RenderSigil(family, "3b82f6", "wide")
 		if !ok {
 			t.Fatalf("RenderSigil(%q) not drawn", family)
 		}
-		if !strings.Contains(svg, `<circle cx="32" cy="32" r="32" fill="url(#g`+family+`3b82f6)"/>`) {
+		if !strings.Contains(svg, `<circle cx="32" cy="32" r="32" fill="url(#g`+family+`3b82f6wide)"/>`) {
 			t.Fatalf("RenderSigil(%q) is missing its tinted disc: %s", family, svg)
 		}
 		mark := sigilMark("3b82f6")
@@ -83,7 +83,7 @@ func TestRenderSigilDrawsEveryFamilyInItsColour(t *testing.T) {
 
 func TestSigilHandlerServesRenderedSVG(t *testing.T) {
 	rec := httptest.NewRecorder()
-	SigilHandler().ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/avatars/sigils/canine-3b82f6.svg", nil))
+	SigilHandler().ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/avatars/sigils/canine-3b82f6-wide.svg", nil))
 
 	if rec.Code != http.StatusOK {
 		t.Fatalf("status = %d, want 200", rec.Code)
@@ -93,7 +93,7 @@ func TestSigilHandlerServesRenderedSVG(t *testing.T) {
 	}
 	// The base colour no longer appears literally: the disc is filled by a gradient
 	// whose two stops sit either side of that hue.
-	if !strings.Contains(rec.Body.String(), "url(#gcanine3b82f6)") {
+	if !strings.Contains(rec.Body.String(), "url(#gcanine3b82f6wide)") {
 		t.Fatalf("body is not drawn in the requested colour: %s", rec.Body.String())
 	}
 	from, to := sigilGradient("3b82f6")
@@ -210,9 +210,97 @@ func TestSigilGradientLiftTapersTowardTheMiddle(t *testing.T) {
 	}
 }
 
+// An expression is optional in a key. Everything saved before expressions existed
+// has two parts, and has to keep resolving to the plain face it already renders.
+func TestSigilByKeyDefaultsTheExpression(t *testing.T) {
+	for _, key := range []string{"sigil-canine-3b82f6", "sigil-canine-frost"} {
+		entry, ok := SigilByKey(key)
+		if !ok {
+			t.Fatalf("SigilByKey(%q) not found", key)
+		}
+		if !strings.HasSuffix(entry.File, "-wide.svg") {
+			t.Fatalf("SigilByKey(%q) file = %q, want the plain face", key, entry.File)
+		}
+	}
+	entry, ok := SigilByKey("sigil-canine-3b82f6-wink")
+	if !ok || entry.File != "sigils/canine-3b82f6-wink.svg" {
+		t.Fatalf("SigilByKey with an expression = %q, %v", entry.File, ok)
+	}
+	if _, ok := SigilByKey("sigil-canine-3b82f6-smirk"); ok {
+		t.Fatal("an unknown expression should not resolve")
+	}
+}
+
+// The whole point of the expression axis is that it distinguishes two guests who
+// already share a family and a colour, so it has to actually change the drawing.
+func TestSigilExpressionsDrawDifferently(t *testing.T) {
+	for family := range sigilEyes {
+		seen := map[string]string{}
+		for _, expression := range SigilExpressions {
+			svg, ok := RenderSigil(family, "2f6f3f", expression)
+			if !ok {
+				t.Fatalf("RenderSigil(%q, %q) failed", family, expression)
+			}
+			if other, clash := seen[svg]; clash {
+				t.Fatalf("%q draws %q and %q identically", family, other, expression)
+			}
+			seen[svg] = expression
+		}
+	}
+}
+
+// Five families have no eyes to put an expression on — a raptor seen from below,
+// a starfish. Their keys still carry one, and it still separates them in the key,
+// but the drawing is the same. This is a known gap, pinned so it stays deliberate.
+func TestEyelessFamiliesIgnoreTheExpression(t *testing.T) {
+	eyeless := []string{"raptor", "chelonian", "lepidopteran", "echinoderm", "gastropod"}
+	for _, family := range eyeless {
+		if _, ok := sigilEyes[family]; ok {
+			t.Fatalf("%q has eyes now — give it expressions and drop it from this list", family)
+		}
+		first, _ := RenderSigil(family, "2f6f3f", SigilExpressions[0])
+		for _, expression := range SigilExpressions[1:] {
+			svg, _ := RenderSigil(family, "2f6f3f", expression)
+			// The gradient id carries the expression, so compare the drawing itself.
+			if strings.Count(svg, "<circle") != strings.Count(first, "<circle") ||
+				strings.Count(svg, "<path") != strings.Count(first, "<path") {
+				t.Fatalf("%q unexpectedly changed shape for %q", family, expression)
+			}
+		}
+	}
+	if len(sigilEyes)+len(eyeless) != len(SigilFamilies) {
+		t.Fatalf("%d families have eyes and %d are listed eyeless, but there are %d",
+			len(sigilEyes), len(eyeless), len(SigilFamilies))
+	}
+}
+
+// The lean is stable for a given avatar and varied across them, so a row of sigils
+// does not sit to attention but a guest's own avatar never moves.
+func TestSigilTiltIsStableAndVaried(t *testing.T) {
+	if sigilTilt("canine3b82f6wink") != sigilTilt("canine3b82f6wink") {
+		t.Fatal("tilt is not stable for the same key")
+	}
+	seen := map[float64]bool{}
+	for _, hex := range []string{"2f6f3f", "b32d1e", "1f8f9a", "9a2f8a", "e8e2b0", "123a5c"} {
+		for _, expression := range SigilExpressions {
+			seen[sigilTilt("canine"+hex+expression)] = true
+		}
+	}
+	if len(seen) < 25 {
+		t.Fatalf("tilt only took %d values across 30 keys", len(seen))
+	}
+	for angle := range seen {
+		if angle < -6 || angle > 6 {
+			t.Fatalf("tilt of %.2f degrees is outside the intended lean", angle)
+		}
+	}
+}
+
 func TestSigilHandlerRejectsBadPaths(t *testing.T) {
 	for _, path := range []string{
-		"/avatars/sigils/canine-3b82f6",      // no extension
+		"/avatars/sigils/canine-3b82f6",           // no extension
+		"/avatars/sigils/canine-3b82f6-smirk.svg", // unknown expression
+		"/avatars/sigils/canine-3b82f6-wide-x.svg",
 		"/avatars/sigils/canine-notahex.svg", // unknown colour
 		"/avatars/sigils/dragon-3b82f6.svg",  // unknown family
 		"/avatars/sigils/canine.svg",         // no colour

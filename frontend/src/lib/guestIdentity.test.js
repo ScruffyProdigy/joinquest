@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest'
 import {
   GUEST_IDENTITY_CHOICES,
   SIGIL_FAMILIES,
+  SIGIL_EXPRESSIONS,
   SIGIL_HUE_WORDS,
   generateGuestIdentities,
   generateGuestIdentity,
@@ -22,7 +23,9 @@ describe('generateGuestIdentity', () => {
   it('pairs the name with a noun from its own sigil family', () => {
     for (const family of SIGIL_FAMILIES) {
       const identity = generateGuestIdentity(family)
-      expect(identity.avatarKey).toMatch(new RegExp(`^sigil-${family.key}-[0-9a-f]{6}$`))
+      expect(identity.avatarKey).toMatch(
+        new RegExp(`^sigil-${family.key}-[0-9a-f]{6}-(${SIGIL_EXPRESSIONS.join('|')})$`),
+      )
       expect(family.nouns.some((noun) => identity.name.includes(noun))).toBe(true)
     }
   })
@@ -31,10 +34,10 @@ describe('generateGuestIdentity', () => {
     const slice = 360 / SIGIL_HUE_WORDS.length
     SIGIL_HUE_WORDS.forEach((word, index) => {
       const tint = generateTint(index * slice + slice / 2)
-      const identity = generateGuestIdentity(SIGIL_FAMILIES[0], tint)
+      const identity = generateGuestIdentity(SIGIL_FAMILIES[0], tint, 'wide')
       expect(identity.name.startsWith(word)).toBe(true)
-      expect(identity.avatarKey).toBe(`sigil-canine-${tint.hex}`)
-      expect(identity.imageUrl).toBe(`/avatars/sigils/canine-${tint.hex}.svg`)
+      expect(identity.avatarKey).toBe(`sigil-canine-${tint.hex}-wide`)
+      expect(identity.imageUrl).toBe(`/avatars/sigils/canine-${tint.hex}-wide.svg`)
     })
   })
 
@@ -107,6 +110,31 @@ describe('generateTint', () => {
     expect(mean).toBeGreaterThan(0.5)
     expect(spread).toBeGreaterThan(0.08)
     expect(saturations.filter((value) => value > 0.99).length / saturations.length).toBeLessThan(0.1)
+  })
+})
+
+describe('expressions', () => {
+  it('draws every face, and draws them independently of the colour', () => {
+    // Independence is the point: tied to the colour, an expression would repeat on
+    // exactly the pair of guests a shared colour already makes hard to tell apart.
+    const seen = new Set()
+    const perColour = new Set()
+    const tint = generateTint(0)
+    for (let i = 0; i < 400; i += 1) {
+      seen.add(generateGuestIdentity(SIGIL_FAMILIES[0]).avatarKey.split('-').pop())
+      perColour.add(generateGuestIdentity(SIGIL_FAMILIES[0], tint).avatarKey.split('-').pop())
+    }
+    expect([...seen].sort()).toEqual([...SIGIL_EXPRESSIONS].sort())
+    expect(perColour.size).toBe(SIGIL_EXPRESSIONS.length)
+  })
+
+  it('multiplies the identities a table can tell apart', () => {
+    const identities = new Set()
+    for (let i = 0; i < 4000; i += 1) {
+      const { avatarKey } = generateGuestIdentity(SIGIL_FAMILIES[0])
+      identities.add(avatarKey.split('-').pop())
+    }
+    expect(identities.size).toBe(SIGIL_EXPRESSIONS.length)
   })
 })
 
