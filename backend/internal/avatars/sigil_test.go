@@ -1,6 +1,7 @@
 package avatars
 
 import (
+	"math"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -64,7 +65,7 @@ func TestRenderSigilDrawsEveryFamilyInItsColour(t *testing.T) {
 		if !ok {
 			t.Fatalf("RenderSigil(%q) not drawn", family)
 		}
-		if !strings.Contains(svg, `<circle cx="32" cy="32" r="32" fill="#3b82f6"/>`) {
+		if !strings.Contains(svg, `<circle cx="32" cy="32" r="32" fill="url(#g`+family+`3b82f6)"/>`) {
 			t.Fatalf("RenderSigil(%q) is missing its tinted disc: %s", family, svg)
 		}
 		mark := sigilMark("3b82f6")
@@ -73,6 +74,9 @@ func TestRenderSigilDrawsEveryFamilyInItsColour(t *testing.T) {
 		}
 		if !strings.Contains(svg, `stroke="`+mark+`"`) {
 			t.Fatalf("RenderSigil(%q) draws no rim: %s", family, svg)
+		}
+		if !strings.Contains(svg, "<linearGradient") {
+			t.Fatalf("RenderSigil(%q) draws no gradient: %s", family, svg)
 		}
 	}
 }
@@ -87,20 +91,69 @@ func TestSigilHandlerServesRenderedSVG(t *testing.T) {
 	if got := rec.Header().Get("Content-Type"); got != "image/svg+xml" {
 		t.Fatalf("Content-Type = %q, want image/svg+xml", got)
 	}
-	if !strings.Contains(rec.Body.String(), "#3b82f6") {
+	// The base colour no longer appears literally: the disc is filled by a gradient
+	// whose two stops sit either side of that hue.
+	if !strings.Contains(rec.Body.String(), "url(#gcanine3b82f6)") {
 		t.Fatalf("body is not drawn in the requested colour: %s", rec.Body.String())
+	}
+	from, to := sigilGradient("3b82f6")
+	for _, stop := range []string{from, to} {
+		if !strings.Contains(rec.Body.String(), stop) {
+			t.Fatalf("body is missing gradient stop %s: %s", stop, rec.Body.String())
+		}
 	}
 }
 
-// A light disc has to flip to the dark mark, or the silhouette washes out on it.
-func TestRenderSigilFlipsTheMarkOnLightDiscs(t *testing.T) {
-	dark, _ := RenderSigil("canine", "18324a")
-	if !strings.Contains(dark, sigilPale) || strings.Contains(dark, sigilInk) {
-		t.Fatalf("a dark disc should carry the pale mark: %s", dark)
+// The mark carries the whole legibility guarantee, so it is checked across the
+// lightness range the picker actually draws from rather than at a single colour.
+func TestSigilMarkMeetsItsContrastEverywhere(t *testing.T) {
+	for _, hex := range []string{
+		"0a2312", "123a5c", "2f6f3f", "7a3f9c", "c04a2a",
+		"9ad4a8", "cfe6f5", "f0c8d8", "e8e2b0", "f5f7f2",
+	} {
+		disc := luminance(parseHex(hex))
+		mark := luminance(parseHex(strings.TrimPrefix(sigilMark(hex), "#")))
+		got := (math.Max(disc, mark) + 0.05) / (math.Min(disc, mark) + 0.05)
+		if math.Abs(got-MarkContrast) > 0.06 {
+			t.Fatalf("sigilMark(%q) contrast = %.2f:1, want %.2f:1", hex, got, MarkContrast)
+		}
 	}
-	light, _ := RenderSigil("canine", "cfe6f5")
-	if !strings.Contains(light, sigilInk) || strings.Contains(light, sigilPale) {
-		t.Fatalf("a light disc should carry the dark mark: %s", light)
+}
+
+// A mark that washed out to white or black would defeat the point of deriving it
+// from the disc, so it has to keep some of the disc's own colour.
+func TestSigilMarkKeepsTheDiscsHue(t *testing.T) {
+	for _, hex := range []string{"0a2312", "2f6f3f", "c04a2a", "9ad4a8", "f0c8d8"} {
+		discHue, _, _ := rgbToHSL(parseHex(hex))
+		markHue, markSat, _ := rgbToHSL(parseHex(strings.TrimPrefix(sigilMark(hex), "#")))
+		drift := math.Abs(markHue - discHue)
+		if drift > 180 {
+			drift = 360 - drift
+		}
+		if drift > 5 {
+			t.Fatalf("sigilMark(%q) drifted %.1f degrees off the disc hue", hex, drift)
+		}
+		if markSat < 20 {
+			t.Fatalf("sigilMark(%q) washed out to %.0f%% saturation", hex, markSat)
+		}
+	}
+}
+
+// The gradient is a hue rotation, not a lightness ramp: both stops sit on the
+// disc's own luminance so the sweep spends none of the contrast budget.
+func TestSigilGradientHoldsLuminance(t *testing.T) {
+	for _, hex := range []string{"0a2312", "123a5c", "c04a2a", "9ad4a8", "e8e2b0"} {
+		want := luminance(parseHex(hex))
+		from, to := sigilGradient(hex)
+		for _, stop := range []string{from, to} {
+			got := luminance(parseHex(strings.TrimPrefix(stop, "#")))
+			if math.Abs(got-want) > 0.005 {
+				t.Fatalf("gradient stop %s of %q is Y %.4f, want %.4f", stop, hex, got, want)
+			}
+		}
+		if from == to {
+			t.Fatalf("gradient for %q does not sweep", hex)
+		}
 	}
 }
 

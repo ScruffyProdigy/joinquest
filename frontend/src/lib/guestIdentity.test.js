@@ -4,7 +4,6 @@ import {
   GUEST_IDENTITY_CHOICES,
   SIGIL_FAMILIES,
   SIGIL_HUE_WORDS,
-  sigilMark,
   generateGuestIdentities,
   generateGuestIdentity,
   generateTint,
@@ -17,13 +16,6 @@ const HEX = /^[0-9a-f]{6}$/
 function hexToRgb(hex) {
   const bare = hex.replace('#', '')
   return [0, 2, 4].map((offset) => parseInt(bare.slice(offset, offset + 2), 16))
-}
-
-/** Contrast between a disc and the mark the renderer will actually draw on it. */
-function contrastAgainstMark(hex) {
-  const mark = relativeLuminance(hexToRgb(sigilMark(hex)))
-  const disc = relativeLuminance(hexToRgb(hex))
-  return (Math.max(mark, disc) + 0.05) / (Math.min(mark, disc) + 0.05)
 }
 
 describe('generateGuestIdentity', () => {
@@ -61,24 +53,13 @@ describe('generateTint', () => {
     }
   })
 
-  it('carries its mark at 4:1 or better anywhere on the wheel', () => {
-    // The mark is pale on a dark disc and dark on a light one, whichever reads
-    // more strongly, so the worst case is the crossover between them rather than
-    // either end of the lightness range. That worst case is still above the 3:1
-    // WCAG floor for non-text contrast.
-    for (let offset = 0; offset < 360; offset += 5) {
-      for (let i = 0; i < 3; i += 1) {
-        expect(contrastAgainstMark(generateTint(offset).hex)).toBeGreaterThanOrEqual(4)
-      }
-    }
-  })
-
   it('uses the whole lightness range, not just the dark end', () => {
+    // The mark is solved against whatever disc it lands on, so nothing here is
+    // capped by it. Contrast is the renderer's guarantee and is covered in
+    // backend/internal/avatars/sigil_test.go.
     const lums = Array.from({ length: 600 }, () =>
       relativeLuminance(hexToRgb(generateTint().hex)),
     )
-    // A pale-only mark could never go above 0.285. Both marks together should put
-    // real weight on either side of that.
     expect(lums.filter((y) => y > 0.285).length / lums.length).toBeGreaterThan(0.25)
     expect(lums.filter((y) => y < 0.2).length / lums.length).toBeGreaterThan(0.1)
   })

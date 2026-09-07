@@ -15,47 +15,131 @@ import (
 // signing in and finishing the spirit animal journey.
 const SourceSigil = "sigil"
 
-// A sigil is drawn in one of two marks: near-white on a dark disc, near-black on a
-// light one. Carrying both is what lets the disc use the whole lightness range
-// instead of only the dark end a pale mark can sit on.
-const (
-	sigilPale = "#f8fafc"
-	sigilInk  = "#10141a"
-)
+// MarkContrast is what every sigil's mark holds against its disc: the WCAG AA
+// ratio for text, comfortably past the 3:1 floor for graphics. It is met exactly
+// rather than exceeded, because the mark's lightness is solved for it.
+const MarkContrast = 4.5
 
-// sigilMarkCrossover is the disc luminance above which the dark mark contrasts
-// better than the pale one. Picking the better of the two puts every sigil at
-// 4.2:1 or above — comfortably past the 3:1 WCAG floor for non-text contrast, and
-// better than the pale mark alone managed.
-const sigilMarkCrossover = 0.189
+// markSaturation keeps the mark colourful. Contrast is carried entirely by
+// lightness, so saturation is free to stay high — which is what makes a mark read
+// as deep forest or bright mint rather than as black or white. Mixing a colour
+// toward white instead would wash the hue out exactly where it is needed most.
+const markSaturation = 72
 
-// hexLuminance is the WCAG relative luminance of a bare 6-digit hex.
-func hexLuminance(hex string) float64 {
-	channel := func(i int) float64 {
-		v, err := strconv.ParseUint(hex[i:i+2], 16, 16)
-		if err != nil {
-			return 0
-		}
-		f := float64(v) / 255
-		if f <= 0.04045 {
-			return f / 12.92
-		}
-		return math.Pow((f+0.055)/1.055, 2.4)
+// gradientSweep is how far the disc's hue rotates from one side to the other. Both
+// stops are re-solved to the disc's own luminance, so the sweep is a pure hue
+// rotation and costs nothing in contrast. Rotating at a fixed HSL lightness would
+// not be free: it swings luminance by as much as 20 L* points, because HSL
+// lightness is not perceptual.
+const gradientSweep = 14.0
+
+func srgbToLinear(channel float64) float64 {
+	v := channel / 255
+	if v <= 0.04045 {
+		return v / 12.92
 	}
-	return 0.2126*channel(0) + 0.7152*channel(2) + 0.0722*channel(4)
+	return math.Pow((v+0.055)/1.055, 2.4)
 }
 
-// sigilMark picks the colour for both the silhouette and the rim: whichever of the
-// two reads more strongly on this disc. They share a colour on purpose. The rim is
-// what keeps the disc's edge visible when a game client draws it on a background we
-// do not control, and the edge needs help in opposite directions at each end — a
-// dark disc disappears on a black page, a pale one on a white page — which is
-// exactly how the mark already differs.
-func sigilMark(hex string) string {
-	if hexLuminance(hex) > sigilMarkCrossover {
-		return sigilInk
+func luminance(rgb [3]float64) float64 {
+	return 0.2126*srgbToLinear(rgb[0]) + 0.7152*srgbToLinear(rgb[1]) + 0.0722*srgbToLinear(rgb[2])
+}
+
+func parseHex(hex string) [3]float64 {
+	var out [3]float64
+	for i := 0; i < 3; i++ {
+		v, err := strconv.ParseUint(hex[i*2:i*2+2], 16, 16)
+		if err != nil {
+			return [3]float64{}
+		}
+		out[i] = float64(v)
 	}
-	return sigilPale
+	return out
+}
+
+func formatHex(rgb [3]float64) string {
+	clamp := func(v float64) int {
+		return int(math.Min(255, math.Max(0, math.Round(v))))
+	}
+	return fmt.Sprintf("#%02x%02x%02x", clamp(rgb[0]), clamp(rgb[1]), clamp(rgb[2]))
+}
+
+func hslToRGB(h, s, l float64) [3]float64 {
+	s /= 100
+	l /= 100
+	c := (1 - math.Abs(2*l-1)) * s
+	sector := math.Mod(math.Mod(h, 360)+360, 360) / 60
+	x := c * (1 - math.Abs(math.Mod(sector, 2)-1))
+	m := l - c/2
+	table := [6][3]float64{{c, x, 0}, {x, c, 0}, {0, c, x}, {0, x, c}, {x, 0, c}, {c, 0, x}}
+	t := table[int(sector)%6]
+	return [3]float64{(t[0] + m) * 255, (t[1] + m) * 255, (t[2] + m) * 255}
+}
+
+// rgbToHSL returns hue in degrees and saturation and lightness in percent.
+func rgbToHSL(rgb [3]float64) (float64, float64, float64) {
+	r, g, b := rgb[0]/255, rgb[1]/255, rgb[2]/255
+	max := math.Max(r, math.Max(g, b))
+	min := math.Min(r, math.Min(g, b))
+	l := (max + min) / 2
+	if max == min {
+		return 0, 0, l * 100
+	}
+	d := max - min
+	s := d / (1 - math.Abs(2*l-1))
+	var h float64
+	switch max {
+	case r:
+		h = math.Mod((g-b)/d, 6)
+	case g:
+		h = (b-r)/d + 2
+	default:
+		h = (r-g)/d + 4
+	}
+	return math.Mod(h*60+360, 360), s * 100, l * 100
+}
+
+// lightnessForLuminance finds the HSL lightness that puts this hue and saturation
+// on `target` luminance. Luminance rises monotonically with lightness, so a
+// bisection always lands — which is why the mark can meet its contrast exactly at
+// every point on the wheel instead of only where a fixed pair of marks happens to.
+func lightnessForLuminance(h, s, target float64) float64 {
+	low, high := 0.0, 100.0
+	for i := 0; i < 22; i++ {
+		mid := (low + high) / 2
+		if luminance(hslToRGB(h, s, mid)) < target {
+			low = mid
+		} else {
+			high = mid
+		}
+	}
+	return (low + high) / 2
+}
+
+// sigilMark is the colour the silhouette and the rim are drawn in: the disc's own
+// hue, held saturated, with its lightness solved so it clears MarkContrast. It
+// goes lighter than the disc where that is reachable and darker otherwise.
+func sigilMark(hex string) string {
+	discY := luminance(parseHex(hex))
+	hue, _, _ := rgbToHSL(parseHex(hex))
+	target := MarkContrast*(discY+0.05) - 0.05
+	if target > 1 {
+		target = (discY+0.05)/MarkContrast - 0.05
+	}
+	return formatHex(hslToRGB(hue, markSaturation, lightnessForLuminance(hue, markSaturation, target)))
+}
+
+// sigilGradient rotates the disc's hue across the face while holding its
+// luminance, so the disc has depth without spending any of the contrast budget.
+func sigilGradient(hex string) (string, string) {
+	rgb := parseHex(hex)
+	discY := luminance(rgb)
+	hue, sat, _ := rgbToHSL(rgb)
+	stop := func(shift float64) string {
+		h := math.Mod(hue+shift+360, 360)
+		return formatHex(hslToRGB(h, sat, lightnessForLuminance(h, sat, discY)))
+	}
+	return stop(-gradientSweep), stop(gradientSweep)
 }
 
 // SigilFamilies are the guest-tier silhouettes. A generated guest name picks the
@@ -135,13 +219,20 @@ func RenderSigil(family, tint string) (string, bool) {
 	if !ok {
 		return "", false
 	}
-	colour := "#" + hex
 	mark := sigilMark(hex)
+	from, to := sigilGradient(hex)
+	// The cut-out details are filled with the gradient itself rather than a flat
+	// colour, so they keep reading as holes in the silhouette across the sweep.
+	id := "g" + family + hex
+	fill := fmt.Sprintf("url(#%s)", id)
 	return fmt.Sprintf(`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64" role="img" aria-label="%s sigil">
+  <defs><linearGradient id="%s" x1="0" y1="0" x2="1" y2="1">
+    <stop offset="0" stop-color="%s"/><stop offset="1" stop-color="%s"/>
+  </linearGradient></defs>
   <circle cx="32" cy="32" r="32" fill="%s"/>
   <circle cx="32" cy="32" r="30.8" fill="none" stroke="%s" stroke-width="2.4" opacity="0.5"/>%s
 </svg>
-`, family, colour, mark, shape(mark, colour)), true
+`, family, id, from, to, fill, mark, shape(mark, fill)), true
 }
 
 // SigilHandler serves /avatars/sigils/<family>-<colour>.svg. Sigils are rendered

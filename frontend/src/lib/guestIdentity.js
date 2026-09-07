@@ -38,15 +38,10 @@ export const SIGIL_FAMILIES = [
 ]
 
 /**
- * A sigil is drawn in one of two marks: near-white on a dark disc, near-black on a
- * light one, whichever reads more strongly. Carrying both is what lets the disc use
- * the whole lightness range rather than only the dark end a pale mark can sit on.
+ * Only the disc colour is chosen here. The mark drawn on top of it, and the hue
+ * sweep across it, are derived from this colour by the renderer in
+ * backend/internal/avatars/sigil.go, which is what guarantees their contrast.
  */
-export const SIGIL_PALE = '#f8fafc'
-export const SIGIL_INK = '#10141a'
-
-/** Disc luminance above which the dark mark wins. Both clear 4.2:1 at the crossover. */
-export const SIGIL_MARK_CROSSOVER = 0.189
 
 /**
  * The adjective in a guest name still describes the disc. The wheel is cut into
@@ -76,11 +71,10 @@ const SATURATION_MAX = 100
  * same number. Drawing a target and solving for the channel compensates for the hue
  * exactly, the same trick the hue itself uses.
  *
- * The range is this wide because the mark is two-tone. A pale-only mark pins every
- * disc below L*≈60 so it stays dark enough to carry white; letting the mark go dark
- * on light discs opens the top of the scale, and it is where most of the variety in
- * the set now comes from. The bounds are where colour itself gives out: below 32 a
- * disc reads black, above 88 it washes out to paper.
+ * The range can be this wide because the mark is derived from the disc rather than
+ * fixed: its lightness is solved against whatever disc it lands on, so no disc
+ * lightness is off limits. The bounds are where colour itself gives out — below 32
+ * a disc reads black, above 88 it washes out to paper.
  */
 const LIGHTNESS_MIN = 32
 const LIGHTNESS_MAX = 88
@@ -259,12 +253,6 @@ function spreadHues(count) {
     (_, index) => (offset + index * sector + Math.random() * sector) % 360,
   )
   return sampleWithoutReplacement(positions, positions.length)
-}
-
-/** The mark a disc of `hex` is drawn in — matches the renderer in sigil.go. */
-export function sigilMark(hex) {
-  const rgb = [0, 2, 4].map((offset) => parseInt(hex.slice(offset, offset + 2), 16))
-  return relativeLuminance(rgb) > SIGIL_MARK_CROSSOVER ? SIGIL_INK : SIGIL_PALE
 }
 
 export function sigilAvatarKey(familyKey, hex) {
