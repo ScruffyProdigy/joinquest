@@ -311,4 +311,72 @@ describe('TableCard', () => {
     await user.click(screen.getByRole('button', { name: 'Confirm seat' }))
     expect(onSit).toHaveBeenCalledWith('1')
   })
+
+  it('names a player who has not answered the regroup', () => {
+    const table = {
+      id: 'table-1',
+      game: { name: 'Rock Paper Scissors Lizard Robot' },
+      mode: { displayName: '1v1 Duel (best 3 of 5)' },
+      seats: [{ seatKey: 'p1', user: { id: 'a', displayName: 'Ada' } }],
+      seatSlots: [
+        { seatKey: 'p1', displayName: 'Player 1', user: { id: 'a', displayName: 'Ada' } },
+        { seatKey: 'p2', displayName: 'Player 2', user: null },
+      ],
+      regroupRoster: [
+        { user: { id: 'a', displayName: 'Ada' }, regroup: 'IN' },
+        { user: { id: 'b', displayName: 'Bo' }, regroup: 'PENDING' },
+      ],
+      lookForGroupOptions: [],
+    }
+
+    render(
+      <TableCard table={table} busy={false} onSit={() => {}} onLeave={() => {}} onStart={() => {}} onDiscard={() => {}} />,
+    )
+
+    expect(screen.getByText('Bo')).toBeInTheDocument()
+    expect(screen.getByText('Not back yet')).toBeInTheDocument()
+  })
+
+  it('leaves open seats anonymous when there is no regroup roster', () => {
+    const table = {
+      id: 'table-1',
+      game: { name: 'Rock Paper Scissors Lizard Robot' },
+      mode: { displayName: '1v1 Duel (best 3 of 5)' },
+      seats: [],
+      seatSlots: [{ seatKey: 'p2', displayName: 'Player 2', user: null }],
+      regroupRoster: [],
+      lookForGroupOptions: [],
+    }
+
+    render(
+      <TableCard table={table} busy={false} onSit={() => {}} onLeave={() => {}} onStart={() => {}} onDiscard={() => {}} />,
+    )
+
+    expect(screen.queryByText('Not back yet')).not.toBeInTheDocument()
+  })
+
+  it('leaves open seats anonymous once every roster entry has answered', () => {
+    const table = {
+      id: 'table-1',
+      game: { name: 'Rock Paper Scissors Lizard Robot' },
+      mode: { displayName: '1v1 Duel (best 3 of 5)' },
+      seats: [{ seatKey: 'p1', user: { id: 'a', displayName: 'Ada' } }],
+      seatSlots: [
+        { seatKey: 'p1', displayName: 'Player 1', user: { id: 'a', displayName: 'Ada' } },
+        { seatKey: 'p2', displayName: 'Player 2', user: null },
+      ],
+      regroupRoster: [
+        { user: { id: 'a', displayName: 'Ada' }, regroup: 'IN' },
+        { user: { id: 'b', displayName: 'Bo' }, regroup: 'OUT' },
+      ],
+      lookForGroupOptions: [],
+    }
+
+    render(
+      <TableCard table={table} busy={false} onSit={() => {}} onLeave={() => {}} onStart={() => {}} onDiscard={() => {}} />,
+    )
+
+    expect(screen.queryByText('Bo')).not.toBeInTheDocument()
+    expect(screen.queryByText('Not back yet')).not.toBeInTheDocument()
+  })
 })

@@ -62,6 +62,18 @@ export const TABLE_FIELDS = `
     assigned
     needed
   }
+  regroupRoster {
+    user {
+      ${USER_AVATAR_FIELDS}
+    }
+    role
+    finished
+    finishedAt
+    reason
+    placement
+    winner
+    regroup
+  }
 `
 
 export const MY_TABLE_SEAT_QUERY = `
@@ -391,6 +403,31 @@ export function enrichTableSeats(table) {
     ...slot,
     user: slot.user ?? usersByKey[slot.seatKey] ?? null,
   }))
+  return { ...table, seatSlots }
+}
+
+/**
+ * Pair unoccupied seat slots with named players still deciding whether to rejoin
+ * (Table.regroupRoster entries with regroup === 'PENDING'), in stable list order.
+ * Once every roster entry has answered (or the roster is empty), no pairing happens
+ * and open seats stay anonymous for backfill.
+ */
+export function attachPendingRegroup(table) {
+  const pendingUsers = (table?.regroupRoster ?? [])
+    .filter((entry) => entry.regroup === 'PENDING')
+    .map((entry) => entry.user)
+  if (pendingUsers.length === 0) {
+    return table
+  }
+  let nextPending = 0
+  const seatSlots = (table.seatSlots ?? []).map((slot) => {
+    if (slot.user || nextPending >= pendingUsers.length) {
+      return slot
+    }
+    const pendingRegroupUser = pendingUsers[nextPending]
+    nextPending += 1
+    return { ...slot, pendingRegroupUser }
+  })
   return { ...table, seatSlots }
 }
 

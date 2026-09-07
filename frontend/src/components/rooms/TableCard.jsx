@@ -7,9 +7,11 @@ import {
   formatFormingGapsFromLobbyLine,
   KING_LABEL,
   LOOK_FOR_GROUP,
+  REGROUP_PENDING,
   START_GAME,
 } from '../../lib/playerCopy'
 import {
+  attachPendingRegroup,
   countSeatedInGroup,
   displayName,
   enrichTableSeats,
@@ -39,9 +41,19 @@ function SeatRow({ slot, seatLabel, sectionTitle, groupSlots, mySeat, userId, cu
   const isTableKing = Boolean(kingUserId && occupantUser?.id === kingUserId)
 
   if (!taken) {
+    const pendingUser = slot.pendingRegroupUser
     return (
       <li className="flex items-center justify-between gap-3 rounded-lg border border-border/60 bg-background/30 px-3 py-2">
-        {seatLabel ? <span className="text-sm text-muted-foreground">{seatLabel}</span> : null}
+        <div className="flex items-center gap-3">
+          {seatLabel ? <span className="text-sm text-muted-foreground">{seatLabel}</span> : null}
+          {pendingUser ? (
+            <div className="flex items-center gap-2 opacity-50" title={displayName(pendingUser)}>
+              <PlayerAvatar user={pendingUser} size="md" />
+              <span className="text-sm text-foreground">{displayName(pendingUser)}</span>
+              <span className="text-xs text-muted-foreground">{REGROUP_PENDING}</span>
+            </div>
+          ) : null}
+        </div>
         <Button
           type="button"
           size="sm"
@@ -84,6 +96,9 @@ function SeatSection({ title, slots, mode, mySeat, userId, currentUser, kingUser
 
   if (pooled) {
     const occupants = slots.filter((slot) => slot.user || slot.seatKey === mySeat)
+    const pendingSlots = slots.filter(
+      (slot) => !slot.user && slot.seatKey !== mySeat && slot.pendingRegroupUser,
+    )
     const openSlot = slots.find((slot) => slot.seatKey === openSeatKey)
     return (
       <div className="flex flex-col gap-2">
@@ -113,9 +128,25 @@ function SeatSection({ title, slots, mode, mySeat, userId, currentUser, kingUser
                   </div>
                 )
               })
-            ) : (
+            ) : pendingSlots.length === 0 ? (
               <span className="text-xs text-muted-foreground">No one seated yet</span>
-            )}
+            ) : null}
+            {pendingSlots.map((slot) => {
+              const pendingUser = slot.pendingRegroupUser
+              const seatBadge = seatLabelInSection(slot, title)
+              return (
+                <div
+                  key={slot.seatKey}
+                  className="flex flex-col items-center gap-1 text-xs text-muted-foreground opacity-50"
+                  title={displayName(pendingUser)}
+                >
+                  {seatBadge ? <span className="text-[10px] uppercase tracking-wide">{seatBadge}</span> : null}
+                  <PlayerAvatar user={pendingUser} size="md" />
+                  <span>{displayName(pendingUser)}</span>
+                  <span>{REGROUP_PENDING}</span>
+                </div>
+              )
+            })}
           </div>
           {!mineInGroup && openSlot ? (
             <Button type="button" size="sm" variant="secondary" disabled={busy} onClick={() => onRequestSit(openSlot, title, slots)}>
@@ -145,7 +176,7 @@ function SeatSection({ title, slots, mode, mySeat, userId, currentUser, kingUser
 export default function TableCard({ table, busy, onSit, onLeave, onStart, onLookForGroup, onDiscard }) {
   const { user } = useAuth()
   const [pickerSlot, setPickerSlot] = useState(null)
-  const enriched = enrichTableSeats(table)
+  const enriched = attachPendingRegroup(enrichTableSeats(table))
   const mySeat = mySeatKeyOnTable(enriched, user?.id)
   const mySeatLabel = mySeatDisplayName(enriched, user?.id)
   const king = isKing(enriched, user?.id)
