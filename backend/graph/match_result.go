@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"errors"
+	"sort"
 	"strings"
 
 	"github.com/google/uuid"
@@ -101,6 +102,68 @@ func loadMatchResultModel(ctx context.Context, st *store.Store, sessionID uuid.U
 		}
 		out.Participants = append(out.Participants, entry)
 	}
+	return out, nil
+}
+
+// loadRegroupRosterEntries builds the identity-and-intent view of a finished match's
+// roster: who played, in which seat, and whether they are coming back. It is what a
+// regroup table exposes, and it deliberately does not go through loadMatchResultModel —
+// the standings that model carries are exactly what must not reach a surface joinable by
+// players who never played the match (JQ-174). Building a separate value means a field
+// added to MatchParticipantResult later cannot arrive here by accident.
+//
+// The result is ordered by seat, then by user id. GetMatchResult returns participants
+// ordered by placement, and passing that order through would hand a non-participant the
+// finishing order of a match they never played — a shorter field list would not help.
+func loadRegroupRosterEntries(ctx context.Context, st *store.Store, sessionID uuid.UUID) ([]*model.RegroupRosterEntry, error) {
+	result, err := st.GetMatchResult(ctx, sessionID)
+	if err != nil {
+		return nil, err
+	}
+	roster, err := st.GetRegroupRoster(ctx, sessionID)
+	if err != nil {
+		return nil, err
+	}
+	players, err := st.ListSessionParticipants(ctx, sessionID)
+	if err != nil {
+		return nil, err
+	}
+	byID := make(map[uuid.UUID]*store.User, len(players))
+	for i := range players {
+		byID[players[i].ID] = &players[i]
+	}
+
+	out := make([]*model.RegroupRosterEntry, 0, len(result.Participants))
+	for i := range result.Participants {
+		p := result.Participants[i]
+		// Same skip as loadMatchResultModel: a participant with left_at set is missing
+		// from ListSessionParticipants, and a nil user would null the whole non-null list.
+		user, ok := byID[p.UserID]
+		if !ok {
+			continue
+		}
+		entry := &model.RegroupRosterEntry{
+			User:    ToGraphQLPublicPlayer(user),
+			Regroup: toGraphQLRegroupState(roster[p.UserID]),
+		}
+		if role := strings.TrimSpace(p.Role); role != "" {
+			entry.Role = &role
+		}
+		out = append(out, entry)
+	}
+
+	role := func(e *model.RegroupRosterEntry) string {
+		if e.Role == nil {
+			return ""
+		}
+		return *e.Role
+	}
+	sort.SliceStable(out, func(i, j int) bool {
+		if ri, rj := role(out[i]), role(out[j]); ri != rj {
+			return ri < rj
+		}
+		return out[i].User.ID < out[j].User.ID
+	})
 	return out, nil
 }
 

@@ -406,6 +406,12 @@ type ComplexityRoot struct {
 		WebhookSecret func(childComplexity int) int
 	}
 
+	RegroupRosterEntry struct {
+		Regroup func(childComplexity int) int
+		Role    func(childComplexity int) int
+		User    func(childComplexity int) int
+	}
+
 	RequirementGroup struct {
 		Children func(childComplexity int) int
 		Label    func(childComplexity int) int
@@ -742,7 +748,7 @@ type TableResolver interface {
 	Game(ctx context.Context, obj *model.Table) (*model.Game, error)
 	Mode(ctx context.Context, obj *model.Table) (*model.GameMode, error)
 
-	King(ctx context.Context, obj *model.Table) (*model.User, error)
+	King(ctx context.Context, obj *model.Table) (*model.PublicPlayer, error)
 	Seats(ctx context.Context, obj *model.Table) ([]*model.TableSeat, error)
 	SeatSlots(ctx context.Context, obj *model.Table) ([]*model.TableSeatSlot, error)
 	CanStart(ctx context.Context, obj *model.Table) (bool, error)
@@ -750,13 +756,13 @@ type TableResolver interface {
 	LookForGroupOptions(ctx context.Context, obj *model.Table) ([]*model.TableLookForGroupOption, error)
 	BackfillActive(ctx context.Context, obj *model.Table) (bool, error)
 	FormingGaps(ctx context.Context, obj *model.Table) ([]*model.QueuePathGap, error)
-	RegroupRoster(ctx context.Context, obj *model.Table) ([]*model.MatchParticipantResult, error)
+	RegroupRoster(ctx context.Context, obj *model.Table) ([]*model.RegroupRosterEntry, error)
 }
 type TableSeatResolver interface {
-	User(ctx context.Context, obj *model.TableSeat) (*model.User, error)
+	User(ctx context.Context, obj *model.TableSeat) (*model.PublicPlayer, error)
 }
 type TableSeatSlotResolver interface {
-	User(ctx context.Context, obj *model.TableSeatSlot) (*model.User, error)
+	User(ctx context.Context, obj *model.TableSeatSlot) (*model.PublicPlayer, error)
 }
 type UserResolver interface {
 	IsAdmin(ctx context.Context, obj *model.User) (bool, error)
@@ -2623,6 +2629,25 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 
 		return e.complexity.RegisterMyGamePayload.WebhookSecret(childComplexity), true
 
+	case "RegroupRosterEntry.regroup":
+		if e.complexity.RegroupRosterEntry.Regroup == nil {
+			break
+		}
+
+		return e.complexity.RegroupRosterEntry.Regroup(childComplexity), true
+	case "RegroupRosterEntry.role":
+		if e.complexity.RegroupRosterEntry.Role == nil {
+			break
+		}
+
+		return e.complexity.RegroupRosterEntry.Role(childComplexity), true
+	case "RegroupRosterEntry.user":
+		if e.complexity.RegroupRosterEntry.User == nil {
+			break
+		}
+
+		return e.complexity.RegroupRosterEntry.User(childComplexity), true
+
 	case "RequirementGroup.children":
 		if e.complexity.RequirementGroup.Children == nil {
 			break
@@ -4306,7 +4331,8 @@ extend type Mutation {
 `, BuiltIn: false},
 	{Name: "../schema/tables.graphqls", Input: `type TableSeat {
   seatKey: String!
-  user: User!
+  """No email: a table admits strangers via Look for group and the catalog queue."""
+  user: PublicPlayer!
   seatedAt: Time!
 }
 
@@ -4315,7 +4341,8 @@ type TableSeatSlot {
   queuePath: String
   displayName: String!
   teamPrefix: String
-  user: User
+  """No email: a table admits strangers via Look for group and the catalog queue."""
+  user: PublicPlayer
 }
 
 type TableLookForGroupOption {
@@ -4330,7 +4357,8 @@ type Table {
   game: Game!
   mode: GameMode!
   createdAt: Time!
-  king: User
+  """No email: a table admits strangers via Look for group and the catalog queue."""
+  king: PublicPlayer
   seats: [TableSeat!]!
   seatSlots: [TableSeatSlot!]!
   canStart: Boolean!
@@ -4341,7 +4369,23 @@ type Table {
   """Roles still needed to start via backfill or from current seated counts."""
   formingGaps: [QueuePathGap!]!
   """Originating match roster and regroup state; empty for tables not reached from a finished match."""
-  regroupRoster: [MatchParticipantResult!]!
+  regroupRoster: [RegroupRosterEntry!]!
+}
+
+"""
+Who played the originating match, and whether they are coming back — nothing more.
+
+Deliberately narrower than MatchParticipantResult. A regroup table is joinable by players
+who never played that match (the king's Look for group backfill), so this field carries no
+` + "`" + `requireMatchParticipant` + "`" + ` gate; it relies on the parent Table's room-membership rules. The
+standings therefore must not be reachable from here at all. Participants read placement,
+winner and finish reasons through ` + "`" + `matchResult` + "`" + `, which *is* gated on participation.
+"""
+type RegroupRosterEntry {
+  user: PublicPlayer!
+  """The seat this player held. Pairs with TableSeatSlot.seatKey to ghost a named pending seat."""
+  role: String
+  regroup: RegroupState!
 }
 
 type MyTableSeat {
@@ -15457,6 +15501,103 @@ func (ec *executionContext) fieldContext_RegisterMyGamePayload_connectError(_ co
 	return fc, nil
 }
 
+func (ec *executionContext) _RegroupRosterEntry_user(ctx context.Context, field graphql.CollectedField, obj *model.RegroupRosterEntry) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_RegroupRosterEntry_user,
+		func(ctx context.Context) (any, error) {
+			return obj.User, nil
+		},
+		nil,
+		ec.marshalNPublicPlayer2ᚖgithubᚗcomᚋscruffyprodigyᚋjoinquestᚋgraphᚋmodelᚐPublicPlayer,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_RegroupRosterEntry_user(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "RegroupRosterEntry",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "id":
+				return ec.fieldContext_PublicPlayer_id(ctx, field)
+			case "displayName":
+				return ec.fieldContext_PublicPlayer_displayName(ctx, field)
+			case "avatarUrl":
+				return ec.fieldContext_PublicPlayer_avatarUrl(ctx, field)
+			case "avatarSource":
+				return ec.fieldContext_PublicPlayer_avatarSource(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type PublicPlayer", field.Name)
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _RegroupRosterEntry_role(ctx context.Context, field graphql.CollectedField, obj *model.RegroupRosterEntry) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_RegroupRosterEntry_role,
+		func(ctx context.Context) (any, error) {
+			return obj.Role, nil
+		},
+		nil,
+		ec.marshalOString2ᚖstring,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_RegroupRosterEntry_role(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "RegroupRosterEntry",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _RegroupRosterEntry_regroup(ctx context.Context, field graphql.CollectedField, obj *model.RegroupRosterEntry) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_RegroupRosterEntry_regroup,
+		func(ctx context.Context) (any, error) {
+			return obj.Regroup, nil
+		},
+		nil,
+		ec.marshalNRegroupState2githubᚗcomᚋscruffyprodigyᚋjoinquestᚋgraphᚋmodelᚐRegroupState,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_RegroupRosterEntry_regroup(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "RegroupRosterEntry",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type RegroupState does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _RequirementGroup_label(ctx context.Context, field graphql.CollectedField, obj *model.RequirementGroup) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
@@ -18677,7 +18818,7 @@ func (ec *executionContext) _Table_king(ctx context.Context, field graphql.Colle
 			return ec.resolvers.Table().King(ctx, obj)
 		},
 		nil,
-		ec.marshalOUser2ᚖgithubᚗcomᚋscruffyprodigyᚋjoinquestᚋgraphᚋmodelᚐUser,
+		ec.marshalOPublicPlayer2ᚖgithubᚗcomᚋscruffyprodigyᚋjoinquestᚋgraphᚋmodelᚐPublicPlayer,
 		true,
 		false,
 	)
@@ -18692,29 +18833,15 @@ func (ec *executionContext) fieldContext_Table_king(_ context.Context, field gra
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			switch field.Name {
 			case "id":
-				return ec.fieldContext_User_id(ctx, field)
-			case "email":
-				return ec.fieldContext_User_email(ctx, field)
+				return ec.fieldContext_PublicPlayer_id(ctx, field)
 			case "displayName":
-				return ec.fieldContext_User_displayName(ctx, field)
+				return ec.fieldContext_PublicPlayer_displayName(ctx, field)
 			case "avatarUrl":
-				return ec.fieldContext_User_avatarUrl(ctx, field)
-			case "avatarKey":
-				return ec.fieldContext_User_avatarKey(ctx, field)
+				return ec.fieldContext_PublicPlayer_avatarUrl(ctx, field)
 			case "avatarSource":
-				return ec.fieldContext_User_avatarSource(ctx, field)
-			case "createdAt":
-				return ec.fieldContext_User_createdAt(ctx, field)
-			case "isAdmin":
-				return ec.fieldContext_User_isAdmin(ctx, field)
-			case "isGuest":
-				return ec.fieldContext_User_isGuest(ctx, field)
-			case "emails":
-				return ec.fieldContext_User_emails(ctx, field)
-			case "identities":
-				return ec.fieldContext_User_identities(ctx, field)
+				return ec.fieldContext_PublicPlayer_avatarSource(ctx, field)
 			}
-			return nil, fmt.Errorf("no field named %q was found under type User", field.Name)
+			return nil, fmt.Errorf("no field named %q was found under type PublicPlayer", field.Name)
 		},
 	}
 	return fc, nil
@@ -18973,7 +19100,7 @@ func (ec *executionContext) _Table_regroupRoster(ctx context.Context, field grap
 			return ec.resolvers.Table().RegroupRoster(ctx, obj)
 		},
 		nil,
-		ec.marshalNMatchParticipantResult2ᚕᚖgithubᚗcomᚋscruffyprodigyᚋjoinquestᚋgraphᚋmodelᚐMatchParticipantResultᚄ,
+		ec.marshalNRegroupRosterEntry2ᚕᚖgithubᚗcomᚋscruffyprodigyᚋjoinquestᚋgraphᚋmodelᚐRegroupRosterEntryᚄ,
 		true,
 		true,
 	)
@@ -18988,23 +19115,13 @@ func (ec *executionContext) fieldContext_Table_regroupRoster(_ context.Context, 
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			switch field.Name {
 			case "user":
-				return ec.fieldContext_MatchParticipantResult_user(ctx, field)
+				return ec.fieldContext_RegroupRosterEntry_user(ctx, field)
 			case "role":
-				return ec.fieldContext_MatchParticipantResult_role(ctx, field)
-			case "finished":
-				return ec.fieldContext_MatchParticipantResult_finished(ctx, field)
-			case "finishedAt":
-				return ec.fieldContext_MatchParticipantResult_finishedAt(ctx, field)
-			case "reason":
-				return ec.fieldContext_MatchParticipantResult_reason(ctx, field)
-			case "placement":
-				return ec.fieldContext_MatchParticipantResult_placement(ctx, field)
-			case "winner":
-				return ec.fieldContext_MatchParticipantResult_winner(ctx, field)
+				return ec.fieldContext_RegroupRosterEntry_role(ctx, field)
 			case "regroup":
-				return ec.fieldContext_MatchParticipantResult_regroup(ctx, field)
+				return ec.fieldContext_RegroupRosterEntry_regroup(ctx, field)
 			}
-			return nil, fmt.Errorf("no field named %q was found under type MatchParticipantResult", field.Name)
+			return nil, fmt.Errorf("no field named %q was found under type RegroupRosterEntry", field.Name)
 		},
 	}
 	return fc, nil
@@ -19165,7 +19282,7 @@ func (ec *executionContext) _TableSeat_user(ctx context.Context, field graphql.C
 			return ec.resolvers.TableSeat().User(ctx, obj)
 		},
 		nil,
-		ec.marshalNUser2ᚖgithubᚗcomᚋscruffyprodigyᚋjoinquestᚋgraphᚋmodelᚐUser,
+		ec.marshalNPublicPlayer2ᚖgithubᚗcomᚋscruffyprodigyᚋjoinquestᚋgraphᚋmodelᚐPublicPlayer,
 		true,
 		true,
 	)
@@ -19180,29 +19297,15 @@ func (ec *executionContext) fieldContext_TableSeat_user(_ context.Context, field
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			switch field.Name {
 			case "id":
-				return ec.fieldContext_User_id(ctx, field)
-			case "email":
-				return ec.fieldContext_User_email(ctx, field)
+				return ec.fieldContext_PublicPlayer_id(ctx, field)
 			case "displayName":
-				return ec.fieldContext_User_displayName(ctx, field)
+				return ec.fieldContext_PublicPlayer_displayName(ctx, field)
 			case "avatarUrl":
-				return ec.fieldContext_User_avatarUrl(ctx, field)
-			case "avatarKey":
-				return ec.fieldContext_User_avatarKey(ctx, field)
+				return ec.fieldContext_PublicPlayer_avatarUrl(ctx, field)
 			case "avatarSource":
-				return ec.fieldContext_User_avatarSource(ctx, field)
-			case "createdAt":
-				return ec.fieldContext_User_createdAt(ctx, field)
-			case "isAdmin":
-				return ec.fieldContext_User_isAdmin(ctx, field)
-			case "isGuest":
-				return ec.fieldContext_User_isGuest(ctx, field)
-			case "emails":
-				return ec.fieldContext_User_emails(ctx, field)
-			case "identities":
-				return ec.fieldContext_User_identities(ctx, field)
+				return ec.fieldContext_PublicPlayer_avatarSource(ctx, field)
 			}
-			return nil, fmt.Errorf("no field named %q was found under type User", field.Name)
+			return nil, fmt.Errorf("no field named %q was found under type PublicPlayer", field.Name)
 		},
 	}
 	return fc, nil
@@ -19363,7 +19466,7 @@ func (ec *executionContext) _TableSeatSlot_user(ctx context.Context, field graph
 			return ec.resolvers.TableSeatSlot().User(ctx, obj)
 		},
 		nil,
-		ec.marshalOUser2ᚖgithubᚗcomᚋscruffyprodigyᚋjoinquestᚋgraphᚋmodelᚐUser,
+		ec.marshalOPublicPlayer2ᚖgithubᚗcomᚋscruffyprodigyᚋjoinquestᚋgraphᚋmodelᚐPublicPlayer,
 		true,
 		false,
 	)
@@ -19378,29 +19481,15 @@ func (ec *executionContext) fieldContext_TableSeatSlot_user(_ context.Context, f
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			switch field.Name {
 			case "id":
-				return ec.fieldContext_User_id(ctx, field)
-			case "email":
-				return ec.fieldContext_User_email(ctx, field)
+				return ec.fieldContext_PublicPlayer_id(ctx, field)
 			case "displayName":
-				return ec.fieldContext_User_displayName(ctx, field)
+				return ec.fieldContext_PublicPlayer_displayName(ctx, field)
 			case "avatarUrl":
-				return ec.fieldContext_User_avatarUrl(ctx, field)
-			case "avatarKey":
-				return ec.fieldContext_User_avatarKey(ctx, field)
+				return ec.fieldContext_PublicPlayer_avatarUrl(ctx, field)
 			case "avatarSource":
-				return ec.fieldContext_User_avatarSource(ctx, field)
-			case "createdAt":
-				return ec.fieldContext_User_createdAt(ctx, field)
-			case "isAdmin":
-				return ec.fieldContext_User_isAdmin(ctx, field)
-			case "isGuest":
-				return ec.fieldContext_User_isGuest(ctx, field)
-			case "emails":
-				return ec.fieldContext_User_emails(ctx, field)
-			case "identities":
-				return ec.fieldContext_User_identities(ctx, field)
+				return ec.fieldContext_PublicPlayer_avatarSource(ctx, field)
 			}
-			return nil, fmt.Errorf("no field named %q was found under type User", field.Name)
+			return nil, fmt.Errorf("no field named %q was found under type PublicPlayer", field.Name)
 		},
 	}
 	return fc, nil
@@ -24934,6 +25023,52 @@ func (ec *executionContext) _RegisterMyGamePayload(ctx context.Context, sel ast.
 	return out
 }
 
+var regroupRosterEntryImplementors = []string{"RegroupRosterEntry"}
+
+func (ec *executionContext) _RegroupRosterEntry(ctx context.Context, sel ast.SelectionSet, obj *model.RegroupRosterEntry) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, regroupRosterEntryImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	deferred := make(map[string]*graphql.FieldSet)
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("RegroupRosterEntry")
+		case "user":
+			out.Values[i] = ec._RegroupRosterEntry_user(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "role":
+			out.Values[i] = ec._RegroupRosterEntry_role(ctx, field, obj)
+		case "regroup":
+			out.Values[i] = ec._RegroupRosterEntry_regroup(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch(ctx)
+	if out.Invalids > 0 {
+		return graphql.Null
+	}
+
+	atomic.AddInt32(&ec.deferred, int32(len(deferred)))
+
+	for label, dfs := range deferred {
+		ec.processDeferredGroup(graphql.DeferredGroup{
+			Label:    label,
+			Path:     graphql.GetPath(ctx),
+			FieldSet: dfs,
+			Context:  ctx,
+		})
+	}
+
+	return out
+}
+
 var requirementGroupImplementors = []string{"RequirementGroup", "ModeRequirementNode"}
 
 func (ec *executionContext) _RequirementGroup(ctx context.Context, sel ast.SelectionSet, obj *model.RequirementGroup) graphql.Marshaler {
@@ -28360,6 +28495,10 @@ func (ec *executionContext) marshalNPlayerFinishReason2githubᚗcomᚋscruffypro
 	return v
 }
 
+func (ec *executionContext) marshalNPublicPlayer2githubᚗcomᚋscruffyprodigyᚋjoinquestᚋgraphᚋmodelᚐPublicPlayer(ctx context.Context, sel ast.SelectionSet, v model.PublicPlayer) graphql.Marshaler {
+	return ec._PublicPlayer(ctx, sel, &v)
+}
+
 func (ec *executionContext) marshalNPublicPlayer2ᚖgithubᚗcomᚋscruffyprodigyᚋjoinquestᚋgraphᚋmodelᚐPublicPlayer(ctx context.Context, sel ast.SelectionSet, v *model.PublicPlayer) graphql.Marshaler {
 	if v == nil {
 		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
@@ -28484,6 +28623,60 @@ func (ec *executionContext) marshalNRegisterMyGamePayload2ᚖgithubᚗcomᚋscru
 		return graphql.Null
 	}
 	return ec._RegisterMyGamePayload(ctx, sel, v)
+}
+
+func (ec *executionContext) marshalNRegroupRosterEntry2ᚕᚖgithubᚗcomᚋscruffyprodigyᚋjoinquestᚋgraphᚋmodelᚐRegroupRosterEntryᚄ(ctx context.Context, sel ast.SelectionSet, v []*model.RegroupRosterEntry) graphql.Marshaler {
+	ret := make(graphql.Array, len(v))
+	var wg sync.WaitGroup
+	isLen1 := len(v) == 1
+	if !isLen1 {
+		wg.Add(len(v))
+	}
+	for i := range v {
+		i := i
+		fc := &graphql.FieldContext{
+			Index:  &i,
+			Result: &v[i],
+		}
+		ctx := graphql.WithFieldContext(ctx, fc)
+		f := func(i int) {
+			defer func() {
+				if r := recover(); r != nil {
+					ec.Error(ctx, ec.Recover(ctx, r))
+					ret = nil
+				}
+			}()
+			if !isLen1 {
+				defer wg.Done()
+			}
+			ret[i] = ec.marshalNRegroupRosterEntry2ᚖgithubᚗcomᚋscruffyprodigyᚋjoinquestᚋgraphᚋmodelᚐRegroupRosterEntry(ctx, sel, v[i])
+		}
+		if isLen1 {
+			f(i)
+		} else {
+			go f(i)
+		}
+
+	}
+	wg.Wait()
+
+	for _, e := range ret {
+		if e == graphql.Null {
+			return graphql.Null
+		}
+	}
+
+	return ret
+}
+
+func (ec *executionContext) marshalNRegroupRosterEntry2ᚖgithubᚗcomᚋscruffyprodigyᚋjoinquestᚋgraphᚋmodelᚐRegroupRosterEntry(ctx context.Context, sel ast.SelectionSet, v *model.RegroupRosterEntry) graphql.Marshaler {
+	if v == nil {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			ec.Errorf(ctx, "the requested element is null which the schema does not allow")
+		}
+		return graphql.Null
+	}
+	return ec._RegroupRosterEntry(ctx, sel, v)
 }
 
 func (ec *executionContext) unmarshalNRegroupState2githubᚗcomᚋscruffyprodigyᚋjoinquestᚋgraphᚋmodelᚐRegroupState(ctx context.Context, v any) (model.RegroupState, error) {

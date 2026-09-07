@@ -135,7 +135,9 @@ type Table {
   game: Game!
   mode: GameMode!
   createdAt: Time!
-  king: User
+  # PublicPlayer, not User: a table admits strangers via Look for group and the
+  # catalog queue, so nothing on the card carries an email.
+  king: PublicPlayer
   seats: [TableSeat!]!
   seatSlots: [TableSeatSlot!]!
   canStart: Boolean!

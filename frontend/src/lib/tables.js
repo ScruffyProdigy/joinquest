@@ -1,12 +1,13 @@
 import { graphqlRequest } from './graphql'
-import { PUBLIC_PLAYER_FIELDS, USER_AVATAR_FIELDS } from './avatars'
+import { PUBLIC_PLAYER_FIELDS } from './avatars'
 import { createClient } from 'graphql-ws'
 import { getGraphQLWsUrl } from './env'
 import { prefetchSubscriptionAuth } from './queue'
 import { displayNameOrFallback } from './viewer'
 
-export { USER_AVATAR_FIELDS }
-
+// Everyone on a table card is a PublicPlayer, not a User. A table admits strangers — the
+// king's Look for group backfill and the catalog queue both seat people who were never
+// invited — so no seat, king or roster entry may carry an email (JQ-174).
 export const TABLE_FIELDS = `
   id
   createdAt
@@ -31,13 +32,13 @@ export const TABLE_FIELDS = `
     }
   }
   king {
-    ${USER_AVATAR_FIELDS}
+    ${PUBLIC_PLAYER_FIELDS}
   }
   seats {
     seatKey
     seatedAt
     user {
-      ${USER_AVATAR_FIELDS}
+      ${PUBLIC_PLAYER_FIELDS}
     }
   }
   seatSlots {
@@ -46,7 +47,7 @@ export const TABLE_FIELDS = `
     displayName
     teamPrefix
     user {
-      ${USER_AVATAR_FIELDS}
+      ${PUBLIC_PLAYER_FIELDS}
     }
   }
   lookForGroupOptions {
@@ -63,17 +64,13 @@ export const TABLE_FIELDS = `
     needed
   }
   regroupRoster {
-    # PublicPlayer, not User: the roster of a finished match must not leak
-    # contact details, so it has no avatarKey to select.
+    # RegroupRosterEntry, not MatchParticipantResult: this table admits players who
+    # never played the originating match, so there are no standings here to select —
+    # only who held which seat and whether they are coming back.
     user {
       ${PUBLIC_PLAYER_FIELDS}
     }
     role
-    finished
-    finishedAt
-    reason
-    placement
-    winner
     regroup
   }
 `

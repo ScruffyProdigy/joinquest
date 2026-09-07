@@ -74,11 +74,6 @@ func (r *mutationResolver) ReportPlayerFinished(ctx context.Context, matchID str
 	return true, nil
 }
 
-// metricCompletionPreempted counts completions that found the session already ended.
-// A steady trickle is the benign reportPlayerFinished race; a burst on a schedule is a
-// cleanup job ending live sessions behind the lobby's back.
-const metricCompletionPreempted = "lobby.match.completion_preempted"
-
 // ReportMatchResult is the resolver for the reportMatchResult field.
 func (r *mutationResolver) ReportMatchResult(ctx context.Context, matchID string, status model.MatchResultStatus, winnerLobbyUserIds []string, metadata map[string]any) (bool, error) {
 	if err := requireGameServiceAuth(ctx); err != nil {
