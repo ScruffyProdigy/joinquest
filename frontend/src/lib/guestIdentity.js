@@ -23,6 +23,14 @@ export const SIGIL_FAMILIES = [
   { key: 'cephalopod', nouns: ['Octopus', 'Squid', 'Nautilus', 'Kraken', 'Cuttle', 'Argonaut'] },
   { key: 'cetacean', nouns: ['Whale', 'Orca', 'Narwhal', 'Beluga', 'Dolphin', 'Porpoise'] },
   { key: 'chelonian', nouns: ['Turtle', 'Tortoise', 'Terrapin', 'Snapper', 'Slider', 'Loggerhead'] },
+  { key: 'equine', nouns: ['Horse', 'Mare', 'Stallion', 'Mustang', 'Bronco', 'Colt'] },
+  { key: 'proboscid', nouns: ['Elephant', 'Mammoth', 'Mastodon', 'Tusker', 'Jumbo', 'Behemoth'] },
+  { key: 'suid', nouns: ['Boar', 'Hog', 'Warthog', 'Peccary', 'Razorback', 'Sow'] },
+  { key: 'primate', nouns: ['Ape', 'Gorilla', 'Macaque', 'Lemur', 'Gibbon', 'Baboon'] },
+  { key: 'amphibian', nouns: ['Frog', 'Toad', 'Newt', 'Salamander', 'Axolotl', 'Peeper'] },
+  { key: 'crustacean', nouns: ['Crab', 'Lobster', 'Prawn', 'Shrimp', 'Crayfish', 'Hermit'] },
+  { key: 'arachnid', nouns: ['Spider', 'Tarantula', 'Widow', 'Recluse', 'Orbweaver', 'Weaver'] },
+  { key: 'waterfowl', nouns: ['Swan', 'Heron', 'Crane', 'Egret', 'Ibis', 'Stork'] },
 ]
 
 /** The silhouette drawn on top of every tint. */
@@ -40,12 +48,14 @@ export const SIGIL_HUE_WORDS = [
   { until: 50, word: 'Rust' },
   { until: 68, word: 'Solar' },
   { until: 95, word: 'Fern' },
-  { until: 150, word: 'Moss' },
+  { until: 125, word: 'Moss' },
+  { until: 152, word: 'Pine' },
   { until: 172, word: 'Jade' },
   { until: 190, word: 'Tide' },
   { until: 205, word: 'Nova' },
   { until: 222, word: 'Frost' },
   { until: 248, word: 'Storm' },
+  { until: 268, word: 'Iris' },
   { until: 290, word: 'Dusk' },
   { until: 320, word: 'Bloom' },
   { until: 345, word: 'Dawn' },
@@ -66,11 +76,13 @@ const SATURATION_MAX = 95
  * brighter than a blue at L=50%, and the near-white silhouette would vanish on it.
  * Drawing a target luminance and solving for L compensates for the hue exactly.
  *
- * This band keeps every disc between roughly 2.9:1 and 4.8:1 against the
- * silhouette, which is where the twelve hand-picked tints this replaced sat.
+ * The ceiling is where a disc reads at exactly 3:1 against the silhouette, the
+ * WCAG floor for non-text contrast; the floor keeps the darkest draws from losing
+ * their colour. That puts every disc between 3.0:1 and 4.8:1, which is where the
+ * twelve hand-picked tints this replaced sat.
  */
 const LUMINANCE_MIN = 0.16
-const LUMINANCE_MAX = 0.3
+const LUMINANCE_MAX = 0.28
 
 /** Four digits keeps names distinct without making them unreadable. */
 const NUMBER_MIN = 1000

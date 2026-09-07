@@ -79,7 +79,7 @@ describe('generateTint', () => {
     for (let hue = 0; hue < 360; hue += 3) {
       for (let i = 0; i < 5; i += 1) {
         const ratio = contrastAgainstSilhouette(generateTint(hue).hex)
-        expect(ratio).toBeGreaterThan(2.8)
+        expect(ratio).toBeGreaterThanOrEqual(3)
         expect(ratio).toBeLessThan(5)
       }
     }

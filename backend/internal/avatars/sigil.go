@@ -23,6 +23,8 @@ const sigilSilhouette = "#f8fafc"
 var SigilFamilies = []string{
 	"canine", "feline", "horned", "raptor", "corvid", "ursine",
 	"rodent", "lagomorph", "serpent", "cephalopod", "cetacean", "chelonian",
+	"equine", "proboscid", "suid", "primate", "amphibian", "crustacean",
+	"arachnid", "waterfowl",
 }
 
 // legacySigilTints are the twelve named colours the picker offered before it
@@ -156,9 +158,13 @@ var sigilShapes = map[string]func(body, tint string) string{
 	},
 	"raptor": func(body, tint string) string {
 		return fmt.Sprintf(`
-  <ellipse cx="26" cy="31" rx="13" ry="14" fill="%[1]s"/>
-  <path d="M33 19 C42 19 48 21 52 25 C53 31 51 36 48 37 C47 31 43 28 35 29 Z" fill="%[1]s"/>
-  <circle cx="24" cy="26" r="3" fill="%[2]s"/>`, body, tint)
+  <path d="M30 23 C22 20 12 20 5 24 C11 26 20 29 26 35 L31 31 Z" fill="%[1]s"/>
+  <path d="M34 23 C42 20 52 20 59 24 C53 26 44 29 38 35 L33 31 Z" fill="%[1]s"/>
+  <ellipse cx="32" cy="28" rx="4" ry="11" fill="%[1]s"/>
+  <circle cx="32" cy="18" r="3.6" fill="%[1]s"/>
+  <path d="M28 36 L36 36 L38 49 L32 45 L26 49 Z" fill="%[1]s"/>
+  <path d="M12 24 L20 27 M52 24 L44 27" fill="none" stroke="%[2]s" stroke-width="1.8" stroke-linecap="round"/>
+  <path d="M28 42 L36 42" fill="none" stroke="%[2]s" stroke-width="2" stroke-linecap="round"/>`, body, tint)
 	},
 	"corvid": func(body, tint string) string {
 		return fmt.Sprintf(`
@@ -227,5 +233,90 @@ var sigilShapes = map[string]func(body, tint string) string{
   <ellipse cx="32" cy="34" rx="17" ry="15" fill="%[1]s"/>
   <ellipse cx="32" cy="34" rx="12" ry="10" fill="none" stroke="%[2]s" stroke-width="2.2"/>
   <path d="M32 28 L37 31 L37 37 L32 40 L27 37 L27 31 Z" fill="%[2]s"/>`, body, tint)
+	},
+	"equine": func(body, tint string) string {
+		return fmt.Sprintf(`
+  <path d="M24 8 C20 13 21 21 26 25 C30 21 28 11 24 8 Z" fill="%[1]s"/>
+  <path d="M40 8 C44 13 43 21 38 25 C34 21 36 11 40 8 Z" fill="%[1]s"/>
+  <path d="M24 22 C24 18 40 18 40 22 L41 31 C41 37 39 43 36 47 C34 50 30 50 28 47 C25 43 23 37 23 31 Z" fill="%[1]s"/>
+  <circle cx="27.5" cy="27" r="2.2" fill="%[2]s"/>
+  <circle cx="36.5" cy="27" r="2.2" fill="%[2]s"/>
+  <ellipse cx="29.5" cy="43" rx="1.8" ry="2.5" fill="%[2]s"/>
+  <ellipse cx="34.5" cy="43" rx="1.8" ry="2.5" fill="%[2]s"/>`, body, tint)
+	},
+	"proboscid": func(body, tint string) string {
+		return fmt.Sprintf(`
+  <path d="M22 16 C9 11 2 19 3 30 C4 41 14 47 23 44 Z" fill="%[1]s"/>
+  <path d="M42 16 C55 11 62 19 61 30 C60 41 50 47 41 44 Z" fill="%[1]s"/>
+  <path d="M32 12 C40 12 45 18 45 26 L45 32 C45 37 41 40 36 40 L28 40 C23 40 19 37 19 32 L19 26 C19 18 24 12 32 12 Z" fill="%[1]s"/>
+  <path d="M29 37 L35 37 L34 52 C34 56 30 56 30 52 Z" fill="%[1]s"/>
+  <path d="M25 39 C23 44 22 48 21 52 C24 49 26 45 27 41 Z" fill="%[1]s"/>
+  <path d="M39 39 C41 44 42 48 43 52 C40 49 38 45 37 41 Z" fill="%[1]s"/>
+  <circle cx="25" cy="25" r="2.4" fill="%[2]s"/>
+  <circle cx="39" cy="25" r="2.4" fill="%[2]s"/>`, body, tint)
+	},
+	"suid": func(body, tint string) string {
+		return fmt.Sprintf(`
+  <path d="M17 16 L25 22 L18 27 Z" fill="%[1]s"/>
+  <path d="M47 16 L39 22 L46 27 Z" fill="%[1]s"/>
+  <path d="M32 17 C42 17 50 24 50 33 C50 42 42 49 32 49 C22 49 14 42 14 33 C14 24 22 17 32 17 Z" fill="%[1]s"/>
+  <path d="M22 43 C16 40 12 34 11 28 C13 35 17 41 21 45 Z" fill="%[1]s"/>
+  <path d="M42 43 C48 40 52 34 53 28 C51 35 47 41 43 45 Z" fill="%[1]s"/>
+  <circle cx="24" cy="30" r="2.4" fill="%[2]s"/>
+  <circle cx="40" cy="30" r="2.4" fill="%[2]s"/>
+  <ellipse cx="32" cy="40" rx="7.5" ry="5.5" fill="%[2]s"/>
+  <ellipse cx="29" cy="40" rx="1.6" ry="2.3" fill="%[1]s"/>
+  <ellipse cx="35" cy="40" rx="1.6" ry="2.3" fill="%[1]s"/>`, body, tint)
+	},
+	"primate": func(body, tint string) string {
+		return fmt.Sprintf(`
+  <circle cx="14" cy="30" r="6.5" fill="%[1]s"/>
+  <circle cx="50" cy="30" r="6.5" fill="%[1]s"/>
+  <path d="M32 13 C42 13 49 21 49 31 C49 42 42 50 32 50 C22 50 15 42 15 31 C15 21 22 13 32 13 Z" fill="%[1]s"/>
+  <path d="M22 24 C26 20 30 19 32 19 C34 19 38 20 42 24 L42 27 C37 24 34 23 32 23 C30 23 27 24 22 27 Z" fill="%[2]s"/>
+  <circle cx="26" cy="31" r="2.4" fill="%[2]s"/>
+  <circle cx="38" cy="31" r="2.4" fill="%[2]s"/>
+  <ellipse cx="32" cy="41" rx="8" ry="6" fill="%[2]s"/>
+  <path d="M28 41 L36 41" fill="none" stroke="%[1]s" stroke-width="2" stroke-linecap="round"/>`, body, tint)
+	},
+	"amphibian": func(body, tint string) string {
+		return fmt.Sprintf(`
+  <circle cx="20" cy="21" r="8" fill="%[1]s"/>
+  <circle cx="44" cy="21" r="8" fill="%[1]s"/>
+  <path d="M10 34 C10 26 20 21 32 21 C44 21 54 26 54 34 C54 42 44 48 32 48 C20 48 10 42 10 34 Z" fill="%[1]s"/>
+  <circle cx="20" cy="20" r="3.6" fill="%[2]s"/>
+  <circle cx="44" cy="20" r="3.6" fill="%[2]s"/>
+  <path d="M17 37 C23 43 41 43 47 37" fill="none" stroke="%[2]s" stroke-width="2.6" stroke-linecap="round"/>`, body, tint)
+	},
+	"crustacean": func(body, tint string) string {
+		return fmt.Sprintf(`
+  <path d="M20 42 L12 49 M26 45 L22 53 M44 42 L52 49 M38 45 L42 53" fill="none" stroke="%[1]s" stroke-width="3.4" stroke-linecap="round"/>
+  <path d="M22 28 C16 22 9 19 5 22 C1 25 3 33 9 35 C14 37 19 33 22 31 Z" fill="%[1]s"/>
+  <path d="M42 28 C48 22 55 19 59 22 C63 25 61 33 55 35 C50 37 45 33 42 31 Z" fill="%[1]s"/>
+  <path d="M4 24 L14 29 L4 33 Z" fill="%[2]s"/>
+  <path d="M60 24 L50 29 L60 33 Z" fill="%[2]s"/>
+  <ellipse cx="32" cy="37" rx="14" ry="10" fill="%[1]s"/>
+  <circle cx="26" cy="34" r="2.6" fill="%[2]s"/>
+  <circle cx="38" cy="34" r="2.6" fill="%[2]s"/>
+  <path d="M28 43 L36 43" fill="none" stroke="%[2]s" stroke-width="2.2" stroke-linecap="round"/>`, body, tint)
+	},
+	"arachnid": func(body, tint string) string {
+		return fmt.Sprintf(`
+  <path d="M26 25 C19 21 15 18 12 15 M25 28 C17 27 12 26 8 24 M25 32 C17 33 12 35 9 38 M27 35 C22 39 18 43 15 47" fill="none" stroke="%[1]s" stroke-width="2.6" stroke-linecap="round"/>
+  <path d="M38 25 C45 21 49 18 52 15 M39 28 C47 27 52 26 56 24 M39 32 C47 33 52 35 55 38 M37 35 C42 39 46 43 49 47" fill="none" stroke="%[1]s" stroke-width="2.6" stroke-linecap="round"/>
+  <ellipse cx="32" cy="39" rx="11" ry="10" fill="%[1]s"/>
+  <ellipse cx="32" cy="26" rx="8" ry="7" fill="%[1]s"/>
+  <circle cx="29" cy="24" r="2" fill="%[2]s"/>
+  <circle cx="35" cy="24" r="2" fill="%[2]s"/>`, body, tint)
+	},
+	"waterfowl": func(body, tint string) string {
+		return fmt.Sprintf(`
+  <path d="M13 38 L5 33 L11 45 Z" fill="%[1]s"/>
+  <ellipse cx="28" cy="42" rx="16" ry="8.5" fill="%[1]s"/>
+  <path d="M33 37 C25 34 22 26 26 21 C30 16 38 16 41 20" fill="none" stroke="%[1]s" stroke-width="6.5" stroke-linecap="round"/>
+  <circle cx="42" cy="21" r="4.8" fill="%[1]s"/>
+  <path d="M46 19 L56 22 L46 25 Z" fill="%[1]s"/>
+  <circle cx="43" cy="20" r="1.9" fill="%[2]s"/>
+  <path d="M21 41 C25 37 33 37 37 41 C33 45 25 45 21 41 Z" fill="%[2]s"/>`, body, tint)
 	},
 }
