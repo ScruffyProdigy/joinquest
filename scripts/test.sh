@@ -36,12 +36,9 @@ run_tests() {
     local test_dir="$3"
     
     print_info "Running $test_name..."
-    
-    if [ ! -z "$test_dir" ]; then
-        cd "$test_dir"
-    fi
-    
-    if eval "$test_command"; then
+
+    # Run in a subshell so the cd only affects this test, not the rest of the script.
+    if ( if [ -n "$test_dir" ]; then cd "$test_dir" || exit 1; fi; eval "$test_command" ); then
         print_status "$test_name passed"
         return 0
     else
