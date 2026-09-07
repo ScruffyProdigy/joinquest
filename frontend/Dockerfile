@@ -28,6 +28,11 @@ FROM nginx:alpine
 # Copy built assets from builder stage
 COPY --from=builder /app/dist /usr/share/nginx/html
 
+# The builder copies the working tree, not git, so a private-mode file on the
+# build host (a 600 font, say) would otherwise ship unreadable and serve 403
+# from unprivileged nginx. Normalise the web root so that cannot happen (JQ-127).
+RUN chmod -R a+rX /usr/share/nginx/html
+
 # Copy nginx configuration
 COPY nginx.conf /etc/nginx/nginx.conf
 
