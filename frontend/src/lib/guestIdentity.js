@@ -55,14 +55,21 @@ export const SIGIL_EXPRESSIONS = ['wide', 'bright', 'squint', 'wink', 'sleepy']
 
 /**
  * The adjective in a guest name still describes the disc. The wheel is cut into
- * sixteen equal slices of *perceived* hue rather than of HSL degrees, so each word
- * is equally likely and each one covers about as much visible colour as the next.
+ * twenty-four equal slices of *perceived* hue rather than of HSL degrees, so each
+ * word is equally likely and each covers about as much visible colour as the next.
  * Cutting by HSL degrees instead gave green four words for a region that occupies
  * under a tenth of perceived hue, which is why so many guests came out green.
+ *
+ * Fifteen perceived degrees a slice is about where two neighbouring words stop
+ * being tellable apart on a disc this size, so this is roughly as fine as the
+ * vocabulary can usefully go. Every name here was picked against the colour its
+ * own slice actually renders, not from a list of colour words in a plausible
+ * order — which is why the teals get four of them and yellow only gets two.
  */
 export const SIGIL_HUE_WORDS = [
-  'Blaze', 'Ember', 'Rust', 'Solar', 'Fern', 'Moss', 'Jade', 'Tide',
-  'Nova', 'Frost', 'Storm', 'Iris', 'Dusk', 'Bloom', 'Rose', 'Dawn',
+  'Blaze', 'Ember', 'Copper', 'Rust', 'Amber', 'Solar', 'Fern', 'Ivy',
+  'Moss', 'Pine', 'Jade', 'Tide', 'Lagoon', 'Nova', 'Frost', 'Cobalt',
+  'Storm', 'Iris', 'Dusk', 'Orchid', 'Bloom', 'Berry', 'Rose', 'Dawn',
 ]
 
 /**

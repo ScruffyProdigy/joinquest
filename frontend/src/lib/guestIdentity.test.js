@@ -88,7 +88,7 @@ describe('generateTint', () => {
     // Drawn uniformly in HSL degrees, green took 29% of guests for under a tenth of
     // perceived hue. Uniform in perceived hue, no word runs away with the wheel.
     const counts = new Map(SIGIL_HUE_WORDS.map((word) => [word, 0]))
-    const draws = 3200
+    const draws = 8000
     for (let i = 0; i < draws; i += 1) {
       const word = generateTint().word
       counts.set(word, counts.get(word) + 1)
