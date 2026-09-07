@@ -231,6 +231,7 @@ type ComplexityRoot struct {
 		EndedAt           func(childComplexity int) int
 		Game              func(childComplexity int) int
 		MatchID           func(childComplexity int) int
+		Mode              func(childComplexity int) int
 		Participants      func(childComplexity int) int
 		RegroupInviteCode func(childComplexity int) int
 		Reported          func(childComplexity int) int
@@ -1507,6 +1508,12 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.MatchResult.MatchID(childComplexity), true
+	case "MatchResult.mode":
+		if e.complexity.MatchResult.Mode == nil {
+			break
+		}
+
+		return e.complexity.MatchResult.Mode(childComplexity), true
 	case "MatchResult.participants":
 		if e.complexity.MatchResult.Participants == nil {
 			break
@@ -4100,6 +4107,12 @@ type MatchParticipantResult {
 type MatchResult {
   matchId: ID!
   game: Game!
+  """
+  The mode this session was played in, so the client can read its real minimum instead of
+  guessing across the game's modes. Null when the session has no mode, or when the mode it
+  named has since been removed from the catalog — sessions outlive their modes.
+  """
+  mode: GameMode
   """Null when the game reported no result."""
   status: MatchResultStatus
   reported: Boolean!
@@ -8970,6 +8983,8 @@ func (ec *executionContext) fieldContext_MatchResult_game(_ context.Context, fie
 				return ec.fieldContext_Game_heroUrl(ctx, field)
 			case "catalogHeroUrl":
 				return ec.fieldContext_Game_catalogHeroUrl(ctx, field)
+			case "titleArt":
+				return ec.fieldContext_Game_titleArt(ctx, field)
 			case "longDescription":
 				return ec.fieldContext_Game_longDescription(ctx, field)
 			case "shortDescription":
@@ -9002,6 +9017,57 @@ func (ec *executionContext) fieldContext_MatchResult_game(_ context.Context, fie
 				return ec.fieldContext_Game_integrationChecks(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type Game", field.Name)
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _MatchResult_mode(ctx context.Context, field graphql.CollectedField, obj *model.MatchResult) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_MatchResult_mode,
+		func(ctx context.Context) (any, error) {
+			return obj.Mode, nil
+		},
+		nil,
+		ec.marshalOGameMode2ᚖgithubᚗcomᚋscruffyprodigyᚋplayhubᚋgraphᚋmodelᚐGameMode,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_MatchResult_mode(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "MatchResult",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "id":
+				return ec.fieldContext_GameMode_id(ctx, field)
+			case "modeKey":
+				return ec.fieldContext_GameMode_modeKey(ctx, field)
+			case "displayName":
+				return ec.fieldContext_GameMode_displayName(ctx, field)
+			case "minPlayers":
+				return ec.fieldContext_GameMode_minPlayers(ctx, field)
+			case "maxPlayers":
+				return ec.fieldContext_GameMode_maxPlayers(ctx, field)
+			case "status":
+				return ec.fieldContext_GameMode_status(ctx, field)
+			case "seats":
+				return ec.fieldContext_GameMode_seats(ctx, field)
+			case "queuePaths":
+				return ec.fieldContext_GameMode_queuePaths(ctx, field)
+			case "queues":
+				return ec.fieldContext_GameMode_queues(ctx, field)
+			case "eligibility":
+				return ec.fieldContext_GameMode_eligibility(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type GameMode", field.Name)
 		},
 	}
 	return fc, nil
@@ -14294,6 +14360,8 @@ func (ec *executionContext) fieldContext_Query_matchResult(ctx context.Context, 
 				return ec.fieldContext_MatchResult_matchId(ctx, field)
 			case "game":
 				return ec.fieldContext_MatchResult_game(ctx, field)
+			case "mode":
+				return ec.fieldContext_MatchResult_mode(ctx, field)
 			case "status":
 				return ec.fieldContext_MatchResult_status(ctx, field)
 			case "reported":
@@ -17992,6 +18060,8 @@ func (ec *executionContext) fieldContext_Subscription_matchResultUpdated(ctx con
 				return ec.fieldContext_MatchResult_matchId(ctx, field)
 			case "game":
 				return ec.fieldContext_MatchResult_game(ctx, field)
+			case "mode":
+				return ec.fieldContext_MatchResult_mode(ctx, field)
 			case "status":
 				return ec.fieldContext_MatchResult_status(ctx, field)
 			case "reported":
@@ -23054,6 +23124,8 @@ func (ec *executionContext) _MatchResult(ctx context.Context, sel ast.SelectionS
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
+		case "mode":
+			out.Values[i] = ec._MatchResult_mode(ctx, field, obj)
 		case "status":
 			out.Values[i] = ec._MatchResult_status(ctx, field, obj)
 		case "reported":
@@ -29545,6 +29617,13 @@ func (ec *executionContext) marshalOGame2ᚖgithubᚗcomᚋscruffyprodigyᚋplay
 		return graphql.Null
 	}
 	return ec._Game(ctx, sel, v)
+}
+
+func (ec *executionContext) marshalOGameMode2ᚖgithubᚗcomᚋscruffyprodigyᚋplayhubᚋgraphᚋmodelᚐGameMode(ctx context.Context, sel ast.SelectionSet, v *model.GameMode) graphql.Marshaler {
+	if v == nil {
+		return graphql.Null
+	}
+	return ec._GameMode(ctx, sel, v)
 }
 
 func (ec *executionContext) marshalOGameTitleArt2ᚖgithubᚗcomᚋscruffyprodigyᚋplayhubᚋgraphᚋmodelᚐGameTitleArt(ctx context.Context, sel ast.SelectionSet, v *model.GameTitleArt) graphql.Marshaler {

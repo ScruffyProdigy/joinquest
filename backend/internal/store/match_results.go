@@ -24,8 +24,11 @@ type MatchParticipantResult struct {
 
 // MatchResult is the stored outcome of a match, as reported by the game.
 type MatchResult struct {
-	SessionID     uuid.UUID
-	GameID        uuid.UUID
+	SessionID uuid.UUID
+	GameID    uuid.UUID
+	// ModeID is the catalog mode the session was played in. Nullable in the schema, and
+	// the row it points at may since have been removed, so callers must handle both.
+	ModeID        *uuid.UUID
 	Status        *string
 	Metadata      json.RawMessage
 	ReportedAt    *time.Time
@@ -112,10 +115,10 @@ func (s *Store) GetMatchResult(ctx context.Context, sessionID uuid.UUID) (*Match
 	// scanning NULL directly into *json.RawMessage fails with "unsupported Scan".
 	var metadata []byte
 	err := s.db.QueryRowContext(ctx, `
-		SELECT game_id, result_status, result_metadata, result_reported_at, status, ended_at
+		SELECT game_id, mode_id, result_status, result_metadata, result_reported_at, status, ended_at
 		FROM game_sessions
 		WHERE id = $1
-	`, sessionID).Scan(&out.GameID, &out.Status, &metadata, &out.ReportedAt, &out.SessionStatus, &out.EndedAt)
+	`, sessionID).Scan(&out.GameID, &out.ModeID, &out.Status, &metadata, &out.ReportedAt, &out.SessionStatus, &out.EndedAt)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return nil, ErrNotFound

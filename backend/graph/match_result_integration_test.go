@@ -20,6 +20,7 @@ const matchResultQuery = `query Result($matchId: ID!) {
 	matchResult(matchId: $matchId) {
 		matchId
 		game { id }
+		mode { id modeKey minPlayers }
 		status
 		reported
 		complete
@@ -48,6 +49,11 @@ type matchResultResponse struct {
 			Game    struct {
 				ID string `json:"id"`
 			} `json:"game"`
+			Mode *struct {
+				ID         string `json:"id"`
+				ModeKey    string `json:"modeKey"`
+				MinPlayers int    `json:"minPlayers"`
+			} `json:"mode"`
 			Status            *string `json:"status"`
 			Reported          bool    `json:"reported"`
 			Complete          bool    `json:"complete"`
@@ -641,5 +647,45 @@ func TestMatchResultRosterCannotExposeEmail(t *testing.T) {
 		if email != "" && strings.Contains(string(body), email) {
 			t.Fatalf("response leaked participant email %q: %s", email, body)
 		}
+	}
+}
+
+// TestMatchResultExposesPlayedMode pins the field the return screen reads its player
+// minimum from. Before it existed the client had to guess by scanning every active mode on
+// the game and taking the smallest minimum, which is wrong for any game whose modes differ.
+func TestMatchResultExposesPlayedMode(t *testing.T) {
+	env := newQueueIntegrationEnv(t)
+	cleaner := env.newCleaner(t)
+	match := seedFinishedMatch(t, env, cleaner)
+
+	// The session's own mode, read straight from the store, is the answer the resolver
+	// has to reproduce — not a constant copied out of the demo seed.
+	want, err := env.Store.GetGameModeForSession(context.Background(), match.sessionID)
+	if err != nil {
+		t.Fatalf("GetGameModeForSession: %v", err)
+	}
+
+	resp := queryMatchResult(t, env, match.sessionID, match.cookieA)
+	if len(resp.Errors) > 0 {
+		t.Fatalf("matchResult errors: %+v", resp.Errors)
+	}
+	got := resp.Data.MatchResult
+	if got == nil {
+		t.Fatal("matchResult is null")
+	}
+	if got.Mode == nil {
+		t.Fatal("mode is null on a finished match that was played in a mode")
+	}
+	if got.Mode.ID != want.ID.String() {
+		t.Errorf("mode.id = %q, want %q", got.Mode.ID, want.ID)
+	}
+	if got.Mode.ModeKey != want.ModeKey {
+		t.Errorf("mode.modeKey = %q, want %q", got.Mode.ModeKey, want.ModeKey)
+	}
+	if got.Mode.MinPlayers != want.MinPlayers {
+		t.Errorf("mode.minPlayers = %d, want %d", got.Mode.MinPlayers, want.MinPlayers)
+	}
+	if got.Mode.MinPlayers <= 0 {
+		t.Errorf("mode.minPlayers = %d, want a real minimum", got.Mode.MinPlayers)
 	}
 }

@@ -23,6 +23,14 @@ const MATCH_RESULT_FIELDS = `
       minPlayers
     }
   }
+  # The mode actually played. Nullable: sessions outlive modes, so the screen keeps a
+  # fallback for null rather than assuming it is always here.
+  mode {
+    id
+    modeKey
+    displayName
+    minPlayers
+  }
   participants {
     user {
       id

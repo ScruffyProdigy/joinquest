@@ -11,6 +11,16 @@ const base = {
   ],
 }
 
+/**
+ * The roster every real player actually arrives on. `playAgain` is the only thing in the
+ * system that sets anyone to IN, and this card's primary button is its only caller, so a
+ * roster that starts all-PENDING is the one state the card must never refuse to act on.
+ */
+const allPending = {
+  ...base,
+  participants: base.participants.map((p) => ({ ...p, regroup: 'PENDING' })),
+}
+
 describe('RegroupCard', () => {
   it('names who has not answered', () => {
     render(<RegroupCard result={base} viewerId="a" minPlayers={2} />)
@@ -18,15 +28,21 @@ describe('RegroupCard', () => {
     expect(screen.getByText('Not back yet')).toBeInTheDocument()
   })
 
-  it('disables the primary action until enough players are in', () => {
-    render(<RegroupCard result={base} viewerId="a" minPlayers={2} />)
-    expect(screen.getByRole('button', { name: 'Need 1 more to play again' })).toBeDisabled()
+  it('offers an enabled way in when nobody has opted in yet', () => {
+    render(<RegroupCard result={allPending} viewerId="a" minPlayers={2} />)
+    expect(screen.getByRole('button', { name: 'Another round' })).toBeEnabled()
   })
 
-  it('enables it once the count is met', () => {
-    const ready = { ...base, participants: base.participants.map((p) => ({ ...p, regroup: 'IN' })) }
-    render(<RegroupCard result={ready} viewerId="a" minPlayers={2} />)
+  it('reports the count without gating anything on it', () => {
+    render(<RegroupCard result={allPending} viewerId="a" minPlayers={2} />)
+    expect(screen.getByTestId('regroup-count')).toHaveTextContent('0 of 2 back and in · needs 2 to start')
     expect(screen.getByRole('button', { name: 'Another round' })).toBeEnabled()
+  })
+
+  it('sends a player who is already in back to the table instead of asking again', () => {
+    render(<RegroupCard result={base} viewerId="a" minPlayers={2} />)
+    expect(screen.getByRole('button', { name: 'Back to the table' })).toBeEnabled()
+    expect(screen.queryByRole('button', { name: 'Another round' })).not.toBeInTheDocument()
   })
 
   it('offers the mode switch only for multi-mode games', () => {
@@ -39,7 +55,7 @@ describe('RegroupCard', () => {
     expect(screen.queryByRole('button', { name: 'Back to Word Hunt' })).not.toBeInTheDocument()
   })
 
-  it('counts only IN — a player who opted out never unlocks the round', () => {
+  it('counts only IN, and still lets an opted-out player change their mind', () => {
     const outAndIn = {
       ...base,
       participants: [
@@ -47,9 +63,10 @@ describe('RegroupCard', () => {
         { user: { id: 'b', displayName: 'Bo' }, regroup: 'OUT' },
       ],
     }
-    render(<RegroupCard result={outAndIn} viewerId="a" minPlayers={2} />)
+    render(<RegroupCard result={outAndIn} viewerId="b" minPlayers={2} />)
     expect(screen.getByText('Out')).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: 'Need 1 more to play again' })).toBeDisabled()
+    expect(screen.getByTestId('regroup-count')).toHaveTextContent('1 of 2 back and in')
+    expect(screen.getByRole('button', { name: 'Another round' })).toBeEnabled()
   })
 
   it('names the viewer as "You" and always offers a way out', () => {
@@ -64,10 +81,9 @@ describe('RegroupCard', () => {
     const onPlayAgain = vi.fn()
     const onDecline = vi.fn()
     const onBackToGame = vi.fn()
-    const ready = { ...base, participants: base.participants.map((p) => ({ ...p, regroup: 'IN' })) }
     render(
       <RegroupCard
-        result={ready}
+        result={allPending}
         viewerId="a"
         minPlayers={2}
         onPlayAgain={onPlayAgain}
@@ -86,8 +102,7 @@ describe('RegroupCard', () => {
   })
 
   it('disables the primary action while a regroup request is in flight', () => {
-    const ready = { ...base, participants: base.participants.map((p) => ({ ...p, regroup: 'IN' })) }
-    render(<RegroupCard result={ready} viewerId="a" minPlayers={2} busy />)
+    render(<RegroupCard result={allPending} viewerId="a" minPlayers={2} busy />)
     expect(screen.getByRole('button', { name: 'Another round' })).toBeDisabled()
   })
 })

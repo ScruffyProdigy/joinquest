@@ -39,6 +39,12 @@ type MatchParticipantResult {
 type MatchResult {
   matchId: ID!
   game: Game!
+  """
+  The mode this session was played in, so the client can read its real minimum instead of
+  guessing across the game's modes. Null when the session has no mode, or when the mode it
+  named has since been removed from the catalog — sessions outlive their modes.
+  """
+  mode: GameMode
   """Null when the game reported no result."""
   status: MatchResultStatus
   reported: Boolean!

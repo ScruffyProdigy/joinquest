@@ -215,15 +215,29 @@ export const REGROUP_IN = 'In'
 export const REGROUP_OUT = 'Out'
 export const REGROUP_PENDING = 'Not back yet'
 export const REGROUP_ANOTHER_ROUND = 'Another round'
+/** Shown instead of "Another round" once you are already in: the seat is claimed, so go sit in it. */
+export const REGROUP_BACK_TO_TABLE = 'Back to the table'
 export const REGROUP_FIND_SOMETHING_NEW = 'Find something new'
 
 export function formatBackToGame(gameName) {
   return `Back to ${gameName}`
 }
 
-export function formatNeedMorePlayers(missing) {
-  return `Need ${missing} more to play again`
+/**
+ * Informational, never a gate. "Another round" is the only thing in the system that moves
+ * a player to IN, so this line may never be allowed to disable it — it exists so a player
+ * can see whether anyone else is coming back, and what the mode needs to fill a table.
+ * Starting the next match is the table's job, not this screen's.
+ */
+export function formatRegroupInCount(inCount, total, minPlayers) {
+  const roster = `${inCount} of ${total} back and in`
+  return Number.isFinite(minPlayers) && minPlayers > 0 ? `${roster} · needs ${minPlayers} to start` : roster
 }
+
+/** The still-playing branch's exit, so waiting on a live match is never a dead end. */
+export const RESULTS_LEAVE_MATCH = 'Head back to JoinQuest'
+/** Live updates failed to connect: the screen still shows what it fetched, but it will not move. */
+export const RESULTS_LIVE_UPDATES_OFF = 'Live updates are off. Reload to see the latest.'
 
 /**
  * Regroup failures the player can act on. `ErrNoRegroupMode` has no message: it is a

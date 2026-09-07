@@ -2,6 +2,7 @@ package graph
 
 import (
 	"context"
+	"errors"
 	"strings"
 
 	"github.com/google/uuid"
@@ -53,9 +54,15 @@ func loadMatchResultModel(ctx context.Context, st *store.Store, sessionID uuid.U
 		byID[players[i].ID] = &players[i]
 	}
 
+	mode, err := matchResultMode(ctx, st, result.ModeID)
+	if err != nil {
+		return nil, err
+	}
+
 	out := &model.MatchResult{
 		MatchID:           sessionID.String(),
 		Game:              ToGraphQLGame(game),
+		Mode:              mode,
 		Status:            toGraphQLMatchResultStatus(result.Status),
 		Reported:          result.Status != nil,
 		Complete:          result.SessionStatus == sessionStatusCompleted,
@@ -84,6 +91,24 @@ func loadMatchResultModel(ctx context.Context, st *store.Store, sessionID uuid.U
 		out.Participants = append(out.Participants, entry)
 	}
 	return out, nil
+}
+
+// matchResultMode resolves the catalog mode the session was played in. Both "the session
+// never named a mode" and "the mode it named has since been deleted" resolve to nil: the
+// schema field is nullable precisely because sessions outlive modes (JQ-134), and a
+// missing mode must not fail the whole results screen.
+func matchResultMode(ctx context.Context, st *store.Store, modeID *uuid.UUID) (*model.GameMode, error) {
+	if modeID == nil {
+		return nil, nil
+	}
+	mode, err := st.GetGameModeByID(ctx, *modeID)
+	if err != nil {
+		if errors.Is(err, store.ErrNotFound) {
+			return nil, nil
+		}
+		return nil, err
+	}
+	return ToGraphQLGameMode(mode), nil
 }
 
 // regroupInviteCode resolves the room code of the table this match converged on, or nil

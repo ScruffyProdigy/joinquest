@@ -7,6 +7,8 @@ import * as matchResultLib from '../../lib/matchResult'
 import {
   REGROUP_ERROR_NOT_FINISHED,
   REGROUP_ERROR_TABLE_FULL,
+  RESULTS_LEAVE_MATCH,
+  RESULTS_LIVE_UPDATES_OFF,
 } from '../../lib/playerCopy'
 
 vi.mock('../../lib/return', () => ({
@@ -45,8 +47,10 @@ function makeResult(overrides = {}) {
     reported: true,
     complete: true,
     regroupInviteCode: null,
+    // Both PENDING on purpose: that is the state two players who just finished a match
+    // actually land in, and the state the old count gate deadlocked on.
     participants: [
-      { user: { id: 'a', displayName: 'Ada' }, finished: true, placement: 1, winner: true, regroup: 'IN' },
+      { user: { id: 'a', displayName: 'Ada' }, finished: true, placement: 1, winner: true, regroup: 'PENDING' },
       { user: { id: 'b', displayName: 'Bo' }, finished: true, placement: 2, winner: false, regroup: 'PENDING' },
     ],
     ...overrides,
@@ -165,6 +169,37 @@ describe('ReturnPage', () => {
       expect(await screen.findByText('Final standings')).toBeInTheDocument()
       expect(screen.getByText('Who’s playing again?')).toBeInTheDocument()
     })
+
+    // Without this the branch is a dead end: no link, no button, browser back only.
+    it('offers a way out to the resolved return destination', async () => {
+      const user = userEvent.setup()
+      window.location.search = '?match=match-1'
+      vi.mocked(returnLib.fetchReturnDestination).mockResolvedValue({ path: '/games/word-hunt', kind: 'GAME' })
+      vi.mocked(matchResultLib.fetchMatchResult).mockResolvedValue(makeResult({ complete: false }))
+
+      render(<ReturnPage />)
+      await screen.findByText('Still playing')
+
+      await user.click(screen.getByRole('button', { name: RESULTS_LEAVE_MATCH }))
+      await waitFor(() => expect(assign).toHaveBeenCalledWith('/games/word-hunt'))
+      // Nothing to decline: the match has not finished, so there is no regroup answer yet.
+      expect(matchResultLib.declinePlayAgain).not.toHaveBeenCalled()
+    })
+
+    // A silent subscription failure parks the player here forever with no explanation.
+    it('says live updates are off when the subscription never connects', async () => {
+      window.location.search = '?match=match-1'
+      vi.mocked(returnLib.fetchReturnDestination).mockResolvedValue({ path: '/', kind: 'HOME' })
+      vi.mocked(matchResultLib.fetchMatchResult).mockResolvedValue(makeResult({ complete: false }))
+      vi.mocked(matchResultLib.subscribeToMatchResult).mockRejectedValue(new Error('socket closed'))
+
+      render(<ReturnPage />)
+
+      expect(await screen.findByText(RESULTS_LIVE_UPDATES_OFF)).toBeInTheDocument()
+      // The fetched result still stands; this is a notice, not an error state.
+      expect(screen.getByText('Still playing')).toBeInTheDocument()
+      expect(screen.getByRole('button', { name: RESULTS_LEAVE_MATCH })).toBeInTheDocument()
+    })
   })
 
   describe('branch 3: the match is over', () => {
@@ -183,10 +218,39 @@ describe('ReturnPage', () => {
       expect(assign).not.toHaveBeenCalled()
     })
 
-    it('gates the round on the smallest mode minimum, counting only IN', async () => {
+    // The regression this whole fix exists for: playAgain is the only writer of IN, and
+    // this button is its only caller, so an all-PENDING roster that renders a disabled
+    // button is a permanent deadlock for every real player.
+    it('offers an enabled primary action on an all-PENDING roster', async () => {
       await renderComplete()
-      // Ada is IN, Bo is PENDING; the smallest active mode needs 2.
-      expect(screen.getByRole('button', { name: 'Need 1 more to play again' })).toBeDisabled()
+      expect(screen.getByRole('button', { name: 'Another round' })).toBeEnabled()
+    })
+
+    it('reads the player minimum off the mode that was actually played', async () => {
+      // game.modes says 2 and 4; the played mode says 6. The mode wins.
+      await renderComplete(makeResult({ mode: { id: 'm3', modeKey: 'big', minPlayers: 6 } }))
+      expect(screen.getByTestId('regroup-count')).toHaveTextContent('needs 6 to start')
+    })
+
+    it('falls back to the smallest active mode when the played mode is gone', async () => {
+      // mode_id is nullable and sessions outlive their modes, so null is a real case.
+      await renderComplete(makeResult({ mode: null }))
+      expect(screen.getByTestId('regroup-count')).toHaveTextContent('needs 2 to start')
+    })
+
+    it('sends an already-IN player straight to the table without claiming a seat twice', async () => {
+      const user = userEvent.setup()
+      await renderComplete(
+        makeResult({
+          regroupInviteCode: 'XYZ789',
+          participants: makeResult().participants.map((p) => ({ ...p, regroup: 'IN' })),
+        }),
+      )
+
+      await user.click(screen.getByRole('button', { name: 'Back to the table' }))
+
+      await waitFor(() => expect(assign).toHaveBeenCalledWith('/room/XYZ789'))
+      expect(matchResultLib.playAgain).not.toHaveBeenCalled()
     })
 
     it('unsubscribes on unmount', async () => {
@@ -203,10 +267,7 @@ describe('ReturnPage', () => {
 
     it('routes to the regroup room when another round starts', async () => {
       const user = userEvent.setup()
-      const ready = makeResult({
-        participants: makeResult().participants.map((p) => ({ ...p, regroup: 'IN' })),
-      })
-      await renderComplete(ready)
+      await renderComplete()
       vi.mocked(matchResultLib.playAgain).mockResolvedValue({ inviteCode: 'ABC123', seated: true, table: {} })
 
       await user.click(screen.getByRole('button', { name: 'Another round' }))
@@ -217,10 +278,7 @@ describe('ReturnPage', () => {
 
     it('falls back to the game page when the match has no mode to rebuild from', async () => {
       const user = userEvent.setup()
-      const ready = makeResult({
-        participants: makeResult().participants.map((p) => ({ ...p, regroup: 'IN' })),
-      })
-      await renderComplete(ready)
+      await renderComplete()
       vi.mocked(matchResultLib.playAgain).mockRejectedValue(
         new Error('this match no longer has a mode to build a table from'),
       )
@@ -232,10 +290,7 @@ describe('ReturnPage', () => {
 
     it('says the match is not finished rather than routing away', async () => {
       const user = userEvent.setup()
-      const ready = makeResult({
-        participants: makeResult().participants.map((p) => ({ ...p, regroup: 'IN' })),
-      })
-      await renderComplete(ready)
+      await renderComplete()
       vi.mocked(matchResultLib.playAgain).mockRejectedValue(new Error("this match hasn't finished yet"))
 
       await user.click(screen.getByRole('button', { name: 'Another round' }))
@@ -246,10 +301,7 @@ describe('ReturnPage', () => {
 
     it('says the table filled up rather than routing away', async () => {
       const user = userEvent.setup()
-      const ready = makeResult({
-        participants: makeResult().participants.map((p) => ({ ...p, regroup: 'IN' })),
-      })
-      await renderComplete(ready)
+      await renderComplete()
       vi.mocked(matchResultLib.playAgain).mockRejectedValue(new Error('the table is full'))
 
       await user.click(screen.getByRole('button', { name: 'Another round' }))

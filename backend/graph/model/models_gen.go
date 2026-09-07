@@ -215,6 +215,10 @@ type MatchParticipantResult struct {
 type MatchResult struct {
 	MatchID string `json:"matchId"`
 	Game    *Game  `json:"game"`
+	// The mode this session was played in, so the client can read its real minimum instead of
+	// guessing across the game's modes. Null when the session has no mode, or when the mode it
+	// named has since been removed from the catalog — sessions outlive their modes.
+	Mode *GameMode `json:"mode,omitempty"`
 	// Null when the game reported no result.
 	Status   *MatchResultStatus `json:"status,omitempty"`
 	Reported bool               `json:"reported"`

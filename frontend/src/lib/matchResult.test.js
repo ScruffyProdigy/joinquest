@@ -2,10 +2,11 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 import { classifyRegroupError, REGROUP_ERROR } from './matchResult'
 import {
   formatBackToGame,
-  formatNeedMorePlayers,
+  formatRegroupInCount,
   matchHeadline,
   ordinal,
   REGROUP_ANOTHER_ROUND,
+  REGROUP_BACK_TO_TABLE,
   REGROUP_FIND_SOMETHING_NEW,
   REGROUP_IN,
   REGROUP_OUT,
@@ -102,6 +103,7 @@ describe('post-game copy constants', () => {
     expect(REGROUP_OUT).toBe('Out')
     expect(REGROUP_PENDING).toBe('Not back yet')
     expect(REGROUP_ANOTHER_ROUND).toBe('Another round')
+    expect(REGROUP_BACK_TO_TABLE).toBe('Back to the table')
     expect(REGROUP_FIND_SOMETHING_NEW).toBe('Find something new')
   })
 
@@ -114,8 +116,14 @@ describe('post-game copy constants', () => {
     expect(formatBackToGame('Codenames')).toBe('Back to Codenames')
   })
 
-  it('formats formatNeedMorePlayers', () => {
-    expect(formatNeedMorePlayers(2)).toBe('Need 2 more to play again')
+  // The count is reported, not enforced - see RegroupCard. It names the roster total so a
+  // player can tell whether anyone else is still coming.
+  it('formats formatRegroupInCount', () => {
+    expect(formatRegroupInCount(1, 4, 2)).toBe('1 of 4 back and in \u00b7 needs 2 to start')
+  })
+
+  it('drops the start clause when there is no real minimum to name', () => {
+    expect(formatRegroupInCount(0, 2, null)).toBe('0 of 2 back and in')
   })
 })
 

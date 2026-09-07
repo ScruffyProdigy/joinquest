@@ -6,8 +6,9 @@ import { displayName } from '../../lib/tables'
 import { cn } from '../../lib/utils'
 import {
   formatBackToGame,
-  formatNeedMorePlayers,
+  formatRegroupInCount,
   REGROUP_ANOTHER_ROUND,
+  REGROUP_BACK_TO_TABLE,
   REGROUP_FIND_SOMETHING_NEW,
   REGROUP_IN,
   REGROUP_OUT,
@@ -23,14 +24,27 @@ const STATE_LABEL = {
 }
 
 /**
- * Only `IN` counts toward the gate. `PENDING` means the player has not returned or has
- * not chosen yet, and counting them would let the group start a match short-handed —
- * the exact failure the three-state roster exists to prevent. The table's seat count is
- * no substitute either: a room-table group is re-seated automatically when their match
- * completes, so seats read as full before anyone has actually opted in.
+ * Only `IN` counts. `PENDING` means the player has not returned or has not chosen yet, and
+ * the table's seat count is no substitute either: a room-table group is re-seated
+ * automatically when their match completes, so seats read as full before anyone has
+ * actually opted in.
+ *
+ * This number is reported, never enforced. `playAgain` is the only thing in the whole
+ * system that moves a participant to IN, and this card's primary button is its only
+ * caller — so gating that button on the count deadlocked the feature: two players both
+ * landing here PENDING would each wait forever for the other to become IN. Whether the
+ * next match may actually start is settled at the table, by `canStart` and the king.
  */
 function countIn(participants) {
   return participants.filter((participant) => participant?.regroup === 'IN').length
+}
+
+/** The viewer's own answer, or null when they are not on this roster at all. */
+function viewerRegroup(participants, viewerId) {
+  if (!viewerId) {
+    return null
+  }
+  return participants.find((participant) => participant?.user?.id === viewerId)?.regroup ?? null
 }
 
 function RegroupRow({ participant, viewerId }) {
@@ -72,9 +86,9 @@ export default function RegroupCard({
   const participants = result?.participants ?? []
   const game = result?.game
   const inCount = countIn(participants)
-  const required = Number.isFinite(minPlayers) ? minPlayers : 0
-  const missing = required - inCount
-  const ready = missing <= 0
+  // Already IN means the seat is claimed and the table exists: opting in again is not a
+  // thing to ask for, so the same button becomes the way back to that table.
+  const viewerIn = viewerRegroup(participants, viewerId) === 'IN'
   const showBackToGame = (game?.modes?.length ?? 0) > 1
 
   return (
@@ -92,9 +106,12 @@ export default function RegroupCard({
             />
           ))}
         </ul>
+        <p className="text-xs text-muted-foreground" data-testid="regroup-count">
+          {formatRegroupInCount(inCount, participants.length, minPlayers)}
+        </p>
         <div className="flex flex-col gap-2">
-          <Button type="button" disabled={!ready || busy} onClick={onPlayAgain}>
-            {ready ? REGROUP_ANOTHER_ROUND : formatNeedMorePlayers(missing)}
+          <Button type="button" disabled={busy} onClick={onPlayAgain}>
+            {viewerIn ? REGROUP_BACK_TO_TABLE : REGROUP_ANOTHER_ROUND}
           </Button>
           {showBackToGame ? (
             <Button type="button" variant="outline" disabled={busy} onClick={onBackToGame}>
