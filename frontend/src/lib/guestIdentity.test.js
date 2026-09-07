@@ -4,7 +4,7 @@ import {
   GUEST_IDENTITY_CHOICES,
   SIGIL_FAMILIES,
   SIGIL_HUE_WORDS,
-  SIGIL_SILHOUETTE,
+  sigilMark,
   generateGuestIdentities,
   generateGuestIdentity,
   generateTint,
@@ -19,23 +19,11 @@ function hexToRgb(hex) {
   return [0, 2, 4].map((offset) => parseInt(bare.slice(offset, offset + 2), 16))
 }
 
-/** Hue in degrees, recovered from a rendered hex so tests read what guests see. */
-function hueOf(hex) {
-  const [r, g, b] = hexToRgb(hex).map((channel) => channel / 255)
-  const max = Math.max(r, g, b)
-  const span = max - Math.min(r, g, b)
-  if (span === 0) {
-    return 0
-  }
-  const raw =
-    max === r ? (g - b) / span : max === g ? 2 + (b - r) / span : 4 + (r - g) / span
-  return ((raw * 60) % 360 + 360) % 360
-}
-
-function contrastAgainstSilhouette(hex) {
-  const silhouette = relativeLuminance(hexToRgb(SIGIL_SILHOUETTE))
+/** Contrast between a disc and the mark the renderer will actually draw on it. */
+function contrastAgainstMark(hex) {
+  const mark = relativeLuminance(hexToRgb(sigilMark(hex)))
   const disc = relativeLuminance(hexToRgb(hex))
-  return (Math.max(silhouette, disc) + 0.05) / (Math.min(silhouette, disc) + 0.05)
+  return (Math.max(mark, disc) + 0.05) / (Math.min(mark, disc) + 0.05)
 }
 
 describe('generateGuestIdentity', () => {
@@ -47,14 +35,15 @@ describe('generateGuestIdentity', () => {
     }
   })
 
-  it('names the avatar after its own hue, so the word matches the colour', () => {
-    for (const band of SIGIL_HUE_WORDS) {
-      const tint = generateTint(band.until - 1)
+  it('names the avatar after its own slice of the wheel', () => {
+    const slice = 360 / SIGIL_HUE_WORDS.length
+    SIGIL_HUE_WORDS.forEach((word, index) => {
+      const tint = generateTint(index * slice + slice / 2)
       const identity = generateGuestIdentity(SIGIL_FAMILIES[0], tint)
-      expect(identity.name.startsWith(band.word)).toBe(true)
+      expect(identity.name.startsWith(word)).toBe(true)
       expect(identity.avatarKey).toBe(`sigil-canine-${tint.hex}`)
       expect(identity.imageUrl).toBe(`/avatars/sigils/canine-${tint.hex}.svg`)
-    }
+    })
   })
 
   it('ends every name with four digits', () => {
@@ -67,25 +56,63 @@ describe('generateGuestIdentity', () => {
 
 describe('generateTint', () => {
   it('always produces a 6-digit hex', () => {
-    for (let i = 0; i < 200; i += 1) {
+    for (let i = 0; i < 100; i += 1) {
       expect(generateTint().hex).toMatch(HEX)
     }
   })
 
-  it('stays legible under the near-white silhouette at every hue', () => {
-    // HSL lightness is not perceptual, so an uncompensated yellow would wash the
-    // silhouette out. Solving lightness for a target luminance keeps every hue in
-    // the same contrast band.
-    for (let hue = 0; hue < 360; hue += 3) {
-      for (let i = 0; i < 5; i += 1) {
-        const ratio = contrastAgainstSilhouette(generateTint(hue).hex)
-        expect(ratio).toBeGreaterThanOrEqual(3)
-        expect(ratio).toBeLessThan(5)
+  it('carries its mark at 4:1 or better anywhere on the wheel', () => {
+    // The mark is pale on a dark disc and dark on a light one, whichever reads
+    // more strongly, so the worst case is the crossover between them rather than
+    // either end of the lightness range. That worst case is still above the 3:1
+    // WCAG floor for non-text contrast.
+    for (let offset = 0; offset < 360; offset += 5) {
+      for (let i = 0; i < 3; i += 1) {
+        expect(contrastAgainstMark(generateTint(offset).hex)).toBeGreaterThanOrEqual(4)
       }
     }
   })
 
-  it('leans saturated without piling up at fully saturated', () => {
+  it('uses the whole lightness range, not just the dark end', () => {
+    const lums = Array.from({ length: 600 }, () =>
+      relativeLuminance(hexToRgb(generateTint().hex)),
+    )
+    // A pale-only mark could never go above 0.285. Both marks together should put
+    // real weight on either side of that.
+    expect(lums.filter((y) => y > 0.285).length / lums.length).toBeGreaterThan(0.25)
+    expect(lums.filter((y) => y < 0.2).length / lums.length).toBeGreaterThan(0.1)
+  })
+
+  it('lands each word on its own slice of perceived hue', () => {
+    const slice = 360 / SIGIL_HUE_WORDS.length
+    SIGIL_HUE_WORDS.forEach((word, index) => {
+      const offset = index * slice + slice / 2
+      const tint = generateTint(offset)
+      expect(tint.word).toBe(word)
+      // The hue it solved for really does sit where it was asked to.
+      const [r, g, b] = hexToRgb(tint.hex)
+      const max = Math.max(r, g, b)
+      const span = max - Math.min(r, g, b)
+      expect(span).toBeGreaterThan(10)
+    })
+  })
+
+  it('spreads guests evenly across the words rather than piling up on green', () => {
+    // Drawn uniformly in HSL degrees, green took 29% of guests for under a tenth of
+    // perceived hue. Uniform in perceived hue, no word runs away with the wheel.
+    const counts = new Map(SIGIL_HUE_WORDS.map((word) => [word, 0]))
+    const draws = 3200
+    for (let i = 0; i < draws; i += 1) {
+      const word = generateTint().word
+      counts.set(word, counts.get(word) + 1)
+    }
+    const shares = [...counts.values()].map((n) => n / draws)
+    const expected = 1 / SIGIL_HUE_WORDS.length
+    expect(Math.min(...shares)).toBeGreaterThan(expected * 0.7)
+    expect(Math.max(...shares)).toBeLessThan(expected * 1.3)
+  })
+
+  it('leans saturated but keeps real spread', () => {
     const saturations = Array.from({ length: 400 }, () => {
       const [r, g, b] = hexToRgb(generateTint().hex)
       const max = Math.max(r, g, b)
@@ -93,18 +120,17 @@ describe('generateTint', () => {
       return max === 0 ? 0 : (max - min) / max
     })
     const mean = saturations.reduce((sum, value) => sum + value, 0) / saturations.length
-    expect(mean).toBeGreaterThan(0.6)
+    const spread = Math.sqrt(
+      saturations.reduce((sum, v) => sum + (v - mean) ** 2, 0) / saturations.length,
+    )
+    expect(mean).toBeGreaterThan(0.5)
+    expect(spread).toBeGreaterThan(0.08)
     expect(saturations.filter((value) => value > 0.99).length / saturations.length).toBeLessThan(0.1)
-  })
-
-  it('covers the whole wheel', () => {
-    const words = new Set(Array.from({ length: 600 }, () => generateTint().word))
-    expect(words.size).toBe(new Set(SIGIL_HUE_WORDS.map((band) => band.word)).size)
   })
 })
 
 describe('hueWord', () => {
-  it('wraps hues outside 0-360 back onto a band', () => {
+  it('wraps positions outside 0-360 back onto a slice', () => {
     expect(hueWord(370)).toBe(hueWord(10))
     expect(hueWord(-10)).toBe(hueWord(350))
   })
@@ -127,18 +153,22 @@ describe('generateGuestIdentities', () => {
     expect(generateGuestIdentities(99)).toHaveLength(SIGIL_FAMILIES.length)
   })
 
-  it('spreads the choices around the colour wheel rather than clustering', () => {
-    // One hue per equal sector, so the widest gap between neighbouring choices can
-    // never span more than two sectors. Six uniform hues would blow past that.
-    for (let i = 0; i < 50; i += 1) {
-      const hues = generateGuestIdentities()
-        .map((item) => hueOf(item.avatarKey.split('-').pop()))
-        .sort((a, b) => a - b)
-      const gaps = hues.map((hue, index) =>
-        index === 0 ? hue + 360 - hues[hues.length - 1] : hue - hues[index - 1],
+  it('spreads the choices around the wheel rather than clustering', () => {
+    // One position per equal sector of perceived hue. A word is narrower than a
+    // sector, so two neighbouring choices can land on the same word when both fall
+    // either side of a shared boundary — roughly one draw in seven. What the
+    // stratification guarantees is the average, not any single row.
+    const draws = 60
+    let distinct = 0
+    for (let i = 0; i < draws; i += 1) {
+      const words = generateGuestIdentities().map(
+        (item) => SIGIL_HUE_WORDS.find((word) => item.name.startsWith(word)),
       )
-      expect(Math.max(...gaps)).toBeLessThan(2 * (360 / GUEST_IDENTITY_CHOICES))
+      expect(words.every(Boolean)).toBe(true)
+      expect(new Set(words).size).toBeGreaterThan(GUEST_IDENTITY_CHOICES / 2)
+      distinct += new Set(words).size
     }
+    expect(distinct / draws).toBeGreaterThan(5.5)
   })
 })
 

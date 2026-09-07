@@ -2,9 +2,11 @@ package avatars
 
 import (
 	"fmt"
+	"math"
 	"net/http"
 	"regexp"
 	"slices"
+	"strconv"
 	"strings"
 )
 
@@ -13,9 +15,48 @@ import (
 // signing in and finishing the spirit animal journey.
 const SourceSigil = "sigil"
 
-// sigilSilhouette is the near-white every animal shape is drawn in. The picker
-// contrast-checks each colour it draws against this, so the shape always reads.
-const sigilSilhouette = "#f8fafc"
+// A sigil is drawn in one of two marks: near-white on a dark disc, near-black on a
+// light one. Carrying both is what lets the disc use the whole lightness range
+// instead of only the dark end a pale mark can sit on.
+const (
+	sigilPale = "#f8fafc"
+	sigilInk  = "#10141a"
+)
+
+// sigilMarkCrossover is the disc luminance above which the dark mark contrasts
+// better than the pale one. Picking the better of the two puts every sigil at
+// 4.2:1 or above — comfortably past the 3:1 WCAG floor for non-text contrast, and
+// better than the pale mark alone managed.
+const sigilMarkCrossover = 0.189
+
+// hexLuminance is the WCAG relative luminance of a bare 6-digit hex.
+func hexLuminance(hex string) float64 {
+	channel := func(i int) float64 {
+		v, err := strconv.ParseUint(hex[i:i+2], 16, 16)
+		if err != nil {
+			return 0
+		}
+		f := float64(v) / 255
+		if f <= 0.04045 {
+			return f / 12.92
+		}
+		return math.Pow((f+0.055)/1.055, 2.4)
+	}
+	return 0.2126*channel(0) + 0.7152*channel(2) + 0.0722*channel(4)
+}
+
+// sigilMark picks the colour for both the silhouette and the rim: whichever of the
+// two reads more strongly on this disc. They share a colour on purpose. The rim is
+// what keeps the disc's edge visible when a game client draws it on a background we
+// do not control, and the edge needs help in opposite directions at each end — a
+// dark disc disappears on a black page, a pale one on a white page — which is
+// exactly how the mark already differs.
+func sigilMark(hex string) string {
+	if hexLuminance(hex) > sigilMarkCrossover {
+		return sigilInk
+	}
+	return sigilPale
+}
 
 // SigilFamilies are the guest-tier silhouettes. A generated guest name picks the
 // noun that matches its family, so a player called FrostFox gets the canine one.
@@ -24,7 +65,7 @@ var SigilFamilies = []string{
 	"canine", "feline", "horned", "raptor", "corvid", "ursine",
 	"rodent", "lagomorph", "serpent", "cephalopod", "cetacean", "chelonian",
 	"equine", "proboscid", "suid", "primate", "amphibian", "crustacean",
-	"arachnid", "waterfowl",
+	"arachnid", "waterfowl", "lepidopteran", "echinoderm", "gastropod", "spheniscid",
 }
 
 // legacySigilTints are the twelve named colours the picker offered before it
@@ -95,10 +136,12 @@ func RenderSigil(family, tint string) (string, bool) {
 		return "", false
 	}
 	colour := "#" + hex
+	mark := sigilMark(hex)
 	return fmt.Sprintf(`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64" role="img" aria-label="%s sigil">
-  <circle cx="32" cy="32" r="32" fill="%s"/>%s
+  <circle cx="32" cy="32" r="32" fill="%s"/>
+  <circle cx="32" cy="32" r="30.8" fill="none" stroke="%s" stroke-width="2.4" opacity="0.5"/>%s
 </svg>
-`, family, colour, shape(sigilSilhouette, colour)), true
+`, family, colour, mark, shape(mark, colour)), true
 }
 
 // SigilHandler serves /avatars/sigils/<family>-<colour>.svg. Sigils are rendered
@@ -136,9 +179,13 @@ func SigilHandler() http.Handler {
 var sigilShapes = map[string]func(body, tint string) string{
 	"canine": func(body, tint string) string {
 		return fmt.Sprintf(`
-  <path d="M13 15 L23 25 L41 25 L51 15 L49 31 L44 41 L32 51 L20 41 L15 31 Z" fill="%[1]s"/>
-  <circle cx="25.5" cy="32" r="2.4" fill="%[2]s"/>
-  <circle cx="38.5" cy="32" r="2.4" fill="%[2]s"/>`, body, tint)
+  <path d="M19 12 L27 22 L21 28 Z" fill="%[1]s"/>
+  <path d="M45 12 L37 22 L43 28 Z" fill="%[1]s"/>
+  <path d="M32 18 C41 18 48 25 48 33 C48 38 45 42 41 44 L23 44 C19 42 16 38 16 33 C16 25 23 18 32 18 Z" fill="%[1]s"/>
+  <path d="M25 41 L39 41 L37 49 C36 52 28 52 27 49 Z" fill="%[1]s"/>
+  <circle cx="25" cy="31" r="2.4" fill="%[2]s"/>
+  <circle cx="39" cy="31" r="2.4" fill="%[2]s"/>
+  <ellipse cx="32" cy="46" rx="2.8" ry="2.1" fill="%[2]s"/>`, body, tint)
 	},
 	"feline": func(body, tint string) string {
 		return fmt.Sprintf(`
@@ -311,12 +358,55 @@ var sigilShapes = map[string]func(body, tint string) string{
 	},
 	"waterfowl": func(body, tint string) string {
 		return fmt.Sprintf(`
-  <path d="M13 38 L5 33 L11 45 Z" fill="%[1]s"/>
-  <ellipse cx="28" cy="42" rx="16" ry="8.5" fill="%[1]s"/>
-  <path d="M33 37 C25 34 22 26 26 21 C30 16 38 16 41 20" fill="none" stroke="%[1]s" stroke-width="6.5" stroke-linecap="round"/>
-  <circle cx="42" cy="21" r="4.8" fill="%[1]s"/>
-  <path d="M46 19 L56 22 L46 25 Z" fill="%[1]s"/>
-  <circle cx="43" cy="20" r="1.9" fill="%[2]s"/>
-  <path d="M21 41 C25 37 33 37 37 41 C33 45 25 45 21 41 Z" fill="%[2]s"/>`, body, tint)
+  <path d="M27 40 L25 53 M34 40 L37 53" fill="none" stroke="%[1]s" stroke-width="2.6" stroke-linecap="round"/>
+  <path d="M21 54 L30 54 M33 54 L42 54" fill="none" stroke="%[1]s" stroke-width="2.4" stroke-linecap="round"/>
+  <path d="M18 31 L7 26 L16 38 Z" fill="%[1]s"/>
+  <ellipse cx="30" cy="33" rx="13" ry="8.5" fill="%[1]s"/>
+  <path d="M36 29 C33 23 34 17 39 14" fill="none" stroke="%[1]s" stroke-width="5" stroke-linecap="round"/>
+  <circle cx="41" cy="13" r="4.4" fill="%[1]s"/>
+  <path d="M45 11 L57 15 L45 16 Z" fill="%[1]s"/>
+  <circle cx="42" cy="12" r="1.8" fill="%[2]s"/>
+  <path d="M23 32 C27 27 35 27 39 32 C35 37 27 37 23 32 Z" fill="%[2]s"/>`, body, tint)
+	},
+	"lepidopteran": func(body, tint string) string {
+		return fmt.Sprintf(`
+  <path d="M31 22 C28 14 20 8 13 11 C6 14 5 24 14 30 C6 33 4 44 11 49 C18 53 28 45 31 36 Z" fill="%[1]s"/>
+  <path d="M33 22 C36 14 44 8 51 11 C58 14 59 24 50 30 C58 33 60 44 53 49 C46 53 36 45 33 36 Z" fill="%[1]s"/>
+  <path d="M31 20 C29 15 26 12 23 10 M33 20 C35 15 38 12 41 10" fill="none" stroke="%[1]s" stroke-width="2" stroke-linecap="round"/>
+  <ellipse cx="32" cy="32" rx="2.8" ry="13" fill="%[1]s"/>
+  <circle cx="17" cy="22" r="3.6" fill="%[2]s"/>
+  <circle cx="47" cy="22" r="3.6" fill="%[2]s"/>`, body, tint)
+	},
+	"echinoderm": func(body, tint string) string {
+		return fmt.Sprintf(`
+  <path d="M32 9 L37.6 24.3 L53.9 24.9 L41 34.9 L45.5 50.6 L32 41.5 L18.5 50.6 L23 34.9 L10.1 24.9 L26.4 24.3 Z" fill="%[1]s"/>
+  <circle cx="32" cy="31" r="4.2" fill="%[2]s"/>
+  <circle cx="32" cy="18" r="1.7" fill="%[2]s"/>
+  <circle cx="43" cy="27" r="1.7" fill="%[2]s"/>
+  <circle cx="39" cy="41" r="1.7" fill="%[2]s"/>
+  <circle cx="25" cy="41" r="1.7" fill="%[2]s"/>
+  <circle cx="21" cy="27" r="1.7" fill="%[2]s"/>`, body, tint)
+	},
+	"gastropod": func(body, tint string) string {
+		return fmt.Sprintf(`
+  <path d="M9 45 C9 41 13 38 19 38 L45 38 C51 38 55 41 55 45 C55 47 53 49 51 49 L13 49 C11 49 9 47 9 45 Z" fill="%[1]s"/>
+  <path d="M46 39 C50 34 52 30 52 26 M40 38 C43 34 45 31 45 28" fill="none" stroke="%[1]s" stroke-width="2.8" stroke-linecap="round"/>
+  <circle cx="52" cy="25" r="2.6" fill="%[1]s"/>
+  <circle cx="45" cy="27" r="2.4" fill="%[1]s"/>
+  <circle cx="27" cy="27" r="15" fill="%[1]s"/>
+  <circle cx="27" cy="27" r="10.5" fill="%[2]s"/>
+  <circle cx="27" cy="27" r="6.5" fill="%[1]s"/>
+  <circle cx="27" cy="27" r="2.8" fill="%[2]s"/>`, body, tint)
+	},
+	"spheniscid": func(body, tint string) string {
+		return fmt.Sprintf(`
+  <path d="M19 30 C13 33 11 40 13 46 C15 43 17 38 20 35 Z" fill="%[1]s"/>
+  <path d="M45 30 C51 33 53 40 51 46 C49 43 47 38 44 35 Z" fill="%[1]s"/>
+  <path d="M24 53 L20 57 H28 Z" fill="%[1]s"/>
+  <path d="M40 53 L44 57 H36 Z" fill="%[1]s"/>
+  <path d="M32 11 C40 11 45 18 45 26 C45 29 44 32 43 34 L45 46 C46 51 40 55 32 55 C24 55 18 51 19 46 L21 34 C20 32 19 29 19 26 C19 18 24 11 32 11 Z" fill="%[1]s"/>
+  <circle cx="27" cy="22" r="2.1" fill="%[2]s"/>
+  <circle cx="37" cy="22" r="2.1" fill="%[2]s"/>
+  <path d="M32 25 L28 28.5 L32 32 L36 28.5 Z" fill="%[2]s"/>`, body, tint)
 	},
 }

@@ -67,8 +67,12 @@ func TestRenderSigilDrawsEveryFamilyInItsColour(t *testing.T) {
 		if !strings.Contains(svg, `<circle cx="32" cy="32" r="32" fill="#3b82f6"/>`) {
 			t.Fatalf("RenderSigil(%q) is missing its tinted disc: %s", family, svg)
 		}
-		if !strings.Contains(svg, sigilSilhouette) {
+		mark := sigilMark("3b82f6")
+		if !strings.Contains(svg, `fill="`+mark+`"`) {
 			t.Fatalf("RenderSigil(%q) draws no silhouette: %s", family, svg)
+		}
+		if !strings.Contains(svg, `stroke="`+mark+`"`) {
+			t.Fatalf("RenderSigil(%q) draws no rim: %s", family, svg)
 		}
 	}
 }
@@ -85,6 +89,18 @@ func TestSigilHandlerServesRenderedSVG(t *testing.T) {
 	}
 	if !strings.Contains(rec.Body.String(), "#3b82f6") {
 		t.Fatalf("body is not drawn in the requested colour: %s", rec.Body.String())
+	}
+}
+
+// A light disc has to flip to the dark mark, or the silhouette washes out on it.
+func TestRenderSigilFlipsTheMarkOnLightDiscs(t *testing.T) {
+	dark, _ := RenderSigil("canine", "18324a")
+	if !strings.Contains(dark, sigilPale) || strings.Contains(dark, sigilInk) {
+		t.Fatalf("a dark disc should carry the pale mark: %s", dark)
+	}
+	light, _ := RenderSigil("canine", "cfe6f5")
+	if !strings.Contains(light, sigilInk) || strings.Contains(light, sigilPale) {
+		t.Fatalf("a light disc should carry the dark mark: %s", light)
 	}
 }
 
