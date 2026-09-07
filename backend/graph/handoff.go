@@ -61,6 +61,7 @@ func assignmentFromParticipants(
 		GameMode:        modeKey,
 		Seats:           make([]gameclient.AssignmentSeat, 0, len(participants)),
 	}
+	var nameless []uuid.UUID
 	for _, p := range participants {
 		user, err := st.GetUserByID(ctx, p.UserID)
 		if err != nil {
@@ -68,6 +69,13 @@ func assignmentFromParticipants(
 		}
 		player, err := provisionPlayerFromUser(user)
 		if err != nil {
+			if errors.Is(err, ErrPlayerIdentityMissing) {
+				// Gather every offender rather than stopping at the first, so a
+				// rollback drops all of them in one pass and returns everyone
+				// else to the queue.
+				nameless = append(nameless, p.UserID)
+				continue
+			}
 			return gameclient.Assignment{}, fmt.Errorf("seat %s: %w", p.SeatKey, err)
 		}
 		assignment.Seats = append(assignment.Seats, gameclient.AssignmentSeat{
@@ -75,6 +83,9 @@ func assignmentFromParticipants(
 			LobbyUserID: p.UserID.String(),
 			Player:      player,
 		})
+	}
+	if len(nameless) > 0 {
+		return gameclient.Assignment{}, &IdentityMissingError{UserIDs: nameless}
 	}
 	return assignment, nil
 }
@@ -89,6 +100,22 @@ func assignmentFromParticipants(
 // rows; a game is handed a roster it will address people by for a whole match,
 // so it gets the real name or nothing at all.
 var ErrPlayerIdentityMissing = errors.New("seat has no player display name")
+
+// IdentityMissingError names every seat that reached the handoff without a
+// player name. It carries the user ids so the caller can tear the match down
+// and drop exactly those players, the way a game-rejected roster already does,
+// instead of stranding the whole match on a retry that cannot succeed.
+type IdentityMissingError struct {
+	UserIDs []uuid.UUID
+}
+
+func (e *IdentityMissingError) Error() string {
+	return fmt.Sprintf("%s: users %v", ErrPlayerIdentityMissing, e.UserIDs)
+}
+
+// Unwrap keeps errors.Is(err, ErrPlayerIdentityMissing) true for callers that
+// only care that a name was missing.
+func (e *IdentityMissingError) Unwrap() error { return ErrPlayerIdentityMissing }
 
 // provisionPlayerFromUser builds the presentation block a game reads before it
 // resolves anything over GraphQL. Every seat carries one, always with a
