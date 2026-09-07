@@ -10,8 +10,8 @@ import (
 	"testing"
 
 	"github.com/google/uuid"
-	"github.com/scruffyprodigy/playhub/internal/auth"
-	"github.com/scruffyprodigy/playhub/internal/store"
+	"github.com/scruffyprodigy/joinquest/internal/auth"
+	"github.com/scruffyprodigy/joinquest/internal/store"
 )
 
 // matchResultQuery selects every field the results screen reads, so a mapping slip in any

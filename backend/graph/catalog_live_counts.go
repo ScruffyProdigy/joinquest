@@ -4,7 +4,7 @@ import (
 	"context"
 
 	"github.com/google/uuid"
-	"github.com/scruffyprodigy/playhub/internal/catalogstats"
+	"github.com/scruffyprodigy/joinquest/internal/catalogstats"
 )
 
 // liveCounts reads one game's live counts from the whole-catalog snapshot, so a page of cards

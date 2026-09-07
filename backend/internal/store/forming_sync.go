@@ -6,7 +6,7 @@ import (
 	"errors"
 
 	"github.com/google/uuid"
-	"github.com/scruffyprodigy/playhub/internal/lfg/partytree"
+	"github.com/scruffyprodigy/joinquest/internal/lfg/partytree"
 )
 
 func (s *Store) getPartyByIDTx(ctx context.Context, tx *sql.Tx, partyID uuid.UUID) (*Party, error) {

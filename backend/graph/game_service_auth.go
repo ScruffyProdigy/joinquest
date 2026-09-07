@@ -5,7 +5,7 @@ import (
 	"fmt"
 
 	"github.com/google/uuid"
-	"github.com/scruffyprodigy/playhub/internal/auth"
+	"github.com/scruffyprodigy/joinquest/internal/auth"
 )
 
 func requireGameServiceAuth(ctx context.Context) error {

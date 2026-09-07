@@ -11,8 +11,8 @@ import (
 
 	"github.com/google/uuid"
 	_ "github.com/lib/pq"
-	"github.com/scruffyprodigy/playhub/internal/gameclient"
-	"github.com/scruffyprodigy/playhub/internal/store"
+	"github.com/scruffyprodigy/joinquest/internal/gameclient"
+	"github.com/scruffyprodigy/joinquest/internal/store"
 )
 
 func main() {

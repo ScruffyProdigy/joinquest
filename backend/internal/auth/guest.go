@@ -8,7 +8,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	"github.com/scruffyprodigy/playhub/internal/store"
+	"github.com/scruffyprodigy/joinquest/internal/store"
 )
 
 // CreateGuestSession creates a guest user and returns a session JWT.

@@ -6,8 +6,8 @@ import (
 	"fmt"
 
 	"github.com/google/uuid"
-	"github.com/scruffyprodigy/playhub/internal/auth"
-	"github.com/scruffyprodigy/playhub/internal/store"
+	"github.com/scruffyprodigy/joinquest/internal/auth"
+	"github.com/scruffyprodigy/joinquest/internal/store"
 )
 
 // ErrIdentityRequired rejects a caller who has a session but has not finished

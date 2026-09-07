@@ -8,8 +8,8 @@ import (
 	"testing"
 
 	"github.com/google/uuid"
-	"github.com/scruffyprodigy/playhub/internal/gameclient"
-	"github.com/scruffyprodigy/playhub/internal/lfg/partytree"
+	"github.com/scruffyprodigy/joinquest/internal/gameclient"
+	"github.com/scruffyprodigy/joinquest/internal/lfg/partytree"
 )
 
 func TestJoinModeQueueSplitPartyWordHunt(t *testing.T) {

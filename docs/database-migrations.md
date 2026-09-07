@@ -92,7 +92,7 @@ go run ./cmd/migrate -action=force -version=1
 The migration system can also be used programmatically:
 
 ```go
-import "github.com/scruffyprodigy/playhub/internal/migrate"
+import "github.com/scruffyprodigy/joinquest/internal/migrate"
 
 // Create migrator
 migrator, err := migrate.NewMigrator(db)

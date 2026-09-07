@@ -8,8 +8,8 @@ import (
 	"testing"
 
 	"github.com/google/uuid"
-	"github.com/scruffyprodigy/playhub/internal/auth"
-	"github.com/scruffyprodigy/playhub/internal/store"
+	"github.com/scruffyprodigy/joinquest/internal/auth"
+	"github.com/scruffyprodigy/joinquest/internal/store"
 )
 
 func postGraphQLWithBearer(t *testing.T, handler http.Handler, bearer, query string, variables map[string]any) []byte {

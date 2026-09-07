@@ -7,8 +7,8 @@ import (
 	"testing"
 
 	"github.com/99designs/gqlgen/client"
-	"github.com/scruffyprodigy/playhub/internal/gameclient/testutil"
-	"github.com/scruffyprodigy/playhub/internal/store"
+	"github.com/scruffyprodigy/joinquest/internal/gameclient/testutil"
+	"github.com/scruffyprodigy/joinquest/internal/store"
 )
 
 const fixtureGameID = "b1000000-0000-4000-8000-000000000001"

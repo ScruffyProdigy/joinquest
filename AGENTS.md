@@ -16,13 +16,12 @@ This repository is the **JoinQuest platform** (player shell + GraphQL API + deve
 |------|---------|
 | `lobby` | Local folder / this repo |
 | **JoinQuest** | Product name; production at [joinquest.cc](https://joinquest.cc) |
-| `playhub` | Legacy internal name. Retired everywhere except the Go module path (`github.com/scruffyprodigy/playhub`), which is JQ-168. The GitHub repo is now [`scruffyprodigy/joinquest`](https://github.com/scruffyprodigy/joinquest) |
+| `playhub` | Legacy internal name, fully retired. The GitHub repo is now [`scruffyprodigy/joinquest`](https://github.com/scruffyprodigy/joinquest) and the Go module path is `github.com/scruffyprodigy/joinquest` |
 
 Public-facing text and package metadata (JQ-167), Docker images and k8s
-resources (JQ-169), and database and volume names (JQ-170) have all been
-de-`playhub`ed. Only the Go module path remains: 120 files import through
-`github.com/scruffyprodigy/playhub`, tracked as JQ-168. That rewrite conflicts
-with every in-flight backend branch, so do not do it unless explicitly asked.
+resources (JQ-169), database and volume names (JQ-170), and the Go module path
+(JQ-168) have all been de-`playhub`ed. Nothing in the tree carries the old name;
+if `playhub` turns up in a diff, it is a mistake.
 
 ## Repo map
 

@@ -6,8 +6,8 @@ import (
 	"fmt"
 
 	"github.com/google/uuid"
-	"github.com/scruffyprodigy/playhub/graph/model"
-	"github.com/scruffyprodigy/playhub/internal/store"
+	"github.com/scruffyprodigy/joinquest/graph/model"
+	"github.com/scruffyprodigy/joinquest/internal/store"
 )
 
 func (r *mutationResolver) joinQueueInternal(ctx context.Context, modeQueueID uuid.UUID, queuePath string, partyInput *model.PartyNodeInput) (*model.JoinResult, error) {

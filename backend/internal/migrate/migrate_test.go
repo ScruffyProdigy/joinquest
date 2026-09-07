@@ -6,7 +6,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/scruffyprodigy/playhub/internal/testdb"
+	"github.com/scruffyprodigy/joinquest/internal/testdb"
 
 	_ "github.com/lib/pq"
 )

@@ -4,7 +4,7 @@ import (
 	"encoding/json"
 	"strings"
 
-	"github.com/scruffyprodigy/playhub/internal/seattemplate"
+	"github.com/scruffyprodigy/joinquest/internal/seattemplate"
 )
 
 func queuePathDisplayName(seatTemplate json.RawMessage, queuePath *string) *string {

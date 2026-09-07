@@ -5,7 +5,7 @@ import (
 	"testing"
 
 	"github.com/google/uuid"
-	"github.com/scruffyprodigy/playhub/internal/store"
+	"github.com/scruffyprodigy/joinquest/internal/store"
 )
 
 func wordHuntModeAndSeats(t *testing.T) (*store.GameMode, []store.GameModeSeat) {

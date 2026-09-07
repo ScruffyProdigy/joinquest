@@ -12,11 +12,11 @@ import (
 	"strings"
 
 	"github.com/google/uuid"
-	"github.com/scruffyprodigy/playhub/graph/generated"
-	"github.com/scruffyprodigy/playhub/graph/model"
-	"github.com/scruffyprodigy/playhub/internal/auth"
-	"github.com/scruffyprodigy/playhub/internal/pubsub"
-	"github.com/scruffyprodigy/playhub/internal/store"
+	"github.com/scruffyprodigy/joinquest/graph/generated"
+	"github.com/scruffyprodigy/joinquest/graph/model"
+	"github.com/scruffyprodigy/joinquest/internal/auth"
+	"github.com/scruffyprodigy/joinquest/internal/pubsub"
+	"github.com/scruffyprodigy/joinquest/internal/store"
 )
 
 // JoinQueue is the resolver for the joinQueue field.

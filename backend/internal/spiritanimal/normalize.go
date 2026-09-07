@@ -6,7 +6,7 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/scruffyprodigy/playhub/internal/tarot"
+	"github.com/scruffyprodigy/joinquest/internal/tarot"
 )
 
 type questionCard struct {

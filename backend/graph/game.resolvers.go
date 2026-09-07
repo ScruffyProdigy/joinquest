@@ -9,9 +9,9 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/scruffyprodigy/playhub/graph/generated"
-	"github.com/scruffyprodigy/playhub/graph/model"
-	"github.com/scruffyprodigy/playhub/internal/store"
+	"github.com/scruffyprodigy/joinquest/graph/generated"
+	"github.com/scruffyprodigy/joinquest/graph/model"
+	"github.com/scruffyprodigy/joinquest/internal/store"
 )
 
 // FormingGaps is the resolver for the formingGaps field.

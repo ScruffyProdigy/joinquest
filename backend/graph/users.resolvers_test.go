@@ -4,7 +4,7 @@ import (
 	"context"
 	"testing"
 
-	"github.com/scruffyprodigy/playhub/graph/model"
+	"github.com/scruffyprodigy/joinquest/graph/model"
 )
 
 func TestUserIsAdminResolver(t *testing.T) {

@@ -11,7 +11,7 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/lib/pq"
-	"github.com/scruffyprodigy/playhub/internal/gameclient"
+	"github.com/scruffyprodigy/joinquest/internal/gameclient"
 )
 
 var gameSlugPattern = regexp.MustCompile(`^[a-z0-9]+(?:-[a-z0-9]+)*$`)

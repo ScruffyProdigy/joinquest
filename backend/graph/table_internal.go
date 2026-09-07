@@ -7,10 +7,10 @@ import (
 	"strings"
 
 	"github.com/google/uuid"
-	"github.com/scruffyprodigy/playhub/graph/model"
-	"github.com/scruffyprodigy/playhub/internal/pubsub"
-	"github.com/scruffyprodigy/playhub/internal/seattemplate"
-	"github.com/scruffyprodigy/playhub/internal/store"
+	"github.com/scruffyprodigy/joinquest/graph/model"
+	"github.com/scruffyprodigy/joinquest/internal/pubsub"
+	"github.com/scruffyprodigy/joinquest/internal/seattemplate"
+	"github.com/scruffyprodigy/joinquest/internal/store"
 )
 
 func toGraphQLTable(table *store.RoomTable) *model.Table {

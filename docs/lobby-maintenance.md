@@ -8,7 +8,7 @@ Operational guide for **JoinQuest platform contributors** — local dev, testing
 |------|---------|
 | `lobby` | This git repo / local folder |
 | **JoinQuest** | Product; [joinquest.cc](https://joinquest.cc) |
-| `playhub` | Legacy name, now only in the Go module path (JQ-168) |
+| `playhub` | Legacy name, fully retired |
 
 Clone:
 

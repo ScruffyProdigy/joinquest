@@ -13,7 +13,7 @@ import (
 	"strings"
 
 	"github.com/google/uuid"
-	"github.com/scruffyprodigy/playhub/internal/tarot"
+	"github.com/scruffyprodigy/joinquest/internal/tarot"
 )
 
 // FileStorage saves PNG files on disk and builds public URLs.

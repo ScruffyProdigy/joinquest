@@ -9,11 +9,11 @@ import (
 	"github.com/99designs/gqlgen/graphql/handler"
 	"github.com/google/uuid"
 	_ "github.com/lib/pq"
-	"github.com/scruffyprodigy/playhub/graph/generated"
-	"github.com/scruffyprodigy/playhub/internal/auth"
-	"github.com/scruffyprodigy/playhub/internal/pubsub"
-	"github.com/scruffyprodigy/playhub/internal/store"
-	"github.com/scruffyprodigy/playhub/internal/testdb"
+	"github.com/scruffyprodigy/joinquest/graph/generated"
+	"github.com/scruffyprodigy/joinquest/internal/auth"
+	"github.com/scruffyprodigy/joinquest/internal/pubsub"
+	"github.com/scruffyprodigy/joinquest/internal/store"
+	"github.com/scruffyprodigy/joinquest/internal/testdb"
 )
 
 func newGamesGraphQLTestClient(t *testing.T) (*client.Client, *store.Store) {

@@ -4,8 +4,8 @@ import (
 	"errors"
 	"testing"
 
-	"github.com/scruffyprodigy/playhub/internal/pubsub"
-	"github.com/scruffyprodigy/playhub/internal/store"
+	"github.com/scruffyprodigy/joinquest/internal/pubsub"
+	"github.com/scruffyprodigy/joinquest/internal/store"
 )
 
 func TestResolvedAPIBaseURL(t *testing.T) {

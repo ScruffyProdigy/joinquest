@@ -14,7 +14,7 @@ import (
 
 	"github.com/99designs/gqlgen/graphql"
 	"github.com/99designs/gqlgen/graphql/introspection"
-	"github.com/scruffyprodigy/playhub/graph/model"
+	"github.com/scruffyprodigy/joinquest/graph/model"
 	gqlparser "github.com/vektah/gqlparser/v2"
 	"github.com/vektah/gqlparser/v2/ast"
 )
@@ -4517,7 +4517,7 @@ func (ec *executionContext) field_Mutation_completeSignInWithLink_args(ctx conte
 func (ec *executionContext) field_Mutation_connectMyGame_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
 	var err error
 	args := map[string]any{}
-	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "input", ec.unmarshalNConnectMyGameInput2githubᚗcomᚋscruffyprodigyᚋplayhubᚋgraphᚋmodelᚐConnectMyGameInput)
+	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "input", ec.unmarshalNConnectMyGameInput2githubᚗcomᚋscruffyprodigyᚋjoinquestᚋgraphᚋmodelᚐConnectMyGameInput)
 	if err != nil {
 		return nil, err
 	}
@@ -4629,7 +4629,7 @@ func (ec *executionContext) field_Mutation_joinQueue_args(ctx context.Context, r
 		return nil, err
 	}
 	args["queuePath"] = arg1
-	arg2, err := graphql.ProcessArgField(ctx, rawArgs, "party", ec.unmarshalOPartyNodeInput2ᚖgithubᚗcomᚋscruffyprodigyᚋplayhubᚋgraphᚋmodelᚐPartyNodeInput)
+	arg2, err := graphql.ProcessArgField(ctx, rawArgs, "party", ec.unmarshalOPartyNodeInput2ᚖgithubᚗcomᚋscruffyprodigyᚋjoinquestᚋgraphᚋmodelᚐPartyNodeInput)
 	if err != nil {
 		return nil, err
 	}
@@ -4695,7 +4695,7 @@ func (ec *executionContext) field_Mutation_refreshGameManifest_args(ctx context.
 func (ec *executionContext) field_Mutation_registerGame_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
 	var err error
 	args := map[string]any{}
-	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "input", ec.unmarshalNRegisterGameInput2githubᚗcomᚋscruffyprodigyᚋplayhubᚋgraphᚋmodelᚐRegisterGameInput)
+	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "input", ec.unmarshalNRegisterGameInput2githubᚗcomᚋscruffyprodigyᚋjoinquestᚋgraphᚋmodelᚐRegisterGameInput)
 	if err != nil {
 		return nil, err
 	}
@@ -4706,7 +4706,7 @@ func (ec *executionContext) field_Mutation_registerGame_args(ctx context.Context
 func (ec *executionContext) field_Mutation_registerMyGame_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
 	var err error
 	args := map[string]any{}
-	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "input", ec.unmarshalNRegisterMyGameInput2githubᚗcomᚋscruffyprodigyᚋplayhubᚋgraphᚋmodelᚐRegisterMyGameInput)
+	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "input", ec.unmarshalNRegisterMyGameInput2githubᚗcomᚋscruffyprodigyᚋjoinquestᚋgraphᚋmodelᚐRegisterMyGameInput)
 	if err != nil {
 		return nil, err
 	}
@@ -4744,7 +4744,7 @@ func (ec *executionContext) field_Mutation_reportMatchResult_args(ctx context.Co
 		return nil, err
 	}
 	args["matchId"] = arg0
-	arg1, err := graphql.ProcessArgField(ctx, rawArgs, "status", ec.unmarshalNMatchResultStatus2githubᚗcomᚋscruffyprodigyᚋplayhubᚋgraphᚋmodelᚐMatchResultStatus)
+	arg1, err := graphql.ProcessArgField(ctx, rawArgs, "status", ec.unmarshalNMatchResultStatus2githubᚗcomᚋscruffyprodigyᚋjoinquestᚋgraphᚋmodelᚐMatchResultStatus)
 	if err != nil {
 		return nil, err
 	}
@@ -4775,7 +4775,7 @@ func (ec *executionContext) field_Mutation_reportPlayerFinished_args(ctx context
 		return nil, err
 	}
 	args["lobbyUserId"] = arg1
-	arg2, err := graphql.ProcessArgField(ctx, rawArgs, "reason", ec.unmarshalNPlayerFinishReason2githubᚗcomᚋscruffyprodigyᚋplayhubᚋgraphᚋmodelᚐPlayerFinishReason)
+	arg2, err := graphql.ProcessArgField(ctx, rawArgs, "reason", ec.unmarshalNPlayerFinishReason2githubᚗcomᚋscruffyprodigyᚋjoinquestᚋgraphᚋmodelᚐPlayerFinishReason)
 	if err != nil {
 		return nil, err
 	}
@@ -5007,7 +5007,7 @@ func (ec *executionContext) field_Mutation_syncMyGameManifest_args(ctx context.C
 func (ec *executionContext) field_Mutation_updateMyGameMetadata_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
 	var err error
 	args := map[string]any{}
-	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "input", ec.unmarshalNUpdateMyGameMetadataInput2githubᚗcomᚋscruffyprodigyᚋplayhubᚋgraphᚋmodelᚐUpdateMyGameMetadataInput)
+	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "input", ec.unmarshalNUpdateMyGameMetadataInput2githubᚗcomᚋscruffyprodigyᚋjoinquestᚋgraphᚋmodelᚐUpdateMyGameMetadataInput)
 	if err != nil {
 		return nil, err
 	}
@@ -5334,7 +5334,7 @@ func (ec *executionContext) _Account_user(ctx context.Context, field graphql.Col
 			return obj.User, nil
 		},
 		nil,
-		ec.marshalNUser2ᚖgithubᚗcomᚋscruffyprodigyᚋplayhubᚋgraphᚋmodelᚐUser,
+		ec.marshalNUser2ᚖgithubᚗcomᚋscruffyprodigyᚋjoinquestᚋgraphᚋmodelᚐUser,
 		true,
 		true,
 	)
@@ -5387,7 +5387,7 @@ func (ec *executionContext) _Account_emails(ctx context.Context, field graphql.C
 			return obj.Emails, nil
 		},
 		nil,
-		ec.marshalNUserEmail2ᚕᚖgithubᚗcomᚋscruffyprodigyᚋplayhubᚋgraphᚋmodelᚐUserEmailᚄ,
+		ec.marshalNUserEmail2ᚕᚖgithubᚗcomᚋscruffyprodigyᚋjoinquestᚋgraphᚋmodelᚐUserEmailᚄ,
 		true,
 		true,
 	)
@@ -5426,7 +5426,7 @@ func (ec *executionContext) _Account_identities(ctx context.Context, field graph
 			return obj.Identities, nil
 		},
 		nil,
-		ec.marshalNUserIdentity2ᚕᚖgithubᚗcomᚋscruffyprodigyᚋplayhubᚋgraphᚋmodelᚐUserIdentityᚄ,
+		ec.marshalNUserIdentity2ᚕᚖgithubᚗcomᚋscruffyprodigyᚋjoinquestᚋgraphᚋmodelᚐUserIdentityᚄ,
 		true,
 		true,
 	)
@@ -5639,7 +5639,7 @@ func (ec *executionContext) _ActiveIntent_status(ctx context.Context, field grap
 			return obj.Status, nil
 		},
 		nil,
-		ec.marshalNQueueStatus2githubᚗcomᚋscruffyprodigyᚋplayhubᚋgraphᚋmodelᚐQueueStatus,
+		ec.marshalNQueueStatus2githubᚗcomᚋscruffyprodigyᚋjoinquestᚋgraphᚋmodelᚐQueueStatus,
 		true,
 		true,
 	)
@@ -5784,7 +5784,7 @@ func (ec *executionContext) _ActiveIntent_formingGaps(ctx context.Context, field
 			return ec.resolvers.ActiveIntent().FormingGaps(ctx, obj)
 		},
 		nil,
-		ec.marshalNQueuePathGap2ᚕᚖgithubᚗcomᚋscruffyprodigyᚋplayhubᚋgraphᚋmodelᚐQueuePathGapᚄ,
+		ec.marshalNQueuePathGap2ᚕᚖgithubᚗcomᚋscruffyprodigyᚋjoinquestᚋgraphᚋmodelᚐQueuePathGapᚄ,
 		true,
 		true,
 	)
@@ -5910,7 +5910,7 @@ func (ec *executionContext) _ConnectMyGamePayload_game(ctx context.Context, fiel
 			return obj.Game, nil
 		},
 		nil,
-		ec.marshalNGame2ᚖgithubᚗcomᚋscruffyprodigyᚋplayhubᚋgraphᚋmodelᚐGame,
+		ec.marshalNGame2ᚖgithubᚗcomᚋscruffyprodigyᚋjoinquestᚋgraphᚋmodelᚐGame,
 		true,
 		true,
 	)
@@ -6084,7 +6084,7 @@ func (ec *executionContext) _CreateDeveloperApiKeyPayload_apiKey(ctx context.Con
 			return obj.APIKey, nil
 		},
 		nil,
-		ec.marshalNDeveloperApiKey2ᚖgithubᚗcomᚋscruffyprodigyᚋplayhubᚋgraphᚋmodelᚐDeveloperAPIKey,
+		ec.marshalNDeveloperApiKey2ᚖgithubᚗcomᚋscruffyprodigyᚋjoinquestᚋgraphᚋmodelᚐDeveloperAPIKey,
 		true,
 		true,
 	)
@@ -6415,7 +6415,7 @@ func (ec *executionContext) _DigitalGood_game(ctx context.Context, field graphql
 			return obj.Game, nil
 		},
 		nil,
-		ec.marshalOGame2ᚖgithubᚗcomᚋscruffyprodigyᚋplayhubᚋgraphᚋmodelᚐGame,
+		ec.marshalOGame2ᚖgithubᚗcomᚋscruffyprodigyᚋjoinquestᚋgraphᚋmodelᚐGame,
 		true,
 		false,
 	)
@@ -6589,7 +6589,7 @@ func (ec *executionContext) _Entitlement_good(ctx context.Context, field graphql
 			return obj.Good, nil
 		},
 		nil,
-		ec.marshalNDigitalGood2ᚖgithubᚗcomᚋscruffyprodigyᚋplayhubᚋgraphᚋmodelᚐDigitalGood,
+		ec.marshalNDigitalGood2ᚖgithubᚗcomᚋscruffyprodigyᚋjoinquestᚋgraphᚋmodelᚐDigitalGood,
 		true,
 		true,
 	)
@@ -6776,7 +6776,7 @@ func (ec *executionContext) _Game_activeSessions(ctx context.Context, field grap
 			return ec.resolvers.Game().ActiveSessions(ctx, obj, fc.Args["limit"].(*int))
 		},
 		nil,
-		ec.marshalNSession2ᚕᚖgithubᚗcomᚋscruffyprodigyᚋplayhubᚋgraphᚋmodelᚐSessionᚄ,
+		ec.marshalNSession2ᚕᚖgithubᚗcomᚋscruffyprodigyᚋjoinquestᚋgraphᚋmodelᚐSessionᚄ,
 		true,
 		true,
 	)
@@ -7060,7 +7060,7 @@ func (ec *executionContext) _Game_titleArt(ctx context.Context, field graphql.Co
 			return obj.TitleArt, nil
 		},
 		nil,
-		ec.marshalOGameTitleArt2ᚖgithubᚗcomᚋscruffyprodigyᚋplayhubᚋgraphᚋmodelᚐGameTitleArt,
+		ec.marshalOGameTitleArt2ᚖgithubᚗcomᚋscruffyprodigyᚋjoinquestᚋgraphᚋmodelᚐGameTitleArt,
 		true,
 		false,
 	)
@@ -7300,7 +7300,7 @@ func (ec *executionContext) _Game_playerActivity(ctx context.Context, field grap
 			return ec.resolvers.Game().PlayerActivity(ctx, obj)
 		},
 		nil,
-		ec.marshalNGamePlayerActivity2ᚖgithubᚗcomᚋscruffyprodigyᚋplayhubᚋgraphᚋmodelᚐGamePlayerActivity,
+		ec.marshalNGamePlayerActivity2ᚖgithubᚗcomᚋscruffyprodigyᚋjoinquestᚋgraphᚋmodelᚐGamePlayerActivity,
 		true,
 		true,
 	)
@@ -7335,7 +7335,7 @@ func (ec *executionContext) _Game_modes(ctx context.Context, field graphql.Colle
 			return ec.resolvers.Game().Modes(ctx, obj)
 		},
 		nil,
-		ec.marshalNGameMode2ᚕᚖgithubᚗcomᚋscruffyprodigyᚋplayhubᚋgraphᚋmodelᚐGameModeᚄ,
+		ec.marshalNGameMode2ᚕᚖgithubᚗcomᚋscruffyprodigyᚋjoinquestᚋgraphᚋmodelᚐGameModeᚄ,
 		true,
 		true,
 	)
@@ -7386,7 +7386,7 @@ func (ec *executionContext) _Game_visibility(ctx context.Context, field graphql.
 			return obj.Visibility, nil
 		},
 		nil,
-		ec.marshalNGameVisibility2githubᚗcomᚋscruffyprodigyᚋplayhubᚋgraphᚋmodelᚐGameVisibility,
+		ec.marshalNGameVisibility2githubᚗcomᚋscruffyprodigyᚋjoinquestᚋgraphᚋmodelᚐGameVisibility,
 		true,
 		true,
 	)
@@ -7531,7 +7531,7 @@ func (ec *executionContext) _Game_integrationChecks(ctx context.Context, field g
 			return ec.resolvers.Game().IntegrationChecks(ctx, obj)
 		},
 		nil,
-		ec.marshalNGameIntegrationCheck2ᚕᚖgithubᚗcomᚋscruffyprodigyᚋplayhubᚋgraphᚋmodelᚐGameIntegrationCheckᚄ,
+		ec.marshalNGameIntegrationCheck2ᚕᚖgithubᚗcomᚋscruffyprodigyᚋjoinquestᚋgraphᚋmodelᚐGameIntegrationCheckᚄ,
 		true,
 		true,
 	)
@@ -7601,7 +7601,7 @@ func (ec *executionContext) _GameIntegrationCheck_status(ctx context.Context, fi
 			return obj.Status, nil
 		},
 		nil,
-		ec.marshalNIntegrationCheckStatus2githubᚗcomᚋscruffyprodigyᚋplayhubᚋgraphᚋmodelᚐIntegrationCheckStatus,
+		ec.marshalNIntegrationCheckStatus2githubᚗcomᚋscruffyprodigyᚋjoinquestᚋgraphᚋmodelᚐIntegrationCheckStatus,
 		true,
 		true,
 	)
@@ -7891,7 +7891,7 @@ func (ec *executionContext) _GameMode_seats(ctx context.Context, field graphql.C
 			return ec.resolvers.GameMode().Seats(ctx, obj)
 		},
 		nil,
-		ec.marshalNGameModeSeat2ᚕᚖgithubᚗcomᚋscruffyprodigyᚋplayhubᚋgraphᚋmodelᚐGameModeSeatᚄ,
+		ec.marshalNGameModeSeat2ᚕᚖgithubᚗcomᚋscruffyprodigyᚋjoinquestᚋgraphᚋmodelᚐGameModeSeatᚄ,
 		true,
 		true,
 	)
@@ -7932,7 +7932,7 @@ func (ec *executionContext) _GameMode_queuePaths(ctx context.Context, field grap
 			return ec.resolvers.GameMode().QueuePaths(ctx, obj)
 		},
 		nil,
-		ec.marshalNGameModeQueuePath2ᚕᚖgithubᚗcomᚋscruffyprodigyᚋplayhubᚋgraphᚋmodelᚐGameModeQueuePathᚄ,
+		ec.marshalNGameModeQueuePath2ᚕᚖgithubᚗcomᚋscruffyprodigyᚋjoinquestᚋgraphᚋmodelᚐGameModeQueuePathᚄ,
 		true,
 		true,
 	)
@@ -7973,7 +7973,7 @@ func (ec *executionContext) _GameMode_queues(ctx context.Context, field graphql.
 			return ec.resolvers.GameMode().Queues(ctx, obj)
 		},
 		nil,
-		ec.marshalNModeQueue2ᚕᚖgithubᚗcomᚋscruffyprodigyᚋplayhubᚋgraphᚋmodelᚐModeQueueᚄ,
+		ec.marshalNModeQueue2ᚕᚖgithubᚗcomᚋscruffyprodigyᚋjoinquestᚋgraphᚋmodelᚐModeQueueᚄ,
 		true,
 		true,
 	)
@@ -8015,7 +8015,7 @@ func (ec *executionContext) _GameMode_eligibility(ctx context.Context, field gra
 			return ec.resolvers.GameMode().Eligibility(ctx, obj, fc.Args["playerId"].(string))
 		},
 		nil,
-		ec.marshalOModeEligibility2ᚖgithubᚗcomᚋscruffyprodigyᚋplayhubᚋgraphᚋmodelᚐModeEligibility,
+		ec.marshalOModeEligibility2ᚖgithubᚗcomᚋscruffyprodigyᚋjoinquestᚋgraphᚋmodelᚐModeEligibility,
 		true,
 		false,
 	)
@@ -8674,7 +8674,7 @@ func (ec *executionContext) _MatchParticipantResult_user(ctx context.Context, fi
 			return obj.User, nil
 		},
 		nil,
-		ec.marshalNPublicPlayer2ᚖgithubᚗcomᚋscruffyprodigyᚋplayhubᚋgraphᚋmodelᚐPublicPlayer,
+		ec.marshalNPublicPlayer2ᚖgithubᚗcomᚋscruffyprodigyᚋjoinquestᚋgraphᚋmodelᚐPublicPlayer,
 		true,
 		true,
 	)
@@ -8800,7 +8800,7 @@ func (ec *executionContext) _MatchParticipantResult_reason(ctx context.Context, 
 			return obj.Reason, nil
 		},
 		nil,
-		ec.marshalOPlayerFinishReason2ᚖgithubᚗcomᚋscruffyprodigyᚋplayhubᚋgraphᚋmodelᚐPlayerFinishReason,
+		ec.marshalOPlayerFinishReason2ᚖgithubᚗcomᚋscruffyprodigyᚋjoinquestᚋgraphᚋmodelᚐPlayerFinishReason,
 		true,
 		false,
 	)
@@ -8887,7 +8887,7 @@ func (ec *executionContext) _MatchParticipantResult_regroup(ctx context.Context,
 			return obj.Regroup, nil
 		},
 		nil,
-		ec.marshalNRegroupState2githubᚗcomᚋscruffyprodigyᚋplayhubᚋgraphᚋmodelᚐRegroupState,
+		ec.marshalNRegroupState2githubᚗcomᚋscruffyprodigyᚋjoinquestᚋgraphᚋmodelᚐRegroupState,
 		true,
 		true,
 	)
@@ -8945,7 +8945,7 @@ func (ec *executionContext) _MatchResult_game(ctx context.Context, field graphql
 			return obj.Game, nil
 		},
 		nil,
-		ec.marshalNGame2ᚖgithubᚗcomᚋscruffyprodigyᚋplayhubᚋgraphᚋmodelᚐGame,
+		ec.marshalNGame2ᚖgithubᚗcomᚋscruffyprodigyᚋjoinquestᚋgraphᚋmodelᚐGame,
 		true,
 		true,
 	)
@@ -9032,7 +9032,7 @@ func (ec *executionContext) _MatchResult_mode(ctx context.Context, field graphql
 			return obj.Mode, nil
 		},
 		nil,
-		ec.marshalOGameMode2ᚖgithubᚗcomᚋscruffyprodigyᚋplayhubᚋgraphᚋmodelᚐGameMode,
+		ec.marshalOGameMode2ᚖgithubᚗcomᚋscruffyprodigyᚋjoinquestᚋgraphᚋmodelᚐGameMode,
 		true,
 		false,
 	)
@@ -9083,7 +9083,7 @@ func (ec *executionContext) _MatchResult_status(ctx context.Context, field graph
 			return obj.Status, nil
 		},
 		nil,
-		ec.marshalOMatchResultStatus2ᚖgithubᚗcomᚋscruffyprodigyᚋplayhubᚋgraphᚋmodelᚐMatchResultStatus,
+		ec.marshalOMatchResultStatus2ᚖgithubᚗcomᚋscruffyprodigyᚋjoinquestᚋgraphᚋmodelᚐMatchResultStatus,
 		true,
 		false,
 	)
@@ -9199,7 +9199,7 @@ func (ec *executionContext) _MatchResult_participants(ctx context.Context, field
 			return obj.Participants, nil
 		},
 		nil,
-		ec.marshalNMatchParticipantResult2ᚕᚖgithubᚗcomᚋscruffyprodigyᚋplayhubᚋgraphᚋmodelᚐMatchParticipantResultᚄ,
+		ec.marshalNMatchParticipantResult2ᚕᚖgithubᚗcomᚋscruffyprodigyᚋjoinquestᚋgraphᚋmodelᚐMatchParticipantResultᚄ,
 		true,
 		true,
 	)
@@ -9333,7 +9333,7 @@ func (ec *executionContext) _ModeEligibility_requirement(ctx context.Context, fi
 			return obj.Requirement, nil
 		},
 		nil,
-		ec.marshalOModeRequirementNode2githubᚗcomᚋscruffyprodigyᚋplayhubᚋgraphᚋmodelᚐModeRequirementNode,
+		ec.marshalOModeRequirementNode2githubᚗcomᚋscruffyprodigyᚋjoinquestᚋgraphᚋmodelᚐModeRequirementNode,
 		true,
 		false,
 	)
@@ -9537,7 +9537,7 @@ func (ec *executionContext) _Mutation_joinQueue(ctx context.Context, field graph
 			return ec.resolvers.Mutation().JoinQueue(ctx, fc.Args["queueId"].(string), fc.Args["queuePath"].(*string), fc.Args["party"].(*model.PartyNodeInput))
 		},
 		nil,
-		ec.marshalNJoinResult2ᚖgithubᚗcomᚋscruffyprodigyᚋplayhubᚋgraphᚋmodelᚐJoinResult,
+		ec.marshalNJoinResult2ᚖgithubᚗcomᚋscruffyprodigyᚋjoinquestᚋgraphᚋmodelᚐJoinResult,
 		true,
 		true,
 	)
@@ -9743,7 +9743,7 @@ func (ec *executionContext) _Mutation_createGuestSession(ctx context.Context, fi
 			return ec.resolvers.Mutation().CreateGuestSession(ctx)
 		},
 		nil,
-		ec.marshalNUser2ᚖgithubᚗcomᚋscruffyprodigyᚋplayhubᚋgraphᚋmodelᚐUser,
+		ec.marshalNUser2ᚖgithubᚗcomᚋscruffyprodigyᚋjoinquestᚋgraphᚋmodelᚐUser,
 		true,
 		true,
 	)
@@ -9838,7 +9838,7 @@ func (ec *executionContext) _Mutation_completeLinkEmailWithCode(ctx context.Cont
 			return ec.resolvers.Mutation().CompleteLinkEmailWithCode(ctx, fc.Args["email"].(string), fc.Args["code"].(string), fc.Args["confirmMerge"].(*bool))
 		},
 		nil,
-		ec.marshalNUser2ᚖgithubᚗcomᚋscruffyprodigyᚋplayhubᚋgraphᚋmodelᚐUser,
+		ec.marshalNUser2ᚖgithubᚗcomᚋscruffyprodigyᚋjoinquestᚋgraphᚋmodelᚐUser,
 		true,
 		true,
 	)
@@ -9903,7 +9903,7 @@ func (ec *executionContext) _Mutation_completeLinkEmailWithLink(ctx context.Cont
 			return ec.resolvers.Mutation().CompleteLinkEmailWithLink(ctx, fc.Args["token"].(string), fc.Args["confirmMerge"].(*bool))
 		},
 		nil,
-		ec.marshalNUser2ᚖgithubᚗcomᚋscruffyprodigyᚋplayhubᚋgraphᚋmodelᚐUser,
+		ec.marshalNUser2ᚖgithubᚗcomᚋscruffyprodigyᚋjoinquestᚋgraphᚋmodelᚐUser,
 		true,
 		true,
 	)
@@ -9968,7 +9968,7 @@ func (ec *executionContext) _Mutation_removeLinkedEmail(ctx context.Context, fie
 			return ec.resolvers.Mutation().RemoveLinkedEmail(ctx, fc.Args["emailId"].(string))
 		},
 		nil,
-		ec.marshalNUser2ᚖgithubᚗcomᚋscruffyprodigyᚋplayhubᚋgraphᚋmodelᚐUser,
+		ec.marshalNUser2ᚖgithubᚗcomᚋscruffyprodigyᚋjoinquestᚋgraphᚋmodelᚐUser,
 		true,
 		true,
 	)
@@ -10033,7 +10033,7 @@ func (ec *executionContext) _Mutation_setPrimaryEmail(ctx context.Context, field
 			return ec.resolvers.Mutation().SetPrimaryEmail(ctx, fc.Args["emailId"].(string))
 		},
 		nil,
-		ec.marshalNUser2ᚖgithubᚗcomᚋscruffyprodigyᚋplayhubᚋgraphᚋmodelᚐUser,
+		ec.marshalNUser2ᚖgithubᚗcomᚋscruffyprodigyᚋjoinquestᚋgraphᚋmodelᚐUser,
 		true,
 		true,
 	)
@@ -10098,7 +10098,7 @@ func (ec *executionContext) _Mutation_removeLinkedIdentity(ctx context.Context, 
 			return ec.resolvers.Mutation().RemoveLinkedIdentity(ctx, fc.Args["identityId"].(string))
 		},
 		nil,
-		ec.marshalNUser2ᚖgithubᚗcomᚋscruffyprodigyᚋplayhubᚋgraphᚋmodelᚐUser,
+		ec.marshalNUser2ᚖgithubᚗcomᚋscruffyprodigyᚋjoinquestᚋgraphᚋmodelᚐUser,
 		true,
 		true,
 	)
@@ -10204,7 +10204,7 @@ func (ec *executionContext) _Mutation_completeSignInWithLink(ctx context.Context
 			return ec.resolvers.Mutation().CompleteSignInWithLink(ctx, fc.Args["token"].(string))
 		},
 		nil,
-		ec.marshalNUser2ᚖgithubᚗcomᚋscruffyprodigyᚋplayhubᚋgraphᚋmodelᚐUser,
+		ec.marshalNUser2ᚖgithubᚗcomᚋscruffyprodigyᚋjoinquestᚋgraphᚋmodelᚐUser,
 		true,
 		true,
 	)
@@ -10269,7 +10269,7 @@ func (ec *executionContext) _Mutation_completeSignInWithCode(ctx context.Context
 			return ec.resolvers.Mutation().CompleteSignInWithCode(ctx, fc.Args["email"].(string), fc.Args["code"].(string))
 		},
 		nil,
-		ec.marshalNUser2ᚖgithubᚗcomᚋscruffyprodigyᚋplayhubᚋgraphᚋmodelᚐUser,
+		ec.marshalNUser2ᚖgithubᚗcomᚋscruffyprodigyᚋjoinquestᚋgraphᚋmodelᚐUser,
 		true,
 		true,
 	)
@@ -10363,7 +10363,7 @@ func (ec *executionContext) _Mutation_updatePlayerProfile(ctx context.Context, f
 			return ec.resolvers.Mutation().UpdatePlayerProfile(ctx, fc.Args["displayName"].(string), fc.Args["avatarKey"].(*string))
 		},
 		nil,
-		ec.marshalNUser2ᚖgithubᚗcomᚋscruffyprodigyᚋplayhubᚋgraphᚋmodelᚐUser,
+		ec.marshalNUser2ᚖgithubᚗcomᚋscruffyprodigyᚋjoinquestᚋgraphᚋmodelᚐUser,
 		true,
 		true,
 	)
@@ -10428,7 +10428,7 @@ func (ec *executionContext) _Mutation_registerGame(ctx context.Context, field gr
 			return ec.resolvers.Mutation().RegisterGame(ctx, fc.Args["input"].(model.RegisterGameInput))
 		},
 		nil,
-		ec.marshalNRegisterGamePayload2ᚖgithubᚗcomᚋscruffyprodigyᚋplayhubᚋgraphᚋmodelᚐRegisterGamePayload,
+		ec.marshalNRegisterGamePayload2ᚖgithubᚗcomᚋscruffyprodigyᚋjoinquestᚋgraphᚋmodelᚐRegisterGamePayload,
 		true,
 		true,
 	)
@@ -10477,7 +10477,7 @@ func (ec *executionContext) _Mutation_refreshGameManifest(ctx context.Context, f
 			return ec.resolvers.Mutation().RefreshGameManifest(ctx, fc.Args["gameId"].(string))
 		},
 		nil,
-		ec.marshalNGame2ᚖgithubᚗcomᚋscruffyprodigyᚋplayhubᚋgraphᚋmodelᚐGame,
+		ec.marshalNGame2ᚖgithubᚗcomᚋscruffyprodigyᚋjoinquestᚋgraphᚋmodelᚐGame,
 		true,
 		true,
 	)
@@ -10576,7 +10576,7 @@ func (ec *executionContext) _Mutation_createDeveloperApiKey(ctx context.Context,
 			return ec.resolvers.Mutation().CreateDeveloperAPIKey(ctx, fc.Args["name"].(*string))
 		},
 		nil,
-		ec.marshalNCreateDeveloperApiKeyPayload2ᚖgithubᚗcomᚋscruffyprodigyᚋplayhubᚋgraphᚋmodelᚐCreateDeveloperAPIKeyPayload,
+		ec.marshalNCreateDeveloperApiKeyPayload2ᚖgithubᚗcomᚋscruffyprodigyᚋjoinquestᚋgraphᚋmodelᚐCreateDeveloperAPIKeyPayload,
 		true,
 		true,
 	)
@@ -10664,7 +10664,7 @@ func (ec *executionContext) _Mutation_registerMyGame(ctx context.Context, field 
 			return ec.resolvers.Mutation().RegisterMyGame(ctx, fc.Args["input"].(model.RegisterMyGameInput))
 		},
 		nil,
-		ec.marshalNRegisterMyGamePayload2ᚖgithubᚗcomᚋscruffyprodigyᚋplayhubᚋgraphᚋmodelᚐRegisterMyGamePayload,
+		ec.marshalNRegisterMyGamePayload2ᚖgithubᚗcomᚋscruffyprodigyᚋjoinquestᚋgraphᚋmodelᚐRegisterMyGamePayload,
 		true,
 		true,
 	)
@@ -10717,7 +10717,7 @@ func (ec *executionContext) _Mutation_syncMyGameManifest(ctx context.Context, fi
 			return ec.resolvers.Mutation().SyncMyGameManifest(ctx, fc.Args["gameId"].(string))
 		},
 		nil,
-		ec.marshalNSyncMyGameManifestPayload2ᚖgithubᚗcomᚋscruffyprodigyᚋplayhubᚋgraphᚋmodelᚐSyncMyGameManifestPayload,
+		ec.marshalNSyncMyGameManifestPayload2ᚖgithubᚗcomᚋscruffyprodigyᚋjoinquestᚋgraphᚋmodelᚐSyncMyGameManifestPayload,
 		true,
 		true,
 	)
@@ -10766,7 +10766,7 @@ func (ec *executionContext) _Mutation_connectMyGame(ctx context.Context, field g
 			return ec.resolvers.Mutation().ConnectMyGame(ctx, fc.Args["input"].(model.ConnectMyGameInput))
 		},
 		nil,
-		ec.marshalNConnectMyGamePayload2ᚖgithubᚗcomᚋscruffyprodigyᚋplayhubᚋgraphᚋmodelᚐConnectMyGamePayload,
+		ec.marshalNConnectMyGamePayload2ᚖgithubᚗcomᚋscruffyprodigyᚋjoinquestᚋgraphᚋmodelᚐConnectMyGamePayload,
 		true,
 		true,
 	)
@@ -10817,7 +10817,7 @@ func (ec *executionContext) _Mutation_rotateMyGameWebhookSecret(ctx context.Cont
 			return ec.resolvers.Mutation().RotateMyGameWebhookSecret(ctx, fc.Args["gameId"].(string))
 		},
 		nil,
-		ec.marshalNMyGameCredentials2ᚖgithubᚗcomᚋscruffyprodigyᚋplayhubᚋgraphᚋmodelᚐMyGameCredentials,
+		ec.marshalNMyGameCredentials2ᚖgithubᚗcomᚋscruffyprodigyᚋjoinquestᚋgraphᚋmodelᚐMyGameCredentials,
 		true,
 		true,
 	)
@@ -10864,7 +10864,7 @@ func (ec *executionContext) _Mutation_runMyGameChecks(ctx context.Context, field
 			return ec.resolvers.Mutation().RunMyGameChecks(ctx, fc.Args["gameId"].(string))
 		},
 		nil,
-		ec.marshalNGameIntegrationCheck2ᚕᚖgithubᚗcomᚋscruffyprodigyᚋplayhubᚋgraphᚋmodelᚐGameIntegrationCheckᚄ,
+		ec.marshalNGameIntegrationCheck2ᚕᚖgithubᚗcomᚋscruffyprodigyᚋjoinquestᚋgraphᚋmodelᚐGameIntegrationCheckᚄ,
 		true,
 		true,
 	)
@@ -10917,7 +10917,7 @@ func (ec *executionContext) _Mutation_updateMyGameMetadata(ctx context.Context, 
 			return ec.resolvers.Mutation().UpdateMyGameMetadata(ctx, fc.Args["input"].(model.UpdateMyGameMetadataInput))
 		},
 		nil,
-		ec.marshalNGame2ᚖgithubᚗcomᚋscruffyprodigyᚋplayhubᚋgraphᚋmodelᚐGame,
+		ec.marshalNGame2ᚖgithubᚗcomᚋscruffyprodigyᚋjoinquestᚋgraphᚋmodelᚐGame,
 		true,
 		true,
 	)
@@ -11016,7 +11016,7 @@ func (ec *executionContext) _Mutation_requestPublicRelease(ctx context.Context, 
 			return ec.resolvers.Mutation().RequestPublicRelease(ctx, fc.Args["gameId"].(string))
 		},
 		nil,
-		ec.marshalNGame2ᚖgithubᚗcomᚋscruffyprodigyᚋplayhubᚋgraphᚋmodelᚐGame,
+		ec.marshalNGame2ᚖgithubᚗcomᚋscruffyprodigyᚋjoinquestᚋgraphᚋmodelᚐGame,
 		true,
 		true,
 	)
@@ -11115,7 +11115,7 @@ func (ec *executionContext) _Mutation_reviewGameRelease(ctx context.Context, fie
 			return ec.resolvers.Mutation().ReviewGameRelease(ctx, fc.Args["gameId"].(string), fc.Args["approve"].(bool), fc.Args["reason"].(*string))
 		},
 		nil,
-		ec.marshalNGame2ᚖgithubᚗcomᚋscruffyprodigyᚋplayhubᚋgraphᚋmodelᚐGame,
+		ec.marshalNGame2ᚖgithubᚗcomᚋscruffyprodigyᚋjoinquestᚋgraphᚋmodelᚐGame,
 		true,
 		true,
 	)
@@ -11296,7 +11296,7 @@ func (ec *executionContext) _Mutation_playAgain(ctx context.Context, field graph
 			return ec.resolvers.Mutation().PlayAgain(ctx, fc.Args["matchId"].(string))
 		},
 		nil,
-		ec.marshalNPlayAgainResult2ᚖgithubᚗcomᚋscruffyprodigyᚋplayhubᚋgraphᚋmodelᚐPlayAgainResult,
+		ec.marshalNPlayAgainResult2ᚖgithubᚗcomᚋscruffyprodigyᚋjoinquestᚋgraphᚋmodelᚐPlayAgainResult,
 		true,
 		true,
 	)
@@ -11345,7 +11345,7 @@ func (ec *executionContext) _Mutation_declinePlayAgain(ctx context.Context, fiel
 			return ec.resolvers.Mutation().DeclinePlayAgain(ctx, fc.Args["matchId"].(string))
 		},
 		nil,
-		ec.marshalNReturnDestination2ᚖgithubᚗcomᚋscruffyprodigyᚋplayhubᚋgraphᚋmodelᚐReturnDestination,
+		ec.marshalNReturnDestination2ᚖgithubᚗcomᚋscruffyprodigyᚋjoinquestᚋgraphᚋmodelᚐReturnDestination,
 		true,
 		true,
 	)
@@ -11391,7 +11391,7 @@ func (ec *executionContext) _Mutation_createRoom(ctx context.Context, field grap
 			return ec.resolvers.Mutation().CreateRoom(ctx)
 		},
 		nil,
-		ec.marshalNRoom2ᚖgithubᚗcomᚋscruffyprodigyᚋplayhubᚋgraphᚋmodelᚐRoom,
+		ec.marshalNRoom2ᚖgithubᚗcomᚋscruffyprodigyᚋjoinquestᚋgraphᚋmodelᚐRoom,
 		true,
 		true,
 	)
@@ -11437,7 +11437,7 @@ func (ec *executionContext) _Mutation_joinRoom(ctx context.Context, field graphq
 			return ec.resolvers.Mutation().JoinRoom(ctx, fc.Args["inviteCode"].(string))
 		},
 		nil,
-		ec.marshalNRoom2ᚖgithubᚗcomᚋscruffyprodigyᚋplayhubᚋgraphᚋmodelᚐRoom,
+		ec.marshalNRoom2ᚖgithubᚗcomᚋscruffyprodigyᚋjoinquestᚋgraphᚋmodelᚐRoom,
 		true,
 		true,
 	)
@@ -11523,7 +11523,7 @@ func (ec *executionContext) _Mutation_sendRoomMessage(ctx context.Context, field
 			return ec.resolvers.Mutation().SendRoomMessage(ctx, fc.Args["roomId"].(string), fc.Args["body"].(string))
 		},
 		nil,
-		ec.marshalNRoomMessage2ᚖgithubᚗcomᚋscruffyprodigyᚋplayhubᚋgraphᚋmodelᚐRoomMessage,
+		ec.marshalNRoomMessage2ᚖgithubᚗcomᚋscruffyprodigyᚋjoinquestᚋgraphᚋmodelᚐRoomMessage,
 		true,
 		true,
 	)
@@ -11574,7 +11574,7 @@ func (ec *executionContext) _Mutation_beginSpiritAnimalReading(ctx context.Conte
 			return ec.resolvers.Mutation().BeginSpiritAnimalReading(ctx, fc.Args["forceRestart"].(*bool))
 		},
 		nil,
-		ec.marshalNSpiritAnimalReading2ᚖgithubᚗcomᚋscruffyprodigyᚋplayhubᚋgraphᚋmodelᚐSpiritAnimalReading,
+		ec.marshalNSpiritAnimalReading2ᚖgithubᚗcomᚋscruffyprodigyᚋjoinquestᚋgraphᚋmodelᚐSpiritAnimalReading,
 		true,
 		true,
 	)
@@ -11641,7 +11641,7 @@ func (ec *executionContext) _Mutation_submitSpiritAnimalAnswers(ctx context.Cont
 			return ec.resolvers.Mutation().SubmitSpiritAnimalAnswers(ctx, fc.Args["answers"].([]string))
 		},
 		nil,
-		ec.marshalNSpiritAnimalReading2ᚖgithubᚗcomᚋscruffyprodigyᚋplayhubᚋgraphᚋmodelᚐSpiritAnimalReading,
+		ec.marshalNSpiritAnimalReading2ᚖgithubᚗcomᚋscruffyprodigyᚋjoinquestᚋgraphᚋmodelᚐSpiritAnimalReading,
 		true,
 		true,
 	)
@@ -11707,7 +11707,7 @@ func (ec *executionContext) _Mutation_regenerateSpiritAnimalImages(ctx context.C
 			return ec.resolvers.Mutation().RegenerateSpiritAnimalImages(ctx)
 		},
 		nil,
-		ec.marshalNSpiritAnimalReading2ᚖgithubᚗcomᚋscruffyprodigyᚋplayhubᚋgraphᚋmodelᚐSpiritAnimalReading,
+		ec.marshalNSpiritAnimalReading2ᚖgithubᚗcomᚋscruffyprodigyᚋjoinquestᚋgraphᚋmodelᚐSpiritAnimalReading,
 		true,
 		true,
 	)
@@ -11763,7 +11763,7 @@ func (ec *executionContext) _Mutation_selectSpiritAnimalTotem(ctx context.Contex
 			return ec.resolvers.Mutation().SelectSpiritAnimalTotem(ctx, fc.Args["totemName"].(string))
 		},
 		nil,
-		ec.marshalNUser2ᚖgithubᚗcomᚋscruffyprodigyᚋplayhubᚋgraphᚋmodelᚐUser,
+		ec.marshalNUser2ᚖgithubᚗcomᚋscruffyprodigyᚋjoinquestᚋgraphᚋmodelᚐUser,
 		true,
 		true,
 	)
@@ -11828,7 +11828,7 @@ func (ec *executionContext) _Mutation_createPrivateTable(ctx context.Context, fi
 			return ec.resolvers.Mutation().CreatePrivateTable(ctx, fc.Args["gameId"].(string), fc.Args["modeId"].(string))
 		},
 		nil,
-		ec.marshalNTable2ᚖgithubᚗcomᚋscruffyprodigyᚋplayhubᚋgraphᚋmodelᚐTable,
+		ec.marshalNTable2ᚖgithubᚗcomᚋscruffyprodigyᚋjoinquestᚋgraphᚋmodelᚐTable,
 		true,
 		true,
 	)
@@ -11897,7 +11897,7 @@ func (ec *executionContext) _Mutation_createTable(ctx context.Context, field gra
 			return ec.resolvers.Mutation().CreateTable(ctx, fc.Args["roomId"].(string), fc.Args["gameId"].(string), fc.Args["modeId"].(string))
 		},
 		nil,
-		ec.marshalNTable2ᚖgithubᚗcomᚋscruffyprodigyᚋplayhubᚋgraphᚋmodelᚐTable,
+		ec.marshalNTable2ᚖgithubᚗcomᚋscruffyprodigyᚋjoinquestᚋgraphᚋmodelᚐTable,
 		true,
 		true,
 	)
@@ -11966,7 +11966,7 @@ func (ec *executionContext) _Mutation_sitAtTable(ctx context.Context, field grap
 			return ec.resolvers.Mutation().SitAtTable(ctx, fc.Args["tableId"].(string), fc.Args["seatKey"].(string))
 		},
 		nil,
-		ec.marshalNTable2ᚖgithubᚗcomᚋscruffyprodigyᚋplayhubᚋgraphᚋmodelᚐTable,
+		ec.marshalNTable2ᚖgithubᚗcomᚋscruffyprodigyᚋjoinquestᚋgraphᚋmodelᚐTable,
 		true,
 		true,
 	)
@@ -12117,7 +12117,7 @@ func (ec *executionContext) _Mutation_startTable(ctx context.Context, field grap
 			return ec.resolvers.Mutation().StartTable(ctx, fc.Args["tableId"].(string))
 		},
 		nil,
-		ec.marshalNJoinResult2ᚖgithubᚗcomᚋscruffyprodigyᚋplayhubᚋgraphᚋmodelᚐJoinResult,
+		ec.marshalNJoinResult2ᚖgithubᚗcomᚋscruffyprodigyᚋjoinquestᚋgraphᚋmodelᚐJoinResult,
 		true,
 		true,
 	)
@@ -12172,7 +12172,7 @@ func (ec *executionContext) _Mutation_startTableBackfill(ctx context.Context, fi
 			return ec.resolvers.Mutation().StartTableBackfill(ctx, fc.Args["tableId"].(string), fc.Args["queueId"].(string))
 		},
 		nil,
-		ec.marshalNJoinResult2ᚖgithubᚗcomᚋscruffyprodigyᚋplayhubᚋgraphᚋmodelᚐJoinResult,
+		ec.marshalNJoinResult2ᚖgithubᚗcomᚋscruffyprodigyᚋjoinquestᚋgraphᚋmodelᚐJoinResult,
 		true,
 		true,
 	)
@@ -12632,7 +12632,7 @@ func (ec *executionContext) _MyTableSeat_formingGaps(ctx context.Context, field 
 			return ec.resolvers.MyTableSeat().FormingGaps(ctx, obj)
 		},
 		nil,
-		ec.marshalNQueuePathGap2ᚕᚖgithubᚗcomᚋscruffyprodigyᚋplayhubᚋgraphᚋmodelᚐQueuePathGapᚄ,
+		ec.marshalNQueuePathGap2ᚕᚖgithubᚗcomᚋscruffyprodigyᚋjoinquestᚋgraphᚋmodelᚐQueuePathGapᚄ,
 		true,
 		true,
 	)
@@ -12671,7 +12671,7 @@ func (ec *executionContext) _PlayAgainResult_table(ctx context.Context, field gr
 			return obj.Table, nil
 		},
 		nil,
-		ec.marshalNTable2ᚖgithubᚗcomᚋscruffyprodigyᚋplayhubᚋgraphᚋmodelᚐTable,
+		ec.marshalNTable2ᚖgithubᚗcomᚋscruffyprodigyᚋjoinquestᚋgraphᚋmodelᚐTable,
 		true,
 		true,
 	)
@@ -12873,7 +12873,7 @@ func (ec *executionContext) _PublicPlayer_avatarSource(ctx context.Context, fiel
 			return obj.AvatarSource, nil
 		},
 		nil,
-		ec.marshalOAvatarSource2ᚖgithubᚗcomᚋscruffyprodigyᚋplayhubᚋgraphᚋmodelᚐAvatarSource,
+		ec.marshalOAvatarSource2ᚖgithubᚗcomᚋscruffyprodigyᚋjoinquestᚋgraphᚋmodelᚐAvatarSource,
 		true,
 		false,
 	)
@@ -12961,7 +12961,7 @@ func (ec *executionContext) _Query_games(ctx context.Context, field graphql.Coll
 			return ec.resolvers.Query().Games(ctx, fc.Args["limit"].(*int), fc.Args["offset"].(*int))
 		},
 		nil,
-		ec.marshalNGame2ᚕᚖgithubᚗcomᚋscruffyprodigyᚋplayhubᚋgraphᚋmodelᚐGameᚄ,
+		ec.marshalNGame2ᚕᚖgithubᚗcomᚋscruffyprodigyᚋjoinquestᚋgraphᚋmodelᚐGameᚄ,
 		true,
 		true,
 	)
@@ -13060,7 +13060,7 @@ func (ec *executionContext) _Query_game(ctx context.Context, field graphql.Colle
 			return ec.resolvers.Query().Game(ctx, fc.Args["id"].(string))
 		},
 		nil,
-		ec.marshalOGame2ᚖgithubᚗcomᚋscruffyprodigyᚋplayhubᚋgraphᚋmodelᚐGame,
+		ec.marshalOGame2ᚖgithubᚗcomᚋscruffyprodigyᚋjoinquestᚋgraphᚋmodelᚐGame,
 		true,
 		false,
 	)
@@ -13159,7 +13159,7 @@ func (ec *executionContext) _Query_gameBySlug(ctx context.Context, field graphql
 			return ec.resolvers.Query().GameBySlug(ctx, fc.Args["slug"].(string))
 		},
 		nil,
-		ec.marshalOGame2ᚖgithubᚗcomᚋscruffyprodigyᚋplayhubᚋgraphᚋmodelᚐGame,
+		ec.marshalOGame2ᚖgithubᚗcomᚋscruffyprodigyᚋjoinquestᚋgraphᚋmodelᚐGame,
 		true,
 		false,
 	)
@@ -13258,7 +13258,7 @@ func (ec *executionContext) _Query_session(ctx context.Context, field graphql.Co
 			return ec.resolvers.Query().Session(ctx, fc.Args["id"].(string))
 		},
 		nil,
-		ec.marshalOSession2ᚖgithubᚗcomᚋscruffyprodigyᚋplayhubᚋgraphᚋmodelᚐSession,
+		ec.marshalOSession2ᚖgithubᚗcomᚋscruffyprodigyᚋjoinquestᚋgraphᚋmodelᚐSession,
 		true,
 		false,
 	)
@@ -13311,7 +13311,7 @@ func (ec *executionContext) _Query_goods(ctx context.Context, field graphql.Coll
 			return ec.resolvers.Query().Goods(ctx, fc.Args["gameId"].(*string))
 		},
 		nil,
-		ec.marshalNDigitalGood2ᚕᚖgithubᚗcomᚋscruffyprodigyᚋplayhubᚋgraphᚋmodelᚐDigitalGoodᚄ,
+		ec.marshalNDigitalGood2ᚕᚖgithubᚗcomᚋscruffyprodigyᚋjoinquestᚋgraphᚋmodelᚐDigitalGoodᚄ,
 		true,
 		true,
 	)
@@ -13364,7 +13364,7 @@ func (ec *executionContext) _Query_myInventory(ctx context.Context, field graphq
 			return ec.resolvers.Query().MyInventory(ctx, fc.Args["gameId"].(*string))
 		},
 		nil,
-		ec.marshalNEntitlement2ᚕᚖgithubᚗcomᚋscruffyprodigyᚋplayhubᚋgraphᚋmodelᚐEntitlementᚄ,
+		ec.marshalNEntitlement2ᚕᚖgithubᚗcomᚋscruffyprodigyᚋjoinquestᚋgraphᚋmodelᚐEntitlementᚄ,
 		true,
 		true,
 	)
@@ -13413,7 +13413,7 @@ func (ec *executionContext) _Query_myQueueStatus(ctx context.Context, field grap
 			return ec.resolvers.Query().MyQueueStatus(ctx, fc.Args["queueId"].(string))
 		},
 		nil,
-		ec.marshalNJoinResult2ᚖgithubᚗcomᚋscruffyprodigyᚋplayhubᚋgraphᚋmodelᚐJoinResult,
+		ec.marshalNJoinResult2ᚖgithubᚗcomᚋscruffyprodigyᚋjoinquestᚋgraphᚋmodelᚐJoinResult,
 		true,
 		true,
 	)
@@ -13467,7 +13467,7 @@ func (ec *executionContext) _Query_myActiveIntent(ctx context.Context, field gra
 			return ec.resolvers.Query().MyActiveIntent(ctx)
 		},
 		nil,
-		ec.marshalOActiveIntent2ᚖgithubᚗcomᚋscruffyprodigyᚋplayhubᚋgraphᚋmodelᚐActiveIntent,
+		ec.marshalOActiveIntent2ᚖgithubᚗcomᚋscruffyprodigyᚋjoinquestᚋgraphᚋmodelᚐActiveIntent,
 		true,
 		false,
 	)
@@ -13521,7 +13521,7 @@ func (ec *executionContext) _Query_player(ctx context.Context, field graphql.Col
 			return ec.resolvers.Query().Player(ctx, fc.Args["id"].(string))
 		},
 		nil,
-		ec.marshalOPublicPlayer2ᚖgithubᚗcomᚋscruffyprodigyᚋplayhubᚋgraphᚋmodelᚐPublicPlayer,
+		ec.marshalOPublicPlayer2ᚖgithubᚗcomᚋscruffyprodigyᚋjoinquestᚋgraphᚋmodelᚐPublicPlayer,
 		true,
 		false,
 	)
@@ -13571,7 +13571,7 @@ func (ec *executionContext) _Query_myAccount(ctx context.Context, field graphql.
 			return ec.resolvers.Query().MyAccount(ctx)
 		},
 		nil,
-		ec.marshalOAccount2ᚖgithubᚗcomᚋscruffyprodigyᚋplayhubᚋgraphᚋmodelᚐAccount,
+		ec.marshalOAccount2ᚖgithubᚗcomᚋscruffyprodigyᚋjoinquestᚋgraphᚋmodelᚐAccount,
 		true,
 		false,
 	)
@@ -13611,7 +13611,7 @@ func (ec *executionContext) _Query_previewLinkEmail(ctx context.Context, field g
 			return ec.resolvers.Query().PreviewLinkEmail(ctx, fc.Args["email"].(string))
 		},
 		nil,
-		ec.marshalNEmailLinkPreview2ᚖgithubᚗcomᚋscruffyprodigyᚋplayhubᚋgraphᚋmodelᚐEmailLinkPreview,
+		ec.marshalNEmailLinkPreview2ᚖgithubᚗcomᚋscruffyprodigyᚋjoinquestᚋgraphᚋmodelᚐEmailLinkPreview,
 		true,
 		true,
 	)
@@ -13659,7 +13659,7 @@ func (ec *executionContext) _Query_enabledOAuthProviders(ctx context.Context, fi
 			return ec.resolvers.Query().EnabledOAuthProviders(ctx)
 		},
 		nil,
-		ec.marshalNAuthProvider2ᚕgithubᚗcomᚋscruffyprodigyᚋplayhubᚋgraphᚋmodelᚐAuthProviderᚄ,
+		ec.marshalNAuthProvider2ᚕgithubᚗcomᚋscruffyprodigyᚋjoinquestᚋgraphᚋmodelᚐAuthProviderᚄ,
 		true,
 		true,
 	)
@@ -13688,7 +13688,7 @@ func (ec *executionContext) _Query_me(ctx context.Context, field graphql.Collect
 			return ec.resolvers.Query().Me(ctx)
 		},
 		nil,
-		ec.marshalOUser2ᚖgithubᚗcomᚋscruffyprodigyᚋplayhubᚋgraphᚋmodelᚐUser,
+		ec.marshalOUser2ᚖgithubᚗcomᚋscruffyprodigyᚋjoinquestᚋgraphᚋmodelᚐUser,
 		true,
 		false,
 	)
@@ -13770,7 +13770,7 @@ func (ec *executionContext) _Query_starterAvatars(ctx context.Context, field gra
 			return ec.resolvers.Query().StarterAvatars(ctx)
 		},
 		nil,
-		ec.marshalNStarterAvatar2ᚕᚖgithubᚗcomᚋscruffyprodigyᚋplayhubᚋgraphᚋmodelᚐStarterAvatarᚄ,
+		ec.marshalNStarterAvatar2ᚕᚖgithubᚗcomᚋscruffyprodigyᚋjoinquestᚋgraphᚋmodelᚐStarterAvatarᚄ,
 		true,
 		true,
 	)
@@ -13809,7 +13809,7 @@ func (ec *executionContext) _Query_myGames(ctx context.Context, field graphql.Co
 			return ec.resolvers.Query().MyGames(ctx)
 		},
 		nil,
-		ec.marshalNGame2ᚕᚖgithubᚗcomᚋscruffyprodigyᚋplayhubᚋgraphᚋmodelᚐGameᚄ,
+		ec.marshalNGame2ᚕᚖgithubᚗcomᚋscruffyprodigyᚋjoinquestᚋgraphᚋmodelᚐGameᚄ,
 		true,
 		true,
 	)
@@ -13897,7 +13897,7 @@ func (ec *executionContext) _Query_myGame(ctx context.Context, field graphql.Col
 			return ec.resolvers.Query().MyGame(ctx, fc.Args["id"].(string))
 		},
 		nil,
-		ec.marshalOGame2ᚖgithubᚗcomᚋscruffyprodigyᚋplayhubᚋgraphᚋmodelᚐGame,
+		ec.marshalOGame2ᚖgithubᚗcomᚋscruffyprodigyᚋjoinquestᚋgraphᚋmodelᚐGame,
 		true,
 		false,
 	)
@@ -13996,7 +13996,7 @@ func (ec *executionContext) _Query_myGameCredentials(ctx context.Context, field 
 			return ec.resolvers.Query().MyGameCredentials(ctx, fc.Args["id"].(string))
 		},
 		nil,
-		ec.marshalOMyGameCredentials2ᚖgithubᚗcomᚋscruffyprodigyᚋplayhubᚋgraphᚋmodelᚐMyGameCredentials,
+		ec.marshalOMyGameCredentials2ᚖgithubᚗcomᚋscruffyprodigyᚋjoinquestᚋgraphᚋmodelᚐMyGameCredentials,
 		true,
 		false,
 	)
@@ -14042,7 +14042,7 @@ func (ec *executionContext) _Query_myDeveloperApiKeys(ctx context.Context, field
 			return ec.resolvers.Query().MyDeveloperAPIKeys(ctx)
 		},
 		nil,
-		ec.marshalNDeveloperApiKey2ᚕᚖgithubᚗcomᚋscruffyprodigyᚋplayhubᚋgraphᚋmodelᚐDeveloperAPIKeyᚄ,
+		ec.marshalNDeveloperApiKey2ᚕᚖgithubᚗcomᚋscruffyprodigyᚋjoinquestᚋgraphᚋmodelᚐDeveloperAPIKeyᚄ,
 		true,
 		true,
 	)
@@ -14170,7 +14170,7 @@ func (ec *executionContext) _Query_catalogTagTaxonomy(ctx context.Context, field
 			return ec.resolvers.Query().CatalogTagTaxonomy(ctx)
 		},
 		nil,
-		ec.marshalNCatalogTagOption2ᚕᚖgithubᚗcomᚋscruffyprodigyᚋplayhubᚋgraphᚋmodelᚐCatalogTagOptionᚄ,
+		ec.marshalNCatalogTagOption2ᚕᚖgithubᚗcomᚋscruffyprodigyᚋjoinquestᚋgraphᚋmodelᚐCatalogTagOptionᚄ,
 		true,
 		true,
 	)
@@ -14207,7 +14207,7 @@ func (ec *executionContext) _Query_pendingGameReviews(ctx context.Context, field
 			return ec.resolvers.Query().PendingGameReviews(ctx)
 		},
 		nil,
-		ec.marshalNGame2ᚕᚖgithubᚗcomᚋscruffyprodigyᚋplayhubᚋgraphᚋmodelᚐGameᚄ,
+		ec.marshalNGame2ᚕᚖgithubᚗcomᚋscruffyprodigyᚋjoinquestᚋgraphᚋmodelᚐGameᚄ,
 		true,
 		true,
 	)
@@ -14295,7 +14295,7 @@ func (ec *executionContext) _Query_returnDestination(ctx context.Context, field 
 			return ec.resolvers.Query().ReturnDestination(ctx, fc.Args["matchId"].(*string))
 		},
 		nil,
-		ec.marshalNReturnDestination2ᚖgithubᚗcomᚋscruffyprodigyᚋplayhubᚋgraphᚋmodelᚐReturnDestination,
+		ec.marshalNReturnDestination2ᚖgithubᚗcomᚋscruffyprodigyᚋjoinquestᚋgraphᚋmodelᚐReturnDestination,
 		true,
 		true,
 	)
@@ -14342,7 +14342,7 @@ func (ec *executionContext) _Query_matchResult(ctx context.Context, field graphq
 			return ec.resolvers.Query().MatchResult(ctx, fc.Args["matchId"].(string))
 		},
 		nil,
-		ec.marshalOMatchResult2ᚖgithubᚗcomᚋscruffyprodigyᚋplayhubᚋgraphᚋmodelᚐMatchResult,
+		ec.marshalOMatchResult2ᚖgithubᚗcomᚋscruffyprodigyᚋjoinquestᚋgraphᚋmodelᚐMatchResult,
 		true,
 		false,
 	)
@@ -14403,7 +14403,7 @@ func (ec *executionContext) _Query_room(ctx context.Context, field graphql.Colle
 			return ec.resolvers.Query().Room(ctx, fc.Args["inviteCode"].(string))
 		},
 		nil,
-		ec.marshalORoom2ᚖgithubᚗcomᚋscruffyprodigyᚋplayhubᚋgraphᚋmodelᚐRoom,
+		ec.marshalORoom2ᚖgithubᚗcomᚋscruffyprodigyᚋjoinquestᚋgraphᚋmodelᚐRoom,
 		true,
 		false,
 	)
@@ -14459,7 +14459,7 @@ func (ec *executionContext) _Query_myRoom(ctx context.Context, field graphql.Col
 			return ec.resolvers.Query().MyRoom(ctx)
 		},
 		nil,
-		ec.marshalORoom2ᚖgithubᚗcomᚋscruffyprodigyᚋplayhubᚋgraphᚋmodelᚐRoom,
+		ec.marshalORoom2ᚖgithubᚗcomᚋscruffyprodigyᚋjoinquestᚋgraphᚋmodelᚐRoom,
 		true,
 		false,
 	)
@@ -14504,7 +14504,7 @@ func (ec *executionContext) _Query_mySpiritAnimalReading(ctx context.Context, fi
 			return ec.resolvers.Query().MySpiritAnimalReading(ctx)
 		},
 		nil,
-		ec.marshalOSpiritAnimalReading2ᚖgithubᚗcomᚋscruffyprodigyᚋplayhubᚋgraphᚋmodelᚐSpiritAnimalReading,
+		ec.marshalOSpiritAnimalReading2ᚖgithubᚗcomᚋscruffyprodigyᚋjoinquestᚋgraphᚋmodelᚐSpiritAnimalReading,
 		true,
 		false,
 	)
@@ -14559,7 +14559,7 @@ func (ec *executionContext) _Query_mySpiritAnimalJourneyEligibility(ctx context.
 			return ec.resolvers.Query().MySpiritAnimalJourneyEligibility(ctx)
 		},
 		nil,
-		ec.marshalNSpiritAnimalJourneyEligibility2ᚖgithubᚗcomᚋscruffyprodigyᚋplayhubᚋgraphᚋmodelᚐSpiritAnimalJourneyEligibility,
+		ec.marshalNSpiritAnimalJourneyEligibility2ᚖgithubᚗcomᚋscruffyprodigyᚋjoinquestᚋgraphᚋmodelᚐSpiritAnimalJourneyEligibility,
 		true,
 		true,
 	)
@@ -14596,7 +14596,7 @@ func (ec *executionContext) _Query_myTableSeat(ctx context.Context, field graphq
 			return ec.resolvers.Query().MyTableSeat(ctx)
 		},
 		nil,
-		ec.marshalOMyTableSeat2ᚖgithubᚗcomᚋscruffyprodigyᚋplayhubᚋgraphᚋmodelᚐMyTableSeat,
+		ec.marshalOMyTableSeat2ᚖgithubᚗcomᚋscruffyprodigyᚋjoinquestᚋgraphᚋmodelᚐMyTableSeat,
 		true,
 		false,
 	)
@@ -14935,7 +14935,7 @@ func (ec *executionContext) _QueueUpdate_status(ctx context.Context, field graph
 			return obj.Status, nil
 		},
 		nil,
-		ec.marshalNQueueStatus2githubᚗcomᚋscruffyprodigyᚋplayhubᚋgraphᚋmodelᚐQueueStatus,
+		ec.marshalNQueueStatus2githubᚗcomᚋscruffyprodigyᚋjoinquestᚋgraphᚋmodelᚐQueueStatus,
 		true,
 		true,
 	)
@@ -15080,7 +15080,7 @@ func (ec *executionContext) _QueueUpdate_formingGaps(ctx context.Context, field 
 			return obj.FormingGaps, nil
 		},
 		nil,
-		ec.marshalNQueuePathGap2ᚕᚖgithubᚗcomᚋscruffyprodigyᚋplayhubᚋgraphᚋmodelᚐQueuePathGapᚄ,
+		ec.marshalNQueuePathGap2ᚕᚖgithubᚗcomᚋscruffyprodigyᚋjoinquestᚋgraphᚋmodelᚐQueuePathGapᚄ,
 		true,
 		true,
 	)
@@ -15119,7 +15119,7 @@ func (ec *executionContext) _RegisterGamePayload_game(ctx context.Context, field
 			return obj.Game, nil
 		},
 		nil,
-		ec.marshalNGame2ᚖgithubᚗcomᚋscruffyprodigyᚋplayhubᚋgraphᚋmodelᚐGame,
+		ec.marshalNGame2ᚖgithubᚗcomᚋscruffyprodigyᚋjoinquestᚋgraphᚋmodelᚐGame,
 		true,
 		true,
 	)
@@ -15264,7 +15264,7 @@ func (ec *executionContext) _RegisterMyGamePayload_game(ctx context.Context, fie
 			return obj.Game, nil
 		},
 		nil,
-		ec.marshalNGame2ᚖgithubᚗcomᚋscruffyprodigyᚋplayhubᚋgraphᚋmodelᚐGame,
+		ec.marshalNGame2ᚖgithubᚗcomᚋscruffyprodigyᚋjoinquestᚋgraphᚋmodelᚐGame,
 		true,
 		true,
 	)
@@ -15496,7 +15496,7 @@ func (ec *executionContext) _RequirementGroup_operator(ctx context.Context, fiel
 			return obj.Operator, nil
 		},
 		nil,
-		ec.marshalNRequirementOperator2githubᚗcomᚋscruffyprodigyᚋplayhubᚋgraphᚋmodelᚐRequirementOperator,
+		ec.marshalNRequirementOperator2githubᚗcomᚋscruffyprodigyᚋjoinquestᚋgraphᚋmodelᚐRequirementOperator,
 		true,
 		true,
 	)
@@ -15525,7 +15525,7 @@ func (ec *executionContext) _RequirementGroup_children(ctx context.Context, fiel
 			return obj.Children, nil
 		},
 		nil,
-		ec.marshalNModeRequirementNode2ᚕgithubᚗcomᚋscruffyprodigyᚋplayhubᚋgraphᚋmodelᚐModeRequirementNodeᚄ,
+		ec.marshalNModeRequirementNode2ᚕgithubᚗcomᚋscruffyprodigyᚋjoinquestᚋgraphᚋmodelᚐModeRequirementNodeᚄ,
 		true,
 		true,
 	)
@@ -15786,7 +15786,7 @@ func (ec *executionContext) _Room_host(ctx context.Context, field graphql.Collec
 			return ec.resolvers.Room().Host(ctx, obj)
 		},
 		nil,
-		ec.marshalNUser2ᚖgithubᚗcomᚋscruffyprodigyᚋplayhubᚋgraphᚋmodelᚐUser,
+		ec.marshalNUser2ᚖgithubᚗcomᚋscruffyprodigyᚋjoinquestᚋgraphᚋmodelᚐUser,
 		true,
 		true,
 	)
@@ -15839,7 +15839,7 @@ func (ec *executionContext) _Room_members(ctx context.Context, field graphql.Col
 			return ec.resolvers.Room().Members(ctx, obj)
 		},
 		nil,
-		ec.marshalNUser2ᚕᚖgithubᚗcomᚋscruffyprodigyᚋplayhubᚋgraphᚋmodelᚐUserᚄ,
+		ec.marshalNUser2ᚕᚖgithubᚗcomᚋscruffyprodigyᚋjoinquestᚋgraphᚋmodelᚐUserᚄ,
 		true,
 		true,
 	)
@@ -15893,7 +15893,7 @@ func (ec *executionContext) _Room_messages(ctx context.Context, field graphql.Co
 			return ec.resolvers.Room().Messages(ctx, obj, fc.Args["limit"].(*int), fc.Args["before"].(*string))
 		},
 		nil,
-		ec.marshalNRoomMessage2ᚕᚖgithubᚗcomᚋscruffyprodigyᚋplayhubᚋgraphᚋmodelᚐRoomMessageᚄ,
+		ec.marshalNRoomMessage2ᚕᚖgithubᚗcomᚋscruffyprodigyᚋjoinquestᚋgraphᚋmodelᚐRoomMessageᚄ,
 		true,
 		true,
 	)
@@ -15943,7 +15943,7 @@ func (ec *executionContext) _Room_tables(ctx context.Context, field graphql.Coll
 			return ec.resolvers.Room().Tables(ctx, obj)
 		},
 		nil,
-		ec.marshalNTable2ᚕᚖgithubᚗcomᚋscruffyprodigyᚋplayhubᚋgraphᚋmodelᚐTableᚄ,
+		ec.marshalNTable2ᚕᚖgithubᚗcomᚋscruffyprodigyᚋjoinquestᚋgraphᚋmodelᚐTableᚄ,
 		true,
 		true,
 	)
@@ -16029,7 +16029,7 @@ func (ec *executionContext) _RoomMessage_author(ctx context.Context, field graph
 			return ec.resolvers.RoomMessage().Author(ctx, obj)
 		},
 		nil,
-		ec.marshalNUser2ᚖgithubᚗcomᚋscruffyprodigyᚋplayhubᚋgraphᚋmodelᚐUser,
+		ec.marshalNUser2ᚖgithubᚗcomᚋscruffyprodigyᚋjoinquestᚋgraphᚋmodelᚐUser,
 		true,
 		true,
 	)
@@ -16169,7 +16169,7 @@ func (ec *executionContext) _Session_game(ctx context.Context, field graphql.Col
 			return ec.resolvers.Session().Game(ctx, obj)
 		},
 		nil,
-		ec.marshalNGame2ᚖgithubᚗcomᚋscruffyprodigyᚋplayhubᚋgraphᚋmodelᚐGame,
+		ec.marshalNGame2ᚖgithubᚗcomᚋscruffyprodigyᚋjoinquestᚋgraphᚋmodelᚐGame,
 		true,
 		true,
 	)
@@ -16256,7 +16256,7 @@ func (ec *executionContext) _Session_status(ctx context.Context, field graphql.C
 			return obj.Status, nil
 		},
 		nil,
-		ec.marshalNSessionStatus2githubᚗcomᚋscruffyprodigyᚋplayhubᚋgraphᚋmodelᚐSessionStatus,
+		ec.marshalNSessionStatus2githubᚗcomᚋscruffyprodigyᚋjoinquestᚋgraphᚋmodelᚐSessionStatus,
 		true,
 		true,
 	)
@@ -16314,7 +16314,7 @@ func (ec *executionContext) _Session_players(ctx context.Context, field graphql.
 			return ec.resolvers.Session().Players(ctx, obj)
 		},
 		nil,
-		ec.marshalNUser2ᚕᚖgithubᚗcomᚋscruffyprodigyᚋplayhubᚋgraphᚋmodelᚐUserᚄ,
+		ec.marshalNUser2ᚕᚖgithubᚗcomᚋscruffyprodigyᚋjoinquestᚋgraphᚋmodelᚐUserᚄ,
 		true,
 		true,
 	)
@@ -16599,7 +16599,7 @@ func (ec *executionContext) _SpiritAnimalCardQuestion_answers(ctx context.Contex
 			return obj.Answers, nil
 		},
 		nil,
-		ec.marshalNSpiritAnimalAnswer2ᚕᚖgithubᚗcomᚋscruffyprodigyᚋplayhubᚋgraphᚋmodelᚐSpiritAnimalAnswerᚄ,
+		ec.marshalNSpiritAnimalAnswer2ᚕᚖgithubᚗcomᚋscruffyprodigyᚋjoinquestᚋgraphᚋmodelᚐSpiritAnimalAnswerᚄ,
 		true,
 		true,
 	)
@@ -16895,7 +16895,7 @@ func (ec *executionContext) _SpiritAnimalPersonality_journeySummary(ctx context.
 			return obj.JourneySummary, nil
 		},
 		nil,
-		ec.marshalNSpiritAnimalJourneySummary2ᚖgithubᚗcomᚋscruffyprodigyᚋplayhubᚋgraphᚋmodelᚐSpiritAnimalJourneySummary,
+		ec.marshalNSpiritAnimalJourneySummary2ᚖgithubᚗcomᚋscruffyprodigyᚋjoinquestᚋgraphᚋmodelᚐSpiritAnimalJourneySummary,
 		true,
 		true,
 	)
@@ -17081,7 +17081,7 @@ func (ec *executionContext) _SpiritAnimalReading_status(ctx context.Context, fie
 			return obj.Status, nil
 		},
 		nil,
-		ec.marshalNSpiritAnimalReadingStatus2githubᚗcomᚋscruffyprodigyᚋplayhubᚋgraphᚋmodelᚐSpiritAnimalReadingStatus,
+		ec.marshalNSpiritAnimalReadingStatus2githubᚗcomᚋscruffyprodigyᚋjoinquestᚋgraphᚋmodelᚐSpiritAnimalReadingStatus,
 		true,
 		true,
 	)
@@ -17139,7 +17139,7 @@ func (ec *executionContext) _SpiritAnimalReading_cardQuestions(ctx context.Conte
 			return obj.CardQuestions, nil
 		},
 		nil,
-		ec.marshalOSpiritAnimalCardQuestion2ᚕᚖgithubᚗcomᚋscruffyprodigyᚋplayhubᚋgraphᚋmodelᚐSpiritAnimalCardQuestionᚄ,
+		ec.marshalOSpiritAnimalCardQuestion2ᚕᚖgithubᚗcomᚋscruffyprodigyᚋjoinquestᚋgraphᚋmodelᚐSpiritAnimalCardQuestionᚄ,
 		true,
 		false,
 	)
@@ -17184,7 +17184,7 @@ func (ec *executionContext) _SpiritAnimalReading_personality(ctx context.Context
 			return obj.Personality, nil
 		},
 		nil,
-		ec.marshalOSpiritAnimalPersonality2ᚖgithubᚗcomᚋscruffyprodigyᚋplayhubᚋgraphᚋmodelᚐSpiritAnimalPersonality,
+		ec.marshalOSpiritAnimalPersonality2ᚖgithubᚗcomᚋscruffyprodigyᚋjoinquestᚋgraphᚋmodelᚐSpiritAnimalPersonality,
 		true,
 		false,
 	)
@@ -17256,7 +17256,7 @@ func (ec *executionContext) _SpiritAnimalReading_totems(ctx context.Context, fie
 			return obj.Totems, nil
 		},
 		nil,
-		ec.marshalOSpiritAnimalTotem2ᚕᚖgithubᚗcomᚋscruffyprodigyᚋplayhubᚋgraphᚋmodelᚐSpiritAnimalTotemᚄ,
+		ec.marshalOSpiritAnimalTotem2ᚕᚖgithubᚗcomᚋscruffyprodigyᚋjoinquestᚋgraphᚋmodelᚐSpiritAnimalTotemᚄ,
 		true,
 		false,
 	)
@@ -17983,7 +17983,7 @@ func (ec *executionContext) _Subscription_queueUpdated(ctx context.Context, fiel
 			return ec.resolvers.Subscription().QueueUpdated(ctx, fc.Args["queueId"].(string))
 		},
 		nil,
-		ec.marshalNQueueUpdate2ᚖgithubᚗcomᚋscruffyprodigyᚋplayhubᚋgraphᚋmodelᚐQueueUpdate,
+		ec.marshalNQueueUpdate2ᚖgithubᚗcomᚋscruffyprodigyᚋjoinquestᚋgraphᚋmodelᚐQueueUpdate,
 		true,
 		true,
 	)
@@ -18042,7 +18042,7 @@ func (ec *executionContext) _Subscription_matchResultUpdated(ctx context.Context
 			return ec.resolvers.Subscription().MatchResultUpdated(ctx, fc.Args["matchId"].(string))
 		},
 		nil,
-		ec.marshalNMatchResult2ᚖgithubᚗcomᚋscruffyprodigyᚋplayhubᚋgraphᚋmodelᚐMatchResult,
+		ec.marshalNMatchResult2ᚖgithubᚗcomᚋscruffyprodigyᚋjoinquestᚋgraphᚋmodelᚐMatchResult,
 		true,
 		true,
 	)
@@ -18103,7 +18103,7 @@ func (ec *executionContext) _Subscription_roomUpdated(ctx context.Context, field
 			return ec.resolvers.Subscription().RoomUpdated(ctx, fc.Args["roomId"].(string))
 		},
 		nil,
-		ec.marshalNRoom2ᚖgithubᚗcomᚋscruffyprodigyᚋplayhubᚋgraphᚋmodelᚐRoom,
+		ec.marshalNRoom2ᚖgithubᚗcomᚋscruffyprodigyᚋjoinquestᚋgraphᚋmodelᚐRoom,
 		true,
 		true,
 	)
@@ -18160,7 +18160,7 @@ func (ec *executionContext) _Subscription_roomMessageAdded(ctx context.Context, 
 			return ec.resolvers.Subscription().RoomMessageAdded(ctx, fc.Args["roomId"].(string))
 		},
 		nil,
-		ec.marshalNRoomMessage2ᚖgithubᚗcomᚋscruffyprodigyᚋplayhubᚋgraphᚋmodelᚐRoomMessage,
+		ec.marshalNRoomMessage2ᚖgithubᚗcomᚋscruffyprodigyᚋjoinquestᚋgraphᚋmodelᚐRoomMessage,
 		true,
 		true,
 	)
@@ -18211,7 +18211,7 @@ func (ec *executionContext) _Subscription_tableUpdated(ctx context.Context, fiel
 			return ec.resolvers.Subscription().TableUpdated(ctx, fc.Args["roomId"].(string))
 		},
 		nil,
-		ec.marshalNTable2ᚖgithubᚗcomᚋscruffyprodigyᚋplayhubᚋgraphᚋmodelᚐTable,
+		ec.marshalNTable2ᚖgithubᚗcomᚋscruffyprodigyᚋjoinquestᚋgraphᚋmodelᚐTable,
 		true,
 		true,
 	)
@@ -18279,7 +18279,7 @@ func (ec *executionContext) _Subscription_myTableSeatUpdated(ctx context.Context
 			return ec.resolvers.Subscription().MyTableSeatUpdated(ctx)
 		},
 		nil,
-		ec.marshalNMyTableSeat2ᚖgithubᚗcomᚋscruffyprodigyᚋplayhubᚋgraphᚋmodelᚐMyTableSeat,
+		ec.marshalNMyTableSeat2ᚖgithubᚗcomᚋscruffyprodigyᚋjoinquestᚋgraphᚋmodelᚐMyTableSeat,
 		true,
 		true,
 	)
@@ -18336,7 +18336,7 @@ func (ec *executionContext) _SyncMyGameManifestPayload_game(ctx context.Context,
 			return obj.Game, nil
 		},
 		nil,
-		ec.marshalNGame2ᚖgithubᚗcomᚋscruffyprodigyᚋplayhubᚋgraphᚋmodelᚐGame,
+		ec.marshalNGame2ᚖgithubᚗcomᚋscruffyprodigyᚋjoinquestᚋgraphᚋmodelᚐGame,
 		true,
 		true,
 	)
@@ -18510,7 +18510,7 @@ func (ec *executionContext) _Table_game(ctx context.Context, field graphql.Colle
 			return ec.resolvers.Table().Game(ctx, obj)
 		},
 		nil,
-		ec.marshalNGame2ᚖgithubᚗcomᚋscruffyprodigyᚋplayhubᚋgraphᚋmodelᚐGame,
+		ec.marshalNGame2ᚖgithubᚗcomᚋscruffyprodigyᚋjoinquestᚋgraphᚋmodelᚐGame,
 		true,
 		true,
 	)
@@ -18597,7 +18597,7 @@ func (ec *executionContext) _Table_mode(ctx context.Context, field graphql.Colle
 			return ec.resolvers.Table().Mode(ctx, obj)
 		},
 		nil,
-		ec.marshalNGameMode2ᚖgithubᚗcomᚋscruffyprodigyᚋplayhubᚋgraphᚋmodelᚐGameMode,
+		ec.marshalNGameMode2ᚖgithubᚗcomᚋscruffyprodigyᚋjoinquestᚋgraphᚋmodelᚐGameMode,
 		true,
 		true,
 	)
@@ -18677,7 +18677,7 @@ func (ec *executionContext) _Table_king(ctx context.Context, field graphql.Colle
 			return ec.resolvers.Table().King(ctx, obj)
 		},
 		nil,
-		ec.marshalOUser2ᚖgithubᚗcomᚋscruffyprodigyᚋplayhubᚋgraphᚋmodelᚐUser,
+		ec.marshalOUser2ᚖgithubᚗcomᚋscruffyprodigyᚋjoinquestᚋgraphᚋmodelᚐUser,
 		true,
 		false,
 	)
@@ -18730,7 +18730,7 @@ func (ec *executionContext) _Table_seats(ctx context.Context, field graphql.Coll
 			return ec.resolvers.Table().Seats(ctx, obj)
 		},
 		nil,
-		ec.marshalNTableSeat2ᚕᚖgithubᚗcomᚋscruffyprodigyᚋplayhubᚋgraphᚋmodelᚐTableSeatᚄ,
+		ec.marshalNTableSeat2ᚕᚖgithubᚗcomᚋscruffyprodigyᚋjoinquestᚋgraphᚋmodelᚐTableSeatᚄ,
 		true,
 		true,
 	)
@@ -18767,7 +18767,7 @@ func (ec *executionContext) _Table_seatSlots(ctx context.Context, field graphql.
 			return ec.resolvers.Table().SeatSlots(ctx, obj)
 		},
 		nil,
-		ec.marshalNTableSeatSlot2ᚕᚖgithubᚗcomᚋscruffyprodigyᚋplayhubᚋgraphᚋmodelᚐTableSeatSlotᚄ,
+		ec.marshalNTableSeatSlot2ᚕᚖgithubᚗcomᚋscruffyprodigyᚋjoinquestᚋgraphᚋmodelᚐTableSeatSlotᚄ,
 		true,
 		true,
 	)
@@ -18866,7 +18866,7 @@ func (ec *executionContext) _Table_lookForGroupOptions(ctx context.Context, fiel
 			return ec.resolvers.Table().LookForGroupOptions(ctx, obj)
 		},
 		nil,
-		ec.marshalNTableLookForGroupOption2ᚕᚖgithubᚗcomᚋscruffyprodigyᚋplayhubᚋgraphᚋmodelᚐTableLookForGroupOptionᚄ,
+		ec.marshalNTableLookForGroupOption2ᚕᚖgithubᚗcomᚋscruffyprodigyᚋjoinquestᚋgraphᚋmodelᚐTableLookForGroupOptionᚄ,
 		true,
 		true,
 	)
@@ -18934,7 +18934,7 @@ func (ec *executionContext) _Table_formingGaps(ctx context.Context, field graphq
 			return ec.resolvers.Table().FormingGaps(ctx, obj)
 		},
 		nil,
-		ec.marshalNQueuePathGap2ᚕᚖgithubᚗcomᚋscruffyprodigyᚋplayhubᚋgraphᚋmodelᚐQueuePathGapᚄ,
+		ec.marshalNQueuePathGap2ᚕᚖgithubᚗcomᚋscruffyprodigyᚋjoinquestᚋgraphᚋmodelᚐQueuePathGapᚄ,
 		true,
 		true,
 	)
@@ -18973,7 +18973,7 @@ func (ec *executionContext) _Table_regroupRoster(ctx context.Context, field grap
 			return ec.resolvers.Table().RegroupRoster(ctx, obj)
 		},
 		nil,
-		ec.marshalNMatchParticipantResult2ᚕᚖgithubᚗcomᚋscruffyprodigyᚋplayhubᚋgraphᚋmodelᚐMatchParticipantResultᚄ,
+		ec.marshalNMatchParticipantResult2ᚕᚖgithubᚗcomᚋscruffyprodigyᚋjoinquestᚋgraphᚋmodelᚐMatchParticipantResultᚄ,
 		true,
 		true,
 	)
@@ -19165,7 +19165,7 @@ func (ec *executionContext) _TableSeat_user(ctx context.Context, field graphql.C
 			return ec.resolvers.TableSeat().User(ctx, obj)
 		},
 		nil,
-		ec.marshalNUser2ᚖgithubᚗcomᚋscruffyprodigyᚋplayhubᚋgraphᚋmodelᚐUser,
+		ec.marshalNUser2ᚖgithubᚗcomᚋscruffyprodigyᚋjoinquestᚋgraphᚋmodelᚐUser,
 		true,
 		true,
 	)
@@ -19363,7 +19363,7 @@ func (ec *executionContext) _TableSeatSlot_user(ctx context.Context, field graph
 			return ec.resolvers.TableSeatSlot().User(ctx, obj)
 		},
 		nil,
-		ec.marshalOUser2ᚖgithubᚗcomᚋscruffyprodigyᚋplayhubᚋgraphᚋmodelᚐUser,
+		ec.marshalOUser2ᚖgithubᚗcomᚋscruffyprodigyᚋjoinquestᚋgraphᚋmodelᚐUser,
 		true,
 		false,
 	)
@@ -19561,7 +19561,7 @@ func (ec *executionContext) _User_avatarSource(ctx context.Context, field graphq
 			return obj.AvatarSource, nil
 		},
 		nil,
-		ec.marshalOAvatarSource2ᚖgithubᚗcomᚋscruffyprodigyᚋplayhubᚋgraphᚋmodelᚐAvatarSource,
+		ec.marshalOAvatarSource2ᚖgithubᚗcomᚋscruffyprodigyᚋjoinquestᚋgraphᚋmodelᚐAvatarSource,
 		true,
 		false,
 	)
@@ -19677,7 +19677,7 @@ func (ec *executionContext) _User_emails(ctx context.Context, field graphql.Coll
 			return ec.resolvers.User().Emails(ctx, obj)
 		},
 		nil,
-		ec.marshalNUserEmail2ᚕᚖgithubᚗcomᚋscruffyprodigyᚋplayhubᚋgraphᚋmodelᚐUserEmailᚄ,
+		ec.marshalNUserEmail2ᚕᚖgithubᚗcomᚋscruffyprodigyᚋjoinquestᚋgraphᚋmodelᚐUserEmailᚄ,
 		true,
 		true,
 	)
@@ -19716,7 +19716,7 @@ func (ec *executionContext) _User_identities(ctx context.Context, field graphql.
 			return ec.resolvers.User().Identities(ctx, obj)
 		},
 		nil,
-		ec.marshalNUserIdentity2ᚕᚖgithubᚗcomᚋscruffyprodigyᚋplayhubᚋgraphᚋmodelᚐUserIdentityᚄ,
+		ec.marshalNUserIdentity2ᚕᚖgithubᚗcomᚋscruffyprodigyᚋjoinquestᚋgraphᚋmodelᚐUserIdentityᚄ,
 		true,
 		true,
 	)
@@ -19900,7 +19900,7 @@ func (ec *executionContext) _UserIdentity_provider(ctx context.Context, field gr
 			return obj.Provider, nil
 		},
 		nil,
-		ec.marshalNAuthProvider2githubᚗcomᚋscruffyprodigyᚋplayhubᚋgraphᚋmodelᚐAuthProvider,
+		ec.marshalNAuthProvider2githubᚗcomᚋscruffyprodigyᚋjoinquestᚋgraphᚋmodelᚐAuthProvider,
 		true,
 		true,
 	)
@@ -21514,14 +21514,14 @@ func (ec *executionContext) unmarshalInputPartyNodeInput(ctx context.Context, ob
 			it.Role = data
 		case "children":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("children"))
-			data, err := ec.unmarshalOPartyNodeInput2ᚕᚖgithubᚗcomᚋscruffyprodigyᚋplayhubᚋgraphᚋmodelᚐPartyNodeInputᚄ(ctx, v)
+			data, err := ec.unmarshalOPartyNodeInput2ᚕᚖgithubᚗcomᚋscruffyprodigyᚋjoinquestᚋgraphᚋmodelᚐPartyNodeInputᚄ(ctx, v)
 			if err != nil {
 				return it, err
 			}
 			it.Children = data
 		case "members":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("members"))
-			data, err := ec.unmarshalOPartyMemberInput2ᚕᚖgithubᚗcomᚋscruffyprodigyᚋplayhubᚋgraphᚋmodelᚐPartyMemberInputᚄ(ctx, v)
+			data, err := ec.unmarshalOPartyMemberInput2ᚕᚖgithubᚗcomᚋscruffyprodigyᚋjoinquestᚋgraphᚋmodelᚐPartyMemberInputᚄ(ctx, v)
 			if err != nil {
 				return it, err
 			}
@@ -27330,24 +27330,24 @@ func (ec *executionContext) ___Type(ctx context.Context, sel ast.SelectionSet, o
 
 // region    ***************************** type.gotpl *****************************
 
-func (ec *executionContext) unmarshalNAuthProvider2githubᚗcomᚋscruffyprodigyᚋplayhubᚋgraphᚋmodelᚐAuthProvider(ctx context.Context, v any) (model.AuthProvider, error) {
+func (ec *executionContext) unmarshalNAuthProvider2githubᚗcomᚋscruffyprodigyᚋjoinquestᚋgraphᚋmodelᚐAuthProvider(ctx context.Context, v any) (model.AuthProvider, error) {
 	var res model.AuthProvider
 	err := res.UnmarshalGQL(v)
 	return res, graphql.ErrorOnPath(ctx, err)
 }
 
-func (ec *executionContext) marshalNAuthProvider2githubᚗcomᚋscruffyprodigyᚋplayhubᚋgraphᚋmodelᚐAuthProvider(ctx context.Context, sel ast.SelectionSet, v model.AuthProvider) graphql.Marshaler {
+func (ec *executionContext) marshalNAuthProvider2githubᚗcomᚋscruffyprodigyᚋjoinquestᚋgraphᚋmodelᚐAuthProvider(ctx context.Context, sel ast.SelectionSet, v model.AuthProvider) graphql.Marshaler {
 	return v
 }
 
-func (ec *executionContext) unmarshalNAuthProvider2ᚕgithubᚗcomᚋscruffyprodigyᚋplayhubᚋgraphᚋmodelᚐAuthProviderᚄ(ctx context.Context, v any) ([]model.AuthProvider, error) {
+func (ec *executionContext) unmarshalNAuthProvider2ᚕgithubᚗcomᚋscruffyprodigyᚋjoinquestᚋgraphᚋmodelᚐAuthProviderᚄ(ctx context.Context, v any) ([]model.AuthProvider, error) {
 	var vSlice []any
 	vSlice = graphql.CoerceList(v)
 	var err error
 	res := make([]model.AuthProvider, len(vSlice))
 	for i := range vSlice {
 		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithIndex(i))
-		res[i], err = ec.unmarshalNAuthProvider2githubᚗcomᚋscruffyprodigyᚋplayhubᚋgraphᚋmodelᚐAuthProvider(ctx, vSlice[i])
+		res[i], err = ec.unmarshalNAuthProvider2githubᚗcomᚋscruffyprodigyᚋjoinquestᚋgraphᚋmodelᚐAuthProvider(ctx, vSlice[i])
 		if err != nil {
 			return nil, err
 		}
@@ -27355,7 +27355,7 @@ func (ec *executionContext) unmarshalNAuthProvider2ᚕgithubᚗcomᚋscruffyprod
 	return res, nil
 }
 
-func (ec *executionContext) marshalNAuthProvider2ᚕgithubᚗcomᚋscruffyprodigyᚋplayhubᚋgraphᚋmodelᚐAuthProviderᚄ(ctx context.Context, sel ast.SelectionSet, v []model.AuthProvider) graphql.Marshaler {
+func (ec *executionContext) marshalNAuthProvider2ᚕgithubᚗcomᚋscruffyprodigyᚋjoinquestᚋgraphᚋmodelᚐAuthProviderᚄ(ctx context.Context, sel ast.SelectionSet, v []model.AuthProvider) graphql.Marshaler {
 	ret := make(graphql.Array, len(v))
 	var wg sync.WaitGroup
 	isLen1 := len(v) == 1
@@ -27379,7 +27379,7 @@ func (ec *executionContext) marshalNAuthProvider2ᚕgithubᚗcomᚋscruffyprodig
 			if !isLen1 {
 				defer wg.Done()
 			}
-			ret[i] = ec.marshalNAuthProvider2githubᚗcomᚋscruffyprodigyᚋplayhubᚋgraphᚋmodelᚐAuthProvider(ctx, sel, v[i])
+			ret[i] = ec.marshalNAuthProvider2githubᚗcomᚋscruffyprodigyᚋjoinquestᚋgraphᚋmodelᚐAuthProvider(ctx, sel, v[i])
 		}
 		if isLen1 {
 			f(i)
@@ -27415,7 +27415,7 @@ func (ec *executionContext) marshalNBoolean2bool(ctx context.Context, sel ast.Se
 	return res
 }
 
-func (ec *executionContext) marshalNCatalogTagOption2ᚕᚖgithubᚗcomᚋscruffyprodigyᚋplayhubᚋgraphᚋmodelᚐCatalogTagOptionᚄ(ctx context.Context, sel ast.SelectionSet, v []*model.CatalogTagOption) graphql.Marshaler {
+func (ec *executionContext) marshalNCatalogTagOption2ᚕᚖgithubᚗcomᚋscruffyprodigyᚋjoinquestᚋgraphᚋmodelᚐCatalogTagOptionᚄ(ctx context.Context, sel ast.SelectionSet, v []*model.CatalogTagOption) graphql.Marshaler {
 	ret := make(graphql.Array, len(v))
 	var wg sync.WaitGroup
 	isLen1 := len(v) == 1
@@ -27439,7 +27439,7 @@ func (ec *executionContext) marshalNCatalogTagOption2ᚕᚖgithubᚗcomᚋscruff
 			if !isLen1 {
 				defer wg.Done()
 			}
-			ret[i] = ec.marshalNCatalogTagOption2ᚖgithubᚗcomᚋscruffyprodigyᚋplayhubᚋgraphᚋmodelᚐCatalogTagOption(ctx, sel, v[i])
+			ret[i] = ec.marshalNCatalogTagOption2ᚖgithubᚗcomᚋscruffyprodigyᚋjoinquestᚋgraphᚋmodelᚐCatalogTagOption(ctx, sel, v[i])
 		}
 		if isLen1 {
 			f(i)
@@ -27459,7 +27459,7 @@ func (ec *executionContext) marshalNCatalogTagOption2ᚕᚖgithubᚗcomᚋscruff
 	return ret
 }
 
-func (ec *executionContext) marshalNCatalogTagOption2ᚖgithubᚗcomᚋscruffyprodigyᚋplayhubᚋgraphᚋmodelᚐCatalogTagOption(ctx context.Context, sel ast.SelectionSet, v *model.CatalogTagOption) graphql.Marshaler {
+func (ec *executionContext) marshalNCatalogTagOption2ᚖgithubᚗcomᚋscruffyprodigyᚋjoinquestᚋgraphᚋmodelᚐCatalogTagOption(ctx context.Context, sel ast.SelectionSet, v *model.CatalogTagOption) graphql.Marshaler {
 	if v == nil {
 		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
 			ec.Errorf(ctx, "the requested element is null which the schema does not allow")
@@ -27469,16 +27469,16 @@ func (ec *executionContext) marshalNCatalogTagOption2ᚖgithubᚗcomᚋscruffypr
 	return ec._CatalogTagOption(ctx, sel, v)
 }
 
-func (ec *executionContext) unmarshalNConnectMyGameInput2githubᚗcomᚋscruffyprodigyᚋplayhubᚋgraphᚋmodelᚐConnectMyGameInput(ctx context.Context, v any) (model.ConnectMyGameInput, error) {
+func (ec *executionContext) unmarshalNConnectMyGameInput2githubᚗcomᚋscruffyprodigyᚋjoinquestᚋgraphᚋmodelᚐConnectMyGameInput(ctx context.Context, v any) (model.ConnectMyGameInput, error) {
 	res, err := ec.unmarshalInputConnectMyGameInput(ctx, v)
 	return res, graphql.ErrorOnPath(ctx, err)
 }
 
-func (ec *executionContext) marshalNConnectMyGamePayload2githubᚗcomᚋscruffyprodigyᚋplayhubᚋgraphᚋmodelᚐConnectMyGamePayload(ctx context.Context, sel ast.SelectionSet, v model.ConnectMyGamePayload) graphql.Marshaler {
+func (ec *executionContext) marshalNConnectMyGamePayload2githubᚗcomᚋscruffyprodigyᚋjoinquestᚋgraphᚋmodelᚐConnectMyGamePayload(ctx context.Context, sel ast.SelectionSet, v model.ConnectMyGamePayload) graphql.Marshaler {
 	return ec._ConnectMyGamePayload(ctx, sel, &v)
 }
 
-func (ec *executionContext) marshalNConnectMyGamePayload2ᚖgithubᚗcomᚋscruffyprodigyᚋplayhubᚋgraphᚋmodelᚐConnectMyGamePayload(ctx context.Context, sel ast.SelectionSet, v *model.ConnectMyGamePayload) graphql.Marshaler {
+func (ec *executionContext) marshalNConnectMyGamePayload2ᚖgithubᚗcomᚋscruffyprodigyᚋjoinquestᚋgraphᚋmodelᚐConnectMyGamePayload(ctx context.Context, sel ast.SelectionSet, v *model.ConnectMyGamePayload) graphql.Marshaler {
 	if v == nil {
 		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
 			ec.Errorf(ctx, "the requested element is null which the schema does not allow")
@@ -27488,11 +27488,11 @@ func (ec *executionContext) marshalNConnectMyGamePayload2ᚖgithubᚗcomᚋscruf
 	return ec._ConnectMyGamePayload(ctx, sel, v)
 }
 
-func (ec *executionContext) marshalNCreateDeveloperApiKeyPayload2githubᚗcomᚋscruffyprodigyᚋplayhubᚋgraphᚋmodelᚐCreateDeveloperAPIKeyPayload(ctx context.Context, sel ast.SelectionSet, v model.CreateDeveloperAPIKeyPayload) graphql.Marshaler {
+func (ec *executionContext) marshalNCreateDeveloperApiKeyPayload2githubᚗcomᚋscruffyprodigyᚋjoinquestᚋgraphᚋmodelᚐCreateDeveloperAPIKeyPayload(ctx context.Context, sel ast.SelectionSet, v model.CreateDeveloperAPIKeyPayload) graphql.Marshaler {
 	return ec._CreateDeveloperApiKeyPayload(ctx, sel, &v)
 }
 
-func (ec *executionContext) marshalNCreateDeveloperApiKeyPayload2ᚖgithubᚗcomᚋscruffyprodigyᚋplayhubᚋgraphᚋmodelᚐCreateDeveloperAPIKeyPayload(ctx context.Context, sel ast.SelectionSet, v *model.CreateDeveloperAPIKeyPayload) graphql.Marshaler {
+func (ec *executionContext) marshalNCreateDeveloperApiKeyPayload2ᚖgithubᚗcomᚋscruffyprodigyᚋjoinquestᚋgraphᚋmodelᚐCreateDeveloperAPIKeyPayload(ctx context.Context, sel ast.SelectionSet, v *model.CreateDeveloperAPIKeyPayload) graphql.Marshaler {
 	if v == nil {
 		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
 			ec.Errorf(ctx, "the requested element is null which the schema does not allow")
@@ -27502,7 +27502,7 @@ func (ec *executionContext) marshalNCreateDeveloperApiKeyPayload2ᚖgithubᚗcom
 	return ec._CreateDeveloperApiKeyPayload(ctx, sel, v)
 }
 
-func (ec *executionContext) marshalNDeveloperApiKey2ᚕᚖgithubᚗcomᚋscruffyprodigyᚋplayhubᚋgraphᚋmodelᚐDeveloperAPIKeyᚄ(ctx context.Context, sel ast.SelectionSet, v []*model.DeveloperAPIKey) graphql.Marshaler {
+func (ec *executionContext) marshalNDeveloperApiKey2ᚕᚖgithubᚗcomᚋscruffyprodigyᚋjoinquestᚋgraphᚋmodelᚐDeveloperAPIKeyᚄ(ctx context.Context, sel ast.SelectionSet, v []*model.DeveloperAPIKey) graphql.Marshaler {
 	ret := make(graphql.Array, len(v))
 	var wg sync.WaitGroup
 	isLen1 := len(v) == 1
@@ -27526,7 +27526,7 @@ func (ec *executionContext) marshalNDeveloperApiKey2ᚕᚖgithubᚗcomᚋscruffy
 			if !isLen1 {
 				defer wg.Done()
 			}
-			ret[i] = ec.marshalNDeveloperApiKey2ᚖgithubᚗcomᚋscruffyprodigyᚋplayhubᚋgraphᚋmodelᚐDeveloperAPIKey(ctx, sel, v[i])
+			ret[i] = ec.marshalNDeveloperApiKey2ᚖgithubᚗcomᚋscruffyprodigyᚋjoinquestᚋgraphᚋmodelᚐDeveloperAPIKey(ctx, sel, v[i])
 		}
 		if isLen1 {
 			f(i)
@@ -27546,7 +27546,7 @@ func (ec *executionContext) marshalNDeveloperApiKey2ᚕᚖgithubᚗcomᚋscruffy
 	return ret
 }
 
-func (ec *executionContext) marshalNDeveloperApiKey2ᚖgithubᚗcomᚋscruffyprodigyᚋplayhubᚋgraphᚋmodelᚐDeveloperAPIKey(ctx context.Context, sel ast.SelectionSet, v *model.DeveloperAPIKey) graphql.Marshaler {
+func (ec *executionContext) marshalNDeveloperApiKey2ᚖgithubᚗcomᚋscruffyprodigyᚋjoinquestᚋgraphᚋmodelᚐDeveloperAPIKey(ctx context.Context, sel ast.SelectionSet, v *model.DeveloperAPIKey) graphql.Marshaler {
 	if v == nil {
 		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
 			ec.Errorf(ctx, "the requested element is null which the schema does not allow")
@@ -27556,7 +27556,7 @@ func (ec *executionContext) marshalNDeveloperApiKey2ᚖgithubᚗcomᚋscruffypro
 	return ec._DeveloperApiKey(ctx, sel, v)
 }
 
-func (ec *executionContext) marshalNDigitalGood2ᚕᚖgithubᚗcomᚋscruffyprodigyᚋplayhubᚋgraphᚋmodelᚐDigitalGoodᚄ(ctx context.Context, sel ast.SelectionSet, v []*model.DigitalGood) graphql.Marshaler {
+func (ec *executionContext) marshalNDigitalGood2ᚕᚖgithubᚗcomᚋscruffyprodigyᚋjoinquestᚋgraphᚋmodelᚐDigitalGoodᚄ(ctx context.Context, sel ast.SelectionSet, v []*model.DigitalGood) graphql.Marshaler {
 	ret := make(graphql.Array, len(v))
 	var wg sync.WaitGroup
 	isLen1 := len(v) == 1
@@ -27580,7 +27580,7 @@ func (ec *executionContext) marshalNDigitalGood2ᚕᚖgithubᚗcomᚋscruffyprod
 			if !isLen1 {
 				defer wg.Done()
 			}
-			ret[i] = ec.marshalNDigitalGood2ᚖgithubᚗcomᚋscruffyprodigyᚋplayhubᚋgraphᚋmodelᚐDigitalGood(ctx, sel, v[i])
+			ret[i] = ec.marshalNDigitalGood2ᚖgithubᚗcomᚋscruffyprodigyᚋjoinquestᚋgraphᚋmodelᚐDigitalGood(ctx, sel, v[i])
 		}
 		if isLen1 {
 			f(i)
@@ -27600,7 +27600,7 @@ func (ec *executionContext) marshalNDigitalGood2ᚕᚖgithubᚗcomᚋscruffyprod
 	return ret
 }
 
-func (ec *executionContext) marshalNDigitalGood2ᚖgithubᚗcomᚋscruffyprodigyᚋplayhubᚋgraphᚋmodelᚐDigitalGood(ctx context.Context, sel ast.SelectionSet, v *model.DigitalGood) graphql.Marshaler {
+func (ec *executionContext) marshalNDigitalGood2ᚖgithubᚗcomᚋscruffyprodigyᚋjoinquestᚋgraphᚋmodelᚐDigitalGood(ctx context.Context, sel ast.SelectionSet, v *model.DigitalGood) graphql.Marshaler {
 	if v == nil {
 		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
 			ec.Errorf(ctx, "the requested element is null which the schema does not allow")
@@ -27610,11 +27610,11 @@ func (ec *executionContext) marshalNDigitalGood2ᚖgithubᚗcomᚋscruffyprodigy
 	return ec._DigitalGood(ctx, sel, v)
 }
 
-func (ec *executionContext) marshalNEmailLinkPreview2githubᚗcomᚋscruffyprodigyᚋplayhubᚋgraphᚋmodelᚐEmailLinkPreview(ctx context.Context, sel ast.SelectionSet, v model.EmailLinkPreview) graphql.Marshaler {
+func (ec *executionContext) marshalNEmailLinkPreview2githubᚗcomᚋscruffyprodigyᚋjoinquestᚋgraphᚋmodelᚐEmailLinkPreview(ctx context.Context, sel ast.SelectionSet, v model.EmailLinkPreview) graphql.Marshaler {
 	return ec._EmailLinkPreview(ctx, sel, &v)
 }
 
-func (ec *executionContext) marshalNEmailLinkPreview2ᚖgithubᚗcomᚋscruffyprodigyᚋplayhubᚋgraphᚋmodelᚐEmailLinkPreview(ctx context.Context, sel ast.SelectionSet, v *model.EmailLinkPreview) graphql.Marshaler {
+func (ec *executionContext) marshalNEmailLinkPreview2ᚖgithubᚗcomᚋscruffyprodigyᚋjoinquestᚋgraphᚋmodelᚐEmailLinkPreview(ctx context.Context, sel ast.SelectionSet, v *model.EmailLinkPreview) graphql.Marshaler {
 	if v == nil {
 		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
 			ec.Errorf(ctx, "the requested element is null which the schema does not allow")
@@ -27624,7 +27624,7 @@ func (ec *executionContext) marshalNEmailLinkPreview2ᚖgithubᚗcomᚋscruffypr
 	return ec._EmailLinkPreview(ctx, sel, v)
 }
 
-func (ec *executionContext) marshalNEntitlement2ᚕᚖgithubᚗcomᚋscruffyprodigyᚋplayhubᚋgraphᚋmodelᚐEntitlementᚄ(ctx context.Context, sel ast.SelectionSet, v []*model.Entitlement) graphql.Marshaler {
+func (ec *executionContext) marshalNEntitlement2ᚕᚖgithubᚗcomᚋscruffyprodigyᚋjoinquestᚋgraphᚋmodelᚐEntitlementᚄ(ctx context.Context, sel ast.SelectionSet, v []*model.Entitlement) graphql.Marshaler {
 	ret := make(graphql.Array, len(v))
 	var wg sync.WaitGroup
 	isLen1 := len(v) == 1
@@ -27648,7 +27648,7 @@ func (ec *executionContext) marshalNEntitlement2ᚕᚖgithubᚗcomᚋscruffyprod
 			if !isLen1 {
 				defer wg.Done()
 			}
-			ret[i] = ec.marshalNEntitlement2ᚖgithubᚗcomᚋscruffyprodigyᚋplayhubᚋgraphᚋmodelᚐEntitlement(ctx, sel, v[i])
+			ret[i] = ec.marshalNEntitlement2ᚖgithubᚗcomᚋscruffyprodigyᚋjoinquestᚋgraphᚋmodelᚐEntitlement(ctx, sel, v[i])
 		}
 		if isLen1 {
 			f(i)
@@ -27668,7 +27668,7 @@ func (ec *executionContext) marshalNEntitlement2ᚕᚖgithubᚗcomᚋscruffyprod
 	return ret
 }
 
-func (ec *executionContext) marshalNEntitlement2ᚖgithubᚗcomᚋscruffyprodigyᚋplayhubᚋgraphᚋmodelᚐEntitlement(ctx context.Context, sel ast.SelectionSet, v *model.Entitlement) graphql.Marshaler {
+func (ec *executionContext) marshalNEntitlement2ᚖgithubᚗcomᚋscruffyprodigyᚋjoinquestᚋgraphᚋmodelᚐEntitlement(ctx context.Context, sel ast.SelectionSet, v *model.Entitlement) graphql.Marshaler {
 	if v == nil {
 		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
 			ec.Errorf(ctx, "the requested element is null which the schema does not allow")
@@ -27694,11 +27694,11 @@ func (ec *executionContext) marshalNFloat2float64(ctx context.Context, sel ast.S
 	return graphql.WrapContextMarshaler(ctx, res)
 }
 
-func (ec *executionContext) marshalNGame2githubᚗcomᚋscruffyprodigyᚋplayhubᚋgraphᚋmodelᚐGame(ctx context.Context, sel ast.SelectionSet, v model.Game) graphql.Marshaler {
+func (ec *executionContext) marshalNGame2githubᚗcomᚋscruffyprodigyᚋjoinquestᚋgraphᚋmodelᚐGame(ctx context.Context, sel ast.SelectionSet, v model.Game) graphql.Marshaler {
 	return ec._Game(ctx, sel, &v)
 }
 
-func (ec *executionContext) marshalNGame2ᚕᚖgithubᚗcomᚋscruffyprodigyᚋplayhubᚋgraphᚋmodelᚐGameᚄ(ctx context.Context, sel ast.SelectionSet, v []*model.Game) graphql.Marshaler {
+func (ec *executionContext) marshalNGame2ᚕᚖgithubᚗcomᚋscruffyprodigyᚋjoinquestᚋgraphᚋmodelᚐGameᚄ(ctx context.Context, sel ast.SelectionSet, v []*model.Game) graphql.Marshaler {
 	ret := make(graphql.Array, len(v))
 	var wg sync.WaitGroup
 	isLen1 := len(v) == 1
@@ -27722,7 +27722,7 @@ func (ec *executionContext) marshalNGame2ᚕᚖgithubᚗcomᚋscruffyprodigyᚋp
 			if !isLen1 {
 				defer wg.Done()
 			}
-			ret[i] = ec.marshalNGame2ᚖgithubᚗcomᚋscruffyprodigyᚋplayhubᚋgraphᚋmodelᚐGame(ctx, sel, v[i])
+			ret[i] = ec.marshalNGame2ᚖgithubᚗcomᚋscruffyprodigyᚋjoinquestᚋgraphᚋmodelᚐGame(ctx, sel, v[i])
 		}
 		if isLen1 {
 			f(i)
@@ -27742,7 +27742,7 @@ func (ec *executionContext) marshalNGame2ᚕᚖgithubᚗcomᚋscruffyprodigyᚋp
 	return ret
 }
 
-func (ec *executionContext) marshalNGame2ᚖgithubᚗcomᚋscruffyprodigyᚋplayhubᚋgraphᚋmodelᚐGame(ctx context.Context, sel ast.SelectionSet, v *model.Game) graphql.Marshaler {
+func (ec *executionContext) marshalNGame2ᚖgithubᚗcomᚋscruffyprodigyᚋjoinquestᚋgraphᚋmodelᚐGame(ctx context.Context, sel ast.SelectionSet, v *model.Game) graphql.Marshaler {
 	if v == nil {
 		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
 			ec.Errorf(ctx, "the requested element is null which the schema does not allow")
@@ -27752,7 +27752,7 @@ func (ec *executionContext) marshalNGame2ᚖgithubᚗcomᚋscruffyprodigyᚋplay
 	return ec._Game(ctx, sel, v)
 }
 
-func (ec *executionContext) marshalNGameIntegrationCheck2ᚕᚖgithubᚗcomᚋscruffyprodigyᚋplayhubᚋgraphᚋmodelᚐGameIntegrationCheckᚄ(ctx context.Context, sel ast.SelectionSet, v []*model.GameIntegrationCheck) graphql.Marshaler {
+func (ec *executionContext) marshalNGameIntegrationCheck2ᚕᚖgithubᚗcomᚋscruffyprodigyᚋjoinquestᚋgraphᚋmodelᚐGameIntegrationCheckᚄ(ctx context.Context, sel ast.SelectionSet, v []*model.GameIntegrationCheck) graphql.Marshaler {
 	ret := make(graphql.Array, len(v))
 	var wg sync.WaitGroup
 	isLen1 := len(v) == 1
@@ -27776,7 +27776,7 @@ func (ec *executionContext) marshalNGameIntegrationCheck2ᚕᚖgithubᚗcomᚋsc
 			if !isLen1 {
 				defer wg.Done()
 			}
-			ret[i] = ec.marshalNGameIntegrationCheck2ᚖgithubᚗcomᚋscruffyprodigyᚋplayhubᚋgraphᚋmodelᚐGameIntegrationCheck(ctx, sel, v[i])
+			ret[i] = ec.marshalNGameIntegrationCheck2ᚖgithubᚗcomᚋscruffyprodigyᚋjoinquestᚋgraphᚋmodelᚐGameIntegrationCheck(ctx, sel, v[i])
 		}
 		if isLen1 {
 			f(i)
@@ -27796,7 +27796,7 @@ func (ec *executionContext) marshalNGameIntegrationCheck2ᚕᚖgithubᚗcomᚋsc
 	return ret
 }
 
-func (ec *executionContext) marshalNGameIntegrationCheck2ᚖgithubᚗcomᚋscruffyprodigyᚋplayhubᚋgraphᚋmodelᚐGameIntegrationCheck(ctx context.Context, sel ast.SelectionSet, v *model.GameIntegrationCheck) graphql.Marshaler {
+func (ec *executionContext) marshalNGameIntegrationCheck2ᚖgithubᚗcomᚋscruffyprodigyᚋjoinquestᚋgraphᚋmodelᚐGameIntegrationCheck(ctx context.Context, sel ast.SelectionSet, v *model.GameIntegrationCheck) graphql.Marshaler {
 	if v == nil {
 		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
 			ec.Errorf(ctx, "the requested element is null which the schema does not allow")
@@ -27806,11 +27806,11 @@ func (ec *executionContext) marshalNGameIntegrationCheck2ᚖgithubᚗcomᚋscruf
 	return ec._GameIntegrationCheck(ctx, sel, v)
 }
 
-func (ec *executionContext) marshalNGameMode2githubᚗcomᚋscruffyprodigyᚋplayhubᚋgraphᚋmodelᚐGameMode(ctx context.Context, sel ast.SelectionSet, v model.GameMode) graphql.Marshaler {
+func (ec *executionContext) marshalNGameMode2githubᚗcomᚋscruffyprodigyᚋjoinquestᚋgraphᚋmodelᚐGameMode(ctx context.Context, sel ast.SelectionSet, v model.GameMode) graphql.Marshaler {
 	return ec._GameMode(ctx, sel, &v)
 }
 
-func (ec *executionContext) marshalNGameMode2ᚕᚖgithubᚗcomᚋscruffyprodigyᚋplayhubᚋgraphᚋmodelᚐGameModeᚄ(ctx context.Context, sel ast.SelectionSet, v []*model.GameMode) graphql.Marshaler {
+func (ec *executionContext) marshalNGameMode2ᚕᚖgithubᚗcomᚋscruffyprodigyᚋjoinquestᚋgraphᚋmodelᚐGameModeᚄ(ctx context.Context, sel ast.SelectionSet, v []*model.GameMode) graphql.Marshaler {
 	ret := make(graphql.Array, len(v))
 	var wg sync.WaitGroup
 	isLen1 := len(v) == 1
@@ -27834,7 +27834,7 @@ func (ec *executionContext) marshalNGameMode2ᚕᚖgithubᚗcomᚋscruffyprodigy
 			if !isLen1 {
 				defer wg.Done()
 			}
-			ret[i] = ec.marshalNGameMode2ᚖgithubᚗcomᚋscruffyprodigyᚋplayhubᚋgraphᚋmodelᚐGameMode(ctx, sel, v[i])
+			ret[i] = ec.marshalNGameMode2ᚖgithubᚗcomᚋscruffyprodigyᚋjoinquestᚋgraphᚋmodelᚐGameMode(ctx, sel, v[i])
 		}
 		if isLen1 {
 			f(i)
@@ -27854,7 +27854,7 @@ func (ec *executionContext) marshalNGameMode2ᚕᚖgithubᚗcomᚋscruffyprodigy
 	return ret
 }
 
-func (ec *executionContext) marshalNGameMode2ᚖgithubᚗcomᚋscruffyprodigyᚋplayhubᚋgraphᚋmodelᚐGameMode(ctx context.Context, sel ast.SelectionSet, v *model.GameMode) graphql.Marshaler {
+func (ec *executionContext) marshalNGameMode2ᚖgithubᚗcomᚋscruffyprodigyᚋjoinquestᚋgraphᚋmodelᚐGameMode(ctx context.Context, sel ast.SelectionSet, v *model.GameMode) graphql.Marshaler {
 	if v == nil {
 		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
 			ec.Errorf(ctx, "the requested element is null which the schema does not allow")
@@ -27864,7 +27864,7 @@ func (ec *executionContext) marshalNGameMode2ᚖgithubᚗcomᚋscruffyprodigyᚋ
 	return ec._GameMode(ctx, sel, v)
 }
 
-func (ec *executionContext) marshalNGameModeQueuePath2ᚕᚖgithubᚗcomᚋscruffyprodigyᚋplayhubᚋgraphᚋmodelᚐGameModeQueuePathᚄ(ctx context.Context, sel ast.SelectionSet, v []*model.GameModeQueuePath) graphql.Marshaler {
+func (ec *executionContext) marshalNGameModeQueuePath2ᚕᚖgithubᚗcomᚋscruffyprodigyᚋjoinquestᚋgraphᚋmodelᚐGameModeQueuePathᚄ(ctx context.Context, sel ast.SelectionSet, v []*model.GameModeQueuePath) graphql.Marshaler {
 	ret := make(graphql.Array, len(v))
 	var wg sync.WaitGroup
 	isLen1 := len(v) == 1
@@ -27888,7 +27888,7 @@ func (ec *executionContext) marshalNGameModeQueuePath2ᚕᚖgithubᚗcomᚋscruf
 			if !isLen1 {
 				defer wg.Done()
 			}
-			ret[i] = ec.marshalNGameModeQueuePath2ᚖgithubᚗcomᚋscruffyprodigyᚋplayhubᚋgraphᚋmodelᚐGameModeQueuePath(ctx, sel, v[i])
+			ret[i] = ec.marshalNGameModeQueuePath2ᚖgithubᚗcomᚋscruffyprodigyᚋjoinquestᚋgraphᚋmodelᚐGameModeQueuePath(ctx, sel, v[i])
 		}
 		if isLen1 {
 			f(i)
@@ -27908,7 +27908,7 @@ func (ec *executionContext) marshalNGameModeQueuePath2ᚕᚖgithubᚗcomᚋscruf
 	return ret
 }
 
-func (ec *executionContext) marshalNGameModeQueuePath2ᚖgithubᚗcomᚋscruffyprodigyᚋplayhubᚋgraphᚋmodelᚐGameModeQueuePath(ctx context.Context, sel ast.SelectionSet, v *model.GameModeQueuePath) graphql.Marshaler {
+func (ec *executionContext) marshalNGameModeQueuePath2ᚖgithubᚗcomᚋscruffyprodigyᚋjoinquestᚋgraphᚋmodelᚐGameModeQueuePath(ctx context.Context, sel ast.SelectionSet, v *model.GameModeQueuePath) graphql.Marshaler {
 	if v == nil {
 		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
 			ec.Errorf(ctx, "the requested element is null which the schema does not allow")
@@ -27918,7 +27918,7 @@ func (ec *executionContext) marshalNGameModeQueuePath2ᚖgithubᚗcomᚋscruffyp
 	return ec._GameModeQueuePath(ctx, sel, v)
 }
 
-func (ec *executionContext) marshalNGameModeSeat2ᚕᚖgithubᚗcomᚋscruffyprodigyᚋplayhubᚋgraphᚋmodelᚐGameModeSeatᚄ(ctx context.Context, sel ast.SelectionSet, v []*model.GameModeSeat) graphql.Marshaler {
+func (ec *executionContext) marshalNGameModeSeat2ᚕᚖgithubᚗcomᚋscruffyprodigyᚋjoinquestᚋgraphᚋmodelᚐGameModeSeatᚄ(ctx context.Context, sel ast.SelectionSet, v []*model.GameModeSeat) graphql.Marshaler {
 	ret := make(graphql.Array, len(v))
 	var wg sync.WaitGroup
 	isLen1 := len(v) == 1
@@ -27942,7 +27942,7 @@ func (ec *executionContext) marshalNGameModeSeat2ᚕᚖgithubᚗcomᚋscruffypro
 			if !isLen1 {
 				defer wg.Done()
 			}
-			ret[i] = ec.marshalNGameModeSeat2ᚖgithubᚗcomᚋscruffyprodigyᚋplayhubᚋgraphᚋmodelᚐGameModeSeat(ctx, sel, v[i])
+			ret[i] = ec.marshalNGameModeSeat2ᚖgithubᚗcomᚋscruffyprodigyᚋjoinquestᚋgraphᚋmodelᚐGameModeSeat(ctx, sel, v[i])
 		}
 		if isLen1 {
 			f(i)
@@ -27962,7 +27962,7 @@ func (ec *executionContext) marshalNGameModeSeat2ᚕᚖgithubᚗcomᚋscruffypro
 	return ret
 }
 
-func (ec *executionContext) marshalNGameModeSeat2ᚖgithubᚗcomᚋscruffyprodigyᚋplayhubᚋgraphᚋmodelᚐGameModeSeat(ctx context.Context, sel ast.SelectionSet, v *model.GameModeSeat) graphql.Marshaler {
+func (ec *executionContext) marshalNGameModeSeat2ᚖgithubᚗcomᚋscruffyprodigyᚋjoinquestᚋgraphᚋmodelᚐGameModeSeat(ctx context.Context, sel ast.SelectionSet, v *model.GameModeSeat) graphql.Marshaler {
 	if v == nil {
 		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
 			ec.Errorf(ctx, "the requested element is null which the schema does not allow")
@@ -27972,11 +27972,11 @@ func (ec *executionContext) marshalNGameModeSeat2ᚖgithubᚗcomᚋscruffyprodig
 	return ec._GameModeSeat(ctx, sel, v)
 }
 
-func (ec *executionContext) marshalNGamePlayerActivity2githubᚗcomᚋscruffyprodigyᚋplayhubᚋgraphᚋmodelᚐGamePlayerActivity(ctx context.Context, sel ast.SelectionSet, v model.GamePlayerActivity) graphql.Marshaler {
+func (ec *executionContext) marshalNGamePlayerActivity2githubᚗcomᚋscruffyprodigyᚋjoinquestᚋgraphᚋmodelᚐGamePlayerActivity(ctx context.Context, sel ast.SelectionSet, v model.GamePlayerActivity) graphql.Marshaler {
 	return ec._GamePlayerActivity(ctx, sel, &v)
 }
 
-func (ec *executionContext) marshalNGamePlayerActivity2ᚖgithubᚗcomᚋscruffyprodigyᚋplayhubᚋgraphᚋmodelᚐGamePlayerActivity(ctx context.Context, sel ast.SelectionSet, v *model.GamePlayerActivity) graphql.Marshaler {
+func (ec *executionContext) marshalNGamePlayerActivity2ᚖgithubᚗcomᚋscruffyprodigyᚋjoinquestᚋgraphᚋmodelᚐGamePlayerActivity(ctx context.Context, sel ast.SelectionSet, v *model.GamePlayerActivity) graphql.Marshaler {
 	if v == nil {
 		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
 			ec.Errorf(ctx, "the requested element is null which the schema does not allow")
@@ -27986,13 +27986,13 @@ func (ec *executionContext) marshalNGamePlayerActivity2ᚖgithubᚗcomᚋscruffy
 	return ec._GamePlayerActivity(ctx, sel, v)
 }
 
-func (ec *executionContext) unmarshalNGameVisibility2githubᚗcomᚋscruffyprodigyᚋplayhubᚋgraphᚋmodelᚐGameVisibility(ctx context.Context, v any) (model.GameVisibility, error) {
+func (ec *executionContext) unmarshalNGameVisibility2githubᚗcomᚋscruffyprodigyᚋjoinquestᚋgraphᚋmodelᚐGameVisibility(ctx context.Context, v any) (model.GameVisibility, error) {
 	var res model.GameVisibility
 	err := res.UnmarshalGQL(v)
 	return res, graphql.ErrorOnPath(ctx, err)
 }
 
-func (ec *executionContext) marshalNGameVisibility2githubᚗcomᚋscruffyprodigyᚋplayhubᚋgraphᚋmodelᚐGameVisibility(ctx context.Context, sel ast.SelectionSet, v model.GameVisibility) graphql.Marshaler {
+func (ec *executionContext) marshalNGameVisibility2githubᚗcomᚋscruffyprodigyᚋjoinquestᚋgraphᚋmodelᚐGameVisibility(ctx context.Context, sel ast.SelectionSet, v model.GameVisibility) graphql.Marshaler {
 	return v
 }
 
@@ -28088,21 +28088,21 @@ func (ec *executionContext) marshalNInt2ᚕintᚄ(ctx context.Context, sel ast.S
 	return ret
 }
 
-func (ec *executionContext) unmarshalNIntegrationCheckStatus2githubᚗcomᚋscruffyprodigyᚋplayhubᚋgraphᚋmodelᚐIntegrationCheckStatus(ctx context.Context, v any) (model.IntegrationCheckStatus, error) {
+func (ec *executionContext) unmarshalNIntegrationCheckStatus2githubᚗcomᚋscruffyprodigyᚋjoinquestᚋgraphᚋmodelᚐIntegrationCheckStatus(ctx context.Context, v any) (model.IntegrationCheckStatus, error) {
 	var res model.IntegrationCheckStatus
 	err := res.UnmarshalGQL(v)
 	return res, graphql.ErrorOnPath(ctx, err)
 }
 
-func (ec *executionContext) marshalNIntegrationCheckStatus2githubᚗcomᚋscruffyprodigyᚋplayhubᚋgraphᚋmodelᚐIntegrationCheckStatus(ctx context.Context, sel ast.SelectionSet, v model.IntegrationCheckStatus) graphql.Marshaler {
+func (ec *executionContext) marshalNIntegrationCheckStatus2githubᚗcomᚋscruffyprodigyᚋjoinquestᚋgraphᚋmodelᚐIntegrationCheckStatus(ctx context.Context, sel ast.SelectionSet, v model.IntegrationCheckStatus) graphql.Marshaler {
 	return v
 }
 
-func (ec *executionContext) marshalNJoinResult2githubᚗcomᚋscruffyprodigyᚋplayhubᚋgraphᚋmodelᚐJoinResult(ctx context.Context, sel ast.SelectionSet, v model.JoinResult) graphql.Marshaler {
+func (ec *executionContext) marshalNJoinResult2githubᚗcomᚋscruffyprodigyᚋjoinquestᚋgraphᚋmodelᚐJoinResult(ctx context.Context, sel ast.SelectionSet, v model.JoinResult) graphql.Marshaler {
 	return ec._JoinResult(ctx, sel, &v)
 }
 
-func (ec *executionContext) marshalNJoinResult2ᚖgithubᚗcomᚋscruffyprodigyᚋplayhubᚋgraphᚋmodelᚐJoinResult(ctx context.Context, sel ast.SelectionSet, v *model.JoinResult) graphql.Marshaler {
+func (ec *executionContext) marshalNJoinResult2ᚖgithubᚗcomᚋscruffyprodigyᚋjoinquestᚋgraphᚋmodelᚐJoinResult(ctx context.Context, sel ast.SelectionSet, v *model.JoinResult) graphql.Marshaler {
 	if v == nil {
 		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
 			ec.Errorf(ctx, "the requested element is null which the schema does not allow")
@@ -28112,7 +28112,7 @@ func (ec *executionContext) marshalNJoinResult2ᚖgithubᚗcomᚋscruffyprodigy�
 	return ec._JoinResult(ctx, sel, v)
 }
 
-func (ec *executionContext) marshalNMatchParticipantResult2ᚕᚖgithubᚗcomᚋscruffyprodigyᚋplayhubᚋgraphᚋmodelᚐMatchParticipantResultᚄ(ctx context.Context, sel ast.SelectionSet, v []*model.MatchParticipantResult) graphql.Marshaler {
+func (ec *executionContext) marshalNMatchParticipantResult2ᚕᚖgithubᚗcomᚋscruffyprodigyᚋjoinquestᚋgraphᚋmodelᚐMatchParticipantResultᚄ(ctx context.Context, sel ast.SelectionSet, v []*model.MatchParticipantResult) graphql.Marshaler {
 	ret := make(graphql.Array, len(v))
 	var wg sync.WaitGroup
 	isLen1 := len(v) == 1
@@ -28136,7 +28136,7 @@ func (ec *executionContext) marshalNMatchParticipantResult2ᚕᚖgithubᚗcomᚋ
 			if !isLen1 {
 				defer wg.Done()
 			}
-			ret[i] = ec.marshalNMatchParticipantResult2ᚖgithubᚗcomᚋscruffyprodigyᚋplayhubᚋgraphᚋmodelᚐMatchParticipantResult(ctx, sel, v[i])
+			ret[i] = ec.marshalNMatchParticipantResult2ᚖgithubᚗcomᚋscruffyprodigyᚋjoinquestᚋgraphᚋmodelᚐMatchParticipantResult(ctx, sel, v[i])
 		}
 		if isLen1 {
 			f(i)
@@ -28156,7 +28156,7 @@ func (ec *executionContext) marshalNMatchParticipantResult2ᚕᚖgithubᚗcomᚋ
 	return ret
 }
 
-func (ec *executionContext) marshalNMatchParticipantResult2ᚖgithubᚗcomᚋscruffyprodigyᚋplayhubᚋgraphᚋmodelᚐMatchParticipantResult(ctx context.Context, sel ast.SelectionSet, v *model.MatchParticipantResult) graphql.Marshaler {
+func (ec *executionContext) marshalNMatchParticipantResult2ᚖgithubᚗcomᚋscruffyprodigyᚋjoinquestᚋgraphᚋmodelᚐMatchParticipantResult(ctx context.Context, sel ast.SelectionSet, v *model.MatchParticipantResult) graphql.Marshaler {
 	if v == nil {
 		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
 			ec.Errorf(ctx, "the requested element is null which the schema does not allow")
@@ -28166,11 +28166,11 @@ func (ec *executionContext) marshalNMatchParticipantResult2ᚖgithubᚗcomᚋscr
 	return ec._MatchParticipantResult(ctx, sel, v)
 }
 
-func (ec *executionContext) marshalNMatchResult2githubᚗcomᚋscruffyprodigyᚋplayhubᚋgraphᚋmodelᚐMatchResult(ctx context.Context, sel ast.SelectionSet, v model.MatchResult) graphql.Marshaler {
+func (ec *executionContext) marshalNMatchResult2githubᚗcomᚋscruffyprodigyᚋjoinquestᚋgraphᚋmodelᚐMatchResult(ctx context.Context, sel ast.SelectionSet, v model.MatchResult) graphql.Marshaler {
 	return ec._MatchResult(ctx, sel, &v)
 }
 
-func (ec *executionContext) marshalNMatchResult2ᚖgithubᚗcomᚋscruffyprodigyᚋplayhubᚋgraphᚋmodelᚐMatchResult(ctx context.Context, sel ast.SelectionSet, v *model.MatchResult) graphql.Marshaler {
+func (ec *executionContext) marshalNMatchResult2ᚖgithubᚗcomᚋscruffyprodigyᚋjoinquestᚋgraphᚋmodelᚐMatchResult(ctx context.Context, sel ast.SelectionSet, v *model.MatchResult) graphql.Marshaler {
 	if v == nil {
 		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
 			ec.Errorf(ctx, "the requested element is null which the schema does not allow")
@@ -28180,17 +28180,17 @@ func (ec *executionContext) marshalNMatchResult2ᚖgithubᚗcomᚋscruffyprodigy
 	return ec._MatchResult(ctx, sel, v)
 }
 
-func (ec *executionContext) unmarshalNMatchResultStatus2githubᚗcomᚋscruffyprodigyᚋplayhubᚋgraphᚋmodelᚐMatchResultStatus(ctx context.Context, v any) (model.MatchResultStatus, error) {
+func (ec *executionContext) unmarshalNMatchResultStatus2githubᚗcomᚋscruffyprodigyᚋjoinquestᚋgraphᚋmodelᚐMatchResultStatus(ctx context.Context, v any) (model.MatchResultStatus, error) {
 	var res model.MatchResultStatus
 	err := res.UnmarshalGQL(v)
 	return res, graphql.ErrorOnPath(ctx, err)
 }
 
-func (ec *executionContext) marshalNMatchResultStatus2githubᚗcomᚋscruffyprodigyᚋplayhubᚋgraphᚋmodelᚐMatchResultStatus(ctx context.Context, sel ast.SelectionSet, v model.MatchResultStatus) graphql.Marshaler {
+func (ec *executionContext) marshalNMatchResultStatus2githubᚗcomᚋscruffyprodigyᚋjoinquestᚋgraphᚋmodelᚐMatchResultStatus(ctx context.Context, sel ast.SelectionSet, v model.MatchResultStatus) graphql.Marshaler {
 	return v
 }
 
-func (ec *executionContext) marshalNModeQueue2ᚕᚖgithubᚗcomᚋscruffyprodigyᚋplayhubᚋgraphᚋmodelᚐModeQueueᚄ(ctx context.Context, sel ast.SelectionSet, v []*model.ModeQueue) graphql.Marshaler {
+func (ec *executionContext) marshalNModeQueue2ᚕᚖgithubᚗcomᚋscruffyprodigyᚋjoinquestᚋgraphᚋmodelᚐModeQueueᚄ(ctx context.Context, sel ast.SelectionSet, v []*model.ModeQueue) graphql.Marshaler {
 	ret := make(graphql.Array, len(v))
 	var wg sync.WaitGroup
 	isLen1 := len(v) == 1
@@ -28214,7 +28214,7 @@ func (ec *executionContext) marshalNModeQueue2ᚕᚖgithubᚗcomᚋscruffyprodig
 			if !isLen1 {
 				defer wg.Done()
 			}
-			ret[i] = ec.marshalNModeQueue2ᚖgithubᚗcomᚋscruffyprodigyᚋplayhubᚋgraphᚋmodelᚐModeQueue(ctx, sel, v[i])
+			ret[i] = ec.marshalNModeQueue2ᚖgithubᚗcomᚋscruffyprodigyᚋjoinquestᚋgraphᚋmodelᚐModeQueue(ctx, sel, v[i])
 		}
 		if isLen1 {
 			f(i)
@@ -28234,7 +28234,7 @@ func (ec *executionContext) marshalNModeQueue2ᚕᚖgithubᚗcomᚋscruffyprodig
 	return ret
 }
 
-func (ec *executionContext) marshalNModeQueue2ᚖgithubᚗcomᚋscruffyprodigyᚋplayhubᚋgraphᚋmodelᚐModeQueue(ctx context.Context, sel ast.SelectionSet, v *model.ModeQueue) graphql.Marshaler {
+func (ec *executionContext) marshalNModeQueue2ᚖgithubᚗcomᚋscruffyprodigyᚋjoinquestᚋgraphᚋmodelᚐModeQueue(ctx context.Context, sel ast.SelectionSet, v *model.ModeQueue) graphql.Marshaler {
 	if v == nil {
 		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
 			ec.Errorf(ctx, "the requested element is null which the schema does not allow")
@@ -28244,7 +28244,7 @@ func (ec *executionContext) marshalNModeQueue2ᚖgithubᚗcomᚋscruffyprodigy�
 	return ec._ModeQueue(ctx, sel, v)
 }
 
-func (ec *executionContext) marshalNModeRequirementNode2githubᚗcomᚋscruffyprodigyᚋplayhubᚋgraphᚋmodelᚐModeRequirementNode(ctx context.Context, sel ast.SelectionSet, v model.ModeRequirementNode) graphql.Marshaler {
+func (ec *executionContext) marshalNModeRequirementNode2githubᚗcomᚋscruffyprodigyᚋjoinquestᚋgraphᚋmodelᚐModeRequirementNode(ctx context.Context, sel ast.SelectionSet, v model.ModeRequirementNode) graphql.Marshaler {
 	if v == nil {
 		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
 			ec.Errorf(ctx, "the requested element is null which the schema does not allow")
@@ -28254,7 +28254,7 @@ func (ec *executionContext) marshalNModeRequirementNode2githubᚗcomᚋscruffypr
 	return ec._ModeRequirementNode(ctx, sel, v)
 }
 
-func (ec *executionContext) marshalNModeRequirementNode2ᚕgithubᚗcomᚋscruffyprodigyᚋplayhubᚋgraphᚋmodelᚐModeRequirementNodeᚄ(ctx context.Context, sel ast.SelectionSet, v []model.ModeRequirementNode) graphql.Marshaler {
+func (ec *executionContext) marshalNModeRequirementNode2ᚕgithubᚗcomᚋscruffyprodigyᚋjoinquestᚋgraphᚋmodelᚐModeRequirementNodeᚄ(ctx context.Context, sel ast.SelectionSet, v []model.ModeRequirementNode) graphql.Marshaler {
 	ret := make(graphql.Array, len(v))
 	var wg sync.WaitGroup
 	isLen1 := len(v) == 1
@@ -28278,7 +28278,7 @@ func (ec *executionContext) marshalNModeRequirementNode2ᚕgithubᚗcomᚋscruff
 			if !isLen1 {
 				defer wg.Done()
 			}
-			ret[i] = ec.marshalNModeRequirementNode2githubᚗcomᚋscruffyprodigyᚋplayhubᚋgraphᚋmodelᚐModeRequirementNode(ctx, sel, v[i])
+			ret[i] = ec.marshalNModeRequirementNode2githubᚗcomᚋscruffyprodigyᚋjoinquestᚋgraphᚋmodelᚐModeRequirementNode(ctx, sel, v[i])
 		}
 		if isLen1 {
 			f(i)
@@ -28298,11 +28298,11 @@ func (ec *executionContext) marshalNModeRequirementNode2ᚕgithubᚗcomᚋscruff
 	return ret
 }
 
-func (ec *executionContext) marshalNMyGameCredentials2githubᚗcomᚋscruffyprodigyᚋplayhubᚋgraphᚋmodelᚐMyGameCredentials(ctx context.Context, sel ast.SelectionSet, v model.MyGameCredentials) graphql.Marshaler {
+func (ec *executionContext) marshalNMyGameCredentials2githubᚗcomᚋscruffyprodigyᚋjoinquestᚋgraphᚋmodelᚐMyGameCredentials(ctx context.Context, sel ast.SelectionSet, v model.MyGameCredentials) graphql.Marshaler {
 	return ec._MyGameCredentials(ctx, sel, &v)
 }
 
-func (ec *executionContext) marshalNMyGameCredentials2ᚖgithubᚗcomᚋscruffyprodigyᚋplayhubᚋgraphᚋmodelᚐMyGameCredentials(ctx context.Context, sel ast.SelectionSet, v *model.MyGameCredentials) graphql.Marshaler {
+func (ec *executionContext) marshalNMyGameCredentials2ᚖgithubᚗcomᚋscruffyprodigyᚋjoinquestᚋgraphᚋmodelᚐMyGameCredentials(ctx context.Context, sel ast.SelectionSet, v *model.MyGameCredentials) graphql.Marshaler {
 	if v == nil {
 		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
 			ec.Errorf(ctx, "the requested element is null which the schema does not allow")
@@ -28312,11 +28312,11 @@ func (ec *executionContext) marshalNMyGameCredentials2ᚖgithubᚗcomᚋscruffyp
 	return ec._MyGameCredentials(ctx, sel, v)
 }
 
-func (ec *executionContext) marshalNMyTableSeat2githubᚗcomᚋscruffyprodigyᚋplayhubᚋgraphᚋmodelᚐMyTableSeat(ctx context.Context, sel ast.SelectionSet, v model.MyTableSeat) graphql.Marshaler {
+func (ec *executionContext) marshalNMyTableSeat2githubᚗcomᚋscruffyprodigyᚋjoinquestᚋgraphᚋmodelᚐMyTableSeat(ctx context.Context, sel ast.SelectionSet, v model.MyTableSeat) graphql.Marshaler {
 	return ec._MyTableSeat(ctx, sel, &v)
 }
 
-func (ec *executionContext) marshalNMyTableSeat2ᚖgithubᚗcomᚋscruffyprodigyᚋplayhubᚋgraphᚋmodelᚐMyTableSeat(ctx context.Context, sel ast.SelectionSet, v *model.MyTableSeat) graphql.Marshaler {
+func (ec *executionContext) marshalNMyTableSeat2ᚖgithubᚗcomᚋscruffyprodigyᚋjoinquestᚋgraphᚋmodelᚐMyTableSeat(ctx context.Context, sel ast.SelectionSet, v *model.MyTableSeat) graphql.Marshaler {
 	if v == nil {
 		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
 			ec.Errorf(ctx, "the requested element is null which the schema does not allow")
@@ -28326,21 +28326,21 @@ func (ec *executionContext) marshalNMyTableSeat2ᚖgithubᚗcomᚋscruffyprodigy
 	return ec._MyTableSeat(ctx, sel, v)
 }
 
-func (ec *executionContext) unmarshalNPartyMemberInput2ᚖgithubᚗcomᚋscruffyprodigyᚋplayhubᚋgraphᚋmodelᚐPartyMemberInput(ctx context.Context, v any) (*model.PartyMemberInput, error) {
+func (ec *executionContext) unmarshalNPartyMemberInput2ᚖgithubᚗcomᚋscruffyprodigyᚋjoinquestᚋgraphᚋmodelᚐPartyMemberInput(ctx context.Context, v any) (*model.PartyMemberInput, error) {
 	res, err := ec.unmarshalInputPartyMemberInput(ctx, v)
 	return &res, graphql.ErrorOnPath(ctx, err)
 }
 
-func (ec *executionContext) unmarshalNPartyNodeInput2ᚖgithubᚗcomᚋscruffyprodigyᚋplayhubᚋgraphᚋmodelᚐPartyNodeInput(ctx context.Context, v any) (*model.PartyNodeInput, error) {
+func (ec *executionContext) unmarshalNPartyNodeInput2ᚖgithubᚗcomᚋscruffyprodigyᚋjoinquestᚋgraphᚋmodelᚐPartyNodeInput(ctx context.Context, v any) (*model.PartyNodeInput, error) {
 	res, err := ec.unmarshalInputPartyNodeInput(ctx, v)
 	return &res, graphql.ErrorOnPath(ctx, err)
 }
 
-func (ec *executionContext) marshalNPlayAgainResult2githubᚗcomᚋscruffyprodigyᚋplayhubᚋgraphᚋmodelᚐPlayAgainResult(ctx context.Context, sel ast.SelectionSet, v model.PlayAgainResult) graphql.Marshaler {
+func (ec *executionContext) marshalNPlayAgainResult2githubᚗcomᚋscruffyprodigyᚋjoinquestᚋgraphᚋmodelᚐPlayAgainResult(ctx context.Context, sel ast.SelectionSet, v model.PlayAgainResult) graphql.Marshaler {
 	return ec._PlayAgainResult(ctx, sel, &v)
 }
 
-func (ec *executionContext) marshalNPlayAgainResult2ᚖgithubᚗcomᚋscruffyprodigyᚋplayhubᚋgraphᚋmodelᚐPlayAgainResult(ctx context.Context, sel ast.SelectionSet, v *model.PlayAgainResult) graphql.Marshaler {
+func (ec *executionContext) marshalNPlayAgainResult2ᚖgithubᚗcomᚋscruffyprodigyᚋjoinquestᚋgraphᚋmodelᚐPlayAgainResult(ctx context.Context, sel ast.SelectionSet, v *model.PlayAgainResult) graphql.Marshaler {
 	if v == nil {
 		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
 			ec.Errorf(ctx, "the requested element is null which the schema does not allow")
@@ -28350,17 +28350,17 @@ func (ec *executionContext) marshalNPlayAgainResult2ᚖgithubᚗcomᚋscruffypro
 	return ec._PlayAgainResult(ctx, sel, v)
 }
 
-func (ec *executionContext) unmarshalNPlayerFinishReason2githubᚗcomᚋscruffyprodigyᚋplayhubᚋgraphᚋmodelᚐPlayerFinishReason(ctx context.Context, v any) (model.PlayerFinishReason, error) {
+func (ec *executionContext) unmarshalNPlayerFinishReason2githubᚗcomᚋscruffyprodigyᚋjoinquestᚋgraphᚋmodelᚐPlayerFinishReason(ctx context.Context, v any) (model.PlayerFinishReason, error) {
 	var res model.PlayerFinishReason
 	err := res.UnmarshalGQL(v)
 	return res, graphql.ErrorOnPath(ctx, err)
 }
 
-func (ec *executionContext) marshalNPlayerFinishReason2githubᚗcomᚋscruffyprodigyᚋplayhubᚋgraphᚋmodelᚐPlayerFinishReason(ctx context.Context, sel ast.SelectionSet, v model.PlayerFinishReason) graphql.Marshaler {
+func (ec *executionContext) marshalNPlayerFinishReason2githubᚗcomᚋscruffyprodigyᚋjoinquestᚋgraphᚋmodelᚐPlayerFinishReason(ctx context.Context, sel ast.SelectionSet, v model.PlayerFinishReason) graphql.Marshaler {
 	return v
 }
 
-func (ec *executionContext) marshalNPublicPlayer2ᚖgithubᚗcomᚋscruffyprodigyᚋplayhubᚋgraphᚋmodelᚐPublicPlayer(ctx context.Context, sel ast.SelectionSet, v *model.PublicPlayer) graphql.Marshaler {
+func (ec *executionContext) marshalNPublicPlayer2ᚖgithubᚗcomᚋscruffyprodigyᚋjoinquestᚋgraphᚋmodelᚐPublicPlayer(ctx context.Context, sel ast.SelectionSet, v *model.PublicPlayer) graphql.Marshaler {
 	if v == nil {
 		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
 			ec.Errorf(ctx, "the requested element is null which the schema does not allow")
@@ -28370,7 +28370,7 @@ func (ec *executionContext) marshalNPublicPlayer2ᚖgithubᚗcomᚋscruffyprodig
 	return ec._PublicPlayer(ctx, sel, v)
 }
 
-func (ec *executionContext) marshalNQueuePathGap2ᚕᚖgithubᚗcomᚋscruffyprodigyᚋplayhubᚋgraphᚋmodelᚐQueuePathGapᚄ(ctx context.Context, sel ast.SelectionSet, v []*model.QueuePathGap) graphql.Marshaler {
+func (ec *executionContext) marshalNQueuePathGap2ᚕᚖgithubᚗcomᚋscruffyprodigyᚋjoinquestᚋgraphᚋmodelᚐQueuePathGapᚄ(ctx context.Context, sel ast.SelectionSet, v []*model.QueuePathGap) graphql.Marshaler {
 	ret := make(graphql.Array, len(v))
 	var wg sync.WaitGroup
 	isLen1 := len(v) == 1
@@ -28394,7 +28394,7 @@ func (ec *executionContext) marshalNQueuePathGap2ᚕᚖgithubᚗcomᚋscruffypro
 			if !isLen1 {
 				defer wg.Done()
 			}
-			ret[i] = ec.marshalNQueuePathGap2ᚖgithubᚗcomᚋscruffyprodigyᚋplayhubᚋgraphᚋmodelᚐQueuePathGap(ctx, sel, v[i])
+			ret[i] = ec.marshalNQueuePathGap2ᚖgithubᚗcomᚋscruffyprodigyᚋjoinquestᚋgraphᚋmodelᚐQueuePathGap(ctx, sel, v[i])
 		}
 		if isLen1 {
 			f(i)
@@ -28414,7 +28414,7 @@ func (ec *executionContext) marshalNQueuePathGap2ᚕᚖgithubᚗcomᚋscruffypro
 	return ret
 }
 
-func (ec *executionContext) marshalNQueuePathGap2ᚖgithubᚗcomᚋscruffyprodigyᚋplayhubᚋgraphᚋmodelᚐQueuePathGap(ctx context.Context, sel ast.SelectionSet, v *model.QueuePathGap) graphql.Marshaler {
+func (ec *executionContext) marshalNQueuePathGap2ᚖgithubᚗcomᚋscruffyprodigyᚋjoinquestᚋgraphᚋmodelᚐQueuePathGap(ctx context.Context, sel ast.SelectionSet, v *model.QueuePathGap) graphql.Marshaler {
 	if v == nil {
 		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
 			ec.Errorf(ctx, "the requested element is null which the schema does not allow")
@@ -28424,21 +28424,21 @@ func (ec *executionContext) marshalNQueuePathGap2ᚖgithubᚗcomᚋscruffyprodig
 	return ec._QueuePathGap(ctx, sel, v)
 }
 
-func (ec *executionContext) unmarshalNQueueStatus2githubᚗcomᚋscruffyprodigyᚋplayhubᚋgraphᚋmodelᚐQueueStatus(ctx context.Context, v any) (model.QueueStatus, error) {
+func (ec *executionContext) unmarshalNQueueStatus2githubᚗcomᚋscruffyprodigyᚋjoinquestᚋgraphᚋmodelᚐQueueStatus(ctx context.Context, v any) (model.QueueStatus, error) {
 	var res model.QueueStatus
 	err := res.UnmarshalGQL(v)
 	return res, graphql.ErrorOnPath(ctx, err)
 }
 
-func (ec *executionContext) marshalNQueueStatus2githubᚗcomᚋscruffyprodigyᚋplayhubᚋgraphᚋmodelᚐQueueStatus(ctx context.Context, sel ast.SelectionSet, v model.QueueStatus) graphql.Marshaler {
+func (ec *executionContext) marshalNQueueStatus2githubᚗcomᚋscruffyprodigyᚋjoinquestᚋgraphᚋmodelᚐQueueStatus(ctx context.Context, sel ast.SelectionSet, v model.QueueStatus) graphql.Marshaler {
 	return v
 }
 
-func (ec *executionContext) marshalNQueueUpdate2githubᚗcomᚋscruffyprodigyᚋplayhubᚋgraphᚋmodelᚐQueueUpdate(ctx context.Context, sel ast.SelectionSet, v model.QueueUpdate) graphql.Marshaler {
+func (ec *executionContext) marshalNQueueUpdate2githubᚗcomᚋscruffyprodigyᚋjoinquestᚋgraphᚋmodelᚐQueueUpdate(ctx context.Context, sel ast.SelectionSet, v model.QueueUpdate) graphql.Marshaler {
 	return ec._QueueUpdate(ctx, sel, &v)
 }
 
-func (ec *executionContext) marshalNQueueUpdate2ᚖgithubᚗcomᚋscruffyprodigyᚋplayhubᚋgraphᚋmodelᚐQueueUpdate(ctx context.Context, sel ast.SelectionSet, v *model.QueueUpdate) graphql.Marshaler {
+func (ec *executionContext) marshalNQueueUpdate2ᚖgithubᚗcomᚋscruffyprodigyᚋjoinquestᚋgraphᚋmodelᚐQueueUpdate(ctx context.Context, sel ast.SelectionSet, v *model.QueueUpdate) graphql.Marshaler {
 	if v == nil {
 		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
 			ec.Errorf(ctx, "the requested element is null which the schema does not allow")
@@ -28448,16 +28448,16 @@ func (ec *executionContext) marshalNQueueUpdate2ᚖgithubᚗcomᚋscruffyprodigy
 	return ec._QueueUpdate(ctx, sel, v)
 }
 
-func (ec *executionContext) unmarshalNRegisterGameInput2githubᚗcomᚋscruffyprodigyᚋplayhubᚋgraphᚋmodelᚐRegisterGameInput(ctx context.Context, v any) (model.RegisterGameInput, error) {
+func (ec *executionContext) unmarshalNRegisterGameInput2githubᚗcomᚋscruffyprodigyᚋjoinquestᚋgraphᚋmodelᚐRegisterGameInput(ctx context.Context, v any) (model.RegisterGameInput, error) {
 	res, err := ec.unmarshalInputRegisterGameInput(ctx, v)
 	return res, graphql.ErrorOnPath(ctx, err)
 }
 
-func (ec *executionContext) marshalNRegisterGamePayload2githubᚗcomᚋscruffyprodigyᚋplayhubᚋgraphᚋmodelᚐRegisterGamePayload(ctx context.Context, sel ast.SelectionSet, v model.RegisterGamePayload) graphql.Marshaler {
+func (ec *executionContext) marshalNRegisterGamePayload2githubᚗcomᚋscruffyprodigyᚋjoinquestᚋgraphᚋmodelᚐRegisterGamePayload(ctx context.Context, sel ast.SelectionSet, v model.RegisterGamePayload) graphql.Marshaler {
 	return ec._RegisterGamePayload(ctx, sel, &v)
 }
 
-func (ec *executionContext) marshalNRegisterGamePayload2ᚖgithubᚗcomᚋscruffyprodigyᚋplayhubᚋgraphᚋmodelᚐRegisterGamePayload(ctx context.Context, sel ast.SelectionSet, v *model.RegisterGamePayload) graphql.Marshaler {
+func (ec *executionContext) marshalNRegisterGamePayload2ᚖgithubᚗcomᚋscruffyprodigyᚋjoinquestᚋgraphᚋmodelᚐRegisterGamePayload(ctx context.Context, sel ast.SelectionSet, v *model.RegisterGamePayload) graphql.Marshaler {
 	if v == nil {
 		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
 			ec.Errorf(ctx, "the requested element is null which the schema does not allow")
@@ -28467,16 +28467,16 @@ func (ec *executionContext) marshalNRegisterGamePayload2ᚖgithubᚗcomᚋscruff
 	return ec._RegisterGamePayload(ctx, sel, v)
 }
 
-func (ec *executionContext) unmarshalNRegisterMyGameInput2githubᚗcomᚋscruffyprodigyᚋplayhubᚋgraphᚋmodelᚐRegisterMyGameInput(ctx context.Context, v any) (model.RegisterMyGameInput, error) {
+func (ec *executionContext) unmarshalNRegisterMyGameInput2githubᚗcomᚋscruffyprodigyᚋjoinquestᚋgraphᚋmodelᚐRegisterMyGameInput(ctx context.Context, v any) (model.RegisterMyGameInput, error) {
 	res, err := ec.unmarshalInputRegisterMyGameInput(ctx, v)
 	return res, graphql.ErrorOnPath(ctx, err)
 }
 
-func (ec *executionContext) marshalNRegisterMyGamePayload2githubᚗcomᚋscruffyprodigyᚋplayhubᚋgraphᚋmodelᚐRegisterMyGamePayload(ctx context.Context, sel ast.SelectionSet, v model.RegisterMyGamePayload) graphql.Marshaler {
+func (ec *executionContext) marshalNRegisterMyGamePayload2githubᚗcomᚋscruffyprodigyᚋjoinquestᚋgraphᚋmodelᚐRegisterMyGamePayload(ctx context.Context, sel ast.SelectionSet, v model.RegisterMyGamePayload) graphql.Marshaler {
 	return ec._RegisterMyGamePayload(ctx, sel, &v)
 }
 
-func (ec *executionContext) marshalNRegisterMyGamePayload2ᚖgithubᚗcomᚋscruffyprodigyᚋplayhubᚋgraphᚋmodelᚐRegisterMyGamePayload(ctx context.Context, sel ast.SelectionSet, v *model.RegisterMyGamePayload) graphql.Marshaler {
+func (ec *executionContext) marshalNRegisterMyGamePayload2ᚖgithubᚗcomᚋscruffyprodigyᚋjoinquestᚋgraphᚋmodelᚐRegisterMyGamePayload(ctx context.Context, sel ast.SelectionSet, v *model.RegisterMyGamePayload) graphql.Marshaler {
 	if v == nil {
 		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
 			ec.Errorf(ctx, "the requested element is null which the schema does not allow")
@@ -28486,31 +28486,31 @@ func (ec *executionContext) marshalNRegisterMyGamePayload2ᚖgithubᚗcomᚋscru
 	return ec._RegisterMyGamePayload(ctx, sel, v)
 }
 
-func (ec *executionContext) unmarshalNRegroupState2githubᚗcomᚋscruffyprodigyᚋplayhubᚋgraphᚋmodelᚐRegroupState(ctx context.Context, v any) (model.RegroupState, error) {
+func (ec *executionContext) unmarshalNRegroupState2githubᚗcomᚋscruffyprodigyᚋjoinquestᚋgraphᚋmodelᚐRegroupState(ctx context.Context, v any) (model.RegroupState, error) {
 	var res model.RegroupState
 	err := res.UnmarshalGQL(v)
 	return res, graphql.ErrorOnPath(ctx, err)
 }
 
-func (ec *executionContext) marshalNRegroupState2githubᚗcomᚋscruffyprodigyᚋplayhubᚋgraphᚋmodelᚐRegroupState(ctx context.Context, sel ast.SelectionSet, v model.RegroupState) graphql.Marshaler {
+func (ec *executionContext) marshalNRegroupState2githubᚗcomᚋscruffyprodigyᚋjoinquestᚋgraphᚋmodelᚐRegroupState(ctx context.Context, sel ast.SelectionSet, v model.RegroupState) graphql.Marshaler {
 	return v
 }
 
-func (ec *executionContext) unmarshalNRequirementOperator2githubᚗcomᚋscruffyprodigyᚋplayhubᚋgraphᚋmodelᚐRequirementOperator(ctx context.Context, v any) (model.RequirementOperator, error) {
+func (ec *executionContext) unmarshalNRequirementOperator2githubᚗcomᚋscruffyprodigyᚋjoinquestᚋgraphᚋmodelᚐRequirementOperator(ctx context.Context, v any) (model.RequirementOperator, error) {
 	var res model.RequirementOperator
 	err := res.UnmarshalGQL(v)
 	return res, graphql.ErrorOnPath(ctx, err)
 }
 
-func (ec *executionContext) marshalNRequirementOperator2githubᚗcomᚋscruffyprodigyᚋplayhubᚋgraphᚋmodelᚐRequirementOperator(ctx context.Context, sel ast.SelectionSet, v model.RequirementOperator) graphql.Marshaler {
+func (ec *executionContext) marshalNRequirementOperator2githubᚗcomᚋscruffyprodigyᚋjoinquestᚋgraphᚋmodelᚐRequirementOperator(ctx context.Context, sel ast.SelectionSet, v model.RequirementOperator) graphql.Marshaler {
 	return v
 }
 
-func (ec *executionContext) marshalNReturnDestination2githubᚗcomᚋscruffyprodigyᚋplayhubᚋgraphᚋmodelᚐReturnDestination(ctx context.Context, sel ast.SelectionSet, v model.ReturnDestination) graphql.Marshaler {
+func (ec *executionContext) marshalNReturnDestination2githubᚗcomᚋscruffyprodigyᚋjoinquestᚋgraphᚋmodelᚐReturnDestination(ctx context.Context, sel ast.SelectionSet, v model.ReturnDestination) graphql.Marshaler {
 	return ec._ReturnDestination(ctx, sel, &v)
 }
 
-func (ec *executionContext) marshalNReturnDestination2ᚖgithubᚗcomᚋscruffyprodigyᚋplayhubᚋgraphᚋmodelᚐReturnDestination(ctx context.Context, sel ast.SelectionSet, v *model.ReturnDestination) graphql.Marshaler {
+func (ec *executionContext) marshalNReturnDestination2ᚖgithubᚗcomᚋscruffyprodigyᚋjoinquestᚋgraphᚋmodelᚐReturnDestination(ctx context.Context, sel ast.SelectionSet, v *model.ReturnDestination) graphql.Marshaler {
 	if v == nil {
 		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
 			ec.Errorf(ctx, "the requested element is null which the schema does not allow")
@@ -28520,11 +28520,11 @@ func (ec *executionContext) marshalNReturnDestination2ᚖgithubᚗcomᚋscruffyp
 	return ec._ReturnDestination(ctx, sel, v)
 }
 
-func (ec *executionContext) marshalNRoom2githubᚗcomᚋscruffyprodigyᚋplayhubᚋgraphᚋmodelᚐRoom(ctx context.Context, sel ast.SelectionSet, v model.Room) graphql.Marshaler {
+func (ec *executionContext) marshalNRoom2githubᚗcomᚋscruffyprodigyᚋjoinquestᚋgraphᚋmodelᚐRoom(ctx context.Context, sel ast.SelectionSet, v model.Room) graphql.Marshaler {
 	return ec._Room(ctx, sel, &v)
 }
 
-func (ec *executionContext) marshalNRoom2ᚖgithubᚗcomᚋscruffyprodigyᚋplayhubᚋgraphᚋmodelᚐRoom(ctx context.Context, sel ast.SelectionSet, v *model.Room) graphql.Marshaler {
+func (ec *executionContext) marshalNRoom2ᚖgithubᚗcomᚋscruffyprodigyᚋjoinquestᚋgraphᚋmodelᚐRoom(ctx context.Context, sel ast.SelectionSet, v *model.Room) graphql.Marshaler {
 	if v == nil {
 		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
 			ec.Errorf(ctx, "the requested element is null which the schema does not allow")
@@ -28534,11 +28534,11 @@ func (ec *executionContext) marshalNRoom2ᚖgithubᚗcomᚋscruffyprodigyᚋplay
 	return ec._Room(ctx, sel, v)
 }
 
-func (ec *executionContext) marshalNRoomMessage2githubᚗcomᚋscruffyprodigyᚋplayhubᚋgraphᚋmodelᚐRoomMessage(ctx context.Context, sel ast.SelectionSet, v model.RoomMessage) graphql.Marshaler {
+func (ec *executionContext) marshalNRoomMessage2githubᚗcomᚋscruffyprodigyᚋjoinquestᚋgraphᚋmodelᚐRoomMessage(ctx context.Context, sel ast.SelectionSet, v model.RoomMessage) graphql.Marshaler {
 	return ec._RoomMessage(ctx, sel, &v)
 }
 
-func (ec *executionContext) marshalNRoomMessage2ᚕᚖgithubᚗcomᚋscruffyprodigyᚋplayhubᚋgraphᚋmodelᚐRoomMessageᚄ(ctx context.Context, sel ast.SelectionSet, v []*model.RoomMessage) graphql.Marshaler {
+func (ec *executionContext) marshalNRoomMessage2ᚕᚖgithubᚗcomᚋscruffyprodigyᚋjoinquestᚋgraphᚋmodelᚐRoomMessageᚄ(ctx context.Context, sel ast.SelectionSet, v []*model.RoomMessage) graphql.Marshaler {
 	ret := make(graphql.Array, len(v))
 	var wg sync.WaitGroup
 	isLen1 := len(v) == 1
@@ -28562,7 +28562,7 @@ func (ec *executionContext) marshalNRoomMessage2ᚕᚖgithubᚗcomᚋscruffyprod
 			if !isLen1 {
 				defer wg.Done()
 			}
-			ret[i] = ec.marshalNRoomMessage2ᚖgithubᚗcomᚋscruffyprodigyᚋplayhubᚋgraphᚋmodelᚐRoomMessage(ctx, sel, v[i])
+			ret[i] = ec.marshalNRoomMessage2ᚖgithubᚗcomᚋscruffyprodigyᚋjoinquestᚋgraphᚋmodelᚐRoomMessage(ctx, sel, v[i])
 		}
 		if isLen1 {
 			f(i)
@@ -28582,7 +28582,7 @@ func (ec *executionContext) marshalNRoomMessage2ᚕᚖgithubᚗcomᚋscruffyprod
 	return ret
 }
 
-func (ec *executionContext) marshalNRoomMessage2ᚖgithubᚗcomᚋscruffyprodigyᚋplayhubᚋgraphᚋmodelᚐRoomMessage(ctx context.Context, sel ast.SelectionSet, v *model.RoomMessage) graphql.Marshaler {
+func (ec *executionContext) marshalNRoomMessage2ᚖgithubᚗcomᚋscruffyprodigyᚋjoinquestᚋgraphᚋmodelᚐRoomMessage(ctx context.Context, sel ast.SelectionSet, v *model.RoomMessage) graphql.Marshaler {
 	if v == nil {
 		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
 			ec.Errorf(ctx, "the requested element is null which the schema does not allow")
@@ -28592,7 +28592,7 @@ func (ec *executionContext) marshalNRoomMessage2ᚖgithubᚗcomᚋscruffyprodigy
 	return ec._RoomMessage(ctx, sel, v)
 }
 
-func (ec *executionContext) marshalNSession2ᚕᚖgithubᚗcomᚋscruffyprodigyᚋplayhubᚋgraphᚋmodelᚐSessionᚄ(ctx context.Context, sel ast.SelectionSet, v []*model.Session) graphql.Marshaler {
+func (ec *executionContext) marshalNSession2ᚕᚖgithubᚗcomᚋscruffyprodigyᚋjoinquestᚋgraphᚋmodelᚐSessionᚄ(ctx context.Context, sel ast.SelectionSet, v []*model.Session) graphql.Marshaler {
 	ret := make(graphql.Array, len(v))
 	var wg sync.WaitGroup
 	isLen1 := len(v) == 1
@@ -28616,7 +28616,7 @@ func (ec *executionContext) marshalNSession2ᚕᚖgithubᚗcomᚋscruffyprodigy�
 			if !isLen1 {
 				defer wg.Done()
 			}
-			ret[i] = ec.marshalNSession2ᚖgithubᚗcomᚋscruffyprodigyᚋplayhubᚋgraphᚋmodelᚐSession(ctx, sel, v[i])
+			ret[i] = ec.marshalNSession2ᚖgithubᚗcomᚋscruffyprodigyᚋjoinquestᚋgraphᚋmodelᚐSession(ctx, sel, v[i])
 		}
 		if isLen1 {
 			f(i)
@@ -28636,7 +28636,7 @@ func (ec *executionContext) marshalNSession2ᚕᚖgithubᚗcomᚋscruffyprodigy�
 	return ret
 }
 
-func (ec *executionContext) marshalNSession2ᚖgithubᚗcomᚋscruffyprodigyᚋplayhubᚋgraphᚋmodelᚐSession(ctx context.Context, sel ast.SelectionSet, v *model.Session) graphql.Marshaler {
+func (ec *executionContext) marshalNSession2ᚖgithubᚗcomᚋscruffyprodigyᚋjoinquestᚋgraphᚋmodelᚐSession(ctx context.Context, sel ast.SelectionSet, v *model.Session) graphql.Marshaler {
 	if v == nil {
 		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
 			ec.Errorf(ctx, "the requested element is null which the schema does not allow")
@@ -28646,17 +28646,17 @@ func (ec *executionContext) marshalNSession2ᚖgithubᚗcomᚋscruffyprodigyᚋp
 	return ec._Session(ctx, sel, v)
 }
 
-func (ec *executionContext) unmarshalNSessionStatus2githubᚗcomᚋscruffyprodigyᚋplayhubᚋgraphᚋmodelᚐSessionStatus(ctx context.Context, v any) (model.SessionStatus, error) {
+func (ec *executionContext) unmarshalNSessionStatus2githubᚗcomᚋscruffyprodigyᚋjoinquestᚋgraphᚋmodelᚐSessionStatus(ctx context.Context, v any) (model.SessionStatus, error) {
 	var res model.SessionStatus
 	err := res.UnmarshalGQL(v)
 	return res, graphql.ErrorOnPath(ctx, err)
 }
 
-func (ec *executionContext) marshalNSessionStatus2githubᚗcomᚋscruffyprodigyᚋplayhubᚋgraphᚋmodelᚐSessionStatus(ctx context.Context, sel ast.SelectionSet, v model.SessionStatus) graphql.Marshaler {
+func (ec *executionContext) marshalNSessionStatus2githubᚗcomᚋscruffyprodigyᚋjoinquestᚋgraphᚋmodelᚐSessionStatus(ctx context.Context, sel ast.SelectionSet, v model.SessionStatus) graphql.Marshaler {
 	return v
 }
 
-func (ec *executionContext) marshalNSpiritAnimalAnswer2ᚕᚖgithubᚗcomᚋscruffyprodigyᚋplayhubᚋgraphᚋmodelᚐSpiritAnimalAnswerᚄ(ctx context.Context, sel ast.SelectionSet, v []*model.SpiritAnimalAnswer) graphql.Marshaler {
+func (ec *executionContext) marshalNSpiritAnimalAnswer2ᚕᚖgithubᚗcomᚋscruffyprodigyᚋjoinquestᚋgraphᚋmodelᚐSpiritAnimalAnswerᚄ(ctx context.Context, sel ast.SelectionSet, v []*model.SpiritAnimalAnswer) graphql.Marshaler {
 	ret := make(graphql.Array, len(v))
 	var wg sync.WaitGroup
 	isLen1 := len(v) == 1
@@ -28680,7 +28680,7 @@ func (ec *executionContext) marshalNSpiritAnimalAnswer2ᚕᚖgithubᚗcomᚋscru
 			if !isLen1 {
 				defer wg.Done()
 			}
-			ret[i] = ec.marshalNSpiritAnimalAnswer2ᚖgithubᚗcomᚋscruffyprodigyᚋplayhubᚋgraphᚋmodelᚐSpiritAnimalAnswer(ctx, sel, v[i])
+			ret[i] = ec.marshalNSpiritAnimalAnswer2ᚖgithubᚗcomᚋscruffyprodigyᚋjoinquestᚋgraphᚋmodelᚐSpiritAnimalAnswer(ctx, sel, v[i])
 		}
 		if isLen1 {
 			f(i)
@@ -28700,7 +28700,7 @@ func (ec *executionContext) marshalNSpiritAnimalAnswer2ᚕᚖgithubᚗcomᚋscru
 	return ret
 }
 
-func (ec *executionContext) marshalNSpiritAnimalAnswer2ᚖgithubᚗcomᚋscruffyprodigyᚋplayhubᚋgraphᚋmodelᚐSpiritAnimalAnswer(ctx context.Context, sel ast.SelectionSet, v *model.SpiritAnimalAnswer) graphql.Marshaler {
+func (ec *executionContext) marshalNSpiritAnimalAnswer2ᚖgithubᚗcomᚋscruffyprodigyᚋjoinquestᚋgraphᚋmodelᚐSpiritAnimalAnswer(ctx context.Context, sel ast.SelectionSet, v *model.SpiritAnimalAnswer) graphql.Marshaler {
 	if v == nil {
 		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
 			ec.Errorf(ctx, "the requested element is null which the schema does not allow")
@@ -28710,7 +28710,7 @@ func (ec *executionContext) marshalNSpiritAnimalAnswer2ᚖgithubᚗcomᚋscruffy
 	return ec._SpiritAnimalAnswer(ctx, sel, v)
 }
 
-func (ec *executionContext) marshalNSpiritAnimalCardQuestion2ᚖgithubᚗcomᚋscruffyprodigyᚋplayhubᚋgraphᚋmodelᚐSpiritAnimalCardQuestion(ctx context.Context, sel ast.SelectionSet, v *model.SpiritAnimalCardQuestion) graphql.Marshaler {
+func (ec *executionContext) marshalNSpiritAnimalCardQuestion2ᚖgithubᚗcomᚋscruffyprodigyᚋjoinquestᚋgraphᚋmodelᚐSpiritAnimalCardQuestion(ctx context.Context, sel ast.SelectionSet, v *model.SpiritAnimalCardQuestion) graphql.Marshaler {
 	if v == nil {
 		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
 			ec.Errorf(ctx, "the requested element is null which the schema does not allow")
@@ -28720,11 +28720,11 @@ func (ec *executionContext) marshalNSpiritAnimalCardQuestion2ᚖgithubᚗcomᚋs
 	return ec._SpiritAnimalCardQuestion(ctx, sel, v)
 }
 
-func (ec *executionContext) marshalNSpiritAnimalJourneyEligibility2githubᚗcomᚋscruffyprodigyᚋplayhubᚋgraphᚋmodelᚐSpiritAnimalJourneyEligibility(ctx context.Context, sel ast.SelectionSet, v model.SpiritAnimalJourneyEligibility) graphql.Marshaler {
+func (ec *executionContext) marshalNSpiritAnimalJourneyEligibility2githubᚗcomᚋscruffyprodigyᚋjoinquestᚋgraphᚋmodelᚐSpiritAnimalJourneyEligibility(ctx context.Context, sel ast.SelectionSet, v model.SpiritAnimalJourneyEligibility) graphql.Marshaler {
 	return ec._SpiritAnimalJourneyEligibility(ctx, sel, &v)
 }
 
-func (ec *executionContext) marshalNSpiritAnimalJourneyEligibility2ᚖgithubᚗcomᚋscruffyprodigyᚋplayhubᚋgraphᚋmodelᚐSpiritAnimalJourneyEligibility(ctx context.Context, sel ast.SelectionSet, v *model.SpiritAnimalJourneyEligibility) graphql.Marshaler {
+func (ec *executionContext) marshalNSpiritAnimalJourneyEligibility2ᚖgithubᚗcomᚋscruffyprodigyᚋjoinquestᚋgraphᚋmodelᚐSpiritAnimalJourneyEligibility(ctx context.Context, sel ast.SelectionSet, v *model.SpiritAnimalJourneyEligibility) graphql.Marshaler {
 	if v == nil {
 		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
 			ec.Errorf(ctx, "the requested element is null which the schema does not allow")
@@ -28734,7 +28734,7 @@ func (ec *executionContext) marshalNSpiritAnimalJourneyEligibility2ᚖgithubᚗc
 	return ec._SpiritAnimalJourneyEligibility(ctx, sel, v)
 }
 
-func (ec *executionContext) marshalNSpiritAnimalJourneySummary2ᚖgithubᚗcomᚋscruffyprodigyᚋplayhubᚋgraphᚋmodelᚐSpiritAnimalJourneySummary(ctx context.Context, sel ast.SelectionSet, v *model.SpiritAnimalJourneySummary) graphql.Marshaler {
+func (ec *executionContext) marshalNSpiritAnimalJourneySummary2ᚖgithubᚗcomᚋscruffyprodigyᚋjoinquestᚋgraphᚋmodelᚐSpiritAnimalJourneySummary(ctx context.Context, sel ast.SelectionSet, v *model.SpiritAnimalJourneySummary) graphql.Marshaler {
 	if v == nil {
 		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
 			ec.Errorf(ctx, "the requested element is null which the schema does not allow")
@@ -28744,11 +28744,11 @@ func (ec *executionContext) marshalNSpiritAnimalJourneySummary2ᚖgithubᚗcom�
 	return ec._SpiritAnimalJourneySummary(ctx, sel, v)
 }
 
-func (ec *executionContext) marshalNSpiritAnimalReading2githubᚗcomᚋscruffyprodigyᚋplayhubᚋgraphᚋmodelᚐSpiritAnimalReading(ctx context.Context, sel ast.SelectionSet, v model.SpiritAnimalReading) graphql.Marshaler {
+func (ec *executionContext) marshalNSpiritAnimalReading2githubᚗcomᚋscruffyprodigyᚋjoinquestᚋgraphᚋmodelᚐSpiritAnimalReading(ctx context.Context, sel ast.SelectionSet, v model.SpiritAnimalReading) graphql.Marshaler {
 	return ec._SpiritAnimalReading(ctx, sel, &v)
 }
 
-func (ec *executionContext) marshalNSpiritAnimalReading2ᚖgithubᚗcomᚋscruffyprodigyᚋplayhubᚋgraphᚋmodelᚐSpiritAnimalReading(ctx context.Context, sel ast.SelectionSet, v *model.SpiritAnimalReading) graphql.Marshaler {
+func (ec *executionContext) marshalNSpiritAnimalReading2ᚖgithubᚗcomᚋscruffyprodigyᚋjoinquestᚋgraphᚋmodelᚐSpiritAnimalReading(ctx context.Context, sel ast.SelectionSet, v *model.SpiritAnimalReading) graphql.Marshaler {
 	if v == nil {
 		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
 			ec.Errorf(ctx, "the requested element is null which the schema does not allow")
@@ -28758,17 +28758,17 @@ func (ec *executionContext) marshalNSpiritAnimalReading2ᚖgithubᚗcomᚋscruff
 	return ec._SpiritAnimalReading(ctx, sel, v)
 }
 
-func (ec *executionContext) unmarshalNSpiritAnimalReadingStatus2githubᚗcomᚋscruffyprodigyᚋplayhubᚋgraphᚋmodelᚐSpiritAnimalReadingStatus(ctx context.Context, v any) (model.SpiritAnimalReadingStatus, error) {
+func (ec *executionContext) unmarshalNSpiritAnimalReadingStatus2githubᚗcomᚋscruffyprodigyᚋjoinquestᚋgraphᚋmodelᚐSpiritAnimalReadingStatus(ctx context.Context, v any) (model.SpiritAnimalReadingStatus, error) {
 	var res model.SpiritAnimalReadingStatus
 	err := res.UnmarshalGQL(v)
 	return res, graphql.ErrorOnPath(ctx, err)
 }
 
-func (ec *executionContext) marshalNSpiritAnimalReadingStatus2githubᚗcomᚋscruffyprodigyᚋplayhubᚋgraphᚋmodelᚐSpiritAnimalReadingStatus(ctx context.Context, sel ast.SelectionSet, v model.SpiritAnimalReadingStatus) graphql.Marshaler {
+func (ec *executionContext) marshalNSpiritAnimalReadingStatus2githubᚗcomᚋscruffyprodigyᚋjoinquestᚋgraphᚋmodelᚐSpiritAnimalReadingStatus(ctx context.Context, sel ast.SelectionSet, v model.SpiritAnimalReadingStatus) graphql.Marshaler {
 	return v
 }
 
-func (ec *executionContext) marshalNSpiritAnimalTotem2ᚖgithubᚗcomᚋscruffyprodigyᚋplayhubᚋgraphᚋmodelᚐSpiritAnimalTotem(ctx context.Context, sel ast.SelectionSet, v *model.SpiritAnimalTotem) graphql.Marshaler {
+func (ec *executionContext) marshalNSpiritAnimalTotem2ᚖgithubᚗcomᚋscruffyprodigyᚋjoinquestᚋgraphᚋmodelᚐSpiritAnimalTotem(ctx context.Context, sel ast.SelectionSet, v *model.SpiritAnimalTotem) graphql.Marshaler {
 	if v == nil {
 		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
 			ec.Errorf(ctx, "the requested element is null which the schema does not allow")
@@ -28778,7 +28778,7 @@ func (ec *executionContext) marshalNSpiritAnimalTotem2ᚖgithubᚗcomᚋscruffyp
 	return ec._SpiritAnimalTotem(ctx, sel, v)
 }
 
-func (ec *executionContext) marshalNStarterAvatar2ᚕᚖgithubᚗcomᚋscruffyprodigyᚋplayhubᚋgraphᚋmodelᚐStarterAvatarᚄ(ctx context.Context, sel ast.SelectionSet, v []*model.StarterAvatar) graphql.Marshaler {
+func (ec *executionContext) marshalNStarterAvatar2ᚕᚖgithubᚗcomᚋscruffyprodigyᚋjoinquestᚋgraphᚋmodelᚐStarterAvatarᚄ(ctx context.Context, sel ast.SelectionSet, v []*model.StarterAvatar) graphql.Marshaler {
 	ret := make(graphql.Array, len(v))
 	var wg sync.WaitGroup
 	isLen1 := len(v) == 1
@@ -28802,7 +28802,7 @@ func (ec *executionContext) marshalNStarterAvatar2ᚕᚖgithubᚗcomᚋscruffypr
 			if !isLen1 {
 				defer wg.Done()
 			}
-			ret[i] = ec.marshalNStarterAvatar2ᚖgithubᚗcomᚋscruffyprodigyᚋplayhubᚋgraphᚋmodelᚐStarterAvatar(ctx, sel, v[i])
+			ret[i] = ec.marshalNStarterAvatar2ᚖgithubᚗcomᚋscruffyprodigyᚋjoinquestᚋgraphᚋmodelᚐStarterAvatar(ctx, sel, v[i])
 		}
 		if isLen1 {
 			f(i)
@@ -28822,7 +28822,7 @@ func (ec *executionContext) marshalNStarterAvatar2ᚕᚖgithubᚗcomᚋscruffypr
 	return ret
 }
 
-func (ec *executionContext) marshalNStarterAvatar2ᚖgithubᚗcomᚋscruffyprodigyᚋplayhubᚋgraphᚋmodelᚐStarterAvatar(ctx context.Context, sel ast.SelectionSet, v *model.StarterAvatar) graphql.Marshaler {
+func (ec *executionContext) marshalNStarterAvatar2ᚖgithubᚗcomᚋscruffyprodigyᚋjoinquestᚋgraphᚋmodelᚐStarterAvatar(ctx context.Context, sel ast.SelectionSet, v *model.StarterAvatar) graphql.Marshaler {
 	if v == nil {
 		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
 			ec.Errorf(ctx, "the requested element is null which the schema does not allow")
@@ -28878,11 +28878,11 @@ func (ec *executionContext) marshalNString2ᚕstringᚄ(ctx context.Context, sel
 	return ret
 }
 
-func (ec *executionContext) marshalNSyncMyGameManifestPayload2githubᚗcomᚋscruffyprodigyᚋplayhubᚋgraphᚋmodelᚐSyncMyGameManifestPayload(ctx context.Context, sel ast.SelectionSet, v model.SyncMyGameManifestPayload) graphql.Marshaler {
+func (ec *executionContext) marshalNSyncMyGameManifestPayload2githubᚗcomᚋscruffyprodigyᚋjoinquestᚋgraphᚋmodelᚐSyncMyGameManifestPayload(ctx context.Context, sel ast.SelectionSet, v model.SyncMyGameManifestPayload) graphql.Marshaler {
 	return ec._SyncMyGameManifestPayload(ctx, sel, &v)
 }
 
-func (ec *executionContext) marshalNSyncMyGameManifestPayload2ᚖgithubᚗcomᚋscruffyprodigyᚋplayhubᚋgraphᚋmodelᚐSyncMyGameManifestPayload(ctx context.Context, sel ast.SelectionSet, v *model.SyncMyGameManifestPayload) graphql.Marshaler {
+func (ec *executionContext) marshalNSyncMyGameManifestPayload2ᚖgithubᚗcomᚋscruffyprodigyᚋjoinquestᚋgraphᚋmodelᚐSyncMyGameManifestPayload(ctx context.Context, sel ast.SelectionSet, v *model.SyncMyGameManifestPayload) graphql.Marshaler {
 	if v == nil {
 		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
 			ec.Errorf(ctx, "the requested element is null which the schema does not allow")
@@ -28892,11 +28892,11 @@ func (ec *executionContext) marshalNSyncMyGameManifestPayload2ᚖgithubᚗcomᚋ
 	return ec._SyncMyGameManifestPayload(ctx, sel, v)
 }
 
-func (ec *executionContext) marshalNTable2githubᚗcomᚋscruffyprodigyᚋplayhubᚋgraphᚋmodelᚐTable(ctx context.Context, sel ast.SelectionSet, v model.Table) graphql.Marshaler {
+func (ec *executionContext) marshalNTable2githubᚗcomᚋscruffyprodigyᚋjoinquestᚋgraphᚋmodelᚐTable(ctx context.Context, sel ast.SelectionSet, v model.Table) graphql.Marshaler {
 	return ec._Table(ctx, sel, &v)
 }
 
-func (ec *executionContext) marshalNTable2ᚕᚖgithubᚗcomᚋscruffyprodigyᚋplayhubᚋgraphᚋmodelᚐTableᚄ(ctx context.Context, sel ast.SelectionSet, v []*model.Table) graphql.Marshaler {
+func (ec *executionContext) marshalNTable2ᚕᚖgithubᚗcomᚋscruffyprodigyᚋjoinquestᚋgraphᚋmodelᚐTableᚄ(ctx context.Context, sel ast.SelectionSet, v []*model.Table) graphql.Marshaler {
 	ret := make(graphql.Array, len(v))
 	var wg sync.WaitGroup
 	isLen1 := len(v) == 1
@@ -28920,7 +28920,7 @@ func (ec *executionContext) marshalNTable2ᚕᚖgithubᚗcomᚋscruffyprodigyᚋ
 			if !isLen1 {
 				defer wg.Done()
 			}
-			ret[i] = ec.marshalNTable2ᚖgithubᚗcomᚋscruffyprodigyᚋplayhubᚋgraphᚋmodelᚐTable(ctx, sel, v[i])
+			ret[i] = ec.marshalNTable2ᚖgithubᚗcomᚋscruffyprodigyᚋjoinquestᚋgraphᚋmodelᚐTable(ctx, sel, v[i])
 		}
 		if isLen1 {
 			f(i)
@@ -28940,7 +28940,7 @@ func (ec *executionContext) marshalNTable2ᚕᚖgithubᚗcomᚋscruffyprodigyᚋ
 	return ret
 }
 
-func (ec *executionContext) marshalNTable2ᚖgithubᚗcomᚋscruffyprodigyᚋplayhubᚋgraphᚋmodelᚐTable(ctx context.Context, sel ast.SelectionSet, v *model.Table) graphql.Marshaler {
+func (ec *executionContext) marshalNTable2ᚖgithubᚗcomᚋscruffyprodigyᚋjoinquestᚋgraphᚋmodelᚐTable(ctx context.Context, sel ast.SelectionSet, v *model.Table) graphql.Marshaler {
 	if v == nil {
 		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
 			ec.Errorf(ctx, "the requested element is null which the schema does not allow")
@@ -28950,7 +28950,7 @@ func (ec *executionContext) marshalNTable2ᚖgithubᚗcomᚋscruffyprodigyᚋpla
 	return ec._Table(ctx, sel, v)
 }
 
-func (ec *executionContext) marshalNTableLookForGroupOption2ᚕᚖgithubᚗcomᚋscruffyprodigyᚋplayhubᚋgraphᚋmodelᚐTableLookForGroupOptionᚄ(ctx context.Context, sel ast.SelectionSet, v []*model.TableLookForGroupOption) graphql.Marshaler {
+func (ec *executionContext) marshalNTableLookForGroupOption2ᚕᚖgithubᚗcomᚋscruffyprodigyᚋjoinquestᚋgraphᚋmodelᚐTableLookForGroupOptionᚄ(ctx context.Context, sel ast.SelectionSet, v []*model.TableLookForGroupOption) graphql.Marshaler {
 	ret := make(graphql.Array, len(v))
 	var wg sync.WaitGroup
 	isLen1 := len(v) == 1
@@ -28974,7 +28974,7 @@ func (ec *executionContext) marshalNTableLookForGroupOption2ᚕᚖgithubᚗcom�
 			if !isLen1 {
 				defer wg.Done()
 			}
-			ret[i] = ec.marshalNTableLookForGroupOption2ᚖgithubᚗcomᚋscruffyprodigyᚋplayhubᚋgraphᚋmodelᚐTableLookForGroupOption(ctx, sel, v[i])
+			ret[i] = ec.marshalNTableLookForGroupOption2ᚖgithubᚗcomᚋscruffyprodigyᚋjoinquestᚋgraphᚋmodelᚐTableLookForGroupOption(ctx, sel, v[i])
 		}
 		if isLen1 {
 			f(i)
@@ -28994,7 +28994,7 @@ func (ec *executionContext) marshalNTableLookForGroupOption2ᚕᚖgithubᚗcom�
 	return ret
 }
 
-func (ec *executionContext) marshalNTableLookForGroupOption2ᚖgithubᚗcomᚋscruffyprodigyᚋplayhubᚋgraphᚋmodelᚐTableLookForGroupOption(ctx context.Context, sel ast.SelectionSet, v *model.TableLookForGroupOption) graphql.Marshaler {
+func (ec *executionContext) marshalNTableLookForGroupOption2ᚖgithubᚗcomᚋscruffyprodigyᚋjoinquestᚋgraphᚋmodelᚐTableLookForGroupOption(ctx context.Context, sel ast.SelectionSet, v *model.TableLookForGroupOption) graphql.Marshaler {
 	if v == nil {
 		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
 			ec.Errorf(ctx, "the requested element is null which the schema does not allow")
@@ -29004,7 +29004,7 @@ func (ec *executionContext) marshalNTableLookForGroupOption2ᚖgithubᚗcomᚋsc
 	return ec._TableLookForGroupOption(ctx, sel, v)
 }
 
-func (ec *executionContext) marshalNTableSeat2ᚕᚖgithubᚗcomᚋscruffyprodigyᚋplayhubᚋgraphᚋmodelᚐTableSeatᚄ(ctx context.Context, sel ast.SelectionSet, v []*model.TableSeat) graphql.Marshaler {
+func (ec *executionContext) marshalNTableSeat2ᚕᚖgithubᚗcomᚋscruffyprodigyᚋjoinquestᚋgraphᚋmodelᚐTableSeatᚄ(ctx context.Context, sel ast.SelectionSet, v []*model.TableSeat) graphql.Marshaler {
 	ret := make(graphql.Array, len(v))
 	var wg sync.WaitGroup
 	isLen1 := len(v) == 1
@@ -29028,7 +29028,7 @@ func (ec *executionContext) marshalNTableSeat2ᚕᚖgithubᚗcomᚋscruffyprodig
 			if !isLen1 {
 				defer wg.Done()
 			}
-			ret[i] = ec.marshalNTableSeat2ᚖgithubᚗcomᚋscruffyprodigyᚋplayhubᚋgraphᚋmodelᚐTableSeat(ctx, sel, v[i])
+			ret[i] = ec.marshalNTableSeat2ᚖgithubᚗcomᚋscruffyprodigyᚋjoinquestᚋgraphᚋmodelᚐTableSeat(ctx, sel, v[i])
 		}
 		if isLen1 {
 			f(i)
@@ -29048,7 +29048,7 @@ func (ec *executionContext) marshalNTableSeat2ᚕᚖgithubᚗcomᚋscruffyprodig
 	return ret
 }
 
-func (ec *executionContext) marshalNTableSeat2ᚖgithubᚗcomᚋscruffyprodigyᚋplayhubᚋgraphᚋmodelᚐTableSeat(ctx context.Context, sel ast.SelectionSet, v *model.TableSeat) graphql.Marshaler {
+func (ec *executionContext) marshalNTableSeat2ᚖgithubᚗcomᚋscruffyprodigyᚋjoinquestᚋgraphᚋmodelᚐTableSeat(ctx context.Context, sel ast.SelectionSet, v *model.TableSeat) graphql.Marshaler {
 	if v == nil {
 		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
 			ec.Errorf(ctx, "the requested element is null which the schema does not allow")
@@ -29058,7 +29058,7 @@ func (ec *executionContext) marshalNTableSeat2ᚖgithubᚗcomᚋscruffyprodigy�
 	return ec._TableSeat(ctx, sel, v)
 }
 
-func (ec *executionContext) marshalNTableSeatSlot2ᚕᚖgithubᚗcomᚋscruffyprodigyᚋplayhubᚋgraphᚋmodelᚐTableSeatSlotᚄ(ctx context.Context, sel ast.SelectionSet, v []*model.TableSeatSlot) graphql.Marshaler {
+func (ec *executionContext) marshalNTableSeatSlot2ᚕᚖgithubᚗcomᚋscruffyprodigyᚋjoinquestᚋgraphᚋmodelᚐTableSeatSlotᚄ(ctx context.Context, sel ast.SelectionSet, v []*model.TableSeatSlot) graphql.Marshaler {
 	ret := make(graphql.Array, len(v))
 	var wg sync.WaitGroup
 	isLen1 := len(v) == 1
@@ -29082,7 +29082,7 @@ func (ec *executionContext) marshalNTableSeatSlot2ᚕᚖgithubᚗcomᚋscruffypr
 			if !isLen1 {
 				defer wg.Done()
 			}
-			ret[i] = ec.marshalNTableSeatSlot2ᚖgithubᚗcomᚋscruffyprodigyᚋplayhubᚋgraphᚋmodelᚐTableSeatSlot(ctx, sel, v[i])
+			ret[i] = ec.marshalNTableSeatSlot2ᚖgithubᚗcomᚋscruffyprodigyᚋjoinquestᚋgraphᚋmodelᚐTableSeatSlot(ctx, sel, v[i])
 		}
 		if isLen1 {
 			f(i)
@@ -29102,7 +29102,7 @@ func (ec *executionContext) marshalNTableSeatSlot2ᚕᚖgithubᚗcomᚋscruffypr
 	return ret
 }
 
-func (ec *executionContext) marshalNTableSeatSlot2ᚖgithubᚗcomᚋscruffyprodigyᚋplayhubᚋgraphᚋmodelᚐTableSeatSlot(ctx context.Context, sel ast.SelectionSet, v *model.TableSeatSlot) graphql.Marshaler {
+func (ec *executionContext) marshalNTableSeatSlot2ᚖgithubᚗcomᚋscruffyprodigyᚋjoinquestᚋgraphᚋmodelᚐTableSeatSlot(ctx context.Context, sel ast.SelectionSet, v *model.TableSeatSlot) graphql.Marshaler {
 	if v == nil {
 		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
 			ec.Errorf(ctx, "the requested element is null which the schema does not allow")
@@ -29128,16 +29128,16 @@ func (ec *executionContext) marshalNTime2timeᚐTime(ctx context.Context, sel as
 	return res
 }
 
-func (ec *executionContext) unmarshalNUpdateMyGameMetadataInput2githubᚗcomᚋscruffyprodigyᚋplayhubᚋgraphᚋmodelᚐUpdateMyGameMetadataInput(ctx context.Context, v any) (model.UpdateMyGameMetadataInput, error) {
+func (ec *executionContext) unmarshalNUpdateMyGameMetadataInput2githubᚗcomᚋscruffyprodigyᚋjoinquestᚋgraphᚋmodelᚐUpdateMyGameMetadataInput(ctx context.Context, v any) (model.UpdateMyGameMetadataInput, error) {
 	res, err := ec.unmarshalInputUpdateMyGameMetadataInput(ctx, v)
 	return res, graphql.ErrorOnPath(ctx, err)
 }
 
-func (ec *executionContext) marshalNUser2githubᚗcomᚋscruffyprodigyᚋplayhubᚋgraphᚋmodelᚐUser(ctx context.Context, sel ast.SelectionSet, v model.User) graphql.Marshaler {
+func (ec *executionContext) marshalNUser2githubᚗcomᚋscruffyprodigyᚋjoinquestᚋgraphᚋmodelᚐUser(ctx context.Context, sel ast.SelectionSet, v model.User) graphql.Marshaler {
 	return ec._User(ctx, sel, &v)
 }
 
-func (ec *executionContext) marshalNUser2ᚕᚖgithubᚗcomᚋscruffyprodigyᚋplayhubᚋgraphᚋmodelᚐUserᚄ(ctx context.Context, sel ast.SelectionSet, v []*model.User) graphql.Marshaler {
+func (ec *executionContext) marshalNUser2ᚕᚖgithubᚗcomᚋscruffyprodigyᚋjoinquestᚋgraphᚋmodelᚐUserᚄ(ctx context.Context, sel ast.SelectionSet, v []*model.User) graphql.Marshaler {
 	ret := make(graphql.Array, len(v))
 	var wg sync.WaitGroup
 	isLen1 := len(v) == 1
@@ -29161,7 +29161,7 @@ func (ec *executionContext) marshalNUser2ᚕᚖgithubᚗcomᚋscruffyprodigyᚋp
 			if !isLen1 {
 				defer wg.Done()
 			}
-			ret[i] = ec.marshalNUser2ᚖgithubᚗcomᚋscruffyprodigyᚋplayhubᚋgraphᚋmodelᚐUser(ctx, sel, v[i])
+			ret[i] = ec.marshalNUser2ᚖgithubᚗcomᚋscruffyprodigyᚋjoinquestᚋgraphᚋmodelᚐUser(ctx, sel, v[i])
 		}
 		if isLen1 {
 			f(i)
@@ -29181,7 +29181,7 @@ func (ec *executionContext) marshalNUser2ᚕᚖgithubᚗcomᚋscruffyprodigyᚋp
 	return ret
 }
 
-func (ec *executionContext) marshalNUser2ᚖgithubᚗcomᚋscruffyprodigyᚋplayhubᚋgraphᚋmodelᚐUser(ctx context.Context, sel ast.SelectionSet, v *model.User) graphql.Marshaler {
+func (ec *executionContext) marshalNUser2ᚖgithubᚗcomᚋscruffyprodigyᚋjoinquestᚋgraphᚋmodelᚐUser(ctx context.Context, sel ast.SelectionSet, v *model.User) graphql.Marshaler {
 	if v == nil {
 		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
 			ec.Errorf(ctx, "the requested element is null which the schema does not allow")
@@ -29191,7 +29191,7 @@ func (ec *executionContext) marshalNUser2ᚖgithubᚗcomᚋscruffyprodigyᚋplay
 	return ec._User(ctx, sel, v)
 }
 
-func (ec *executionContext) marshalNUserEmail2ᚕᚖgithubᚗcomᚋscruffyprodigyᚋplayhubᚋgraphᚋmodelᚐUserEmailᚄ(ctx context.Context, sel ast.SelectionSet, v []*model.UserEmail) graphql.Marshaler {
+func (ec *executionContext) marshalNUserEmail2ᚕᚖgithubᚗcomᚋscruffyprodigyᚋjoinquestᚋgraphᚋmodelᚐUserEmailᚄ(ctx context.Context, sel ast.SelectionSet, v []*model.UserEmail) graphql.Marshaler {
 	ret := make(graphql.Array, len(v))
 	var wg sync.WaitGroup
 	isLen1 := len(v) == 1
@@ -29215,7 +29215,7 @@ func (ec *executionContext) marshalNUserEmail2ᚕᚖgithubᚗcomᚋscruffyprodig
 			if !isLen1 {
 				defer wg.Done()
 			}
-			ret[i] = ec.marshalNUserEmail2ᚖgithubᚗcomᚋscruffyprodigyᚋplayhubᚋgraphᚋmodelᚐUserEmail(ctx, sel, v[i])
+			ret[i] = ec.marshalNUserEmail2ᚖgithubᚗcomᚋscruffyprodigyᚋjoinquestᚋgraphᚋmodelᚐUserEmail(ctx, sel, v[i])
 		}
 		if isLen1 {
 			f(i)
@@ -29235,7 +29235,7 @@ func (ec *executionContext) marshalNUserEmail2ᚕᚖgithubᚗcomᚋscruffyprodig
 	return ret
 }
 
-func (ec *executionContext) marshalNUserEmail2ᚖgithubᚗcomᚋscruffyprodigyᚋplayhubᚋgraphᚋmodelᚐUserEmail(ctx context.Context, sel ast.SelectionSet, v *model.UserEmail) graphql.Marshaler {
+func (ec *executionContext) marshalNUserEmail2ᚖgithubᚗcomᚋscruffyprodigyᚋjoinquestᚋgraphᚋmodelᚐUserEmail(ctx context.Context, sel ast.SelectionSet, v *model.UserEmail) graphql.Marshaler {
 	if v == nil {
 		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
 			ec.Errorf(ctx, "the requested element is null which the schema does not allow")
@@ -29245,7 +29245,7 @@ func (ec *executionContext) marshalNUserEmail2ᚖgithubᚗcomᚋscruffyprodigy�
 	return ec._UserEmail(ctx, sel, v)
 }
 
-func (ec *executionContext) marshalNUserIdentity2ᚕᚖgithubᚗcomᚋscruffyprodigyᚋplayhubᚋgraphᚋmodelᚐUserIdentityᚄ(ctx context.Context, sel ast.SelectionSet, v []*model.UserIdentity) graphql.Marshaler {
+func (ec *executionContext) marshalNUserIdentity2ᚕᚖgithubᚗcomᚋscruffyprodigyᚋjoinquestᚋgraphᚋmodelᚐUserIdentityᚄ(ctx context.Context, sel ast.SelectionSet, v []*model.UserIdentity) graphql.Marshaler {
 	ret := make(graphql.Array, len(v))
 	var wg sync.WaitGroup
 	isLen1 := len(v) == 1
@@ -29269,7 +29269,7 @@ func (ec *executionContext) marshalNUserIdentity2ᚕᚖgithubᚗcomᚋscruffypro
 			if !isLen1 {
 				defer wg.Done()
 			}
-			ret[i] = ec.marshalNUserIdentity2ᚖgithubᚗcomᚋscruffyprodigyᚋplayhubᚋgraphᚋmodelᚐUserIdentity(ctx, sel, v[i])
+			ret[i] = ec.marshalNUserIdentity2ᚖgithubᚗcomᚋscruffyprodigyᚋjoinquestᚋgraphᚋmodelᚐUserIdentity(ctx, sel, v[i])
 		}
 		if isLen1 {
 			f(i)
@@ -29289,7 +29289,7 @@ func (ec *executionContext) marshalNUserIdentity2ᚕᚖgithubᚗcomᚋscruffypro
 	return ret
 }
 
-func (ec *executionContext) marshalNUserIdentity2ᚖgithubᚗcomᚋscruffyprodigyᚋplayhubᚋgraphᚋmodelᚐUserIdentity(ctx context.Context, sel ast.SelectionSet, v *model.UserIdentity) graphql.Marshaler {
+func (ec *executionContext) marshalNUserIdentity2ᚖgithubᚗcomᚋscruffyprodigyᚋjoinquestᚋgraphᚋmodelᚐUserIdentity(ctx context.Context, sel ast.SelectionSet, v *model.UserIdentity) graphql.Marshaler {
 	if v == nil {
 		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
 			ec.Errorf(ctx, "the requested element is null which the schema does not allow")
@@ -29552,21 +29552,21 @@ func (ec *executionContext) marshalN__TypeKind2string(ctx context.Context, sel a
 	return res
 }
 
-func (ec *executionContext) marshalOAccount2ᚖgithubᚗcomᚋscruffyprodigyᚋplayhubᚋgraphᚋmodelᚐAccount(ctx context.Context, sel ast.SelectionSet, v *model.Account) graphql.Marshaler {
+func (ec *executionContext) marshalOAccount2ᚖgithubᚗcomᚋscruffyprodigyᚋjoinquestᚋgraphᚋmodelᚐAccount(ctx context.Context, sel ast.SelectionSet, v *model.Account) graphql.Marshaler {
 	if v == nil {
 		return graphql.Null
 	}
 	return ec._Account(ctx, sel, v)
 }
 
-func (ec *executionContext) marshalOActiveIntent2ᚖgithubᚗcomᚋscruffyprodigyᚋplayhubᚋgraphᚋmodelᚐActiveIntent(ctx context.Context, sel ast.SelectionSet, v *model.ActiveIntent) graphql.Marshaler {
+func (ec *executionContext) marshalOActiveIntent2ᚖgithubᚗcomᚋscruffyprodigyᚋjoinquestᚋgraphᚋmodelᚐActiveIntent(ctx context.Context, sel ast.SelectionSet, v *model.ActiveIntent) graphql.Marshaler {
 	if v == nil {
 		return graphql.Null
 	}
 	return ec._ActiveIntent(ctx, sel, v)
 }
 
-func (ec *executionContext) unmarshalOAvatarSource2ᚖgithubᚗcomᚋscruffyprodigyᚋplayhubᚋgraphᚋmodelᚐAvatarSource(ctx context.Context, v any) (*model.AvatarSource, error) {
+func (ec *executionContext) unmarshalOAvatarSource2ᚖgithubᚗcomᚋscruffyprodigyᚋjoinquestᚋgraphᚋmodelᚐAvatarSource(ctx context.Context, v any) (*model.AvatarSource, error) {
 	if v == nil {
 		return nil, nil
 	}
@@ -29575,7 +29575,7 @@ func (ec *executionContext) unmarshalOAvatarSource2ᚖgithubᚗcomᚋscruffyprod
 	return res, graphql.ErrorOnPath(ctx, err)
 }
 
-func (ec *executionContext) marshalOAvatarSource2ᚖgithubᚗcomᚋscruffyprodigyᚋplayhubᚋgraphᚋmodelᚐAvatarSource(ctx context.Context, sel ast.SelectionSet, v *model.AvatarSource) graphql.Marshaler {
+func (ec *executionContext) marshalOAvatarSource2ᚖgithubᚗcomᚋscruffyprodigyᚋjoinquestᚋgraphᚋmodelᚐAvatarSource(ctx context.Context, sel ast.SelectionSet, v *model.AvatarSource) graphql.Marshaler {
 	if v == nil {
 		return graphql.Null
 	}
@@ -29612,21 +29612,21 @@ func (ec *executionContext) marshalOBoolean2ᚖbool(ctx context.Context, sel ast
 	return res
 }
 
-func (ec *executionContext) marshalOGame2ᚖgithubᚗcomᚋscruffyprodigyᚋplayhubᚋgraphᚋmodelᚐGame(ctx context.Context, sel ast.SelectionSet, v *model.Game) graphql.Marshaler {
+func (ec *executionContext) marshalOGame2ᚖgithubᚗcomᚋscruffyprodigyᚋjoinquestᚋgraphᚋmodelᚐGame(ctx context.Context, sel ast.SelectionSet, v *model.Game) graphql.Marshaler {
 	if v == nil {
 		return graphql.Null
 	}
 	return ec._Game(ctx, sel, v)
 }
 
-func (ec *executionContext) marshalOGameMode2ᚖgithubᚗcomᚋscruffyprodigyᚋplayhubᚋgraphᚋmodelᚐGameMode(ctx context.Context, sel ast.SelectionSet, v *model.GameMode) graphql.Marshaler {
+func (ec *executionContext) marshalOGameMode2ᚖgithubᚗcomᚋscruffyprodigyᚋjoinquestᚋgraphᚋmodelᚐGameMode(ctx context.Context, sel ast.SelectionSet, v *model.GameMode) graphql.Marshaler {
 	if v == nil {
 		return graphql.Null
 	}
 	return ec._GameMode(ctx, sel, v)
 }
 
-func (ec *executionContext) marshalOGameTitleArt2ᚖgithubᚗcomᚋscruffyprodigyᚋplayhubᚋgraphᚋmodelᚐGameTitleArt(ctx context.Context, sel ast.SelectionSet, v *model.GameTitleArt) graphql.Marshaler {
+func (ec *executionContext) marshalOGameTitleArt2ᚖgithubᚗcomᚋscruffyprodigyᚋjoinquestᚋgraphᚋmodelᚐGameTitleArt(ctx context.Context, sel ast.SelectionSet, v *model.GameTitleArt) graphql.Marshaler {
 	if v == nil {
 		return graphql.Null
 	}
@@ -29723,14 +29723,14 @@ func (ec *executionContext) marshalOJSON2map(ctx context.Context, sel ast.Select
 	return res
 }
 
-func (ec *executionContext) marshalOMatchResult2ᚖgithubᚗcomᚋscruffyprodigyᚋplayhubᚋgraphᚋmodelᚐMatchResult(ctx context.Context, sel ast.SelectionSet, v *model.MatchResult) graphql.Marshaler {
+func (ec *executionContext) marshalOMatchResult2ᚖgithubᚗcomᚋscruffyprodigyᚋjoinquestᚋgraphᚋmodelᚐMatchResult(ctx context.Context, sel ast.SelectionSet, v *model.MatchResult) graphql.Marshaler {
 	if v == nil {
 		return graphql.Null
 	}
 	return ec._MatchResult(ctx, sel, v)
 }
 
-func (ec *executionContext) unmarshalOMatchResultStatus2ᚖgithubᚗcomᚋscruffyprodigyᚋplayhubᚋgraphᚋmodelᚐMatchResultStatus(ctx context.Context, v any) (*model.MatchResultStatus, error) {
+func (ec *executionContext) unmarshalOMatchResultStatus2ᚖgithubᚗcomᚋscruffyprodigyᚋjoinquestᚋgraphᚋmodelᚐMatchResultStatus(ctx context.Context, v any) (*model.MatchResultStatus, error) {
 	if v == nil {
 		return nil, nil
 	}
@@ -29739,42 +29739,42 @@ func (ec *executionContext) unmarshalOMatchResultStatus2ᚖgithubᚗcomᚋscruff
 	return res, graphql.ErrorOnPath(ctx, err)
 }
 
-func (ec *executionContext) marshalOMatchResultStatus2ᚖgithubᚗcomᚋscruffyprodigyᚋplayhubᚋgraphᚋmodelᚐMatchResultStatus(ctx context.Context, sel ast.SelectionSet, v *model.MatchResultStatus) graphql.Marshaler {
+func (ec *executionContext) marshalOMatchResultStatus2ᚖgithubᚗcomᚋscruffyprodigyᚋjoinquestᚋgraphᚋmodelᚐMatchResultStatus(ctx context.Context, sel ast.SelectionSet, v *model.MatchResultStatus) graphql.Marshaler {
 	if v == nil {
 		return graphql.Null
 	}
 	return v
 }
 
-func (ec *executionContext) marshalOModeEligibility2ᚖgithubᚗcomᚋscruffyprodigyᚋplayhubᚋgraphᚋmodelᚐModeEligibility(ctx context.Context, sel ast.SelectionSet, v *model.ModeEligibility) graphql.Marshaler {
+func (ec *executionContext) marshalOModeEligibility2ᚖgithubᚗcomᚋscruffyprodigyᚋjoinquestᚋgraphᚋmodelᚐModeEligibility(ctx context.Context, sel ast.SelectionSet, v *model.ModeEligibility) graphql.Marshaler {
 	if v == nil {
 		return graphql.Null
 	}
 	return ec._ModeEligibility(ctx, sel, v)
 }
 
-func (ec *executionContext) marshalOModeRequirementNode2githubᚗcomᚋscruffyprodigyᚋplayhubᚋgraphᚋmodelᚐModeRequirementNode(ctx context.Context, sel ast.SelectionSet, v model.ModeRequirementNode) graphql.Marshaler {
+func (ec *executionContext) marshalOModeRequirementNode2githubᚗcomᚋscruffyprodigyᚋjoinquestᚋgraphᚋmodelᚐModeRequirementNode(ctx context.Context, sel ast.SelectionSet, v model.ModeRequirementNode) graphql.Marshaler {
 	if v == nil {
 		return graphql.Null
 	}
 	return ec._ModeRequirementNode(ctx, sel, v)
 }
 
-func (ec *executionContext) marshalOMyGameCredentials2ᚖgithubᚗcomᚋscruffyprodigyᚋplayhubᚋgraphᚋmodelᚐMyGameCredentials(ctx context.Context, sel ast.SelectionSet, v *model.MyGameCredentials) graphql.Marshaler {
+func (ec *executionContext) marshalOMyGameCredentials2ᚖgithubᚗcomᚋscruffyprodigyᚋjoinquestᚋgraphᚋmodelᚐMyGameCredentials(ctx context.Context, sel ast.SelectionSet, v *model.MyGameCredentials) graphql.Marshaler {
 	if v == nil {
 		return graphql.Null
 	}
 	return ec._MyGameCredentials(ctx, sel, v)
 }
 
-func (ec *executionContext) marshalOMyTableSeat2ᚖgithubᚗcomᚋscruffyprodigyᚋplayhubᚋgraphᚋmodelᚐMyTableSeat(ctx context.Context, sel ast.SelectionSet, v *model.MyTableSeat) graphql.Marshaler {
+func (ec *executionContext) marshalOMyTableSeat2ᚖgithubᚗcomᚋscruffyprodigyᚋjoinquestᚋgraphᚋmodelᚐMyTableSeat(ctx context.Context, sel ast.SelectionSet, v *model.MyTableSeat) graphql.Marshaler {
 	if v == nil {
 		return graphql.Null
 	}
 	return ec._MyTableSeat(ctx, sel, v)
 }
 
-func (ec *executionContext) unmarshalOPartyMemberInput2ᚕᚖgithubᚗcomᚋscruffyprodigyᚋplayhubᚋgraphᚋmodelᚐPartyMemberInputᚄ(ctx context.Context, v any) ([]*model.PartyMemberInput, error) {
+func (ec *executionContext) unmarshalOPartyMemberInput2ᚕᚖgithubᚗcomᚋscruffyprodigyᚋjoinquestᚋgraphᚋmodelᚐPartyMemberInputᚄ(ctx context.Context, v any) ([]*model.PartyMemberInput, error) {
 	if v == nil {
 		return nil, nil
 	}
@@ -29784,7 +29784,7 @@ func (ec *executionContext) unmarshalOPartyMemberInput2ᚕᚖgithubᚗcomᚋscru
 	res := make([]*model.PartyMemberInput, len(vSlice))
 	for i := range vSlice {
 		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithIndex(i))
-		res[i], err = ec.unmarshalNPartyMemberInput2ᚖgithubᚗcomᚋscruffyprodigyᚋplayhubᚋgraphᚋmodelᚐPartyMemberInput(ctx, vSlice[i])
+		res[i], err = ec.unmarshalNPartyMemberInput2ᚖgithubᚗcomᚋscruffyprodigyᚋjoinquestᚋgraphᚋmodelᚐPartyMemberInput(ctx, vSlice[i])
 		if err != nil {
 			return nil, err
 		}
@@ -29792,7 +29792,7 @@ func (ec *executionContext) unmarshalOPartyMemberInput2ᚕᚖgithubᚗcomᚋscru
 	return res, nil
 }
 
-func (ec *executionContext) unmarshalOPartyNodeInput2ᚕᚖgithubᚗcomᚋscruffyprodigyᚋplayhubᚋgraphᚋmodelᚐPartyNodeInputᚄ(ctx context.Context, v any) ([]*model.PartyNodeInput, error) {
+func (ec *executionContext) unmarshalOPartyNodeInput2ᚕᚖgithubᚗcomᚋscruffyprodigyᚋjoinquestᚋgraphᚋmodelᚐPartyNodeInputᚄ(ctx context.Context, v any) ([]*model.PartyNodeInput, error) {
 	if v == nil {
 		return nil, nil
 	}
@@ -29802,7 +29802,7 @@ func (ec *executionContext) unmarshalOPartyNodeInput2ᚕᚖgithubᚗcomᚋscruff
 	res := make([]*model.PartyNodeInput, len(vSlice))
 	for i := range vSlice {
 		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithIndex(i))
-		res[i], err = ec.unmarshalNPartyNodeInput2ᚖgithubᚗcomᚋscruffyprodigyᚋplayhubᚋgraphᚋmodelᚐPartyNodeInput(ctx, vSlice[i])
+		res[i], err = ec.unmarshalNPartyNodeInput2ᚖgithubᚗcomᚋscruffyprodigyᚋjoinquestᚋgraphᚋmodelᚐPartyNodeInput(ctx, vSlice[i])
 		if err != nil {
 			return nil, err
 		}
@@ -29810,7 +29810,7 @@ func (ec *executionContext) unmarshalOPartyNodeInput2ᚕᚖgithubᚗcomᚋscruff
 	return res, nil
 }
 
-func (ec *executionContext) unmarshalOPartyNodeInput2ᚖgithubᚗcomᚋscruffyprodigyᚋplayhubᚋgraphᚋmodelᚐPartyNodeInput(ctx context.Context, v any) (*model.PartyNodeInput, error) {
+func (ec *executionContext) unmarshalOPartyNodeInput2ᚖgithubᚗcomᚋscruffyprodigyᚋjoinquestᚋgraphᚋmodelᚐPartyNodeInput(ctx context.Context, v any) (*model.PartyNodeInput, error) {
 	if v == nil {
 		return nil, nil
 	}
@@ -29818,7 +29818,7 @@ func (ec *executionContext) unmarshalOPartyNodeInput2ᚖgithubᚗcomᚋscruffypr
 	return &res, graphql.ErrorOnPath(ctx, err)
 }
 
-func (ec *executionContext) unmarshalOPlayerFinishReason2ᚖgithubᚗcomᚋscruffyprodigyᚋplayhubᚋgraphᚋmodelᚐPlayerFinishReason(ctx context.Context, v any) (*model.PlayerFinishReason, error) {
+func (ec *executionContext) unmarshalOPlayerFinishReason2ᚖgithubᚗcomᚋscruffyprodigyᚋjoinquestᚋgraphᚋmodelᚐPlayerFinishReason(ctx context.Context, v any) (*model.PlayerFinishReason, error) {
 	if v == nil {
 		return nil, nil
 	}
@@ -29827,35 +29827,35 @@ func (ec *executionContext) unmarshalOPlayerFinishReason2ᚖgithubᚗcomᚋscruf
 	return res, graphql.ErrorOnPath(ctx, err)
 }
 
-func (ec *executionContext) marshalOPlayerFinishReason2ᚖgithubᚗcomᚋscruffyprodigyᚋplayhubᚋgraphᚋmodelᚐPlayerFinishReason(ctx context.Context, sel ast.SelectionSet, v *model.PlayerFinishReason) graphql.Marshaler {
+func (ec *executionContext) marshalOPlayerFinishReason2ᚖgithubᚗcomᚋscruffyprodigyᚋjoinquestᚋgraphᚋmodelᚐPlayerFinishReason(ctx context.Context, sel ast.SelectionSet, v *model.PlayerFinishReason) graphql.Marshaler {
 	if v == nil {
 		return graphql.Null
 	}
 	return v
 }
 
-func (ec *executionContext) marshalOPublicPlayer2ᚖgithubᚗcomᚋscruffyprodigyᚋplayhubᚋgraphᚋmodelᚐPublicPlayer(ctx context.Context, sel ast.SelectionSet, v *model.PublicPlayer) graphql.Marshaler {
+func (ec *executionContext) marshalOPublicPlayer2ᚖgithubᚗcomᚋscruffyprodigyᚋjoinquestᚋgraphᚋmodelᚐPublicPlayer(ctx context.Context, sel ast.SelectionSet, v *model.PublicPlayer) graphql.Marshaler {
 	if v == nil {
 		return graphql.Null
 	}
 	return ec._PublicPlayer(ctx, sel, v)
 }
 
-func (ec *executionContext) marshalORoom2ᚖgithubᚗcomᚋscruffyprodigyᚋplayhubᚋgraphᚋmodelᚐRoom(ctx context.Context, sel ast.SelectionSet, v *model.Room) graphql.Marshaler {
+func (ec *executionContext) marshalORoom2ᚖgithubᚗcomᚋscruffyprodigyᚋjoinquestᚋgraphᚋmodelᚐRoom(ctx context.Context, sel ast.SelectionSet, v *model.Room) graphql.Marshaler {
 	if v == nil {
 		return graphql.Null
 	}
 	return ec._Room(ctx, sel, v)
 }
 
-func (ec *executionContext) marshalOSession2ᚖgithubᚗcomᚋscruffyprodigyᚋplayhubᚋgraphᚋmodelᚐSession(ctx context.Context, sel ast.SelectionSet, v *model.Session) graphql.Marshaler {
+func (ec *executionContext) marshalOSession2ᚖgithubᚗcomᚋscruffyprodigyᚋjoinquestᚋgraphᚋmodelᚐSession(ctx context.Context, sel ast.SelectionSet, v *model.Session) graphql.Marshaler {
 	if v == nil {
 		return graphql.Null
 	}
 	return ec._Session(ctx, sel, v)
 }
 
-func (ec *executionContext) marshalOSpiritAnimalCardQuestion2ᚕᚖgithubᚗcomᚋscruffyprodigyᚋplayhubᚋgraphᚋmodelᚐSpiritAnimalCardQuestionᚄ(ctx context.Context, sel ast.SelectionSet, v []*model.SpiritAnimalCardQuestion) graphql.Marshaler {
+func (ec *executionContext) marshalOSpiritAnimalCardQuestion2ᚕᚖgithubᚗcomᚋscruffyprodigyᚋjoinquestᚋgraphᚋmodelᚐSpiritAnimalCardQuestionᚄ(ctx context.Context, sel ast.SelectionSet, v []*model.SpiritAnimalCardQuestion) graphql.Marshaler {
 	if v == nil {
 		return graphql.Null
 	}
@@ -29882,7 +29882,7 @@ func (ec *executionContext) marshalOSpiritAnimalCardQuestion2ᚕᚖgithubᚗcom�
 			if !isLen1 {
 				defer wg.Done()
 			}
-			ret[i] = ec.marshalNSpiritAnimalCardQuestion2ᚖgithubᚗcomᚋscruffyprodigyᚋplayhubᚋgraphᚋmodelᚐSpiritAnimalCardQuestion(ctx, sel, v[i])
+			ret[i] = ec.marshalNSpiritAnimalCardQuestion2ᚖgithubᚗcomᚋscruffyprodigyᚋjoinquestᚋgraphᚋmodelᚐSpiritAnimalCardQuestion(ctx, sel, v[i])
 		}
 		if isLen1 {
 			f(i)
@@ -29902,21 +29902,21 @@ func (ec *executionContext) marshalOSpiritAnimalCardQuestion2ᚕᚖgithubᚗcom�
 	return ret
 }
 
-func (ec *executionContext) marshalOSpiritAnimalPersonality2ᚖgithubᚗcomᚋscruffyprodigyᚋplayhubᚋgraphᚋmodelᚐSpiritAnimalPersonality(ctx context.Context, sel ast.SelectionSet, v *model.SpiritAnimalPersonality) graphql.Marshaler {
+func (ec *executionContext) marshalOSpiritAnimalPersonality2ᚖgithubᚗcomᚋscruffyprodigyᚋjoinquestᚋgraphᚋmodelᚐSpiritAnimalPersonality(ctx context.Context, sel ast.SelectionSet, v *model.SpiritAnimalPersonality) graphql.Marshaler {
 	if v == nil {
 		return graphql.Null
 	}
 	return ec._SpiritAnimalPersonality(ctx, sel, v)
 }
 
-func (ec *executionContext) marshalOSpiritAnimalReading2ᚖgithubᚗcomᚋscruffyprodigyᚋplayhubᚋgraphᚋmodelᚐSpiritAnimalReading(ctx context.Context, sel ast.SelectionSet, v *model.SpiritAnimalReading) graphql.Marshaler {
+func (ec *executionContext) marshalOSpiritAnimalReading2ᚖgithubᚗcomᚋscruffyprodigyᚋjoinquestᚋgraphᚋmodelᚐSpiritAnimalReading(ctx context.Context, sel ast.SelectionSet, v *model.SpiritAnimalReading) graphql.Marshaler {
 	if v == nil {
 		return graphql.Null
 	}
 	return ec._SpiritAnimalReading(ctx, sel, v)
 }
 
-func (ec *executionContext) marshalOSpiritAnimalTotem2ᚕᚖgithubᚗcomᚋscruffyprodigyᚋplayhubᚋgraphᚋmodelᚐSpiritAnimalTotemᚄ(ctx context.Context, sel ast.SelectionSet, v []*model.SpiritAnimalTotem) graphql.Marshaler {
+func (ec *executionContext) marshalOSpiritAnimalTotem2ᚕᚖgithubᚗcomᚋscruffyprodigyᚋjoinquestᚋgraphᚋmodelᚐSpiritAnimalTotemᚄ(ctx context.Context, sel ast.SelectionSet, v []*model.SpiritAnimalTotem) graphql.Marshaler {
 	if v == nil {
 		return graphql.Null
 	}
@@ -29943,7 +29943,7 @@ func (ec *executionContext) marshalOSpiritAnimalTotem2ᚕᚖgithubᚗcomᚋscruf
 			if !isLen1 {
 				defer wg.Done()
 			}
-			ret[i] = ec.marshalNSpiritAnimalTotem2ᚖgithubᚗcomᚋscruffyprodigyᚋplayhubᚋgraphᚋmodelᚐSpiritAnimalTotem(ctx, sel, v[i])
+			ret[i] = ec.marshalNSpiritAnimalTotem2ᚖgithubᚗcomᚋscruffyprodigyᚋjoinquestᚋgraphᚋmodelᚐSpiritAnimalTotem(ctx, sel, v[i])
 		}
 		if isLen1 {
 			f(i)
@@ -30035,7 +30035,7 @@ func (ec *executionContext) marshalOTime2ᚖtimeᚐTime(ctx context.Context, sel
 	return res
 }
 
-func (ec *executionContext) marshalOUser2ᚖgithubᚗcomᚋscruffyprodigyᚋplayhubᚋgraphᚋmodelᚐUser(ctx context.Context, sel ast.SelectionSet, v *model.User) graphql.Marshaler {
+func (ec *executionContext) marshalOUser2ᚖgithubᚗcomᚋscruffyprodigyᚋjoinquestᚋgraphᚋmodelᚐUser(ctx context.Context, sel ast.SelectionSet, v *model.User) graphql.Marshaler {
 	if v == nil {
 		return graphql.Null
 	}

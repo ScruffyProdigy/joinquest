@@ -11,7 +11,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/scruffyprodigy/playhub/internal/store"
+	"github.com/scruffyprodigy/joinquest/internal/store"
 )
 
 const oauthCallbackTimeout = 90 * time.Second

@@ -5,9 +5,9 @@ import (
 	"fmt"
 
 	"github.com/google/uuid"
-	"github.com/scruffyprodigy/playhub/graph/model"
-	"github.com/scruffyprodigy/playhub/internal/lfg/partytree"
-	"github.com/scruffyprodigy/playhub/internal/store"
+	"github.com/scruffyprodigy/joinquest/graph/model"
+	"github.com/scruffyprodigy/joinquest/internal/lfg/partytree"
+	"github.com/scruffyprodigy/joinquest/internal/store"
 )
 
 func toStorePartyInput(ctx context.Context, callerID uuid.UUID, input *model.PartyNodeInput) (*store.JoinPartyInput, error) {

@@ -6,7 +6,7 @@ import (
 	"fmt"
 
 	"github.com/google/uuid"
-	"github.com/scruffyprodigy/playhub/internal/lfg/partytree"
+	"github.com/scruffyprodigy/joinquest/internal/lfg/partytree"
 )
 
 // StartTableBackfill enqueues seated table players and leaves matchmaking to the forming worker.

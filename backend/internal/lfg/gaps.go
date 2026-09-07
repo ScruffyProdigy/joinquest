@@ -3,7 +3,7 @@ package lfg
 import (
 	"strings"
 
-	"github.com/scruffyprodigy/playhub/internal/seattemplate"
+	"github.com/scruffyprodigy/joinquest/internal/seattemplate"
 )
 
 // Assignment is a placed player on a forming match seat map.

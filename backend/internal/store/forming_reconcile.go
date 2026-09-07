@@ -4,7 +4,7 @@ import (
 	"context"
 
 	"github.com/google/uuid"
-	"github.com/scruffyprodigy/playhub/internal/lfg"
+	"github.com/scruffyprodigy/joinquest/internal/lfg"
 )
 
 // FormingReconcileResult is returned when the forming worker evaluates a mode queue.

@@ -8,8 +8,8 @@ import (
 	"net/http"
 	"strings"
 
-	"github.com/scruffyprodigy/playhub/internal/gameurl"
-	"github.com/scruffyprodigy/playhub/internal/runtimeenv"
+	"github.com/scruffyprodigy/joinquest/internal/gameurl"
+	"github.com/scruffyprodigy/joinquest/internal/runtimeenv"
 )
 
 // RequirementNode is one leaf or group node in a mode's eligibility requirement tree.

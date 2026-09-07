@@ -9,7 +9,7 @@ import (
 	"strings"
 
 	"github.com/google/uuid"
-	"github.com/scruffyprodigy/playhub/internal/lfg/partytree"
+	"github.com/scruffyprodigy/joinquest/internal/lfg/partytree"
 )
 
 // Catalog play intent lives on game_queues (status = waiting). Parties are forming-engine

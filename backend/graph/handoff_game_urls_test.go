@@ -6,8 +6,8 @@ import (
 	"testing"
 
 	"github.com/google/uuid"
-	"github.com/scruffyprodigy/playhub/internal/gameclient"
-	"github.com/scruffyprodigy/playhub/internal/store"
+	"github.com/scruffyprodigy/joinquest/internal/gameclient"
+	"github.com/scruffyprodigy/joinquest/internal/store"
 )
 
 type gameURLProvisioner struct {

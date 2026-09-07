@@ -6,7 +6,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	"github.com/scruffyprodigy/playhub/internal/testdb"
+	"github.com/scruffyprodigy/joinquest/internal/testdb"
 )
 
 func openTestStore(t *testing.T) *Store {

@@ -4,7 +4,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/scruffyprodigy/playhub/internal/store"
+	"github.com/scruffyprodigy/joinquest/internal/store"
 )
 
 func TestIsReadingStale(t *testing.T) {

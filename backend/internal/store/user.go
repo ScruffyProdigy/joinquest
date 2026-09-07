@@ -9,7 +9,7 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/lib/pq"
-	"github.com/scruffyprodigy/playhub/internal/avatars"
+	"github.com/scruffyprodigy/joinquest/internal/avatars"
 )
 
 var ErrInvalidAvatarKey = errors.New("store: invalid avatar key")

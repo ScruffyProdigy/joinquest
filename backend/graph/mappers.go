@@ -4,10 +4,10 @@ import (
 	"encoding/json"
 	"strings"
 
-	"github.com/scruffyprodigy/playhub/graph/model"
-	"github.com/scruffyprodigy/playhub/internal/integrationchecks"
-	"github.com/scruffyprodigy/playhub/internal/seattemplate"
-	"github.com/scruffyprodigy/playhub/internal/store"
+	"github.com/scruffyprodigy/joinquest/graph/model"
+	"github.com/scruffyprodigy/joinquest/internal/integrationchecks"
+	"github.com/scruffyprodigy/joinquest/internal/seattemplate"
+	"github.com/scruffyprodigy/joinquest/internal/store"
 )
 
 // ToGraphQLUser maps a store user to the GraphQL model.

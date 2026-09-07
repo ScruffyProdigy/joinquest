@@ -12,9 +12,9 @@ import (
 
 	"github.com/google/uuid"
 	_ "github.com/lib/pq"
-	"github.com/scruffyprodigy/playhub/internal/email"
-	"github.com/scruffyprodigy/playhub/internal/store"
-	"github.com/scruffyprodigy/playhub/internal/testdb"
+	"github.com/scruffyprodigy/joinquest/internal/email"
+	"github.com/scruffyprodigy/joinquest/internal/store"
+	"github.com/scruffyprodigy/joinquest/internal/testdb"
 )
 
 func openAuthTestService(t *testing.T) *Service {

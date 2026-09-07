@@ -8,7 +8,7 @@ import (
 	"time"
 
 	_ "github.com/lib/pq"
-	"github.com/scruffyprodigy/playhub/internal/migrate"
+	"github.com/scruffyprodigy/joinquest/internal/migrate"
 )
 
 var DB *sql.DB

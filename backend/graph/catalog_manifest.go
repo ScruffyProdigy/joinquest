@@ -5,8 +5,8 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/scruffyprodigy/playhub/internal/gameclient"
-	"github.com/scruffyprodigy/playhub/internal/store"
+	"github.com/scruffyprodigy/joinquest/internal/gameclient"
+	"github.com/scruffyprodigy/joinquest/internal/store"
 )
 
 func (r *Resolver) manifestFetcher() *gameclient.ManifestFetcher {

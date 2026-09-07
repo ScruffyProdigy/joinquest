@@ -15,8 +15,8 @@ import (
 	"time"
 
 	_ "github.com/lib/pq"
-	"github.com/scruffyprodigy/playhub/internal/observe"
-	"github.com/scruffyprodigy/playhub/internal/store"
+	"github.com/scruffyprodigy/joinquest/internal/observe"
+	"github.com/scruffyprodigy/joinquest/internal/store"
 )
 
 const (

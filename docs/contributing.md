@@ -6,7 +6,7 @@ We are building infrastructure so indie web developers can **ship multiplayer ga
 
 **AI agents / maintainers:** start with **[AGENTS.md](../AGENTS.md)** and **[lobby-maintenance.md](lobby-maintenance.md)** before exploring the codebase.
 
-> **Naming:** product = **JoinQuest** (`joinquest.cc`). GitHub repo = [`scruffyprodigy/joinquest`](https://github.com/scruffyprodigy/joinquest). Local folder is often `lobby`. The legacy `playhub` name survives only in the Go module path (JQ-168).
+> **Naming:** product = **JoinQuest** (`joinquest.cc`). GitHub repo = [`scruffyprodigy/joinquest`](https://github.com/scruffyprodigy/joinquest). Local folder is often `lobby`. The legacy `playhub` name is fully retired.
 
 ## Getting Started
 

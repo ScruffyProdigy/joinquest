@@ -5,7 +5,7 @@ import (
 	"os"
 	"strings"
 
-	"github.com/scruffyprodigy/playhub/internal/returnlink"
+	"github.com/scruffyprodigy/joinquest/internal/returnlink"
 )
 
 // LobbyReturnURLForMatch builds the return hub link for a provisioned match.

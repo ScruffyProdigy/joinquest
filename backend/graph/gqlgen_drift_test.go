@@ -9,7 +9,7 @@ import (
 	"time"
 
 	"github.com/99designs/gqlgen/graphql/handler"
-	"github.com/scruffyprodigy/playhub/graph/generated"
+	"github.com/scruffyprodigy/joinquest/graph/generated"
 )
 
 // TestGqlgenDrift checks if the generated code is up to date with the schema files

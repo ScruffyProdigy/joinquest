@@ -6,7 +6,7 @@ import (
 	"testing"
 
 	"github.com/google/uuid"
-	"github.com/scruffyprodigy/playhub/internal/store"
+	"github.com/scruffyprodigy/joinquest/internal/store"
 )
 
 func TestUpdatePlayerProfileAndPlayerLookup(t *testing.T) {

@@ -3,8 +3,8 @@ package graph
 import (
 	"context"
 
-	"github.com/scruffyprodigy/playhub/internal/pubsub"
-	"github.com/scruffyprodigy/playhub/internal/store"
+	"github.com/scruffyprodigy/joinquest/internal/pubsub"
+	"github.com/scruffyprodigy/joinquest/internal/store"
 )
 
 func (r *Resolver) publishKickedWaiters(ctx context.Context, kicked []store.KickedWaiter) error {

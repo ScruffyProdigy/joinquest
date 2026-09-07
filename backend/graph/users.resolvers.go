@@ -7,9 +7,9 @@ package graph
 import (
 	"context"
 
-	"github.com/scruffyprodigy/playhub/graph/generated"
-	"github.com/scruffyprodigy/playhub/graph/model"
-	"github.com/scruffyprodigy/playhub/internal/auth"
+	"github.com/scruffyprodigy/joinquest/graph/generated"
+	"github.com/scruffyprodigy/joinquest/graph/model"
+	"github.com/scruffyprodigy/joinquest/internal/auth"
 )
 
 // IsAdmin is the resolver for the isAdmin field.

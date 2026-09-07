@@ -4,7 +4,7 @@ import (
 	"context"
 
 	"github.com/google/uuid"
-	"github.com/scruffyprodigy/playhub/internal/pubsub"
+	"github.com/scruffyprodigy/joinquest/internal/pubsub"
 )
 
 func (r *Resolver) publishTableSeatStarted(ctx context.Context, tableID uuid.UUID, userIDs []uuid.UUID, launchURLs map[uuid.UUID]string) error {
