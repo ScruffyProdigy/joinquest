@@ -1,7 +1,7 @@
 #!/bin/bash
 
-# PlayHub Test Script
-# This script runs all tests for the PlayHub project
+# JoinQuest Test Script
+# This script runs all tests for the JoinQuest project
 
 set -e
 
@@ -50,12 +50,12 @@ run_tests() {
     fi
 }
 
-echo "🧪 Running PlayHub test suite..."
+echo "🧪 Running JoinQuest test suite..."
 echo ""
 
 # Check if we're in the right directory
 if [ ! -f "README.md" ] || [ ! -d "backend" ] || [ ! -d "frontend" ]; then
-    print_error "Please run this script from the PlayHub project root directory"
+    print_error "Please run this script from the JoinQuest project root directory"
     exit 1
 fi
 

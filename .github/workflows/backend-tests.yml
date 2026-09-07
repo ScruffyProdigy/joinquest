@@ -167,7 +167,7 @@ jobs:
       uses: docker/setup-buildx-action@v3
 
     - name: Build backend Docker image
-      run: docker build -t playhub-backend:test backend/
+      run: docker build -t joinquest-backend:test backend/
 
     - name: Create test database
       run: ./scripts/ensure-test-database.sh
@@ -176,16 +176,16 @@ jobs:
       run: |
         docker run --rm --network host \
           -e DATABASE_URL="${DATABASE_URL}" \
-          playhub-backend:test ./migrate -action=up
+          joinquest-backend:test ./migrate -action=up
 
     - name: Start backend container and verify health check
       run: |
-        docker run -d --name playhub-backend-test --network host \
+        docker run -d --name joinquest-backend-test --network host \
           -e DATABASE_URL="${DATABASE_URL}" \
-          playhub-backend:test ./main
+          joinquest-backend:test ./main
 
         cleanup() {
-          docker rm -f playhub-backend-test 2>/dev/null || true
+          docker rm -f joinquest-backend-test 2>/dev/null || true
         }
         trap cleanup EXIT
 
@@ -198,5 +198,5 @@ jobs:
         done
 
         echo "Container failed health check"
-        docker logs playhub-backend-test
+        docker logs joinquest-backend-test
         exit 1

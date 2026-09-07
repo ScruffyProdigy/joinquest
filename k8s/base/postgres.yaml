@@ -2,7 +2,7 @@ apiVersion: v1
 kind: Service
 metadata:
   name: pg
-  namespace: playhub
+  namespace: joinquest
   labels:
     app: pg
 spec:
@@ -17,7 +17,7 @@ apiVersion: apps/v1
 kind: StatefulSet
 metadata:
   name: pg
-  namespace: playhub
+  namespace: joinquest
 spec:
   serviceName: pg
   replicas: 1

@@ -116,7 +116,7 @@ gcloud container clusters get-credentials joinquest --region us-east1 --project 
 ./scripts/deploy-joinquest.sh
 ```
 
-`deploy-joinquest.sh` applies `k8s/base/*` with namespace rewritten `playhub` → `joinquest`, runs migration job, patches game handoff URLs, and restarts deployments.
+`deploy-joinquest.sh` applies `k8s/base/*` (namespace `joinquest`), runs migration job, patches game handoff URLs, and restarts deployments.
 
 Post-deploy smoke:
 
@@ -181,8 +181,8 @@ First, read the last scheduled run — it already reports the count, so most of 
 no query is needed at all:
 
 ```bash
-kubectl -n playhub get jobs --selector=batch.kubernetes.io/cronjob-name=lobby-stale-matched-queue-sweep
-kubectl -n playhub logs job/<most-recent-job-name> --tail=20
+kubectl -n joinquest get jobs --selector=batch.kubernetes.io/cronjob-name=lobby-stale-matched-queue-sweep
+kubectl -n joinquest logs job/<most-recent-job-name> --tail=20
 ```
 
 To check right now, query directly. Note the `matched_at` age guard and the
@@ -226,9 +226,9 @@ Run the sweep on demand — this is the same binary the CronJob runs, so it is t
 preferred manual clear. Prefer it over hand-written SQL against production:
 
 ```bash
-kubectl -n playhub create job stale-queue-clear \
+kubectl -n joinquest create job stale-queue-clear \
   --from=cronjob/lobby-stale-matched-queue-sweep
-kubectl -n playhub logs job/stale-queue-clear
+kubectl -n joinquest logs job/stale-queue-clear
 ```
 
 Observed output when it finds and clears one row:

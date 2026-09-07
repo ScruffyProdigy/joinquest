@@ -28,8 +28,8 @@ echo "🐳 Building Lobby Docker images..."
 
 DOCKER_REGISTRY="docker.io"
 DOCKER_USERNAME="scruffyprodigy"
-BACKEND_IMAGE="playhub-backend"
-FRONTEND_IMAGE="playhub-frontend"
+BACKEND_IMAGE="joinquest-backend"
+FRONTEND_IMAGE="joinquest-frontend"
 TAG="${TAG:-latest}"
 
 RED='\033[0;31m'

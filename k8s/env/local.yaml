@@ -1,9 +1,0 @@
-apiVersion: v1
-kind: ConfigMap
-metadata:
-  name: lobby-frontend-config
-  namespace: playhub
-  labels: { env: local }
-data:
-  REACT_APP_ENV: local
-  REACT_APP_API_BASE_URL: "http://localhost:8081"

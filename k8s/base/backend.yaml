@@ -2,7 +2,7 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: lobby-backend
-  namespace: playhub
+  namespace: joinquest
   labels: { app: lobby-backend }
 spec:
   replicas: 1
@@ -18,7 +18,7 @@ spec:
         fsGroupChangePolicy: OnRootMismatch
       containers:
         - name: backend
-          image: docker.io/scruffyprodigy/playhub-backend:latest
+          image: docker.io/scruffyprodigy/joinquest-backend:latest
           imagePullPolicy: Always
           ports:
             - containerPort: 8080
@@ -63,7 +63,7 @@ apiVersion: v1
 kind: PersistentVolumeClaim
 metadata:
   name: spirit-avatars
-  namespace: playhub
+  namespace: joinquest
 spec:
   accessModes:
     - ReadWriteOnce
@@ -75,7 +75,7 @@ apiVersion: v1
 kind: Service
 metadata:
   name: lobby-backend
-  namespace: playhub
+  namespace: joinquest
 spec:
   selector: { app: lobby-backend }
   ports:

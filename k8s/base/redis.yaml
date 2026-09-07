@@ -2,7 +2,7 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: lobby-redis
-  namespace: playhub
+  namespace: joinquest
   labels: { app: lobby-redis }
 spec:
   replicas: 1
@@ -34,7 +34,7 @@ apiVersion: v1
 kind: Service
 metadata:
   name: lobby-redis
-  namespace: playhub
+  namespace: joinquest
 spec:
   selector: { app: lobby-redis }
   ports:

@@ -16,7 +16,7 @@ This repository is the **JoinQuest platform** (player shell + GraphQL API + deve
 |------|---------|
 | `lobby` | Local folder / this repo |
 | **JoinQuest** | Product name; production at [joinquest.cc](https://joinquest.cc) |
-| `playhub` | Legacy internal name — still used for Docker images (`playhub-backend`), DB names (`playhub`, `playhub_test`), and the Go module path (`github.com/scruffyprodigy/playhub`). The GitHub repo is now [`scruffyprodigy/joinquest`](https://github.com/scruffyprodigy/joinquest) |
+| `playhub` | Legacy internal name — still used for Docker images (`joinquest-backend`), DB names (`playhub`, `playhub_test`), and the Go module path (`github.com/scruffyprodigy/playhub`). The GitHub repo is now [`scruffyprodigy/joinquest`](https://github.com/scruffyprodigy/joinquest) |
 
 Public-facing text and package metadata have been de-`playhub`ed (JQ-167). The
 remaining `playhub` identifiers — Go module path, Docker image names, database
@@ -37,7 +37,7 @@ frontend/src/                     React + Vite player + developer UI
   components/developers/          Developer portal components
 mcp/joinquest-integration/        @joinquest/mcp-integration npm package
 docs/                             Human docs; some are canonical for agent/MCP embeds
-k8s/                              Kubernetes manifests (namespace `playhub` in files; deploy script rewrites to `joinquest`)
+k8s/                              Kubernetes manifests (namespace `joinquest`)
 scripts/                          setup, test, deploy, doc sync
 .agents/skills/joinquest-integration/   Agent skill source (copied to game repos + plugins)
 plugins/joinquest/                Cursor/Claude plugin bundle
