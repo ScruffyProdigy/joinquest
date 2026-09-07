@@ -153,3 +153,23 @@ func (r *queryResolver) ReturnDestination(ctx context.Context, matchID *string) 
 	}
 	return returnDestinationFromContext(ctxData), nil
 }
+
+// MatchResult is the resolver for the matchResult field.
+func (r *queryResolver) MatchResult(ctx context.Context, matchID string) (*model.MatchResult, error) {
+	userID, err := requireAuthUserID(ctx)
+	if err != nil {
+		return nil, err
+	}
+	st, err := r.requireStore()
+	if err != nil {
+		return nil, err
+	}
+	sessionID, err := parseUUID(strings.TrimSpace(matchID), "match id")
+	if err != nil {
+		return nil, err
+	}
+	if err := requireMatchParticipant(ctx, st, sessionID, userID); err != nil {
+		return nil, err
+	}
+	return loadMatchResultModel(ctx, st, sessionID)
+}

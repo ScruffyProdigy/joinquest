@@ -2,11 +2,28 @@ package graph
 
 import (
 	"context"
+	"errors"
+	"fmt"
 
 	"github.com/google/uuid"
 	"github.com/scruffyprodigy/playhub/graph/model"
 	"github.com/scruffyprodigy/playhub/internal/store"
 )
+
+// requireMatchParticipant is the authorization gate on everything a match knows about
+// itself: the standings, the roster, and the regroup offer are for the people who played
+// that match and for nobody else. Match ids travel in a player-editable return URL, so a
+// signed-in stranger can guess or be handed one; without this gate they would read another
+// group's names and outcome.
+func requireMatchParticipant(ctx context.Context, st *store.Store, sessionID, userID uuid.UUID) error {
+	if err := st.ParticipantIsActive(ctx, sessionID, userID); err != nil {
+		if errors.Is(err, store.ErrNotFound) {
+			return fmt.Errorf("you did not play in this match")
+		}
+		return err
+	}
+	return nil
+}
 
 func loadAuthorizedGameSession(ctx context.Context, st *store.Store, matchID string) (uuid.UUID, *store.Session, error) {
 	sessionID, err := parseUUID(matchID, "match id")

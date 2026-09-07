@@ -509,6 +509,11 @@ func (r *tableResolver) FormingGaps(ctx context.Context, obj *model.Table) ([]*m
 	return gaps, err
 }
 
+// RegroupRoster is the resolver for the regroupRoster field.
+func (r *tableResolver) RegroupRoster(ctx context.Context, obj *model.Table) ([]*model.MatchParticipantResult, error) {
+	panic(fmt.Errorf("not implemented: RegroupRoster - regroupRoster"))
+}
+
 // User is the resolver for the user field.
 func (r *tableSeatResolver) User(ctx context.Context, obj *model.TableSeat) (*model.User, error) {
 	return obj.User, nil

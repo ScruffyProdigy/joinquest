@@ -17,10 +17,51 @@ type ReturnDestination {
   kind: String!
 }
 
+enum RegroupState {
+  IN
+  OUT
+  PENDING
+}
+
+type MatchParticipantResult {
+  user: User!
+  role: String
+  finished: Boolean!
+  finishedAt: Time
+  """Null when the game never reported this player — distinct from the player merely returning."""
+  reason: PlayerFinishReason
+  placement: Int
+  winner: Boolean!
+  regroup: RegroupState!
+}
+
+type MatchResult {
+  matchId: ID!
+  game: Game!
+  """Null when the game reported no result."""
+  status: MatchResultStatus
+  reported: Boolean!
+  """True when the session is completed; drives "Final standings" vs "Results so far"."""
+  complete: Boolean!
+  endedAt: Time
+  participants: [MatchParticipantResult!]!
+  """Set once a regroup table exists, so the client can route to it."""
+  regroupInviteCode: String
+}
+
+type PlayAgainResult {
+  table: Table!
+  inviteCode: String!
+  seated: Boolean!
+}
+
 extend type Query {
   # Player return hub: resolves stored return context for the current user.
   # Pass match (externalMatchId / session id) when returning from a game.
   returnDestination(matchId: ID): ReturnDestination!
+
+  """The stored result of a finished match. Visible only to its participants."""
+  matchResult(matchId: ID!): MatchResult
 }
 
 extend type Mutation {
