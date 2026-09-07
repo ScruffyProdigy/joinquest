@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"strings"
+	"time"
 
 	"github.com/google/uuid"
 )
@@ -132,6 +133,12 @@ func (s *Store) JoinModeQueue(ctx context.Context, modeQueueID, userID uuid.UUID
 		return nil, err
 	}
 	if err := finishReturnedQueueSessionsForRequeueTx(ctx, tx, userID); err != nil {
+		return nil, err
+	}
+	// Marking this player finished can be what empties their previous session. Close it
+	// here rather than leaving it active for a sweep to find hours later — that lag is
+	// what the old queue-keyed cleanup job was papering over (JQ-171).
+	if err := completeEmptiedSessionsForUserTx(ctx, tx, userID, time.Now()); err != nil {
 		return nil, err
 	}
 	if err := ensureNotInActiveGameTx(ctx, tx, userID); err != nil {

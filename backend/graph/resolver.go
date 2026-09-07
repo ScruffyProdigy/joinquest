@@ -10,6 +10,7 @@ import (
 	"github.com/scruffyprodigy/joinquest/internal/catalogstats"
 	"github.com/scruffyprodigy/joinquest/internal/formingworker"
 	"github.com/scruffyprodigy/joinquest/internal/gameclient"
+	"github.com/scruffyprodigy/joinquest/internal/observe"
 	"github.com/scruffyprodigy/joinquest/internal/pubsub"
 	"github.com/scruffyprodigy/joinquest/internal/spiritanimal"
 	"github.com/scruffyprodigy/joinquest/internal/store"
@@ -36,6 +37,18 @@ type Resolver struct {
 	EligibilityCache *gameclient.EligibilityCache
 	// LiveCountsCache serves Game.playerActivity; nil queries the store on every field read.
 	LiveCountsCache *catalogstats.Cache
+	// Emitter carries operational signals that have no GraphQL surface — conditions a
+	// caller cannot be told about because the call legitimately succeeded. nil emits
+	// to the log, so a resolver never has to nil-check it.
+	Emitter observe.Emitter
+}
+
+// signals returns the resolver's emitter, defaulting to the log emitter.
+func (r *Resolver) signals() observe.Emitter {
+	if r.Emitter == nil {
+		return observe.NewLogEmitter()
+	}
+	return r.Emitter
 }
 
 // NewResolver creates a resolver backed by the store and auth service.

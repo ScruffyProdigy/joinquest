@@ -1,5 +1,17 @@
-# Retire orphaned active game_sessions when a newer active session exists for the
-# same mode queue (e.g. reportMatchResult failed on an earlier match).
+# Complete game_sessions that have been `active` far longer than any real match runs —
+# the signature of a reportMatchResult that never landed.
+#
+# Age is the only test. This job used to keep one active session per mode_queue_id and
+# complete the rest, but mode_queues is catalog configuration created once per
+# (mode, name) and reused by every match on that mode, so concurrent matches on one queue
+# are normal. Keying on it ended live games mid-play (JQ-171).
+#
+# It also ran as raw psql that only flipped the status, skipping the participant queue-row
+# cancellation and room-table reset — manufacturing the very orphans the stale matched
+# queue sweep (JQ-133) exists to clear. It now runs the backend image and goes through
+# store.CompleteSession, so a swept session gets the whole completion in one transaction.
+#
+# See docs/lobby-maintenance.md.
 apiVersion: batch/v1
 kind: CronJob
 metadata:
@@ -17,29 +29,18 @@ spec:
         spec:
           restartPolicy: Never
           containers:
-            - name: cleanup
-              image: postgres:16-alpine
+            - name: sessionsweep
+              image: docker.io/scruffyprodigy/joinquest-backend:latest
+              command: ["./sessionsweep"]
               env:
                 - name: DATABASE_URL
                   valueFrom:
                     secretKeyRef:
                       name: pg-dsn
                       key: DATABASE_URL
-              command:
-                - sh
-                - -ec
-                - |
-                  psql "$DATABASE_URL" -v ON_ERROR_STOP=1 <<'SQL'
-                  WITH newest AS (
-                    SELECT DISTINCT ON (mode_queue_id) id AS keep_id, mode_queue_id
-                    FROM game_sessions
-                    WHERE status = 'active' AND mode_queue_id IS NOT NULL
-                    ORDER BY mode_queue_id, started_at DESC
-                  )
-                  UPDATE game_sessions gs
-                  SET status = 'completed', ended_at = NOW()
-                  FROM newest n
-                  WHERE gs.mode_queue_id = n.mode_queue_id
-                    AND gs.status = 'active'
-                    AND gs.id <> n.keep_id;
-                  SQL
+                # How long a session may stay active before this job treats it as stuck.
+                # Deliberately far above any match in the catalog: a stuck session waiting
+                # one more tick costs a player nothing, ending a live one loses their game.
+                # Defaults to 6h in code. Tune here without a code change.
+                - name: STALE_SESSION_AGE
+                  value: "6h"

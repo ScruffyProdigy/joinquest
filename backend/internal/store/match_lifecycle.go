@@ -84,17 +84,6 @@ func (s *Store) ReleaseUserMatchedQueue(ctx context.Context, modeQueueID, userID
 	return err
 }
 
-// completePriorActiveSessionsForModeQueueTx ends older active sessions in the same mode
-// queue so re-queues never hand off a stale match id to the game server.
-func completePriorActiveSessionsForModeQueueTx(ctx context.Context, tx *sql.Tx, modeQueueID, exceptSessionID uuid.UUID, endedAt time.Time) error {
-	_, err := tx.ExecContext(ctx, `
-		UPDATE game_sessions
-		SET status = 'completed', ended_at = $3
-		WHERE mode_queue_id = $1 AND status = 'active' AND id <> $2
-	`, modeQueueID, exceptSessionID, endedAt)
-	return err
-}
-
 // CompleteSession marks a session ended and releases matched queue rows for all seated players.
 func (s *Store) CompleteSession(ctx context.Context, sessionID uuid.UUID, endedAt time.Time) error {
 	tx, err := s.db.BeginTx(ctx, nil)
@@ -103,8 +92,26 @@ func (s *Store) CompleteSession(ctx context.Context, sessionID uuid.UUID, endedA
 	}
 	defer func() { _ = tx.Rollback() }()
 
+	if err := completeSessionTx(ctx, tx, sessionID, endedAt); err != nil {
+		return err
+	}
+
+	return tx.Commit()
+}
+
+// completeSessionTx is the whole completion — status, participant queue-row cancellation
+// and room-table reset — inside a caller's transaction.
+//
+// Every path that ends a session goes through here. A path that flipped only the status
+// left its participants' `matched` game_queues rows behind with no live session, which is
+// exactly the orphan condition JQ-133's sweep exists to clear — and a raw partial UPDATE
+// in a CronJob was manufacturing them on a schedule (JQ-171).
+//
+// Returns ErrNotFound when the session is not 'active', so a caller racing another
+// completion can tell "already done" from a real failure.
+func completeSessionTx(ctx context.Context, tx *sql.Tx, sessionID uuid.UUID, endedAt time.Time) error {
 	var modeQueueID sql.NullString
-	err = tx.QueryRowContext(ctx, `
+	err := tx.QueryRowContext(ctx, `
 		UPDATE game_sessions
 		SET status = 'completed', ended_at = $2
 		WHERE id = $1 AND status = 'active'
@@ -155,11 +162,57 @@ func (s *Store) CompleteSession(ctx context.Context, sessionID uuid.UUID, endedA
 		}
 	}
 
-	if err := resetRoomTableAfterSessionTx(ctx, tx, sessionID); err != nil {
+	return resetRoomTableAfterSessionTx(ctx, tx, sessionID)
+}
+
+// completeEmptiedSessionsForUserTx completes the user's active sessions that no longer
+// hold anyone — every seated player has finished or left.
+//
+// This is what re-queueing needs, and it is deliberately not "end the other sessions on
+// this mode queue". A queue is catalog configuration shared by every match on a mode, so
+// keying on it ended other players' live games (JQ-171); a session emptying out is a fact
+// about that session alone. A partner still playing keeps their match, and the session
+// completes on whoever leaves last.
+func completeEmptiedSessionsForUserTx(ctx context.Context, tx *sql.Tx, userID uuid.UUID, endedAt time.Time) error {
+	rows, err := tx.QueryContext(ctx, `
+		SELECT DISTINCT gs.id
+		FROM game_sessions gs
+		INNER JOIN game_session_participants gsp ON gsp.session_id = gs.id
+		WHERE gsp.user_id = $1
+		  AND gs.status = 'active'
+		  AND NOT EXISTS (
+		    SELECT 1
+		    FROM game_session_participants other
+		    WHERE other.session_id = gs.id
+		      AND other.left_at IS NULL
+		      AND other.finished_at IS NULL
+		  )
+	`, userID)
+	if err != nil {
+		return err
+	}
+	var sessionIDs []uuid.UUID
+	for rows.Next() {
+		var id uuid.UUID
+		if scanErr := rows.Scan(&id); scanErr != nil {
+			_ = rows.Close()
+			return scanErr
+		}
+		sessionIDs = append(sessionIDs, id)
+	}
+	if err := rows.Close(); err != nil {
+		return err
+	}
+	if err := rows.Err(); err != nil {
 		return err
 	}
 
-	return tx.Commit()
+	for _, id := range sessionIDs {
+		if err := completeSessionTx(ctx, tx, id, endedAt); err != nil && !errors.Is(err, ErrNotFound) {
+			return err
+		}
+	}
+	return nil
 }
 
 // CountActiveParticipants returns seated players who have not finished individually.
