@@ -13,6 +13,7 @@ import (
 	"github.com/scruffyprodigy/joinquest/database"
 	"github.com/scruffyprodigy/joinquest/graph"
 	"github.com/scruffyprodigy/joinquest/internal/auth"
+	"github.com/scruffyprodigy/joinquest/internal/avatars"
 	"github.com/scruffyprodigy/joinquest/internal/formingworker"
 	"github.com/scruffyprodigy/joinquest/internal/pubsub"
 	"github.com/scruffyprodigy/joinquest/internal/spiritanimal"
@@ -79,6 +80,7 @@ func main() {
 		spiritAvatarDir = "data/spirit-avatars"
 	}
 	mux.Handle("/spirit-avatars/", http.StripPrefix("/spirit-avatars/", http.FileServer(http.Dir(filepath.Clean(spiritAvatarDir)))))
+	mux.Handle("/avatars/sigils/", avatars.SigilHandler())
 	if !auth.IsProductionEnv() {
 		mux.Handle("/", playground.Handler("GraphQL", "/graphql"))
 	} else {

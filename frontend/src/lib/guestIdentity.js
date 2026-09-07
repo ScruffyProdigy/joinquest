@@ -3,12 +3,12 @@
  *
  * Names are generated fresh on every draw rather than picked from a fixed list, so
  * two guests are very unlikely to end up sharing a name inside the same game. Each
- * name's noun decides its sigil, so FrostFox always lands on the canine silhouette.
+ * name's noun decides its sigil, so a Fox always lands on the canine silhouette.
  */
 
 /**
- * Guest-tier avatar shapes. Family keys match the sigil parser in
- * backend/internal/avatars/catalog.go.
+ * Guest-tier avatar shapes. Family keys match the sigil renderer in
+ * backend/internal/avatars/sigil.go, which draws the silhouette for each key.
  */
 export const SIGIL_FAMILIES = [
   { key: 'canine', nouns: ['Fox', 'Wolf', 'Hound', 'Jackal', 'Coyote', 'Dingo'] },
@@ -17,37 +17,60 @@ export const SIGIL_FAMILIES = [
   { key: 'raptor', nouns: ['Eagle', 'Falcon', 'Hawk', 'Osprey', 'Kestrel', 'Harrier'] },
   { key: 'corvid', nouns: ['Raven', 'Crow', 'Rook', 'Magpie', 'Jay', 'Grackle'] },
   { key: 'ursine', nouns: ['Bear', 'Bruin', 'Kodiak', 'Grizzly', 'Ursa', 'Sable'] },
-]
-
-/**
- * The adjective in a guest name is also its colour, so FrostFox really is the icy
- * blue one. Tints are deep enough to carry the near-white silhouette on top.
- */
-export const SIGIL_TINTS = [
-  { key: 'frost', word: 'Frost', hex: '#0284c7' },
-  { key: 'ember', word: 'Ember', hex: '#ea580c' },
-  { key: 'blaze', word: 'Blaze', hex: '#dc2626' },
-  { key: 'dawn', word: 'Dawn', hex: '#e11d48' },
-  { key: 'dusk', word: 'Dusk', hex: '#9333ea' },
-  { key: 'storm', word: 'Storm', hex: '#4f46e5' },
-  { key: 'moss', word: 'Moss', hex: '#16a34a' },
-  { key: 'tide', word: 'Tide', hex: '#0d9488' },
-  { key: 'solar', word: 'Solar', hex: '#ca8a04' },
-  { key: 'nova', word: 'Nova', hex: '#0891b2' },
-  { key: 'rust', word: 'Rust', hex: '#d97706' },
-  { key: 'bloom', word: 'Bloom', hex: '#db2777' },
+  { key: 'rodent', nouns: ['Mouse', 'Rat', 'Squirrel', 'Chipmunk', 'Vole', 'Marmot'] },
+  { key: 'lagomorph', nouns: ['Hare', 'Rabbit', 'Cottontail', 'Jackrabbit', 'Pika', 'Lop'] },
+  { key: 'serpent', nouns: ['Cobra', 'Viper', 'Python', 'Adder', 'Mamba', 'Krait'] },
+  { key: 'cephalopod', nouns: ['Octopus', 'Squid', 'Nautilus', 'Kraken', 'Cuttle', 'Argonaut'] },
+  { key: 'cetacean', nouns: ['Whale', 'Orca', 'Narwhal', 'Beluga', 'Dolphin', 'Porpoise'] },
+  { key: 'chelonian', nouns: ['Turtle', 'Tortoise', 'Terrapin', 'Snapper', 'Slider', 'Loggerhead'] },
 ]
 
 /** The silhouette drawn on top of every tint. */
 export const SIGIL_SILHOUETTE = '#f8fafc'
 
-export function sigilAvatarKey(familyKey, tintKey) {
-  return `sigil-${familyKey}-${tintKey}`
-}
+/**
+ * The adjective in a guest name still describes its colour, so a FrostFox really is
+ * an icy blue one — but the colour is drawn per guest rather than picked from a
+ * palette, so the word names the hue's neighbourhood rather than an exact swatch.
+ * Bands run [previous `until`, `until`), starting at 0.
+ */
+export const SIGIL_HUE_WORDS = [
+  { until: 15, word: 'Blaze' },
+  { until: 35, word: 'Ember' },
+  { until: 50, word: 'Rust' },
+  { until: 68, word: 'Solar' },
+  { until: 95, word: 'Fern' },
+  { until: 150, word: 'Moss' },
+  { until: 172, word: 'Jade' },
+  { until: 190, word: 'Tide' },
+  { until: 205, word: 'Nova' },
+  { until: 222, word: 'Frost' },
+  { until: 248, word: 'Storm' },
+  { until: 290, word: 'Dusk' },
+  { until: 320, word: 'Bloom' },
+  { until: 345, word: 'Dawn' },
+  { until: 360, word: 'Blaze' },
+]
 
-export function sigilImageUrl(familyKey, tintKey) {
-  return `/avatars/sigils/${familyKey}-${tintKey}.svg`
-}
+/**
+ * Saturation is drawn from Beta(4, 2) across this range: muted tints look washed
+ * out under the near-white silhouette, and fully saturated ones look garish, so the
+ * distribution tapers off at both ends and peaks around 82%.
+ */
+const SATURATION_MIN = 45
+const SATURATION_MAX = 95
+
+/**
+ * Lightness is picked by *perceived* luminance rather than by the HSL lightness
+ * channel, because HSL lightness is not perceptual — a yellow at L=50% is far
+ * brighter than a blue at L=50%, and the near-white silhouette would vanish on it.
+ * Drawing a target luminance and solving for L compensates for the hue exactly.
+ *
+ * This band keeps every disc between roughly 2.9:1 and 4.8:1 against the
+ * silhouette, which is where the twelve hand-picked tints this replaced sat.
+ */
+const LUMINANCE_MIN = 0.16
+const LUMINANCE_MAX = 0.3
 
 /** Four digits keeps names distinct without making them unreadable. */
 const NUMBER_MIN = 1000
@@ -75,26 +98,128 @@ function sampleWithoutReplacement(items, count) {
 }
 
 /**
+ * Draws from Beta(k, n + 1 - k) by taking the k-th smallest of `n` uniform draws,
+ * which is exactly that distribution. Cheaper and clearer than a Beta sampler for
+ * the small integer shapes we want: Beta(2, 2) leans to the middle, Beta(4, 2)
+ * leans high while still tapering off before the top of the range.
+ */
+function betaFromOrderStatistic(k, n) {
+  const draws = Array.from({ length: n }, () => Math.random()).sort((a, b) => a - b)
+  return draws[k - 1]
+}
+
+/** Converts HSL (h in degrees, s and l in percent) to 8-bit RGB. */
+function hslToRgb(h, s, l) {
+  const saturation = s / 100
+  const lightness = l / 100
+  const chroma = (1 - Math.abs(2 * lightness - 1)) * saturation
+  const sector = (((h % 360) + 360) % 360) / 60
+  const second = chroma * (1 - Math.abs((sector % 2) - 1))
+  const base = lightness - chroma / 2
+  const rgb = [
+    [chroma, second, 0],
+    [second, chroma, 0],
+    [0, chroma, second],
+    [0, second, chroma],
+    [second, 0, chroma],
+    [chroma, 0, second],
+  ][Math.floor(sector) % 6]
+  return rgb.map((channel) => Math.round((channel + base) * 255))
+}
+
+/** WCAG relative luminance — the perceptual brightness the eye actually reads. */
+export function relativeLuminance([r, g, b]) {
+  const [rl, gl, bl] = [r, g, b].map((channel) => {
+    const v = channel / 255
+    return v <= 0.04045 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4
+  })
+  return 0.2126 * rl + 0.7152 * gl + 0.0722 * bl
+}
+
+/**
+ * Finds the HSL lightness that puts `hue` at `saturation` on `target` luminance.
+ * Luminance rises monotonically with lightness at a fixed hue and saturation, so a
+ * bisection always converges; 20 steps lands well inside a single 0-255 channel.
+ */
+function lightnessForLuminance(hue, saturation, target) {
+  let low = 0
+  let high = 100
+  for (let i = 0; i < 20; i += 1) {
+    const mid = (low + high) / 2
+    if (relativeLuminance(hslToRgb(hue, saturation, mid)) < target) {
+      low = mid
+    } else {
+      high = mid
+    }
+  }
+  return (low + high) / 2
+}
+
+function rgbToHex([r, g, b]) {
+  return [r, g, b].map((channel) => channel.toString(16).padStart(2, '0')).join('')
+}
+
+/** The colour word whose band covers `hue`. */
+export function hueWord(hue) {
+  const wrapped = (((hue % 360) + 360) % 360)
+  return SIGIL_HUE_WORDS.find((band) => wrapped < band.until).word
+}
+
+/**
+ * Builds one tint: a hue, a saturation that leans high, and a lightness solved for
+ * a perceived luminance that leans to the middle of a legible band.
+ */
+export function generateTint(hue = Math.random() * 360) {
+  const saturation =
+    SATURATION_MIN + (SATURATION_MAX - SATURATION_MIN) * betaFromOrderStatistic(4, 5)
+  const luminance = LUMINANCE_MIN + (LUMINANCE_MAX - LUMINANCE_MIN) * betaFromOrderStatistic(2, 3)
+  const lightness = lightnessForLuminance(hue, saturation, luminance)
+  return { hex: rgbToHex(hslToRgb(hue, saturation, lightness)), word: hueWord(hue) }
+}
+
+/**
+ * Splits the colour wheel into `count` sectors and draws one hue from each, so the
+ * row of choices never comes up as six near-identical blues. Shuffled afterwards so
+ * the picker does not read as a rainbow gradient.
+ */
+function spreadHues(count) {
+  const sector = 360 / count
+  const offset = Math.random() * 360
+  const hues = Array.from(
+    { length: count },
+    (_, index) => (offset + index * sector + Math.random() * sector) % 360,
+  )
+  return sampleWithoutReplacement(hues, hues.length)
+}
+
+export function sigilAvatarKey(familyKey, hex) {
+  return `sigil-${familyKey}-${hex}`
+}
+
+export function sigilImageUrl(familyKey, hex) {
+  return `/avatars/sigils/${familyKey}-${hex}.svg`
+}
+
+/**
  * Builds one identity: a tint word, a noun from `family`, and a 4-digit number.
  * The number is what keeps two guests from colliding on the same name.
  */
-export function generateGuestIdentity(family, tint = pickOne(SIGIL_TINTS)) {
+export function generateGuestIdentity(family, tint = generateTint()) {
   const number = NUMBER_MIN + randomInt(NUMBER_MAX - NUMBER_MIN + 1)
   return {
     name: `${tint.word}${pickOne(family.nouns)}${number}`,
-    avatarKey: sigilAvatarKey(family.key, tint.key),
-    imageUrl: sigilImageUrl(family.key, tint.key),
+    avatarKey: sigilAvatarKey(family.key, tint.hex),
+    imageUrl: sigilImageUrl(family.key, tint.hex),
   }
 }
 
 /**
  * Builds a fresh set of choices for the picker — one per sigil family, so the row
- * shows six distinct silhouettes rather than six variations of the same animal.
- * Tints are drawn without replacement too, so no two choices share a colour.
+ * shows six distinct silhouettes rather than six variations of the same animal,
+ * each in a hue drawn from its own slice of the wheel.
  */
 export function generateGuestIdentities(count = GUEST_IDENTITY_CHOICES) {
   const families = sampleWithoutReplacement(SIGIL_FAMILIES, count)
-  const tints = sampleWithoutReplacement(SIGIL_TINTS, families.length)
-  return families.map((family, index) => generateGuestIdentity(family, tints[index]))
+  const hues = spreadHues(families.length)
+  return families.map((family, index) => generateGuestIdentity(family, generateTint(hues[index])))
 }
-

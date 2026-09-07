@@ -1,0 +1,231 @@
+package avatars
+
+import (
+	"fmt"
+	"net/http"
+	"regexp"
+	"slices"
+	"strings"
+)
+
+// SourceSigil marks the guest-tier avatars picked from the first-entry overlay.
+// They stay deliberately plainer than SPIRIT_ANIMAL avatars, which are earned by
+// signing in and finishing the spirit animal journey.
+const SourceSigil = "sigil"
+
+// sigilSilhouette is the near-white every animal shape is drawn in. The picker
+// contrast-checks each colour it draws against this, so the shape always reads.
+const sigilSilhouette = "#f8fafc"
+
+// SigilFamilies are the guest-tier silhouettes. A generated guest name picks the
+// noun that matches its family, so a player called FrostFox gets the canine one.
+// The list is kept in step with SIGIL_FAMILIES in frontend/src/lib/guestIdentity.js.
+var SigilFamilies = []string{
+	"canine", "feline", "horned", "raptor", "corvid", "ursine",
+	"rodent", "lagomorph", "serpent", "cephalopod", "cetacean", "chelonian",
+}
+
+// legacySigilTints are the twelve named colours the picker offered before it
+// started drawing its own colour per guest. Rows saved back then still hold keys
+// like "sigil-canine-frost", so the names stay resolvable and render the same.
+var legacySigilTints = map[string]string{
+	"frost": "0284c7",
+	"ember": "ea580c",
+	"blaze": "dc2626",
+	"dawn":  "e11d48",
+	"dusk":  "9333ea",
+	"storm": "4f46e5",
+	"moss":  "16a34a",
+	"tide":  "0d9488",
+	"solar": "ca8a04",
+	"nova":  "0891b2",
+	"rust":  "d97706",
+	"bloom": "db2777",
+}
+
+var sigilHexPattern = regexp.MustCompile(`^[0-9a-f]{6}$`)
+
+// sigilTint resolves the colour half of a sigil key to a bare 6-digit hex.
+// It accepts either a colour the picker drew ("3b82f6") or one of the legacy
+// tint names ("frost").
+func sigilTint(tint string) (string, bool) {
+	if sigilHexPattern.MatchString(tint) {
+		return tint, true
+	}
+	hex, ok := legacySigilTints[tint]
+	return hex, ok
+}
+
+// SigilByKey resolves a "sigil-<family>-<colour>" key, e.g. "sigil-canine-3b82f6"
+// or the older "sigil-canine-frost". Keys are composite rather than a flat catalog
+// because the colour is drawn per guest; SigilHandler renders the matching file.
+func SigilByKey(key string) (StarterEntry, bool) {
+	normalized := strings.ToLower(strings.TrimSpace(key))
+	rest, ok := strings.CutPrefix(normalized, "sigil-")
+	if !ok {
+		return StarterEntry{}, false
+	}
+	family, tint, ok := strings.Cut(rest, "-")
+	if !ok || !slices.Contains(SigilFamilies, family) {
+		return StarterEntry{}, false
+	}
+	hex, ok := sigilTint(tint)
+	if !ok {
+		return StarterEntry{}, false
+	}
+	return StarterEntry{
+		Key:  normalized,
+		Name: family,
+		Slot: family,
+		File: fmt.Sprintf("sigils/%s-%s.svg", family, hex),
+	}, true
+}
+
+// RenderSigil draws one sigil: the animal silhouette for `family` on a disc of
+// `tint`, with the cut-out details punched back through in the disc colour.
+func RenderSigil(family, tint string) (string, bool) {
+	shape, ok := sigilShapes[family]
+	if !ok {
+		return "", false
+	}
+	hex, ok := sigilTint(tint)
+	if !ok {
+		return "", false
+	}
+	colour := "#" + hex
+	return fmt.Sprintf(`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64" role="img" aria-label="%s sigil">
+  <circle cx="32" cy="32" r="32" fill="%s"/>%s
+</svg>
+`, family, colour, shape(sigilSilhouette, colour)), true
+}
+
+// SigilHandler serves /avatars/sigils/<family>-<colour>.svg. Sigils are rendered
+// rather than stored because the colour is drawn fresh for each guest, so there is
+// no fixed set of files to ship. The colour is baked into the SVG rather than
+// applied with CSS because game clients render `avatarUrl` on their own
+// backgrounds, where a transparent silhouette could land invisible.
+func SigilHandler() http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		name := strings.ToLower(strings.TrimPrefix(r.URL.Path, "/avatars/sigils/"))
+		name, ok := strings.CutSuffix(name, ".svg")
+		if !ok {
+			http.NotFound(w, r)
+			return
+		}
+		family, tint, ok := strings.Cut(name, "-")
+		if !ok {
+			http.NotFound(w, r)
+			return
+		}
+		svg, ok := RenderSigil(family, tint)
+		if !ok {
+			http.NotFound(w, r)
+			return
+		}
+		w.Header().Set("Content-Type", "image/svg+xml")
+		// The URL fully determines the image, so it never needs revalidating.
+		w.Header().Set("Cache-Control", "public, max-age=31536000, immutable")
+		fmt.Fprint(w, svg)
+	})
+}
+
+// sigilShapes draws each family's head in `body`, with details cut back out in
+// `tint` so they read as holes in the silhouette rather than added ink.
+var sigilShapes = map[string]func(body, tint string) string{
+	"canine": func(body, tint string) string {
+		return fmt.Sprintf(`
+  <path d="M13 15 L23 25 L41 25 L51 15 L49 31 L44 41 L32 51 L20 41 L15 31 Z" fill="%[1]s"/>
+  <circle cx="25.5" cy="32" r="2.4" fill="%[2]s"/>
+  <circle cx="38.5" cy="32" r="2.4" fill="%[2]s"/>`, body, tint)
+	},
+	"feline": func(body, tint string) string {
+		return fmt.Sprintf(`
+  <path d="M17 18 L24 27 L40 27 L47 18 L48 31 C48 42 41 49 32 49 C23 49 16 42 16 31 Z" fill="%[1]s"/>
+  <circle cx="25" cy="33" r="2.4" fill="%[2]s"/>
+  <circle cx="39" cy="33" r="2.4" fill="%[2]s"/>
+  <path d="M32 39 L29 42 H35 Z" fill="%[2]s"/>`, body, tint)
+	},
+	"horned": func(body, tint string) string {
+		return fmt.Sprintf(`
+  <path d="M26 24 C18 23 12 19 9 11 C13 21 18 28 26 30 Z" fill="%[1]s"/>
+  <path d="M38 24 C46 23 52 19 55 11 C51 21 46 28 38 30 Z" fill="%[1]s"/>
+  <path d="M24 21 H40 L42 33 C42 42 38 49 32 49 C26 49 22 42 22 33 Z" fill="%[1]s"/>
+  <circle cx="27" cy="31" r="2.4" fill="%[2]s"/>
+  <circle cx="37" cy="31" r="2.4" fill="%[2]s"/>
+  <ellipse cx="32" cy="43" rx="4.5" ry="3.2" fill="%[2]s"/>`, body, tint)
+	},
+	"raptor": func(body, tint string) string {
+		return fmt.Sprintf(`
+  <ellipse cx="26" cy="31" rx="13" ry="14" fill="%[1]s"/>
+  <path d="M33 19 C42 19 48 21 52 25 C53 31 51 36 48 37 C47 31 43 28 35 29 Z" fill="%[1]s"/>
+  <circle cx="24" cy="26" r="3" fill="%[2]s"/>`, body, tint)
+	},
+	"corvid": func(body, tint string) string {
+		return fmt.Sprintf(`
+  <path d="M18 28 C18 19 25 14 32 16 L57 27 L34 32 C35 40 30 47 24 46 C18 45 16 37 18 28 Z" fill="%[1]s"/>
+  <circle cx="27" cy="26" r="2.8" fill="%[2]s"/>`, body, tint)
+	},
+	"ursine": func(body, tint string) string {
+		return fmt.Sprintf(`
+  <circle cx="19" cy="21" r="7.5" fill="%[1]s"/>
+  <circle cx="45" cy="21" r="7.5" fill="%[1]s"/>
+  <path d="M14 34 C14 24 22 18 32 18 C42 18 50 24 50 34 C50 44 42 50 32 50 C22 50 14 44 14 34 Z" fill="%[1]s"/>
+  <circle cx="25" cy="31" r="2.4" fill="%[2]s"/>
+  <circle cx="39" cy="31" r="2.4" fill="%[2]s"/>
+  <ellipse cx="32" cy="41" rx="6" ry="4.5" fill="%[2]s"/>`, body, tint)
+	},
+	"rodent": func(body, tint string) string {
+		return fmt.Sprintf(`
+  <circle cx="17" cy="21" r="8.5" fill="%[1]s"/>
+  <circle cx="47" cy="21" r="8.5" fill="%[1]s"/>
+  <circle cx="17" cy="21" r="4" fill="%[2]s"/>
+  <circle cx="47" cy="21" r="4" fill="%[2]s"/>
+  <path d="M32 17 C41 17 48 24 48 32 C48 40 40 45 34 52 L32 54 L30 52 C24 45 16 40 16 32 C16 24 23 17 32 17 Z" fill="%[1]s"/>
+  <circle cx="25" cy="32" r="2.4" fill="%[2]s"/>
+  <circle cx="39" cy="32" r="2.4" fill="%[2]s"/>
+  <circle cx="32" cy="45" r="2.6" fill="%[2]s"/>`, body, tint)
+	},
+	"lagomorph": func(body, tint string) string {
+		return fmt.Sprintf(`
+  <ellipse cx="24" cy="18" rx="5.5" ry="13" fill="%[1]s"/>
+  <ellipse cx="40" cy="18" rx="5.5" ry="13" fill="%[1]s"/>
+  <ellipse cx="24" cy="19" rx="2.2" ry="8.5" fill="%[2]s"/>
+  <ellipse cx="40" cy="19" rx="2.2" ry="8.5" fill="%[2]s"/>
+  <path d="M32 26 C41 26 48 33 48 41 C48 48 41 53 32 53 C23 53 16 48 16 41 C16 33 23 26 32 26 Z" fill="%[1]s"/>
+  <circle cx="25" cy="39" r="2.4" fill="%[2]s"/>
+  <circle cx="39" cy="39" r="2.4" fill="%[2]s"/>
+  <path d="M32 48 L28.5 44 H35.5 Z" fill="%[2]s"/>`, body, tint)
+	},
+	"serpent": func(body, tint string) string {
+		return fmt.Sprintf(`
+  <path d="M15 46 C15 38 25 35 32 39 C38 42 44 40 44 34 C44 29 40 26 35 28" fill="none" stroke="%[1]s" stroke-width="8" stroke-linecap="round"/>
+  <path d="M32 32 C27 26 30 18 37 16 L53 20 L42 27 C38 30 34 34 32 32 Z" fill="%[1]s"/>
+  <circle cx="41" cy="22" r="2.2" fill="%[2]s"/>
+  <path d="M52 19 L59 15 M52 22 L59 25" fill="none" stroke="%[2]s" stroke-width="2.4" stroke-linecap="round"/>`, body, tint)
+	},
+	"cephalopod": func(body, tint string) string {
+		return fmt.Sprintf(`
+  <path d="M32 13 C43 13 51 22 51 33 C51 38 49 43 47 46 L45 39 L42 47 L39 40 L36 48 L32 41 L28 48 L25 40 L22 47 L19 39 L17 46 C15 43 13 38 13 33 C13 22 21 13 32 13 Z" fill="%[1]s"/>
+  <circle cx="24" cy="31" r="3.2" fill="%[2]s"/>
+  <circle cx="40" cy="31" r="3.2" fill="%[2]s"/>`, body, tint)
+	},
+	"cetacean": func(body, tint string) string {
+		return fmt.Sprintf(`
+  <path d="M13 24 L6 17 L8 32 L6 47 L13 40 Z" fill="%[1]s"/>
+  <path d="M25 7 C31 9 35 12 38 17 L26 19 Z" fill="%[1]s"/>
+  <path d="M53 32 C53 40 44 47 32 47 C24 47 17 44 13 40 L13 24 C17 20 24 17 32 17 C44 17 53 24 53 32 Z" fill="%[1]s"/>
+  <circle cx="44" cy="28" r="2.4" fill="%[2]s"/>
+  <path d="M34 45 C39 43 44 40 48 35" fill="none" stroke="%[2]s" stroke-width="2" stroke-linecap="round"/>`, body, tint)
+	},
+	"chelonian": func(body, tint string) string {
+		return fmt.Sprintf(`
+  <circle cx="32" cy="13" r="7.5" fill="%[1]s"/>
+  <ellipse cx="15" cy="24" rx="6.5" ry="4.5" transform="rotate(-40 15 24)" fill="%[1]s"/>
+  <ellipse cx="49" cy="24" rx="6.5" ry="4.5" transform="rotate(40 49 24)" fill="%[1]s"/>
+  <ellipse cx="16" cy="46" rx="6" ry="4.2" transform="rotate(40 16 46)" fill="%[1]s"/>
+  <ellipse cx="48" cy="46" rx="6" ry="4.2" transform="rotate(-40 48 46)" fill="%[1]s"/>
+  <ellipse cx="32" cy="34" rx="17" ry="15" fill="%[1]s"/>
+  <ellipse cx="32" cy="34" rx="12" ry="10" fill="none" stroke="%[2]s" stroke-width="2.2"/>
+  <path d="M32 28 L37 31 L37 37 L32 40 L27 37 L27 31 Z" fill="%[2]s"/>`, body, tint)
+	},
+}

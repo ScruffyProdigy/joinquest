@@ -3,7 +3,7 @@ import userEvent from '@testing-library/user-event'
 import { beforeEach, describe, expect, it } from 'vitest'
 import IdentityGate from './IdentityGate'
 import { AuthProvider } from '../auth/AuthProvider'
-import { SIGIL_FAMILIES } from '../../lib/guestIdentity'
+import { GUEST_IDENTITY_CHOICES } from '../../lib/guestIdentity'
 import { mockAuthenticatedSession, mockUnauthenticatedSession } from '../../test/setup'
 
 const NAMELESS_GUEST = {
@@ -64,10 +64,10 @@ describe('IdentityGate', () => {
     await waitForGate()
 
     const choices = avatarChoices()
-    expect(choices).toHaveLength(SIGIL_FAMILIES.length)
+    expect(choices).toHaveLength(GUEST_IDENTITY_CHOICES)
 
     const sources = choices.map((button) => button.querySelector('img').getAttribute('src'))
-    expect(new Set(sources).size).toBe(SIGIL_FAMILIES.length)
+    expect(new Set(sources).size).toBe(GUEST_IDENTITY_CHOICES)
 
     for (const button of choices) {
       expect(button).toHaveTextContent(/^[A-Za-z]+\d{4}$/)

@@ -1,28 +1,59 @@
-import { existsSync, readFileSync } from 'node:fs'
+import { readFileSync } from 'node:fs'
 import { describe, expect, it } from 'vitest'
 import {
   GUEST_IDENTITY_CHOICES,
   SIGIL_FAMILIES,
-  SIGIL_TINTS,
+  SIGIL_HUE_WORDS,
+  SIGIL_SILHOUETTE,
   generateGuestIdentities,
   generateGuestIdentity,
+  generateTint,
+  hueWord,
+  relativeLuminance,
 } from './guestIdentity'
+
+const HEX = /^[0-9a-f]{6}$/
+
+function hexToRgb(hex) {
+  const bare = hex.replace('#', '')
+  return [0, 2, 4].map((offset) => parseInt(bare.slice(offset, offset + 2), 16))
+}
+
+/** Hue in degrees, recovered from a rendered hex so tests read what guests see. */
+function hueOf(hex) {
+  const [r, g, b] = hexToRgb(hex).map((channel) => channel / 255)
+  const max = Math.max(r, g, b)
+  const span = max - Math.min(r, g, b)
+  if (span === 0) {
+    return 0
+  }
+  const raw =
+    max === r ? (g - b) / span : max === g ? 2 + (b - r) / span : 4 + (r - g) / span
+  return ((raw * 60) % 360 + 360) % 360
+}
+
+function contrastAgainstSilhouette(hex) {
+  const silhouette = relativeLuminance(hexToRgb(SIGIL_SILHOUETTE))
+  const disc = relativeLuminance(hexToRgb(hex))
+  return (Math.max(silhouette, disc) + 0.05) / (Math.min(silhouette, disc) + 0.05)
+}
 
 describe('generateGuestIdentity', () => {
   it('pairs the name with a noun from its own sigil family', () => {
     for (const family of SIGIL_FAMILIES) {
       const identity = generateGuestIdentity(family)
-      expect(identity.avatarKey).toMatch(new RegExp(`^sigil-${family.key}-`))
+      expect(identity.avatarKey).toMatch(new RegExp(`^sigil-${family.key}-[0-9a-f]{6}$`))
       expect(family.nouns.some((noun) => identity.name.includes(noun))).toBe(true)
     }
   })
 
-  it('names the avatar after its own tint, so the colour matches the word', () => {
-    for (const tint of SIGIL_TINTS) {
+  it('names the avatar after its own hue, so the word matches the colour', () => {
+    for (const band of SIGIL_HUE_WORDS) {
+      const tint = generateTint(band.until - 1)
       const identity = generateGuestIdentity(SIGIL_FAMILIES[0], tint)
-      expect(identity.name.startsWith(tint.word)).toBe(true)
-      expect(identity.avatarKey).toBe(`sigil-canine-${tint.key}`)
-      expect(identity.imageUrl).toBe(`/avatars/sigils/canine-${tint.key}.svg`)
+      expect(identity.name.startsWith(band.word)).toBe(true)
+      expect(identity.avatarKey).toBe(`sigil-canine-${tint.hex}`)
+      expect(identity.imageUrl).toBe(`/avatars/sigils/canine-${tint.hex}.svg`)
     }
   })
 
@@ -31,6 +62,51 @@ describe('generateGuestIdentity', () => {
       const identity = generateGuestIdentity(SIGIL_FAMILIES[0])
       expect(identity.name).toMatch(/^[A-Z][a-z]+[A-Z][a-z]*\d{4}$/)
     }
+  })
+})
+
+describe('generateTint', () => {
+  it('always produces a 6-digit hex', () => {
+    for (let i = 0; i < 200; i += 1) {
+      expect(generateTint().hex).toMatch(HEX)
+    }
+  })
+
+  it('stays legible under the near-white silhouette at every hue', () => {
+    // HSL lightness is not perceptual, so an uncompensated yellow would wash the
+    // silhouette out. Solving lightness for a target luminance keeps every hue in
+    // the same contrast band.
+    for (let hue = 0; hue < 360; hue += 3) {
+      for (let i = 0; i < 5; i += 1) {
+        const ratio = contrastAgainstSilhouette(generateTint(hue).hex)
+        expect(ratio).toBeGreaterThan(2.8)
+        expect(ratio).toBeLessThan(5)
+      }
+    }
+  })
+
+  it('leans saturated without piling up at fully saturated', () => {
+    const saturations = Array.from({ length: 400 }, () => {
+      const [r, g, b] = hexToRgb(generateTint().hex)
+      const max = Math.max(r, g, b)
+      const min = Math.min(r, g, b)
+      return max === 0 ? 0 : (max - min) / max
+    })
+    const mean = saturations.reduce((sum, value) => sum + value, 0) / saturations.length
+    expect(mean).toBeGreaterThan(0.6)
+    expect(saturations.filter((value) => value > 0.99).length / saturations.length).toBeLessThan(0.1)
+  })
+
+  it('covers the whole wheel', () => {
+    const words = new Set(Array.from({ length: 600 }, () => generateTint().word))
+    expect(words.size).toBe(new Set(SIGIL_HUE_WORDS.map((band) => band.word)).size)
+  })
+})
+
+describe('hueWord', () => {
+  it('wraps hues outside 0-360 back onto a band', () => {
+    expect(hueWord(370)).toBe(hueWord(10))
+    expect(hueWord(-10)).toBe(hueWord(350))
   })
 })
 
@@ -51,39 +127,26 @@ describe('generateGuestIdentities', () => {
     expect(generateGuestIdentities(99)).toHaveLength(SIGIL_FAMILIES.length)
   })
 
-  it('does not repeat a tint across the choices', () => {
-    for (let i = 0; i < 20; i += 1) {
-      const tints = generateGuestIdentities().map(
-        (item) => SIGIL_TINTS.find((tint) => item.name.startsWith(tint.word)),
+  it('spreads the choices around the colour wheel rather than clustering', () => {
+    // One hue per equal sector, so the widest gap between neighbouring choices can
+    // never span more than two sectors. Six uniform hues would blow past that.
+    for (let i = 0; i < 50; i += 1) {
+      const hues = generateGuestIdentities()
+        .map((item) => hueOf(item.avatarKey.split('-').pop()))
+        .sort((a, b) => a - b)
+      const gaps = hues.map((hue, index) =>
+        index === 0 ? hue + 360 - hues[hues.length - 1] : hue - hues[index - 1],
       )
-      expect(new Set(tints).size).toBe(tints.length)
+      expect(Math.max(...gaps)).toBeLessThan(2 * (360 / GUEST_IDENTITY_CHOICES))
     }
   })
 })
 
 describe('sigil assets', () => {
-  it('ships an SVG file for every family in every tint', () => {
-    for (const family of SIGIL_FAMILIES) {
-      for (const tint of SIGIL_TINTS) {
-        expect(existsSync(`public/avatars/sigils/${family.key}-${tint.key}.svg`)).toBe(true)
-      }
-    }
-  })
-
-  it('paints each sigil in its own tint rather than a flat dark disc', () => {
-    for (const tint of SIGIL_TINTS) {
-      const svg = readFileSync(`public/avatars/sigils/canine-${tint.key}.svg`, 'utf8')
-      expect(svg).toContain(tint.hex)
-    }
-  })
-
-  it('uses families and tints the backend also accepts', () => {
-    const catalog = readFileSync('../backend/internal/avatars/catalog.go', 'utf8')
-    const listed = (name) => {
-      const block = catalog.slice(catalog.indexOf(`var ${name} = `))
-      return [...block.slice(0, block.indexOf('}')).matchAll(/"([a-z]+)"/g)].map((m) => m[1])
-    }
-    expect(listed('SigilFamilies').sort()).toEqual(SIGIL_FAMILIES.map((f) => f.key).sort())
-    expect(listed('SigilTints').sort()).toEqual(SIGIL_TINTS.map((t) => t.key).sort())
+  it('uses families the backend also draws', () => {
+    const sigil = readFileSync('../backend/internal/avatars/sigil.go', 'utf8')
+    const block = sigil.slice(sigil.indexOf('var SigilFamilies = '))
+    const listed = [...block.slice(0, block.indexOf('}')).matchAll(/"([a-z]+)"/g)].map((m) => m[1])
+    expect(listed.sort()).toEqual(SIGIL_FAMILIES.map((family) => family.key).sort())
   })
 })
