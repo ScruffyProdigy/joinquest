@@ -5,7 +5,7 @@ description: Use when a task's pull request has merged and its acceptance criter
 
 # Finishing a task
 
-Merged is not finished. A task leaves behind a worktree, a Docker stack, a local branch and an open ticket, and none of them clear themselves.
+Merged is not finished. A task leaves behind a worktree, a Docker stack, a local branch, a branch on GitHub and an open ticket, and none of them clear themselves.
 
 **Order matters: tear the Docker stack down _before_ removing the worktree.** `scripts/db.sh` derives `COMPOSE_PROJECT_NAME` from the working copy's path, so once the directory is gone you can no longer ask the repo what its stack was called. That is how stacks get orphaned.
 
@@ -34,9 +34,14 @@ git worktree unlock "$p" 2>/dev/null; git worktree remove "$p"
 
 # 3. Local branch
 git branch -d <branch>
+
+# 4. Branch on GitHub — nothing deletes it for you
+git push origin --delete <branch>
 ```
 
 `-v` drops the stack's volumes. Test databases are disposable; without it every finished ticket leaves a Postgres volume behind forever.
+
+`delete_branch_on_merge` is **off** on this repo, so a merged branch stays on GitHub until someone removes it, and step 3 does not touch the remote. Delete it only once the merge check above has passed — the branch is the only copy of the work until then.
 
 ## Then the ticket
 
@@ -44,7 +49,7 @@ Move it to Done — but **check first**, don't assume either way. The GitHub int
 
 ## Orphan recovery
 
-Two kinds, and the second is invisible to the first check.
+Three kinds. The second is invisible to the first check, and the third lives on GitHub rather than this machine.
 
 **Stack still exists** — the project name is on the containers:
 
@@ -62,9 +67,25 @@ docker volume ls -q -f dangling=true | grep playhub | xargs -r docker volume rm
 
 The invariant worth checking: surviving `*_playhub_pgdata` volumes should map one-to-one to live worktrees plus the main clone. Anything else is an orphan.
 
+**Merged branches still on GitHub** — from every task finished before this step existed:
+
+```bash
+git fetch origin --prune
+git branch -r --merged origin/main --list 'origin/*' | grep -v 'origin/main$'   # look first
+```
+
+Keep the `--list 'origin/*'`. This clone also has a `playhub` remote, and without
+it that remote's `main` is listed as a merged branch — deletable-looking, and very
+much not.
+
+Everything left is already in `main`, so deleting it loses nothing. Still, go one
+at a time rather than piping the list to `--delete`: a merged branch someone has
+since branched off shows up here too.
+
 ## Red flags — stop
 
 - Removing a worktree before tearing down its Docker stack
 - Concluding "merged" without a fresh `git fetch`
 - Marking a ticket Done because the PR merged, without checking the acceptance criteria
 - `docker ps -a` listing `lobby-*` projects whose worktrees no longer exist
+- Deleting a local branch and assuming the GitHub one went with it
