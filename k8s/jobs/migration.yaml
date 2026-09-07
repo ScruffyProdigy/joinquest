@@ -1,8 +1,8 @@
 apiVersion: batch/v1
 kind: Job
 metadata:
-  name: playhub-db-migrate
-  namespace: playhub
+  name: joinquest-db-migrate
+  namespace: joinquest
 spec:
   ttlSecondsAfterFinished: 600
   template:
@@ -10,7 +10,7 @@ spec:
       restartPolicy: Never
       containers:
         - name: migrate
-          image: docker.io/scruffyprodigy/playhub-backend:latest
+          image: docker.io/scruffyprodigy/joinquest-backend:latest
           command: ["./migrate", "-action=up"]
           env:
             - name: DATABASE_URL

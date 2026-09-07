@@ -8,16 +8,16 @@ import (
 	"testing"
 )
 
-const testDBName = "playhub_test"
+const testDBName = "joinquest_test"
 
 // testDBPrefix matches the per-run databases the harness creates so concurrent
-// runs cannot share fixtures: playhub_test_<run id>. See scripts/lib/db-runtime.sh.
+// runs cannot share fixtures: joinquest_test_<run id>. See scripts/lib/db-runtime.sh.
 const testDBPrefix = testDBName + "_"
 
 // RequireURL returns DATABASE_URL for integration tests. It skips unless the database
-// is playhub_test or a per-run playhub_test_<run id>, so go test does not mutate the
-// dev playhub database by accident.
-// Override with ALLOW_TESTS_ON_DEV_DB=1 when intentionally testing against playhub.
+// is joinquest_test or a per-run joinquest_test_<run id>, so go test does not mutate the
+// dev joinquest database by accident.
+// Override with ALLOW_TESTS_ON_DEV_DB=1 when intentionally testing against joinquest.
 func RequireURL(t *testing.T) string {
 	t.Helper()
 

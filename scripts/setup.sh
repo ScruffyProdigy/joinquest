@@ -1,11 +1,11 @@
 #!/bin/bash
 
-# PlayHub Setup Script
-# This script sets up the development environment for PlayHub
+# JoinQuest Setup Script
+# This script sets up the development environment for JoinQuest
 
 set -e
 
-echo "🚀 Setting up PlayHub development environment..."
+echo "🚀 Setting up JoinQuest development environment..."
 
 # Colors for output
 RED='\033[0;31m'
@@ -94,7 +94,7 @@ chmod +x scripts/*.sh
 print_status "All scripts are now executable!"
 
 echo ""
-echo "🎉 PlayHub setup complete!"
+echo "🎉 JoinQuest setup complete!"
 echo ""
 echo "Next steps:"
 echo "  • Copy .env.example to .env (or run ./scripts/db.sh up for PostgreSQL)"

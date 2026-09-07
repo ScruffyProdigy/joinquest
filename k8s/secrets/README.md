@@ -16,7 +16,7 @@ cp k8s/secrets/lobby-openai.example.yaml      k8s/secrets/lobby-openai.yaml
 
 Edit each file:
 
-- **`metadata.namespace`** — must match where you deploy (`joinquest`, `playhub`, `playhub-staging`, …).
+- **`metadata.namespace`** — must match where you deploy (`joinquest`).
 - **`lobby-smtp.yaml`** — paste your Resend API key in `SMTP_PASSWORD`. The backend sends via Resend’s HTTP API by default (same key); set `RESEND_USE_SMTP=true` on the deployment to use SMTP instead.
 - **`lobby-auth-peppers.yaml`** — paste two generated peppers (`openssl rand -base64 32` × 2) into `MAGIC_LINK_PEPPER` and `LOBBY_GAME_TOKEN_PEPPER`. Recommended for production.
 - **`lobby-game-service.yaml`** — optional legacy global token; prefer **`lobby-auth-peppers.yaml`** for per-game `serviceToken` on provision.

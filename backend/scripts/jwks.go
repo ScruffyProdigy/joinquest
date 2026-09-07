@@ -29,7 +29,7 @@ stringData:
 func main() {
 	// Flags
 	name := flag.String("name", "jwks", "Kubernetes Secret name")
-	ns := flag.String("namespace", "playhub", "Kubernetes namespace")
+	ns := flag.String("namespace", "joinquest", "Kubernetes namespace")
 	kid := flag.String("kid", "lobby-dev", "JWKS key id (kid)")
 	yamlOut := flag.String("yamlout", "", "Write Secret YAML to file (default stdout)")
 	jwksOut := flag.String("jwksout", "", "Write Public JSON to file (default stdout)")

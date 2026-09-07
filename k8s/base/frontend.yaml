@@ -2,7 +2,7 @@ apiVersion: v1
 kind: ConfigMap
 metadata:
   name: lobby-frontend-config
-  namespace: playhub
+  namespace: joinquest
   labels: { app: lobby-frontend }
 data:
   REACT_APP_ENV: local
@@ -12,7 +12,7 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: lobby-frontend
-  namespace: playhub
+  namespace: joinquest
   labels: { app: lobby-frontend }
 spec:
   replicas: 1
@@ -23,7 +23,7 @@ spec:
     spec:
       containers:
         - name: frontend
-          image: docker.io/scruffyprodigy/playhub-frontend:latest
+          image: docker.io/scruffyprodigy/joinquest-frontend:latest
           imagePullPolicy: Always
           ports:
             - containerPort: 80
@@ -44,7 +44,7 @@ apiVersion: v1
 kind: Service
 metadata:
   name: lobby-frontend
-  namespace: playhub
+  namespace: joinquest
 spec:
   selector: { app: lobby-frontend }
   ports:

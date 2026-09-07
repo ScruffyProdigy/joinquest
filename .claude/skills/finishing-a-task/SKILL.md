@@ -61,11 +61,15 @@ docker compose -p <project> down -v
 **Containers gone, volume left behind** — belongs to no project, so it appears in no `docker ps` and no compose listing. Torn down without `-v`, or the containers were pruned separately. These accumulate silently at ~70MB each:
 
 ```bash
-docker volume ls -q -f dangling=true | grep playhub      # look first
-docker volume ls -q -f dangling=true | grep playhub | xargs -r docker volume rm
+docker volume ls -q -f dangling=true | grep joinquest      # look first
+docker volume ls -q -f dangling=true | grep joinquest | xargs -r docker volume rm
 ```
 
-The invariant worth checking: surviving `*_playhub_pgdata` volumes should map one-to-one to live worktrees plus the main clone. Anything else is an orphan.
+The invariant worth checking: surviving `*_joinquest_pgdata` volumes should map one-to-one to live worktrees plus the main clone. Anything else is an orphan.
+
+Volumes created before JQ-170 are named `*_playhub_pgdata` and the grep above will not
+find them. Sweep them once with `grep playhub`; every one of them is an orphan, because
+no current working copy uses that name.
 
 **Merged branches still on GitHub** — from every task finished before this step existed:
 
@@ -74,9 +78,9 @@ git fetch origin --prune
 git branch -r --merged origin/main --list 'origin/*' | grep -v 'origin/main$'   # look first
 ```
 
-Keep the `--list 'origin/*'`. This clone also has a `playhub` remote, and without
-it that remote's `main` is listed as a merged branch — deletable-looking, and very
-much not.
+Keep the `--list 'origin/*'`. It scopes the listing to `origin`, so a second remote's
+`main` cannot show up as a merged branch — deletable-looking, and very much not.
+(The `playhub` remote this once guarded against was removed in JQ-167.)
 
 Everything left is already in `main`, so deleting it loses nothing. Still, go one
 at a time rather than piping the list to `--delete`: a merged branch someone has

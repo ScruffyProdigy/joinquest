@@ -45,23 +45,11 @@ const environment = window.env.REACT_APP_ENV;
 
 ### Local Development
 
-**File**: `k8s/env/local.yaml`
+**Deployment**: `./scripts/dev.sh` (Docker Compose) — this is the local workflow; see
+[lobby-maintenance.md](./lobby-maintenance.md#local-stack).
 
-```yaml
-apiVersion: v1
-kind: ConfigMap
-metadata:
-  name: lobby-frontend-config
-  namespace: playhub
-  labels: { env: local }
-data:
-  REACT_APP_ENV: local
-  REACT_APP_API_BASE_URL: "http://localhost:8080"
-```
-
-**Deployment**: `./scripts/dev.sh` (Docker Compose) — this is the day-to-day local workflow; see [lobby-maintenance.md](./lobby-maintenance.md#local-stack).
-
-A `./scripts/deploy-local.sh` script also exists for deploying to a local minikube cluster (namespace `playhub`), but it's a legacy path not exercised by the current contributor workflow — prefer `dev.sh`.
+The `k8s/env/local.yaml` overlay and `scripts/deploy-local.sh` (minikube) were removed in
+JQ-169; local Kubernetes was not an exercised path.
 
 - Backend GraphQL: `http://localhost:8080/graphql`
 - Frontend: `http://localhost:5173`
@@ -88,15 +76,20 @@ data:
 ./scripts/deploy-joinquest.sh
 ```
 
-This is the canonical, actively-maintained deploy path — documented in full in [lobby-maintenance.md](./lobby-maintenance.md#deploy-to-joinquestcc-gke). It applies `k8s/base/*` with the namespace rewritten from `playhub` to `joinquest`, applies `k8s/env/joinquest.yaml`, runs the migration job, patches game handoff URLs, and restarts deployments.
+This is the canonical, actively-maintained deploy path — documented in full in [lobby-maintenance.md](./lobby-maintenance.md#deploy-to-joinquestcc-gke). It applies `k8s/base/*` (namespace `joinquest`), applies `k8s/env/joinquest.yaml`, runs the migration job, patches game handoff URLs, and restarts deployments.
 
 - Namespace: `joinquest`
 - Public URL: `https://joinquest.cc`
 - GraphQL: `https://joinquest.cc/graphql`
 
-### Unused legacy templates (staging.yaml / production.yaml)
+### Staging
 
-`k8s/env/staging.yaml` and `k8s/env/production.yaml`, and their matching scripts `scripts/deploy-staging.sh` / `scripts/deploy-production.sh`, predate the JoinQuest rebrand and the move to the `joinquest` namespace. They target namespaces `playhub-staging` / `playhub-production`, placeholder kubectl contexts (`staging-cluster` / `production-cluster`), and domains (`staging.playhub.com`, `playhub.com`) that don't correspond to any live infrastructure. They still exist in the repo and are technically runnable, but they are **not** part of the current deploy flow, aren't listed in [scripts/README.md](../scripts/README.md)'s contributor script table, and shouldn't be used — they're kept only as historical reference. There is currently no staging environment.
+There is currently no staging environment. The `deploy-staging.sh` / `deploy-production.sh`
+scripts and their `k8s/env/staging.yaml` / `production.yaml` overlays were removed in JQ-169:
+they predated the JoinQuest rebrand, targeted kubectl contexts and domains that never existed,
+and had drifted badly out of date (no migration job, no Redis, no OAuth or game-service secrets).
+When a staging environment is wanted, parameterise `scripts/deploy-joinquest.sh` on namespace
+and overlay rather than reviving those files.
 
 ## Environment Variables
 

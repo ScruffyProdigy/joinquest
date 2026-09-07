@@ -4,7 +4,7 @@ apiVersion: batch/v1
 kind: CronJob
 metadata:
   name: lobby-stale-session-cleanup
-  namespace: playhub
+  namespace: joinquest
 spec:
   schedule: "0 */6 * * *"
   concurrencyPolicy: Forbid

@@ -52,7 +52,7 @@ backend/
 ```
 
 Integration tests require PostgreSQL. `./scripts/test-backend.sh` migrates and uses an isolated
-`playhub_test_<run id>` database, created and dropped per run so concurrent runs never share fixtures.
+`joinquest_test_<run id>` database, created and dropped per run so concurrent runs never share fixtures.
 See [development.md](./development.md#running-suites-concurrently).
 
 ### Running Backend Tests
@@ -102,7 +102,7 @@ GitHub Actions run backend tests, frontend unit tests, gqlgen drift checks, and 
 
 ## Best Practices
 
-1. **Backend integration tests** must not mutate the dev `playhub` database — use the per-run test database via `./scripts/test-backend.sh`. `testdb.RequireURL` skips any run pointed at something other than `playhub_test` or `playhub_test_<run id>`.
+1. **Backend integration tests** must not mutate the dev `joinquest` database — use the per-run test database via `./scripts/test-backend.sh`. `testdb.RequireURL` skips any run pointed at something other than `joinquest_test` or `joinquest_test_<run id>`.
 2. **Queue/handoff tests** restore seeded game 001 handoff URLs after runs (`RestorePrimaryGameHandoffURLs`).
 3. After GraphQL schema changes, run `go run github.com/99designs/gqlgen@v0.17.81 generate` in `backend/` and commit generated files.
 4. **Frontend tests** mock `fetch` / GraphQL in `src/test/setup.js`; E2E uses the real API.

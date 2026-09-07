@@ -3,7 +3,7 @@ apiVersion: batch/v1
 kind: Job
 metadata:
   name: lobby-patch-game-handoff-urls
-  namespace: playhub
+  namespace: joinquest
 spec:
   ttlSecondsAfterFinished: 600
   template:

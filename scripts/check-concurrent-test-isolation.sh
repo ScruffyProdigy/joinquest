@@ -56,7 +56,7 @@ db_one="$(lobby_test_database "$(lobby_new_run_id)")"
 db_two="$(lobby_test_database "$(lobby_new_run_id)")"
 
 assert_ne "two runs get different databases" "$db_one" "$db_two"
-assert_match "per-run database keeps the playhub_test_ prefix" "$db_one" '^playhub_test_[a-z0-9_]+$'
+assert_match "per-run database keeps the joinquest_test_ prefix" "$db_one" '^joinquest_test_[a-z0-9_]+$'
 if [ "${#db_one}" -le 63 ]; then
   pass "per-run database fits Postgres' 63-byte identifier limit (${#db_one})"
 else

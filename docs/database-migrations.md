@@ -205,7 +205,7 @@ Migration tests are located in `backend/internal/migrate/migrate_test.go` and ca
 go test ./internal/migrate -v
 ```
 
-Integration tests use a separate database (`playhub_test`) so they never touch dev data:
+Integration tests use a separate database (`joinquest_test`) so they never touch dev data:
 
 ```bash
 ./scripts/db.sh test-migrate          # create DB + run migrations
@@ -215,7 +215,7 @@ cd backend && go test ./...
 
 Or run `./scripts/test-backend.sh` / `./scripts/test.sh`, which set this automatically.
 
-`go test` against `playhub` is blocked unless `ALLOW_TESTS_ON_DEV_DB=1` is set.
+`go test` against `joinquest` is blocked unless `ALLOW_TESTS_ON_DEV_DB=1` is set.
 
 ## Best Practices
 

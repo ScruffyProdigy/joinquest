@@ -118,12 +118,12 @@ jobs:
     
     - name: Build frontend Docker image
       run: |
-        docker build -t playhub-frontend:test frontend/
+        docker build -t joinquest-frontend:test frontend/
     
     - name: Test environment injection in Docker
       run: |
         # Test that the Docker entrypoint script works
-        docker run --rm -e REACT_APP_ENV=test -e REACT_APP_API_BASE_URL=http://test-api playhub-frontend:test sh -c '
+        docker run --rm -e REACT_APP_ENV=test -e REACT_APP_API_BASE_URL=http://test-api joinquest-frontend:test sh -c '
           /docker-entrypoint.d/30-env-injection.sh
           cat /usr/share/nginx/html/env.js
         ' | grep -q "REACT_APP_ENV.*test"
@@ -131,13 +131,13 @@ jobs:
     - name: Test different environment configurations
       run: |
         # Test staging environment
-        docker run --rm -e REACT_APP_ENV=staging -e REACT_APP_API_BASE_URL=https://api-staging.playhub.com playhub-frontend:test sh -c '
+        docker run --rm -e REACT_APP_ENV=staging -e REACT_APP_API_BASE_URL=https://api-staging.joinquest.cc joinquest-frontend:test sh -c '
           /docker-entrypoint.d/30-env-injection.sh
           cat /usr/share/nginx/html/env.js
         ' | grep -q "staging"
         
         # Test production environment
-        docker run --rm -e REACT_APP_ENV=production -e REACT_APP_API_BASE_URL=https://api.playhub.com playhub-frontend:test sh -c '
+        docker run --rm -e REACT_APP_ENV=production -e REACT_APP_API_BASE_URL=https://api.joinquest.cc joinquest-frontend:test sh -c '
           /docker-entrypoint.d/30-env-injection.sh
           cat /usr/share/nginx/html/env.js
         ' | grep -q "production"
@@ -147,7 +147,7 @@ jobs:
         # nginx regex locations always win over prefix locations, so a plain
         # "location /env.js" silently inherits the *.js hashed-asset immutable/1y
         # caching rule. Guard against that regressing.
-        CID=$(docker run -d -p 8099:80 playhub-frontend:test)
+        CID=$(docker run -d -p 8099:80 joinquest-frontend:test)
         trap 'docker rm -f "$CID" >/dev/null' EXIT
 
         for i in $(seq 1 30); do
@@ -205,7 +205,7 @@ jobs:
         done
         grep -q "lobby-frontend-config" k8s/base/frontend.yaml || (echo "Missing frontend ConfigMap in base" && exit 1)
         grep -q "configMapRef" k8s/base/frontend.yaml || (echo "Frontend base must load env from ConfigMap" && exit 1)
-        grep -A2 'path: /.well-known' k8s/base/ingress.yaml | grep -q 'pathType: Prefix' || (echo "JWKS ingress path must use Prefix" && exit 1)
+        grep -A2 'path: /.well-known' k8s/env/joinquest-ingress.yaml | grep -q 'pathType: Prefix' || (echo "JWKS ingress path must use Prefix" && exit 1)
         grep -q "secretKeyRef" k8s/base/backend.yaml || (echo "Backend must load JWKS secret" && exit 1)
     
     - name: Test deployment scripts

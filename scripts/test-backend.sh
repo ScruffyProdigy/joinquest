@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# PlayHub Backend Test Script
+# JoinQuest Backend Test Script
 # This script runs backend tests with detailed output
 
 set -e
@@ -29,12 +29,12 @@ print_error() {
     echo -e "${RED}✗${NC} $1"
 }
 
-echo "🔧 Running PlayHub Backend Tests..."
+echo "🔧 Running JoinQuest Backend Tests..."
 echo ""
 
 # Check if we're in the right directory
 if [ ! -d "backend" ]; then
-    print_error "Please run this script from the PlayHub project root directory"
+    print_error "Please run this script from the JoinQuest project root directory"
     exit 1
 fi
 

@@ -1,5 +1,5 @@
 #!/bin/bash
-# Deploy Lobby to namespace joinquest (GKE demo). Rewrites playhub -> joinquest in k8s/base.
+# Deploy Lobby to namespace joinquest (GKE demo).
 # Secrets in k8s/secrets/*.yaml must already use metadata.namespace: joinquest.
 set -e
 
@@ -35,10 +35,6 @@ if [ -n "$CONTEXT" ]; then
   kubectl config use-context "$CONTEXT"
 fi
 
-apply_playhub_as_joinquest() {
-  sed 's/namespace: playhub/namespace: joinquest/g' "$1" | kubectl apply -f -
-}
-
 if ! kubectl get namespace "$NAMESPACE" >/dev/null 2>&1; then
   kubectl create namespace "$NAMESPACE"
 fi
@@ -62,10 +58,10 @@ kubectl apply -f k8s/secrets/pg-dsn.yaml
 kubectl apply -f k8s/secrets/jwks-secret.yaml
 
 echo "Applying base manifests (namespace joinquest)..."
-apply_playhub_as_joinquest k8s/base/postgres.yaml
-apply_playhub_as_joinquest k8s/base/redis.yaml
-apply_playhub_as_joinquest k8s/base/backend.yaml
-apply_playhub_as_joinquest k8s/base/frontend.yaml
+kubectl apply -f k8s/base/postgres.yaml
+kubectl apply -f k8s/base/redis.yaml
+kubectl apply -f k8s/base/backend.yaml
+kubectl apply -f k8s/base/frontend.yaml
 
 echo "Applying joinquest TLS certificate + ingress..."
 kubectl apply -f k8s/env/joinquest-certificate.yaml
@@ -97,8 +93,8 @@ echo "Waiting for Redis..."
 kubectl wait --for=condition=ready --timeout=120s pod -l app=lobby-redis -n "$NAMESPACE"
 
 # GKE nodes may cache :latest; pin to the digest we just pushed when available locally.
-BACKEND_IMAGE="docker.io/scruffyprodigy/playhub-backend:latest"
-FRONTEND_IMAGE="docker.io/scruffyprodigy/playhub-frontend:latest"
+BACKEND_IMAGE="docker.io/scruffyprodigy/joinquest-backend:latest"
+FRONTEND_IMAGE="docker.io/scruffyprodigy/joinquest-frontend:latest"
 
 resolve_local_image() {
   local ref=$1
@@ -125,15 +121,14 @@ BACKEND_IMAGE="$(resolve_local_image "$BACKEND_IMAGE")"
 FRONTEND_IMAGE="$(resolve_local_image "$FRONTEND_IMAGE")"
 
 echo "Running database migrations with ${BACKEND_IMAGE}..."
-kubectl delete job playhub-db-migrate -n "$NAMESPACE" --ignore-not-found
-sed 's/namespace: playhub/namespace: joinquest/g' k8s/jobs/migration.yaml \
-  | sed "s|docker.io/scruffyprodigy/playhub-backend:latest|${BACKEND_IMAGE}|" \
+kubectl delete job joinquest-db-migrate -n "$NAMESPACE" --ignore-not-found
+sed "s|docker.io/scruffyprodigy/joinquest-backend:latest|${BACKEND_IMAGE}|" k8s/jobs/migration.yaml \
   | kubectl apply -f -
-kubectl wait --for=condition=complete --timeout=120s job/playhub-db-migrate -n "$NAMESPACE"
-kubectl logs job/playhub-db-migrate -n "$NAMESPACE"
+kubectl wait --for=condition=complete --timeout=120s job/joinquest-db-migrate -n "$NAMESPACE"
+kubectl logs job/joinquest-db-migrate -n "$NAMESPACE"
 
 echo "Applying stale session cleanup CronJob..."
-sed 's/namespace: playhub/namespace: joinquest/g' k8s/jobs/stale-session-cleanup.yaml | kubectl apply -f -
+kubectl apply -f k8s/jobs/stale-session-cleanup.yaml
 
 echo "Patching game catalog handoff URLs for production..."
 run_patch_game_handoff_urls_job "$NAMESPACE"

@@ -27,7 +27,7 @@ export E2E_SIGNIN_LOG_PATH="${E2E_SIGNIN_LOG_PATH:-$ROOT/tmp/e2e-sign-in.log}"
 
 postgres_ready() {
   if command -v docker >/dev/null 2>&1 && docker info >/dev/null 2>&1; then
-    docker compose exec -T postgres pg_isready -U app -d playhub >/dev/null 2>&1
+    docker compose exec -T postgres pg_isready -U app -d joinquest >/dev/null 2>&1
     return $?
   fi
 

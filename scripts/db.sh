@@ -1,5 +1,5 @@
 #!/bin/bash
-# Manage this working copy's PlayHub PostgreSQL instance (docker compose).
+# Manage this working copy's JoinQuest PostgreSQL instance (docker compose).
 #
 # Each working copy gets its own compose project and an ephemeral host port, and
 # each test run gets its own database, so several agents can run the suite at
@@ -79,7 +79,7 @@ database_url() {
     normalize_url "$DATABASE_URL"
     return 0
   fi
-  normalize_url "$(build_url playhub)"
+  normalize_url "$(build_url joinquest)"
 }
 
 test_database_url() {
@@ -158,7 +158,7 @@ preflight_ports() {
 wait_for_postgres() {
   echo "Waiting for PostgreSQL..."
   for i in {1..30}; do
-    if docker compose exec -T postgres pg_isready -U app -d playhub >/dev/null 2>&1; then
+    if docker compose exec -T postgres pg_isready -U app -d joinquest >/dev/null 2>&1; then
       break
     fi
     if [ "$i" -eq 30 ]; then
@@ -217,7 +217,7 @@ case "${1:-}" in
     wait_for_postgres
     ensure_test_database
     (cd backend && DATABASE_URL="$(test_database_url)" make migrate-up)
-    echo "Migrations applied to $TEST_DB_NAME (dev database playhub unchanged)."
+    echo "Migrations applied to $TEST_DB_NAME (dev database joinquest unchanged)."
     ;;
   test-reset)
     require_docker
@@ -248,7 +248,7 @@ SQL
   clean-test-data)
     require_docker
     wait_for_postgres
-    docker compose exec -T postgres psql -U app -d playhub <<'SQL'
+    docker compose exec -T postgres psql -U app -d joinquest <<'SQL'
 BEGIN;
 DELETE FROM magic_links WHERE email LIKE '%@example.com';
 DELETE FROM users WHERE email LIKE '%@example.com';
@@ -259,10 +259,10 @@ SQL
     echo "Demo games and real user accounts were kept."
     ;;
   reset-demo-handoff)
-    # Dev database only (playhub). Integration tests use their own per-run database.
+    # Dev database only (joinquest). Integration tests use their own per-run database.
     require_docker
     wait_for_postgres
-    docker compose exec -T postgres psql -U app -d playhub <<'SQL'
+    docker compose exec -T postgres psql -U app -d joinquest <<'SQL'
 UPDATE games
 SET play_url = 'http://localhost:5174',
     api_base_url = 'http://localhost:3001'
@@ -281,7 +281,7 @@ SQL
   *)
     echo "Usage: $0 {up|down|wait|migrate|reset|url|redis-url|test-url|test-db|test-migrate|test-reset|test-drop|compose-project|clean-test-data|reset-demo-handoff}"
     echo ""
-    echo "  url / migrate     — development database (playhub)"
+    echo "  url / migrate     — development database (joinquest)"
     echo "  redis-url         — this working copy's Redis URL"
     echo "  test-url          — integration test database URL ($TEST_DB_NAME)"
     echo "  test-db           — integration test database name"

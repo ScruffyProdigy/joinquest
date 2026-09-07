@@ -11,7 +11,7 @@ apiVersion: batch/v1
 kind: CronJob
 metadata:
   name: lobby-stale-matched-queue-sweep
-  namespace: playhub
+  namespace: joinquest
 spec:
   schedule: "*/15 * * * *"
   concurrencyPolicy: Forbid
@@ -25,7 +25,7 @@ spec:
           restartPolicy: Never
           containers:
             - name: queuesweep
-              image: docker.io/scruffyprodigy/playhub-backend:latest
+              image: docker.io/scruffyprodigy/joinquest-backend:latest
               command: ["./queuesweep"]
               env:
                 - name: DATABASE_URL
