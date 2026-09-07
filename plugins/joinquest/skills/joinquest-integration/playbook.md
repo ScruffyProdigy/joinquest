@@ -136,6 +136,24 @@ In Agent mode, ask the agent to call `joinquest_integration_list_my_games`. If a
 
 **JWT:** Verify `iss`, `aud` (your API base URL), `matchId`, `seatKey`, `sub`. Publish JWKS at `{lobbyIssuer}/.well-known/jwks.json`.
 
+**Optional per-player endpoints:**
+
+| Endpoint | Purpose |
+|----------|---------|
+| `GET /api/v1/players/{lobbyUserId}/mode-eligibility` | Gate whole modes on progress. Fails open — a silent game means every mode is playable. Guide §12 |
+| `GET /api/v1/players/{lobbyUserId}/queue-options?modeKey=…` | Serve the champion/loadout/deck roster for a mode that declares `preQueue`. Guide §13 |
+
+**Role vs option — do not conflate them.** A **role** (`queuePath`, derived from `seatTemplate`)
+decides who the player is matched *with*. An **option** (`preQueue` on the mode) is what the player
+*brings* and changes nothing about matchmaking. A mode can have either, both, or neither; when it
+has both, the role is chosen first.
+
+Two things about `queue-options` catch people out:
+
+- It **does not fail open.** A mode declaring `preQueue` whose roster cannot be loaded becomes
+  unjoinable, deliberately — see guide §13.
+- A mode with nothing to pick must return `{"groups": []}`, not a 404.
+
 Use Phase 1 seatTemplate plan. Full details: integration guide §3–§8. Pick a **reference game** ([reference-games.md](./reference-games.md)) for API layout and client boot patterns — duel → [rpslr](https://github.com/ScruffyProdigy/rpslr); party/multi-seat → [wordhunt](https://github.com/ScruffyProdigy/wordhunt).
 
 **Local tests:** Add game-repo tests mirroring integration guide §8 (manifest, provision, JWT, JWKS rotation). Use [rpslr](https://github.com/ScruffyProdigy/rpslr) as the primary test template. Run `npm test` before remote JoinQuest checks.

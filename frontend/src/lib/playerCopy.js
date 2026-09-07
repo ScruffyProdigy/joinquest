@@ -104,6 +104,23 @@ export const LEAVE_GAME_NOT_FOUND =
   'We could not find that game to leave. Reload the page if this banner stays.'
 
 
+export const OPTIONS_UNAVAILABLE =
+  "This game can't tell us your options right now. Try again in a moment."
+
+/** Names what the player has picked so far, for the picker footer. */
+export function optionsChosenCount(groups, picks) {
+  const chosen = groups.flatMap((group) => picks[group.key] ?? [])
+  if (chosen.length === 0) {
+    return 'Nothing chosen yet'
+  }
+  return `${chosen.length} chosen`
+}
+
+/** Flattens a player's stored picks into the labels shown beside their role. */
+export function selectedOptionLabels(selectedOptions) {
+  return (selectedOptions ?? []).flatMap((selection) => selection.labels ?? [])
+}
+
 export const GAMES_SEARCH_LABEL = 'Search games'
 export const GAMES_SEARCH_PLACEHOLDER = 'Search games…'
 export const GAMES_SEARCH_EMPTY = 'No games found'
@@ -114,7 +131,13 @@ export function waitingForGroupLine(count) {
   return `Looking for players… (${n} ${n === 1 ? 'player' : 'players'} looking)`
 }
 
-export function bannerWaitingLine(gameName, count, queuePathDisplayName, formingGaps) {
+export function bannerWaitingLine(
+  gameName,
+  count,
+  queuePathDisplayName,
+  formingGaps,
+  selectedOptions,
+) {
   const n = count ?? 0
   const players = `${n} ${n === 1 ? 'player' : 'players'} looking`
   const role = queuePathDisplayName?.trim()
@@ -123,6 +146,12 @@ export function bannerWaitingLine(gameName, count, queuePathDisplayName, forming
     line = `Looking for a group in ${gameName} as ${role} · ${players}`
   } else {
     line = `Looking for a group in ${gameName} · ${players}`
+  }
+  // The picks sit next to the role because that is the pair a waiting player
+  // wants to confirm: which cohort am I in, and what did I bring.
+  const picks = selectedOptionLabels(selectedOptions)
+  if (picks.length > 0) {
+    line += ` · ${picks.join(', ')}`
   }
   const needLine = formatFormingGapsNeedLine(formingGaps)
   if (needLine) {

@@ -21,3 +21,11 @@ ALTER TABLE table_seats
 
 ALTER TABLE game_session_participants
     ADD COLUMN IF NOT EXISTS queue_options JSONB NOT NULL DEFAULT '[]'::jsonb;
+
+-- Give the eligibility fixture game (000038) a mode that actually asks for a
+-- deck, so the picker — including a locked choice with its unlock progress —
+-- can be seen locally against `go run ./cmd/fixturegame`, the same way the
+-- locked-mode UI already can.
+UPDATE game_modes
+SET pre_queue = '{"groups":[{"key":"deck","kind":"Deck","label":"Bring a deck","min":1,"max":1}]}'::jsonb
+WHERE id = 'b2000000-0000-4000-8000-000000000003';

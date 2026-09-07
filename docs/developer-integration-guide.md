@@ -324,3 +324,139 @@ query {
   }
 }
 ```
+
+---
+
+## 13. Pre-queue options (optional)
+
+Some modes ask the player to bring something before matchmaking — a champion, a
+loadout, a deck. JoinQuest can render that picker for you, so the choice is made
+in the lobby and handed to you with the match.
+
+**Role vs option.** These are different things and integrators conflate them:
+
+| | What it is | Who it affects | Where it is declared |
+|---|---|---|---|
+| **Role** (`queuePath`) | Which bucket the player queues in — Clue Giver, Attacker | Matchmaking: it decides who they are matched *with* | Derived from `seatTemplate` |
+| **Option** (`preQueue`) | What the player brings — a champion, a kit, a deck | Nothing in matchmaking; it is carried to your game | `preQueue` on the mode |
+
+A mode may have either, both, or neither. When it has both, the player picks the
+role first and then the options, because which options exist can depend on the
+mode.
+
+### Declare the groups in your manifest
+
+Add `preQueue` to a mode in `GET /api/v1/game-modes`:
+
+```json
+{
+  "key": "duel-helpers",
+  "displayName": "Helpers",
+  "seatTemplate": { "count": 2 },
+  "preQueue": {
+    "groups": [
+      { "key": "helpers", "kind": "Loadout", "label": "Choose your two helpers", "min": 2, "max": 2 }
+    ]
+  }
+}
+```
+
+| Field | Notes |
+|-------|-------|
+| `key` | Stable identifier for the group; it comes back to you on provision. |
+| `kind` | `Character`, `Loadout` or `Deck`. Presentation only — it lets the picker look right without JoinQuest knowing what your options mean. |
+| `label` | The player-facing prompt: "Choose your champion", "Bring a deck". |
+| `min` / `max` | How many picks this group takes. Defaults to `1` and `1`. `min: 0` makes the group optional. |
+
+More than one group is allowed — a mode can ask for a weapon *and* an armour set.
+The declaration only says *what to ask*; it never lists the choices.
+
+### Serve the roster per player
+
+The choices themselves come from you, per player, at request time:
+
+```
+GET {apiBaseUrl}/api/v1/players/{lobbyUserId}/queue-options?modeKey=duel-helpers
+```
+
+```json
+{
+  "groups": [
+    {
+      "key": "helpers",
+      "choices": [
+        { "id": "ferrus", "label": "Ferrus", "description": "Robot takes 1 mark", "locked": false },
+        {
+          "id": "rust", "label": "Rust", "locked": true,
+          "unlockModeKey": "casual",
+          "requirement": { "kind": "leaf", "label": "Casual wins", "current": 3, "target": 5 }
+        }
+      ]
+    }
+  ]
+}
+```
+
+A mode with one declared group may answer with a bare `{"choices": [...]}` and
+JoinQuest will adopt it into that group.
+
+Serving the roster live rather than listing it in the manifest is what lets the
+roster be genuinely per player: a card game can offer the decks this account
+actually built, including one made a minute ago.
+
+**A mode with no options must still answer.** Return `{"groups": []}` — a 404
+reads as a broken endpoint, not as "nothing to pick".
+
+### Locking
+
+`locked: true` keeps a choice on the board with its unlock condition showing,
+rather than hiding it, so the player can see what they are working toward.
+`requirement` is exactly the tree from
+[§12](#12-mode-level-eligibility-optional) — same `leaf`/`group` shapes, same
+`all`/`any` operators — so option progress renders the way mode progress does.
+
+Locks are yours to decide and need have nothing to do with money: matches
+played, a mode completed, an account level, a tutorial finished. **A locked
+choice is rejected server-side if a client sends it anyway**, so the lock is real
+and not just a disabled button.
+
+### This endpoint does not fail open
+
+Unlike mode-eligibility, JoinQuest will not guess. If a mode declares groups and
+this endpoint errors, times out or returns unreadable JSON, **that mode becomes
+unjoinable** until it answers, and the player is told why. There is no safe
+default: an empty guess would block a legitimate join, and a permissive one would
+hand out options you never offered.
+
+Modes without `preQueue` are untouched, and the endpoint is never called for them.
+
+### What you receive
+
+The picks arrive with the match, per seat, in the provision payload:
+
+```json
+{
+  "assignment": {
+    "seats": [
+      {
+        "seatKey": "p1",
+        "lobbyUserId": "…",
+        "options": [{ "groupKey": "helpers", "optionIds": ["ferrus", "tempered"] }]
+      }
+    ]
+  }
+}
+```
+
+`options` is omitted entirely for modes without a pre-queue step, so an existing
+game sees an unchanged payload.
+
+Every id in `optionIds` has been checked against the roster you served for that
+player — it exists, it was not locked, and the count is inside the `min`/`max`
+you declared.
+
+### Group play
+
+At a table, each player answers the picker as they claim their seat; nobody
+chooses for anybody else. The picks travel with each player whether the table
+starts on its own or backfills through the lobby.

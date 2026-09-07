@@ -4,8 +4,8 @@ import { graphqlRequest } from './graphql'
 import { isLobbyDebugEnabled, lobbyDebug } from './lobbyDebug'
 
 const JOIN_QUEUE_MUTATION = `
-  mutation JoinQueue($queueId: ID!, $queuePath: String) {
-    joinQueue(queueId: $queueId, queuePath: $queuePath) {
+  mutation JoinQueue($queueId: ID!, $queuePath: String, $options: [QueueOptionSelectionInput!]) {
+    joinQueue(queueId: $queueId, queuePath: $queuePath, options: $options) {
       queued
       queuedCount
       queuePath
@@ -176,10 +176,15 @@ export function clearSubscriptionAuthCache() {
   }
 }
 
-export async function joinQueue(queueId, queuePath) {
+export async function joinQueue(queueId, queuePath, options) {
   const variables = { queueId }
   if (typeof queuePath === 'string' && queuePath.trim()) {
     variables.queuePath = queuePath.trim()
+  }
+  // Omitted rather than sent empty: a mode without a picker must not start
+  // receiving an options argument it never asked for.
+  if (Array.isArray(options) && options.length > 0) {
+    variables.options = options
   }
   const data = await graphqlRequest(JOIN_QUEUE_MUTATION, variables)
   return data.joinQueue
