@@ -8,13 +8,13 @@ Operational guide for **JoinQuest platform contributors** — local dev, testing
 |------|---------|
 | `lobby` | This git repo / local folder |
 | **JoinQuest** | Product; [joinquest.cc](https://joinquest.cc) |
-| `playhub` | Legacy name in Docker images, DB names, k8s templates, GitHub repo |
+| `playhub` | Legacy name in Docker images, DB names, k8s templates |
 
 Clone:
 
 ```bash
-git clone https://github.com/scruffyprodigy/playhub.git
-cd playhub    # folder may be named lobby locally
+git clone https://github.com/scruffyprodigy/joinquest.git
+cd joinquest    # folder may be named lobby locally
 ```
 
 ## Local stack

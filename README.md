@@ -62,7 +62,7 @@ Maintaining this repo (backend, dashboard, deploy): start with **[AGENTS.md](AGE
 
 Helping a game developer integrate with JoinQuest: use the skill in [`.agents/skills/joinquest-integration/`](.agents/skills/joinquest-integration/) (usually installed into their game repo).
 
-> **Naming:** the product is **JoinQuest** (`joinquest.cc`). This folder is often named `lobby` locally. The GitHub repo and some internals still use the legacy name `playhub` (Docker images, database names).
+> **Naming:** the product is **JoinQuest** (`joinquest.cc`). This folder is often named `lobby` locally. Some internals still use the legacy name `playhub` (Docker images, database names).
 
 ## Getting Started
 
@@ -75,8 +75,8 @@ Helping a game developer integrate with JoinQuest: use the skill in [`.agents/sk
 ### Quick Setup
 
 ```bash
-git clone https://github.com/scruffyprodigy/playhub.git
-cd playhub   # or lobby — same repo
+git clone https://github.com/scruffyprodigy/joinquest.git
+cd joinquest   # or lobby — same repo
 ./scripts/setup.sh
 ./scripts/dev.sh
 ```

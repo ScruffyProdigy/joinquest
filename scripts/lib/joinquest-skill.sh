@@ -5,7 +5,7 @@ set -euo pipefail
 joinquest_install_skill() {
   local dest="${1:-.agents/skills/joinquest-integration}"
   local branch="${JOINQUEST_SKILL_BRANCH:-main}"
-  local repo="https://github.com/scruffyprodigy/playhub"
+  local repo="https://github.com/scruffyprodigy/joinquest"
 
   _joinquest_copy_skill() {
     local src=$1
@@ -33,7 +33,7 @@ joinquest_install_skill() {
   tmp="$(mktemp -d)"
 
   echo "Downloading JoinQuest agent skill from $repo ($branch)..."
-  curl -fsSL "https://codeload.github.com/scruffyprodigy/playhub/tar.gz/refs/heads/$branch" \
+  curl -fsSL "https://codeload.github.com/scruffyprodigy/joinquest/tar.gz/refs/heads/$branch" \
     | tar -xz -C "$tmp"
 
   local extracted skill_src

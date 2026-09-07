@@ -6,7 +6,7 @@
     "name": "JoinQuest"
   },
   "homepage": "https://joinquest.cc/developers",
-  "repository": "https://github.com/scruffyprodigy/playhub",
+  "repository": "https://github.com/scruffyprodigy/joinquest",
   "keywords": ["joinquest", "mcp", "game-development", "multiplayer", "lobby", "game-design", "phaser", "threejs"],
   "skills": "skills"
 }

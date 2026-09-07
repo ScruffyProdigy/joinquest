@@ -16,9 +16,12 @@ This repository is the **JoinQuest platform** (player shell + GraphQL API + deve
 |------|---------|
 | `lobby` | Local folder / this repo |
 | **JoinQuest** | Product name; production at [joinquest.cc](https://joinquest.cc) |
-| `playhub` | Legacy internal name — still used for Docker images (`playhub-backend`), DB names (`playhub`, `playhub_test`), and the GitHub repo [`scruffyprodigy/playhub`](https://github.com/scruffyprodigy/playhub) |
+| `playhub` | Legacy internal name — still used for Docker images (`playhub-backend`), DB names (`playhub`, `playhub_test`), and the Go module path (`github.com/scruffyprodigy/playhub`). The GitHub repo is now [`scruffyprodigy/joinquest`](https://github.com/scruffyprodigy/joinquest) |
 
-Do not rename legacy `playhub` identifiers unless explicitly asked.
+Public-facing text and package metadata have been de-`playhub`ed (JQ-167). The
+remaining `playhub` identifiers — Go module path, Docker image names, database
+names, k8s namespaces — carry deployment and schema risk and are tracked
+separately (JQ-168–JQ-170). Do not rename them unless explicitly asked.
 
 ## Repo map
 

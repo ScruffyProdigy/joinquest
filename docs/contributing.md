@@ -6,7 +6,7 @@ We are building infrastructure so indie web developers can **ship multiplayer ga
 
 **AI agents / maintainers:** start with **[AGENTS.md](../AGENTS.md)** and **[lobby-maintenance.md](lobby-maintenance.md)** before exploring the codebase.
 
-> **Naming:** product = **JoinQuest** (`joinquest.cc`). GitHub repo = [`scruffyprodigy/playhub`](https://github.com/scruffyprodigy/playhub). Local folder is often `lobby`. Legacy `playhub` names remain in Docker images and database names.
+> **Naming:** product = **JoinQuest** (`joinquest.cc`). GitHub repo = [`scruffyprodigy/joinquest`](https://github.com/scruffyprodigy/joinquest). Local folder is often `lobby`. Legacy `playhub` names remain in Docker images and database names.
 
 ## Getting Started
 
@@ -21,8 +21,8 @@ We are building infrastructure so indie web developers can **ship multiplayer ga
 
 ### Quick Setup
 ```bash
-git clone https://github.com/scruffyprodigy/playhub.git
-cd playhub   # folder may be named lobby locally
+git clone https://github.com/scruffyprodigy/joinquest.git
+cd joinquest   # folder may be named lobby locally
 ./scripts/setup.sh
 ```
 

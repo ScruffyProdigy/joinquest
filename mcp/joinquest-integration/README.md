@@ -40,7 +40,7 @@ claude mcp add --scope project --transport stdio \
 **Other clients** — GitHub Copilot, Roo Code, Windsurf, and Cline: use the matching tab on the [developer dashboard](https://joinquest.cc/developers) or from your game repo:
 
 ```bash
-JOINQUEST_API_KEY=lq_dev_... curl -fsSL https://raw.githubusercontent.com/scruffyprodigy/playhub/main/scripts/install-joinquest-dev.sh | sh -s -- --copilot
+JOINQUEST_API_KEY=lq_dev_... curl -fsSL https://raw.githubusercontent.com/scruffyprodigy/joinquest/main/scripts/install-joinquest-dev.sh | sh -s -- --copilot
 ```
 
 Flags: `--copilot`, `--roo`, `--windsurf`, `--cline`. See [Client config paths](#client-config-paths) below.
@@ -54,7 +54,7 @@ Cursor injects `ELECTRON_RUN_AS_NODE` into MCP child processes. Use the second n
 ### Optional global install
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/scruffyprodigy/playhub/main/scripts/install-joinquest-mcp.sh | sh
+curl -fsSL https://raw.githubusercontent.com/scruffyprodigy/joinquest/main/scripts/install-joinquest-mcp.sh | sh
 ```
 
 ## Environment

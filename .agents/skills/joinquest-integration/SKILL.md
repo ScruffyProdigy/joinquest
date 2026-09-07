@@ -40,7 +40,7 @@ You are helping a developer integrate their **multiplayer game** with [JoinQuest
 | 6 | Save metadata | Human approved → `joinquest_integration_update_game_metadata` |
 | 7 | Test with friends | Developer confirms test table / playtest — game is fun, not just wired |
 | 8 | Public release | Human confirmed → `joinquest_integration_request_public_release` |
-| 9 | Build playable game | Client + core loop at launch URLs; see playbook Phase 9 + [reference games](https://github.com/ScruffyProdigy/playhub/blob/main/docs/reference-games.md) |
+| 9 | Build playable game | Client + core loop at launch URLs; see playbook Phase 9 + [reference games](https://github.com/ScruffyProdigy/joinquest/blob/main/docs/reference-games.md) |
 
 ## MCP tool sequence (typical)
 

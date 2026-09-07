@@ -14,7 +14,7 @@ Generate an API key at [joinquest.cc/developers](https://joinquest.cc/developers
 
 ```bash
 export JOINQUEST_API_KEY=lq_dev_PASTE_YOUR_KEY
-curl -fsSL https://raw.githubusercontent.com/scruffyprodigy/playhub/main/scripts/install-joinquest-cursor-plugin.sh | sh
+curl -fsSL https://raw.githubusercontent.com/scruffyprodigy/joinquest/main/scripts/install-joinquest-cursor-plugin.sh | sh
 ```
 
 Quit Cursor completely (Cmd+Q), reopen your game project, and start a fresh Agent chat.
@@ -23,7 +23,7 @@ Quit Cursor completely (Cmd+Q), reopen your game project, and start a fresh Agen
 
 ```bash
 export JOINQUEST_API_KEY=lq_dev_PASTE_YOUR_KEY
-curl -fsSL https://raw.githubusercontent.com/scruffyprodigy/playhub/main/scripts/install-joinquest-claude-plugin.sh | sh
+curl -fsSL https://raw.githubusercontent.com/scruffyprodigy/joinquest/main/scripts/install-joinquest-claude-plugin.sh | sh
 ```
 
 Start a new Claude Code session in your game repo (or run `/reload-plugins`).
@@ -36,7 +36,7 @@ Or from your game repo:
 
 ```bash
 export JOINQUEST_API_KEY=lq_dev_PASTE_YOUR_KEY
-curl -fsSL https://raw.githubusercontent.com/scruffyprodigy/playhub/main/scripts/install-joinquest-dev.sh | sh -s -- --copilot   # or --roo, --windsurf, --cline
+curl -fsSL https://raw.githubusercontent.com/scruffyprodigy/joinquest/main/scripts/install-joinquest-dev.sh | sh -s -- --copilot   # or --roo, --windsurf, --cline
 ```
 
 ## What's included
@@ -79,4 +79,4 @@ Reload the editor, then verify the skill and MCP server appear.
 - Cursor: [Cursor Marketplace](https://cursor.com/marketplace/publish)
 - Claude Code: marketplace or team distribution via `.claude-plugin/marketplace.json`
 
-Plugin source lives at `plugins/joinquest/` in the [playhub](https://github.com/scruffyprodigy/playhub) repository.
+Plugin source lives at `plugins/joinquest/` in the [joinquest](https://github.com/scruffyprodigy/joinquest) repository.
