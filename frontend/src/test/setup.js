@@ -140,7 +140,10 @@ function createFetchMock(handlers) {
                 avatarKey: body.variables?.avatarKey ?? handlers.me?.avatarKey,
         },
       }
-    } else if (query.includes('me {') || query.includes('query Me')) {
+    } else if (/\bme\s*\{/.test(query) || query.includes('query Me')) {
+      // Word boundary matters: a plain includes('me {') also matches "game {", so any
+      // room query carrying tables { game { … } } was answered as `me` and never
+      // returned a room.
       data = { me: handlers.me ?? null }
     } else if (query.includes('joinQueue')) {
       data = { joinQueue: handlers.joinQueue ?? { queued: true, queuedCount: 1 } }
@@ -183,6 +186,7 @@ export function mockAuthenticatedSession(
     isGuest: false,
     createdAt: '2026-01-01T00:00:00Z',
   },
+  overrides = {},
 ) {
   global.fetch = createFetchMock({
     me: user,
@@ -191,6 +195,7 @@ export function mockAuthenticatedSession(
     myQueueStatus: defaultQueueStatus,
     myActiveIntent: null,
     myRoom: null,
+    ...overrides,
   })
 }
 

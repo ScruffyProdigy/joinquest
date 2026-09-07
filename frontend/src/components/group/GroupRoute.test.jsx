@@ -1,0 +1,67 @@
+import { render, screen } from '@testing-library/react'
+import { describe, it, expect, beforeEach, vi } from 'vitest'
+import App from '../../App'
+import { mockAuthenticatedSession } from '../../test/setup'
+
+// jsdom's matchMedia reports mobile, where the desktop room panel never renders at
+// all — the suppression assertion below would pass vacuously. Pin it to desktop.
+vi.mock('../../lib/useMediaQuery', () => ({
+  MOBILE_ROOM_QUERY: '(max-width: 900px)',
+  useMediaQuery: () => false,
+}))
+
+function goTo(pathname) {
+  window.history.replaceState({}, '', pathname)
+  Object.defineProperty(window, 'location', {
+    configurable: true,
+    value: { ...window.location, pathname, search: '', assign: vi.fn() },
+  })
+}
+
+const roomWithOneTable = {
+  id: 'room-1',
+  inviteCode: 'ABC123',
+  joinUrl: 'https://joinquest.cc/room/ABC123',
+  host: { id: 'user-1', displayName: 'player' },
+  members: [{ id: 'user-1', displayName: 'player' }],
+  messages: [],
+  tables: [
+    {
+      id: 'table-1',
+      createdAt: '2026-09-01T00:00:00Z',
+      canStart: false,
+      canDiscard: true,
+      game: { id: 'game-1', slug: 'word-hunt', name: 'Word Hunt', accentColor: null },
+      mode: { id: 'mode-1', displayName: 'Arena', queuePaths: [] },
+      king: { id: 'user-1', displayName: 'player' },
+      seats: [],
+      seatSlots: [
+        { seatKey: 'p-1', queuePath: 'Player', displayName: 'Player · 1', user: null },
+        { seatKey: 'p-2', queuePath: 'Player', displayName: 'Player · 2', user: null },
+      ],
+      lookForGroupOptions: [],
+      backfillActive: false,
+      formingGaps: [{ queuePath: 'Player', displayName: 'Player', assigned: 0, needed: 2 }],
+      regroupRoster: [],
+    },
+  ],
+}
+
+describe('the /group route', () => {
+  beforeEach(() => {
+    goTo('/')
+  })
+
+  it('shows the group and keeps the room panel from showing through beside it', async () => {
+    goTo('/group')
+    mockAuthenticatedSession(undefined, { myRoom: roomWithOneTable })
+
+    render(<App />)
+
+    // Assert on something only the loaded page renders: the empty state also
+    // carries the "Your Group" heading, so that alone would pass vacuously.
+    expect(await screen.findByRole('region', { name: /invite friends/i })).toBeInTheDocument()
+    expect(screen.getByText('Still need: Player')).toBeInTheDocument()
+    expect(screen.queryByRole('complementary', { name: 'Room chat' })).not.toBeInTheDocument()
+  })
+})
