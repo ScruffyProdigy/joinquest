@@ -381,14 +381,7 @@ func TestTableRegroupRosterFollowsTheLatestMatch(t *testing.T) {
 	requireNoGraphQLErrors(t, postGraphQL(t, env.Handler, leaveMutation,
 		map[string]any{"tableId": tableID}, first.cookieB))
 
-	userC, err := env.Store.CreateUser(ctx, store.CreateUserParams{
-		Email:       "regroup-backfill-c-" + uuid.NewString() + "@example.com",
-		DisplayName: "Backfill C",
-	})
-	if err != nil {
-		t.Fatalf("CreateUser C: %v", err)
-	}
-	cleaner.TrackUser(userC.ID)
+	userC := createTestUser(t, ctx, env, cleaner, "regroup-backfill-c-"+uuid.NewString()+"@example.com", "Backfill C")
 	_, cookieC := createTestUserSessionForUser(t, env, userC.ID)
 
 	joinMutation := `mutation Join($inviteCode: String!) { joinRoom(inviteCode: $inviteCode) { id } }`

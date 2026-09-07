@@ -320,24 +320,10 @@ func TestReportedResultIsReadableAfterwards(t *testing.T) {
 	provisioner := &syncProvisioner{}
 	env.resolverWithProvisioner(t, provisioner)
 
-	userA, err := env.Store.CreateUser(ctx, store.CreateUserParams{
-		Email:       "result-a-" + uuid.NewString() + "@example.com",
-		DisplayName: "Result A",
-	})
-	if err != nil {
-		t.Fatalf("CreateUser A: %v", err)
-	}
-	cleaner.TrackUser(userA.ID)
+	userA := createTestUser(t, ctx, env, cleaner, "result-a-"+uuid.NewString()+"@example.com", "Result A")
 	_, cookieA := createTestUserSessionForUser(t, env, userA.ID)
 
-	userB, err := env.Store.CreateUser(ctx, store.CreateUserParams{
-		Email:       "result-b-" + uuid.NewString() + "@example.com",
-		DisplayName: "Result B",
-	})
-	if err != nil {
-		t.Fatalf("CreateUser B: %v", err)
-	}
-	cleaner.TrackUser(userB.ID)
+	userB := createTestUser(t, ctx, env, cleaner, "result-b-"+uuid.NewString()+"@example.com", "Result B")
 	_, cookieB := createTestUserSessionForUser(t, env, userB.ID)
 
 	joinQuery := `mutation Join($id: ID!) { joinQueue(queueId: $id) { queued queuedCount } }`
