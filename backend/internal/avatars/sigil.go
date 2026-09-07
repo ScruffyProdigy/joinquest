@@ -15,9 +15,8 @@ import (
 // signing in and finishing the spirit animal journey.
 const SourceSigil = "sigil"
 
-// MarkContrast is what every sigil's mark holds against its disc: the WCAG AA
-// ratio for text, comfortably past the 3:1 floor for graphics. It is met exactly
-// rather than exceeded, because the mark's lightness is solved for it.
+// MarkContrast is what every sigil's mark holds against every part of its disc:
+// the WCAG AA ratio for text, half again above the 3:1 floor for graphics.
 const MarkContrast = 4.5
 
 // markSaturation keeps the mark colourful. Contrast is carried entirely by
@@ -26,12 +25,38 @@ const MarkContrast = 4.5
 // toward white instead would wash the hue out exactly where it is needed most.
 const markSaturation = 72
 
-// gradientSweep is how far the disc's hue rotates from one side to the other. Both
-// stops are re-solved to the disc's own luminance, so the sweep is a pure hue
-// rotation and costs nothing in contrast. Rotating at a fixed HSL lightness would
-// not be free: it swings luminance by as much as 20 L* points, because HSL
-// lightness is not perceptual.
-const gradientSweep = 14.0
+// gradientSweep is how far the disc's hue rotates each way across its face, in
+// *perceived* degrees. Specifying it in HSL degrees instead made the sweep ten
+// times stronger in cyan than in green — the same non-uniformity the hue draw
+// already works around — so greens came out looking flat.
+const gradientSweep = 18.0
+
+// gradientLift is how far apart the two stops sit in lightness, in L*, at the ends
+// of the disc lightness range. The hue rotation alone reads as a colour shift; a
+// little lightness behind it reads as a lit surface.
+//
+// It tapers to nothing in the middle of the range, and that taper is not a
+// nicety — it is what makes the lift free. A mid-lightness disc is the hardest
+// case for the mark, which has to be reachable either well above or well below
+// the disc; spreading such a disc in both directions leaves nowhere to go, and
+// the mark bottoms out at black. A flat lift of this size would strand a sixth of
+// all discs there. Tapered, the lift is largest exactly where the mark has the
+// most headroom and absent where it has the least.
+const gradientLift = 10.0
+
+// The lightness range the picker draws discs from, mirroring LIGHTNESS_MIN and
+// LIGHTNESS_MAX in frontend/src/lib/guestIdentity.js. Only the taper depends on
+// it, so a drift between the two costs a little gradient, never legibility.
+const (
+	discLightnessMid   = 50.0
+	discLightnessReach = 38.0
+)
+
+// gradientHalfLift is how far each stop moves from the disc's own lightness.
+func gradientHalfLift(baseL float64) float64 {
+	towardEdge := math.Min(1, math.Abs(baseL-discLightnessMid)/discLightnessReach)
+	return gradientLift * towardEdge / 2
+}
 
 func srgbToLinear(channel float64) float64 {
 	v := channel / 255
@@ -116,30 +141,99 @@ func lightnessForLuminance(h, s, target float64) float64 {
 	return (low + high) / 2
 }
 
-// sigilMark is the colour the silhouette and the rim are drawn in: the disc's own
-// hue, held saturated, with its lightness solved so it clears MarkContrast. It
-// goes lighter than the disc where that is reachable and darker otherwise.
-func sigilMark(hex string) string {
-	discY := luminance(parseHex(hex))
-	hue, _, _ := rgbToHSL(parseHex(hex))
-	target := MarkContrast*(discY+0.05) - 0.05
-	if target > 1 {
-		target = (discY+0.05)/MarkContrast - 0.05
-	}
-	return formatHex(hslToRGB(hue, markSaturation, lightnessForLuminance(hue, markSaturation, target)))
+// perceivedHue is the OKLab hue angle — where a colour sits on the wheel the eye
+// draws, rather than the one sRGB is parameterised by. The two disagree badly:
+// HSL spends 75 degrees on green, across which perceived hue barely moves.
+func perceivedHue(rgb [3]float64) float64 {
+	r, g, b := srgbToLinear(rgb[0]), srgbToLinear(rgb[1]), srgbToLinear(rgb[2])
+	l := math.Cbrt(0.4122214708*r + 0.5363325363*g + 0.0514459929*b)
+	m := math.Cbrt(0.2119034982*r + 0.6806995451*g + 0.1073969566*b)
+	s := math.Cbrt(0.0883024619*r + 0.2817188376*g + 0.6299787005*b)
+	a := 1.9779984951*l - 2.428592205*m + 0.4505937099*s
+	bb := 0.0259040371*l + 0.7827717662*m - 0.808675766*s
+	return math.Mod(math.Atan2(bb, a)*180/math.Pi+360, 360)
 }
 
-// sigilGradient rotates the disc's hue across the face while holding its
-// luminance, so the disc has depth without spending any of the contrast budget.
+func hueGap(a, b float64) float64 {
+	d := math.Mod(math.Abs(a-b), 360)
+	return math.Min(d, 360-d)
+}
+
+// hueForPerceivedShift finds the HSL hue sitting `shift` perceived degrees around
+// the wheel from `hue`. Perceived hue rises monotonically with HSL hue, so a
+// bisection on the rotation lands it.
+func hueForPerceivedShift(hue, sat, targetY, shift float64) float64 {
+	at := func(h float64) [3]float64 {
+		return hslToRGB(h, sat, lightnessForLuminance(h, sat, targetY))
+	}
+	base := perceivedHue(at(hue))
+	direction := 1.0
+	if shift < 0 {
+		direction = -1
+	}
+	want := math.Abs(shift)
+	low, high := 0.0, 150.0
+	for i := 0; i < 18; i++ {
+		mid := (low + high) / 2
+		if hueGap(perceivedHue(at(hue+direction*mid)), base) < want {
+			low = mid
+		} else {
+			high = mid
+		}
+	}
+	return math.Mod(hue+direction*(low+high)/2+360, 360)
+}
+
+func lightnessStar(y float64) float64 {
+	if y > 0.008856 {
+		return 116*math.Cbrt(y) - 16
+	}
+	return y * 903.3
+}
+
+func luminanceForLightnessStar(lstar float64) float64 {
+	f := (lstar + 16) / 116
+	if f > 6.0/29.0 {
+		return f * f * f
+	}
+	return 3 * (6.0 / 29.0) * (6.0 / 29.0) * (f - 4.0/29.0)
+}
+
+// sigilGradient sweeps the disc's hue across its face and parts the two stops in
+// lightness. The hue shift is measured in perceived degrees so every disc gets the
+// same visible sweep — measured in HSL degrees it ran ten times stronger in cyan
+// than in green. The lighter stop is always the same one, so a row of avatars
+// reads as lit from a single place rather than from all directions at once.
 func sigilGradient(hex string) (string, string) {
 	rgb := parseHex(hex)
-	discY := luminance(rgb)
 	hue, sat, _ := rgbToHSL(rgb)
-	stop := func(shift float64) string {
-		h := math.Mod(hue+shift+360, 360)
-		return formatHex(hslToRGB(h, sat, lightnessForLuminance(h, sat, discY)))
+	baseY := luminance(rgb)
+	baseL := lightnessStar(baseY)
+	half := gradientHalfLift(baseL)
+	stop := func(shift, lift float64) string {
+		h := hueForPerceivedShift(hue, sat, baseY, shift)
+		y := luminanceForLightnessStar(math.Max(0, math.Min(100, baseL+lift)))
+		return formatHex(hslToRGB(h, sat, lightnessForLuminance(h, sat, y)))
 	}
-	return stop(-gradientSweep), stop(gradientSweep)
+	return stop(-gradientSweep, half), stop(gradientSweep, -half)
+}
+
+// sigilMark is the colour the silhouette and the rim are drawn in: the disc's own
+// hue, held saturated, with its lightness solved so it clears MarkContrast against
+// the least favourable part of the gradient — the lightest stop when the mark goes
+// lighter, the darkest when it goes darker. Solving against the worst point is
+// what lets the disc carry a lightness sweep for free.
+func sigilMark(hex string) string {
+	hue, _, _ := rgbToHSL(parseHex(hex))
+	from, to := sigilGradient(hex)
+	a, b := luminance(parseHex(strings.TrimPrefix(from, "#"))), luminance(parseHex(strings.TrimPrefix(to, "#")))
+	lightest, darkest := math.Max(a, b), math.Min(a, b)
+
+	target := MarkContrast*(lightest+0.05) - 0.05
+	if target > 1 {
+		target = (darkest+0.05)/MarkContrast - 0.05
+	}
+	return formatHex(hslToRGB(hue, markSaturation, lightnessForLuminance(hue, markSaturation, target)))
 }
 
 // SigilFamilies are the guest-tier silhouettes. A generated guest name picks the

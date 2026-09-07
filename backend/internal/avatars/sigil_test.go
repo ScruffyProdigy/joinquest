@@ -104,33 +104,38 @@ func TestSigilHandlerServesRenderedSVG(t *testing.T) {
 	}
 }
 
-// The mark carries the whole legibility guarantee, so it is checked across the
-// lightness range the picker actually draws from rather than at a single colour.
-func TestSigilMarkMeetsItsContrastEverywhere(t *testing.T) {
+// The mark carries the whole legibility guarantee, and it has to hold across the
+// disc's sweep rather than only at its middle — so both gradient stops are checked,
+// across the lightness range the picker actually draws from.
+func TestSigilMarkMeetsItsContrastAcrossTheSweep(t *testing.T) {
 	for _, hex := range []string{
-		"0a2312", "123a5c", "2f6f3f", "7a3f9c", "c04a2a",
-		"9ad4a8", "cfe6f5", "f0c8d8", "e8e2b0", "f5f7f2",
+		"0a2312", "123a5c", "2f6f3f", "7a3f9c", "c04a2a", "8a8420",
+		"9ad4a8", "cfe6f5", "f0c8d8", "e8e2b0", "f5f7f2", "4a4a4a",
 	} {
-		disc := luminance(parseHex(hex))
 		mark := luminance(parseHex(strings.TrimPrefix(sigilMark(hex), "#")))
-		got := (math.Max(disc, mark) + 0.05) / (math.Min(disc, mark) + 0.05)
-		if math.Abs(got-MarkContrast) > 0.06 {
-			t.Fatalf("sigilMark(%q) contrast = %.2f:1, want %.2f:1", hex, got, MarkContrast)
+		from, to := sigilGradient(hex)
+		for _, stop := range []string{from, to, "#" + hex} {
+			disc := luminance(parseHex(strings.TrimPrefix(stop, "#")))
+			got := (math.Max(disc, mark) + 0.05) / (math.Min(disc, mark) + 0.05)
+			if got < MarkContrast-0.05 {
+				t.Fatalf("mark on %q reads %.2f:1 against %s, want at least %.2f:1",
+					hex, got, stop, MarkContrast)
+			}
 		}
 	}
 }
 
 // A mark that washed out to white or black would defeat the point of deriving it
-// from the disc, so it has to keep some of the disc's own colour.
+// from the disc. This is the check that catches an unreachable contrast target:
+// when the solve cannot land, it bottoms out at black and the hue goes with it.
 func TestSigilMarkKeepsTheDiscsHue(t *testing.T) {
-	for _, hex := range []string{"0a2312", "2f6f3f", "c04a2a", "9ad4a8", "f0c8d8"} {
+	for _, hex := range []string{
+		"0a2312", "2f6f3f", "c04a2a", "9ad4a8", "f0c8d8", "8a8420", "123a5c",
+	} {
 		discHue, _, _ := rgbToHSL(parseHex(hex))
-		markHue, markSat, _ := rgbToHSL(parseHex(strings.TrimPrefix(sigilMark(hex), "#")))
-		drift := math.Abs(markHue - discHue)
-		if drift > 180 {
-			drift = 360 - drift
-		}
-		if drift > 5 {
+		markRGB := parseHex(strings.TrimPrefix(sigilMark(hex), "#"))
+		markHue, markSat, _ := rgbToHSL(markRGB)
+		if drift := hueGap(markHue, discHue); drift > 5 {
 			t.Fatalf("sigilMark(%q) drifted %.1f degrees off the disc hue", hex, drift)
 		}
 		if markSat < 20 {
@@ -139,21 +144,69 @@ func TestSigilMarkKeepsTheDiscsHue(t *testing.T) {
 	}
 }
 
-// The gradient is a hue rotation, not a lightness ramp: both stops sit on the
-// disc's own luminance so the sweep spends none of the contrast budget.
-func TestSigilGradientHoldsLuminance(t *testing.T) {
-	for _, hex := range []string{"0a2312", "123a5c", "c04a2a", "9ad4a8", "e8e2b0"} {
-		want := luminance(parseHex(hex))
+// The sweep is specified in perceived degrees so that every disc gets the same
+// visible gradient. Measured in HSL degrees instead it ran ten times stronger in
+// cyan than in green.
+func TestSigilGradientSweepsEvenlyByEye(t *testing.T) {
+	var spans []float64
+	for _, hex := range []string{
+		"b32d1e", "b3721e", "8a8420", "3f9a2c", "1f9a6a", "1f8f9a",
+		"2a5fb3", "5a3fb3", "9a2f8a", "b32d5e",
+	} {
 		from, to := sigilGradient(hex)
-		for _, stop := range []string{from, to} {
-			got := luminance(parseHex(strings.TrimPrefix(stop, "#")))
-			if math.Abs(got-want) > 0.005 {
-				t.Fatalf("gradient stop %s of %q is Y %.4f, want %.4f", stop, hex, got, want)
-			}
+		span := hueGap(
+			perceivedHue(parseHex(strings.TrimPrefix(from, "#"))),
+			perceivedHue(parseHex(strings.TrimPrefix(to, "#"))),
+		)
+		if span < gradientSweep {
+			t.Fatalf("gradient on %q sweeps only %.1f perceived degrees", hex, span)
 		}
-		if from == to {
-			t.Fatalf("gradient for %q does not sweep", hex)
+		spans = append(spans, span)
+	}
+	low, high := spans[0], spans[0]
+	for _, v := range spans {
+		low, high = math.Min(low, v), math.Max(high, v)
+	}
+	if high/low > 1.35 {
+		t.Fatalf("sweep is uneven by eye: %.1f to %.1f perceived degrees", low, high)
+	}
+}
+
+// The two stops part in lightness as well as hue, always the same way round so a
+// row of avatars reads as lit from one place, and by an amount that tapers to
+// nothing in the middle of the lightness range — which is what keeps the lift from
+// stranding the mark on discs that have no room for it.
+func TestSigilGradientLiftTapersTowardTheMiddle(t *testing.T) {
+	spread := func(hex string) float64 {
+		from, to := sigilGradient(hex)
+		a := lightnessStar(luminance(parseHex(strings.TrimPrefix(from, "#"))))
+		b := lightnessStar(luminance(parseHex(strings.TrimPrefix(to, "#"))))
+		return a - b
+	}
+	for _, hex := range []string{"0a2312", "c04a2a", "9ad4a8", "e8e2b0", "f2f6f3"} {
+		baseL := lightnessStar(luminance(parseHex(hex)))
+		got := spread(hex)
+		if got <= 0 {
+			t.Fatalf("gradient on %q does not lift its first stop: %.1f L*", hex, got)
 		}
+		// A disc close to black or white has one stop clamped at the end of the
+		// scale, so the expected spread is what survives the clamp.
+		half := gradientHalfLift(baseL)
+		want := math.Min(100, baseL+half) - math.Max(0, baseL-half)
+		if math.Abs(got-want) > 1.5 {
+			t.Fatalf("gradient on %q lifts by %.1f L*, want %.1f", hex, got, want)
+		}
+	}
+
+	// A disc sitting at the middle gets essentially no lift, and one at the edge
+	// gets the full amount.
+	middle := formatHex(hslToRGB(150, 70, lightnessForLuminance(150, 70, luminanceForLightnessStar(discLightnessMid))))
+	if got := spread(strings.TrimPrefix(middle, "#")); got > 1.0 {
+		t.Fatalf("a mid-lightness disc should barely lift, got %.1f L*", got)
+	}
+	edge := formatHex(hslToRGB(150, 70, lightnessForLuminance(150, 70, luminanceForLightnessStar(88))))
+	if got := spread(strings.TrimPrefix(edge, "#")); got < gradientLift*0.8 {
+		t.Fatalf("a disc at the edge should lift fully, got %.1f L*", got)
 	}
 }
 
