@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/scruffyprodigy/joinquest/internal/prequeue"
 )
 
 type formingFireResult struct {
@@ -22,6 +23,7 @@ func (s *Store) joinModeQueueFormingTx(
 	joinCtx *ModeQueueJoinContext,
 	modeQueueID, callerID uuid.UUID,
 	queuePath string,
+	options []prequeue.Selection,
 	partyInput *JoinPartyInput,
 ) (*QueueJoinResult, error) {
 	var members []JoinPartyMemberInput
@@ -30,8 +32,15 @@ func (s *Store) joinModeQueueFormingTx(
 
 	if partyInput != nil && len(partyInput.Members) > 0 {
 		members = partyInput.Members
+		// The caller's own picks arrive on the mutation rather than inside the
+		// party tree; every other member answers for themselves.
+		for i := range members {
+			if members[i].UserID == callerID && len(members[i].QueueOptions) == 0 {
+				members[i].QueueOptions = options
+			}
+		}
 	} else {
-		members = []JoinPartyMemberInput{{UserID: callerID, QueuePath: queuePath}}
+		members = []JoinPartyMemberInput{{UserID: callerID, QueuePath: queuePath, QueueOptions: options}}
 	}
 
 	if existing, err := getWaitingQueueEntryForUserTx(ctx, tx, modeQueueID, callerID); err == nil {
@@ -60,7 +69,7 @@ func (s *Store) joinModeQueueFormingTx(
 			}
 			partyInput.Tree = tree
 			for _, member := range members {
-				out, err := enqueueModeQueueTx(ctx, tx, joinCtx.Game.ID, modeQueueID, member.UserID, member.QueuePath, &created.ID)
+				out, err := enqueueModeQueueTx(ctx, tx, joinCtx.Game.ID, modeQueueID, member.UserID, member.QueuePath, member.QueueOptions, &created.ID)
 				if err != nil {
 					return nil, err
 				}
@@ -75,7 +84,7 @@ func (s *Store) joinModeQueueFormingTx(
 			if err != nil {
 				return nil, err
 			}
-			enqueue, err = enqueueModeQueueTx(ctx, tx, joinCtx.Game.ID, modeQueueID, callerID, queuePath, &created.ID)
+			enqueue, err = enqueueModeQueueTx(ctx, tx, joinCtx.Game.ID, modeQueueID, callerID, queuePath, options, &created.ID)
 			if err != nil {
 				return nil, err
 			}
@@ -165,7 +174,7 @@ func (s *Store) fireFormingMatchTx(
 			return nil, err
 		}
 		returnCtx := CatalogLFGReturnContext(joinCtx.Game.ID, joinCtx.ModeQueue.ID)
-		if err := addSessionParticipantTx(ctx, tx, session.ID, userID, assignment.SeatKey, returnCtx); err != nil {
+		if err := addSessionParticipantTx(ctx, tx, session.ID, userID, assignment.SeatKey, returnCtx, entry.QueueOptions); err != nil {
 			return nil, err
 		}
 		if _, ok := seen[userID]; !ok {

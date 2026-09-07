@@ -25,7 +25,7 @@ type Subscription {
 
 type Mutation {
   # Games & sessions
-  joinQueue(queueId: ID!, queuePath: String, party: PartyNodeInput): JoinResult!
+  joinQueue(queueId: ID!, queuePath: String, options: [QueueOptionSelectionInput!], party: PartyNodeInput): JoinResult!
   leaveQueue(queueId: ID!): Boolean!
   """Abandon the current playing intent (matched queue or room table session)."""
   leaveActiveGame: Boolean!

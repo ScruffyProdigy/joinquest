@@ -50,6 +50,11 @@ type ActiveIntent {
   joinUrl: String
   """Remaining role needs for the active forming match (catalog wait)."""
   formingGaps: [QueuePathGap!]!
+  """
+  What this player picked before queueing, labelled as the game named it at the
+  time, so the waiting banner can say "… as Clue Giver · Good Old Rock, Tempered".
+  """
+  selectedOptions: [QueueOptionSelection!]!
 }
 
 enum QueueStatus {

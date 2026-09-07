@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/scruffyprodigy/joinquest/internal/prequeue"
 )
 
 // ModeQueueJoinContext is everything needed to match players in a mode queue.
@@ -114,7 +115,7 @@ func (s *Store) GetGameModeByID(ctx context.Context, modeID uuid.UUID) (*GameMod
 
 func getGameModeByID(ctx context.Context, q sqlQueryRowContext, modeID uuid.UUID) (*GameMode, error) {
 	row := q.QueryRowContext(ctx, `
-		SELECT id, game_id, mode_key, display_name, min_players, max_players, seat_template, status, created_at, updated_at
+		SELECT id, game_id, mode_key, display_name, min_players, max_players, seat_template, pre_queue, status, created_at, updated_at
 		FROM game_modes
 		WHERE id = $1
 	`, modeID)
@@ -123,6 +124,15 @@ func getGameModeByID(ctx context.Context, q sqlQueryRowContext, modeID uuid.UUID
 
 // JoinModeQueue enqueues the user in a mode queue and starts a session when full.
 func (s *Store) JoinModeQueue(ctx context.Context, modeQueueID, userID uuid.UUID, queuePath string, party *JoinPartyInput) (*QueueJoinResult, error) {
+	return s.JoinModeQueueWithOptions(ctx, modeQueueID, userID, queuePath, nil, party)
+}
+
+// JoinModeQueueWithOptions enqueues the user carrying their pre-queue picks.
+//
+// The picks are taken as already valid: they are checked against the roster the
+// game served for this player before we get here, which needs a network call the
+// store has no business making.
+func (s *Store) JoinModeQueueWithOptions(ctx context.Context, modeQueueID, userID uuid.UUID, queuePath string, options []prequeue.Selection, party *JoinPartyInput) (*QueueJoinResult, error) {
 	tx, err := s.db.BeginTx(ctx, nil)
 	if err != nil {
 		return nil, err
@@ -156,7 +166,7 @@ func (s *Store) JoinModeQueue(ctx context.Context, modeQueueID, userID uuid.UUID
 		return nil, err
 	}
 
-	return s.joinModeQueueFormingTx(ctx, tx, joinCtx, modeQueueID, userID, queuePath, party)
+	return s.joinModeQueueFormingTx(ctx, tx, joinCtx, modeQueueID, userID, queuePath, options, party)
 }
 
 func optionalQueuePathRef(value string) *string {
@@ -199,7 +209,11 @@ type enqueueOutcome struct {
 	switchedFrom   *SwitchedFromQueue
 }
 
-func enqueueModeQueueTx(ctx context.Context, tx *sql.Tx, gameID, modeQueueID, userID uuid.UUID, queuePath string, partyID *uuid.UUID) (enqueueOutcome, error) {
+func enqueueModeQueueTx(ctx context.Context, tx *sql.Tx, gameID, modeQueueID, userID uuid.UUID, queuePath string, options []prequeue.Selection, partyID *uuid.UUID) (enqueueOutcome, error) {
+	encodedOptions, err := encodeQueueOptions(options)
+	if err != nil {
+		return enqueueOutcome{}, err
+	}
 	var out enqueueOutcome
 	if _, err := getMatchedModeQueueEntryTx(ctx, tx, modeQueueID, userID); err == nil {
 		return out, ErrAlreadyMatched
@@ -241,11 +255,13 @@ func enqueueModeQueueTx(ctx context.Context, tx *sql.Tx, gameID, modeQueueID, us
 			out.alreadyInQueue = true
 			return out, nil
 		}
+		// A path switch re-stamps the row, options included: the player went
+		// back through the picker to get here.
 		if _, err := tx.ExecContext(ctx, `
 			UPDATE game_queues
-			SET queue_path = $2, joined_at = NOW(), party_id = $3
+			SET queue_path = $2, joined_at = NOW(), party_id = $3, queue_options = $4
 			WHERE id = $1 AND status = 'waiting'
-		`, existing.ID, nullQueuePathColumn(queuePath), nullUUIDColumn(partyID)); err != nil {
+		`, existing.ID, nullQueuePathColumn(queuePath), nullUUIDColumn(partyID), encodedOptions); err != nil {
 			return out, err
 		}
 		return out, nil
@@ -257,10 +273,10 @@ func enqueueModeQueueTx(ctx context.Context, tx *sql.Tx, gameID, modeQueueID, us
 		return out, err
 	}
 	row = tx.QueryRowContext(ctx, `
-		INSERT INTO game_queues (game_id, user_id, status, mode_queue_id, queue_path, party_id)
-		VALUES ($1, $2, 'waiting', $3, $4, $5)
+		INSERT INTO game_queues (game_id, user_id, status, mode_queue_id, queue_path, party_id, queue_options)
+		VALUES ($1, $2, 'waiting', $3, $4, $5, $6)
 		RETURNING `+queueColumns+`
-	`, gameID, userID, modeQueueID, nullQueuePathColumn(queuePath), nullUUIDColumn(partyID))
+	`, gameID, userID, modeQueueID, nullQueuePathColumn(queuePath), nullUUIDColumn(partyID), encodedOptions)
 	if _, err := scanQueueEntry(row); err != nil {
 		if isUniqueViolation(err) {
 			if _, rbErr := tx.ExecContext(ctx, "ROLLBACK TO SAVEPOINT gq_enqueue"); rbErr != nil {
