@@ -6,7 +6,7 @@ import (
 	"testing"
 
 	"github.com/google/uuid"
-	"github.com/scruffyprodigy/playhub/internal/lfg/partytree"
+	"github.com/scruffyprodigy/joinquest/internal/lfg/partytree"
 )
 
 // Legacy parties stored seat key as tree role (pre-BuildFromPinnedSeats fix).

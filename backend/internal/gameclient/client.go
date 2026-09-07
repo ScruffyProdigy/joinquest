@@ -11,8 +11,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/scruffyprodigy/playhub/internal/gameurl"
-	"github.com/scruffyprodigy/playhub/internal/runtimeenv"
+	"github.com/scruffyprodigy/joinquest/internal/gameurl"
+	"github.com/scruffyprodigy/joinquest/internal/runtimeenv"
 )
 
 // ProvisionPlayer is presentation data games can show before any GraphQL lookup.

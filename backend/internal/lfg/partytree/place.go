@@ -3,7 +3,7 @@ package partytree
 import (
 	"strings"
 
-	"github.com/scruffyprodigy/playhub/internal/lfg"
+	"github.com/scruffyprodigy/joinquest/internal/lfg"
 )
 
 // PlacePinned assigns users to exact seat keys on the forming map.

@@ -9,8 +9,8 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	"github.com/scruffyprodigy/playhub/internal/lfg"
-	"github.com/scruffyprodigy/playhub/internal/seattemplate"
+	"github.com/scruffyprodigy/joinquest/internal/lfg"
+	"github.com/scruffyprodigy/joinquest/internal/seattemplate"
 )
 
 func scanFormingMatch(row interface{ Scan(dest ...any) error }) (*FormingMatch, error) {

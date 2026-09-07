@@ -6,7 +6,7 @@ import (
 	"strings"
 
 	"github.com/99designs/gqlgen/graphql/handler/transport"
-	"github.com/scruffyprodigy/playhub/internal/auth"
+	"github.com/scruffyprodigy/joinquest/internal/auth"
 )
 
 // WebsocketInitFunc authenticates GraphQL websocket connections using the HTTP

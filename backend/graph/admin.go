@@ -4,8 +4,8 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/scruffyprodigy/playhub/internal/auth"
-	"github.com/scruffyprodigy/playhub/internal/store"
+	"github.com/scruffyprodigy/joinquest/internal/auth"
+	"github.com/scruffyprodigy/joinquest/internal/store"
 )
 
 func (r *Resolver) requireAdmin(ctx context.Context) (*store.User, error) {

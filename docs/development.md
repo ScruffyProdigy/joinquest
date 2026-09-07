@@ -6,7 +6,7 @@ This guide will help you set up and run JoinQuest locally for development.
 
 **Context:** JoinQuest is the shared lobby and integration platform described in **[Product vision](vision.md)**. This repo is the server + player UI; partner games (e.g. `demo-game-rps`) integrate via the handoff protocol.
 
-> **Naming:** product = **JoinQuest**. GitHub repo = `scruffyprodigy/joinquest`. Local folder is often `lobby`. The legacy `playhub` name survives only in the Go module path (JQ-168).
+> **Naming:** product = **JoinQuest**. GitHub repo = `scruffyprodigy/joinquest`. Local folder is often `lobby`. The legacy `playhub` name is fully retired.
 
 ## Current Development Status
 

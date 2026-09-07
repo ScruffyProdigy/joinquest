@@ -3,7 +3,7 @@ package partytree
 import (
 	"testing"
 
-	"github.com/scruffyprodigy/playhub/internal/lfg"
+	"github.com/scruffyprodigy/joinquest/internal/lfg"
 )
 
 func TestNormalizeForPlacement_LegacyFlatDuelSeatRole(t *testing.T) {

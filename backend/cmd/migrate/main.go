@@ -8,7 +8,7 @@ import (
 	"os"
 
 	_ "github.com/lib/pq"
-	"github.com/scruffyprodigy/playhub/internal/migrate"
+	"github.com/scruffyprodigy/joinquest/internal/migrate"
 )
 
 func main() {

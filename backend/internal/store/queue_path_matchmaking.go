@@ -6,7 +6,7 @@ import (
 	"strings"
 
 	"github.com/google/uuid"
-	"github.com/scruffyprodigy/playhub/internal/seattemplate"
+	"github.com/scruffyprodigy/joinquest/internal/seattemplate"
 )
 
 func seatQueuePathValue(seat GameModeSeat) string {

@@ -6,7 +6,7 @@ import (
 
 	"github.com/99designs/gqlgen/client"
 	"github.com/99designs/gqlgen/graphql/handler"
-	"github.com/scruffyprodigy/playhub/graph/generated"
+	"github.com/scruffyprodigy/joinquest/graph/generated"
 )
 
 func BenchmarkHealthz(b *testing.B) {

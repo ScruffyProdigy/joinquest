@@ -10,9 +10,9 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/scruffyprodigy/playhub/graph/model"
-	"github.com/scruffyprodigy/playhub/internal/spiritanimal"
-	"github.com/scruffyprodigy/playhub/internal/store"
+	"github.com/scruffyprodigy/joinquest/graph/model"
+	"github.com/scruffyprodigy/joinquest/internal/spiritanimal"
+	"github.com/scruffyprodigy/joinquest/internal/store"
 )
 
 // BeginSpiritAnimalReading is the resolver for the beginSpiritAnimalReading field.

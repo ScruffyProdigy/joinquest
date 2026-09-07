@@ -7,8 +7,8 @@ import (
 	"strings"
 
 	"github.com/google/uuid"
-	"github.com/scruffyprodigy/playhub/internal/lfg"
-	"github.com/scruffyprodigy/playhub/internal/lfg/partytree"
+	"github.com/scruffyprodigy/joinquest/internal/lfg"
+	"github.com/scruffyprodigy/joinquest/internal/lfg/partytree"
 )
 
 func (s *Store) tryPlacePartyOnFormingTx(

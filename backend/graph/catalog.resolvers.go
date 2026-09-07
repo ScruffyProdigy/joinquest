@@ -9,11 +9,11 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/scruffyprodigy/playhub/graph/generated"
-	"github.com/scruffyprodigy/playhub/graph/model"
-	"github.com/scruffyprodigy/playhub/internal/auth"
-	"github.com/scruffyprodigy/playhub/internal/gameurl"
-	"github.com/scruffyprodigy/playhub/internal/store"
+	"github.com/scruffyprodigy/joinquest/graph/generated"
+	"github.com/scruffyprodigy/joinquest/graph/model"
+	"github.com/scruffyprodigy/joinquest/internal/auth"
+	"github.com/scruffyprodigy/joinquest/internal/gameurl"
+	"github.com/scruffyprodigy/joinquest/internal/store"
 )
 
 // PlayerActivity is the resolver for the playerActivity field.

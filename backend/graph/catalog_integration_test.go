@@ -8,8 +8,8 @@ import (
 
 	"github.com/99designs/gqlgen/client"
 	"github.com/google/uuid"
-	"github.com/scruffyprodigy/playhub/internal/auth"
-	"github.com/scruffyprodigy/playhub/internal/email"
+	"github.com/scruffyprodigy/joinquest/internal/auth"
+	"github.com/scruffyprodigy/joinquest/internal/email"
 )
 
 func newMockGameAPIServer(t *testing.T) *httptest.Server {

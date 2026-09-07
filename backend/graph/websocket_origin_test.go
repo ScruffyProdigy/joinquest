@@ -5,7 +5,7 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	"github.com/scruffyprodigy/playhub/internal/auth"
+	"github.com/scruffyprodigy/joinquest/internal/auth"
 )
 
 func TestAuthWebSocketOriginAllowedForBrowserOrigins(t *testing.T) {

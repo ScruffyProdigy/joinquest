@@ -6,8 +6,8 @@ import (
 	"testing"
 
 	"github.com/google/uuid"
-	"github.com/scruffyprodigy/playhub/internal/email"
-	"github.com/scruffyprodigy/playhub/internal/store"
+	"github.com/scruffyprodigy/joinquest/internal/email"
+	"github.com/scruffyprodigy/joinquest/internal/store"
 )
 
 func TestPreviewLinkEmailDetectsMerge(t *testing.T) {

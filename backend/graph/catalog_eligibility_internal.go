@@ -3,8 +3,8 @@ package graph
 import (
 	"strings"
 
-	"github.com/scruffyprodigy/playhub/graph/model"
-	"github.com/scruffyprodigy/playhub/internal/gameclient"
+	"github.com/scruffyprodigy/joinquest/graph/model"
+	"github.com/scruffyprodigy/joinquest/internal/gameclient"
 )
 
 // toGraphQLRequirementNode converts a gameclient requirement tree node into

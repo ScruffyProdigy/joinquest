@@ -8,7 +8,7 @@ import (
 
 	"github.com/99designs/gqlgen/client"
 	"github.com/google/uuid"
-	"github.com/scruffyprodigy/playhub/internal/store"
+	"github.com/scruffyprodigy/joinquest/internal/store"
 )
 
 // testAvatarKey is a real starter avatar, so fixtures that need a full identity

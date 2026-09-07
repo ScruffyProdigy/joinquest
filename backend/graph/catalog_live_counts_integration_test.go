@@ -8,10 +8,10 @@ import (
 
 	"github.com/google/uuid"
 	_ "github.com/lib/pq"
-	"github.com/scruffyprodigy/playhub/graph/model"
-	"github.com/scruffyprodigy/playhub/internal/catalogstats"
-	"github.com/scruffyprodigy/playhub/internal/store"
-	"github.com/scruffyprodigy/playhub/internal/testdb"
+	"github.com/scruffyprodigy/joinquest/graph/model"
+	"github.com/scruffyprodigy/joinquest/internal/catalogstats"
+	"github.com/scruffyprodigy/joinquest/internal/store"
+	"github.com/scruffyprodigy/joinquest/internal/testdb"
 )
 
 func newLiveCountsResolver(t *testing.T) (*Resolver, *store.Store) {

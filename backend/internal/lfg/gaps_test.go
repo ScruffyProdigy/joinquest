@@ -3,7 +3,7 @@ package lfg
 import (
 	"testing"
 
-	"github.com/scruffyprodigy/playhub/internal/seattemplate"
+	"github.com/scruffyprodigy/joinquest/internal/seattemplate"
 )
 
 func TestComputePathGaps_WordHuntPartial(t *testing.T) {

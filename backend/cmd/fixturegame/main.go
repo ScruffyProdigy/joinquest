@@ -8,7 +8,7 @@ import (
 	"log"
 	"net/http"
 
-	"github.com/scruffyprodigy/playhub/internal/gameclient/testutil"
+	"github.com/scruffyprodigy/joinquest/internal/gameclient/testutil"
 )
 
 func main() {

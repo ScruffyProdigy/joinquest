@@ -1,4 +1,4 @@
-module github.com/scruffyprodigy/playhub
+module github.com/scruffyprodigy/joinquest
 
 go 1.25.1
 

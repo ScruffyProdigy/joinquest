@@ -7,7 +7,7 @@ import (
 	"testing"
 
 	"github.com/google/uuid"
-	"github.com/scruffyprodigy/playhub/internal/gameclient"
+	"github.com/scruffyprodigy/joinquest/internal/gameclient"
 )
 
 func TestJoinModeQueueIdempotentWhileWaiting(t *testing.T) {

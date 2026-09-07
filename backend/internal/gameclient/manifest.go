@@ -11,7 +11,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/scruffyprodigy/playhub/internal/seattemplate"
+	"github.com/scruffyprodigy/joinquest/internal/seattemplate"
 )
 
 // ModeManifest is one playable mode from GET /api/v1/game-modes.

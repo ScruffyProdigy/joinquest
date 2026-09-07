@@ -3,7 +3,7 @@ package database
 import (
 	"testing"
 
-	"github.com/scruffyprodigy/playhub/internal/testdb"
+	"github.com/scruffyprodigy/joinquest/internal/testdb"
 )
 
 func TestInitWithMigrationsKeepsConnectionOpen(t *testing.T) {

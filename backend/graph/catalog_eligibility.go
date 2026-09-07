@@ -3,7 +3,7 @@ package graph
 import (
 	"time"
 
-	"github.com/scruffyprodigy/playhub/internal/gameclient"
+	"github.com/scruffyprodigy/joinquest/internal/gameclient"
 )
 
 func (r *Resolver) eligibilityCache() *gameclient.EligibilityCache {

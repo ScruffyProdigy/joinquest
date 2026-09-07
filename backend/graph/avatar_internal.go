@@ -3,10 +3,10 @@ package graph
 import (
 	"strings"
 
-	"github.com/scruffyprodigy/playhub/graph/model"
-	"github.com/scruffyprodigy/playhub/internal/auth"
-	"github.com/scruffyprodigy/playhub/internal/avatars"
-	"github.com/scruffyprodigy/playhub/internal/store"
+	"github.com/scruffyprodigy/joinquest/graph/model"
+	"github.com/scruffyprodigy/joinquest/internal/auth"
+	"github.com/scruffyprodigy/joinquest/internal/avatars"
+	"github.com/scruffyprodigy/joinquest/internal/store"
 )
 
 func toGraphQLAvatarSource(source *string) *model.AvatarSource {

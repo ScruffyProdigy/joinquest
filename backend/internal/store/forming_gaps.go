@@ -6,8 +6,8 @@ import (
 	"errors"
 
 	"github.com/google/uuid"
-	"github.com/scruffyprodigy/playhub/internal/lfg"
-	"github.com/scruffyprodigy/playhub/internal/seattemplate"
+	"github.com/scruffyprodigy/joinquest/internal/lfg"
+	"github.com/scruffyprodigy/joinquest/internal/seattemplate"
 )
 
 // GetFillingFormingMatchByModeQueueID returns the active forming match for a mode queue, if any.
