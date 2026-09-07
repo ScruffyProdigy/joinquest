@@ -281,3 +281,21 @@ func (s *Store) GetRegroupTableID(ctx context.Context, sessionID uuid.UUID) (*uu
 	}
 	return id, nil
 }
+
+// GetSessionIDByRegroupTable is the reverse of GetRegroupTableID: given a table, find the
+// finished match it originated from. Returns nil, not an error, when no session points at
+// this table — an ordinary table (created directly, never reached via playAgain) is the
+// normal case, not a failure.
+func (s *Store) GetSessionIDByRegroupTable(ctx context.Context, tableID uuid.UUID) (*uuid.UUID, error) {
+	var id uuid.UUID
+	err := s.db.QueryRowContext(ctx, `
+		SELECT id FROM game_sessions WHERE regroup_table_id = $1
+	`, tableID).Scan(&id)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return nil, nil
+		}
+		return nil, err
+	}
+	return &id, nil
+}
