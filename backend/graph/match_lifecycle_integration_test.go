@@ -306,3 +306,116 @@ func TestReturnDestinationClearsMatchedQueue(t *testing.T) {
 		t.Fatalf("expected no active queue after return hub, got %s", bodyAfter)
 	}
 }
+
+func TestReportedResultIsReadableAfterwards(t *testing.T) {
+	env := newQueueIntegrationEnv(t)
+	cleaner := env.newCleaner(t)
+	ctx := context.Background()
+	clearDemoQueue(t, env.Store)
+
+	t.Setenv("LOBBY_ISSUER_URL", "http://localhost:8080")
+	t.Setenv("LOBBY_PUBLIC_URL", "http://localhost:5173")
+	t.Setenv("LOBBY_GAME_TOKEN_PEPPER", "lifecycle-pepper")
+
+	provisioner := &syncProvisioner{}
+	env.resolverWithProvisioner(t, provisioner)
+
+	userA := createTestUser(t, ctx, env, cleaner, "result-a-"+uuid.NewString()+"@example.com", "Result A")
+	_, cookieA := createTestUserSessionForUser(t, env, userA.ID)
+
+	userB := createTestUser(t, ctx, env, cleaner, "result-b-"+uuid.NewString()+"@example.com", "Result B")
+	_, cookieB := createTestUserSessionForUser(t, env, userB.ID)
+
+	joinQuery := `mutation Join($id: ID!) { joinQueue(queueId: $id) { queued queuedCount } }`
+	vars := map[string]any{"id": demoDefaultQueueID}
+	postGraphQL(t, env.Handler, joinQuery, vars, cookieA)
+	postGraphQL(t, env.Handler, joinQuery, vars, cookieB)
+	flushFormingWorker(t, env, ctx, uuid.MustParse(demoDefaultQueueID))
+	waitForProvisionCalls(t, provisioner, 1)
+
+	matchID := provisioner.lastCall().Assignment.ExternalMatchID
+	sessionID, err := uuid.Parse(matchID)
+	if err != nil {
+		t.Fatalf("parse session id: %v", err)
+	}
+
+	gameID := uuid.MustParse(store.DemoPrimaryGameIDStr)
+	serviceToken, err := auth.FormatGameServiceToken(gameID)
+	if err != nil {
+		t.Fatalf("FormatGameServiceToken: %v", err)
+	}
+
+	finishMutation := `mutation Finish($matchId: ID!, $lobbyUserId: ID!, $reason: PlayerFinishReason!, $placement: Int, $metadata: JSON) {
+		reportPlayerFinished(matchId: $matchId, lobbyUserId: $lobbyUserId, reason: $reason, placement: $placement, metadata: $metadata)
+	}`
+	finishBody := postGraphQLWithBearer(t, env.Handler, serviceToken, finishMutation, map[string]any{
+		"matchId":     matchID,
+		"lobbyUserId": userA.ID.String(),
+		"reason":      "COMPLETED",
+		"placement":   1,
+		"metadata":    map[string]any{"score": 3},
+	})
+	var finishResp struct {
+		Errors []struct {
+			Message string `json:"message"`
+		} `json:"errors"`
+		Data struct {
+			ReportPlayerFinished bool `json:"reportPlayerFinished"`
+		} `json:"data"`
+	}
+	if err := json.Unmarshal(finishBody, &finishResp); err != nil {
+		t.Fatalf("decode finish: %v body=%s", err, finishBody)
+	}
+	if len(finishResp.Errors) > 0 {
+		t.Fatalf("reportPlayerFinished errors: %+v", finishResp.Errors)
+	}
+	if !finishResp.Data.ReportPlayerFinished {
+		t.Fatalf("reportPlayerFinished = false, body=%s", finishBody)
+	}
+
+	resultMutation := `mutation Report($matchId: ID!, $status: MatchResultStatus!, $winnerLobbyUserIds: [ID!]) {
+		reportMatchResult(matchId: $matchId, status: $status, winnerLobbyUserIds: $winnerLobbyUserIds)
+	}`
+	reportBody := postGraphQLWithBearer(t, env.Handler, serviceToken, resultMutation, map[string]any{
+		"matchId":            matchID,
+		"status":             "COMPLETED",
+		"winnerLobbyUserIds": []string{userA.ID.String()},
+	})
+	var reportResp struct {
+		Errors []struct {
+			Message string `json:"message"`
+		} `json:"errors"`
+		Data struct {
+			ReportMatchResult bool `json:"reportMatchResult"`
+		} `json:"data"`
+	}
+	if err := json.Unmarshal(reportBody, &reportResp); err != nil {
+		t.Fatalf("decode report: %v body=%s", err, reportBody)
+	}
+	if len(reportResp.Errors) > 0 {
+		t.Fatalf("reportMatchResult errors: %+v", reportResp.Errors)
+	}
+	if !reportResp.Data.ReportMatchResult {
+		t.Fatalf("reportMatchResult = false, body=%s", reportBody)
+	}
+
+	result, err := env.Store.GetMatchResult(ctx, sessionID)
+	if err != nil {
+		t.Fatalf("GetMatchResult: %v", err)
+	}
+	if result.Status == nil || *result.Status != "COMPLETED" {
+		t.Fatalf("status = %v, want COMPLETED", result.Status)
+	}
+	var winner *store.MatchParticipantResult
+	for i := range result.Participants {
+		if result.Participants[i].UserID == userA.ID {
+			winner = &result.Participants[i]
+		}
+	}
+	if winner == nil || !winner.IsWinner {
+		t.Fatal("userA should be recorded as the winner")
+	}
+	if winner.Placement == nil || *winner.Placement != 1 {
+		t.Fatalf("placement = %v, want 1", winner.Placement)
+	}
+}

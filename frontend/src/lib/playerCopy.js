@@ -198,3 +198,107 @@ export function bannerTableSeatLine(gameName, modeName, seatDisplayName) {
 export function switchedFromGroupMessage(gameName) {
   return `You left the group for ${gameName} to look for a group here.`
 }
+
+/** Post-game return: standings, regroup, and the actions that leave it. */
+export const RESULTS_IN_PROGRESS_TITLE = 'Results so far'
+export const RESULTS_FINAL_TITLE = 'Final standings'
+export const RESULTS_WINNER = 'Winner'
+export const RESULTS_STILL_PLAYING = 'Still playing'
+export const RESULTS_IN_PROGRESS = 'In progress…'
+/** Screen-reader text for the pulsing placement dot — only when it isn't already covered by "Still playing". */
+export const RESULTS_PLACEMENT_UNKNOWN = 'Placement not yet known'
+export const RESULTS_YOU = 'You'
+export const RESULTS_YOUR_RESULT_SO_FAR = 'Your result so far'
+
+export const REGROUP_TITLE = 'Who’s playing again?'
+export const REGROUP_IN = 'In'
+export const REGROUP_OUT = 'Out'
+export const REGROUP_PENDING = 'Not back yet'
+export const REGROUP_ANOTHER_ROUND = 'Another round'
+/** Shown instead of "Another round" once you are already in: the seat is claimed, so go sit in it. */
+export const REGROUP_BACK_TO_TABLE = 'Back to the table'
+export const REGROUP_FIND_SOMETHING_NEW = 'Find something new'
+
+export function formatBackToGame(gameName) {
+  return `Back to ${gameName}`
+}
+
+/**
+ * Informational, never a gate. "Another round" is the only thing in the system that moves
+ * a player to IN, so this line may never be allowed to disable it — it exists so a player
+ * can see whether anyone else is coming back, and what the mode needs to fill a table.
+ * Starting the next match is the table's job, not this screen's.
+ */
+export function formatRegroupInCount(inCount, total, minPlayers) {
+  const roster = `${inCount} of ${total} back and in`
+  return Number.isFinite(minPlayers) && minPlayers > 0 ? `${roster} · needs ${minPlayers} to start` : roster
+}
+
+/** The still-playing branch's exit, so waiting on a live match is never a dead end. */
+export const RESULTS_LEAVE_MATCH = 'Head back to JoinQuest'
+/** Live updates failed to connect: the screen still shows what it fetched, but it will not move. */
+export const RESULTS_LIVE_UPDATES_OFF = 'Live updates are off. Reload to see the latest.'
+
+/**
+ * Regroup failures the player can act on. `ErrNoRegroupMode` has no message: it is a
+ * documented degradation, so the client routes to the game's detail page instead of
+ * telling the player about a mode that no longer exists.
+ */
+export const REGROUP_ERROR_NOT_FINISHED = 'That match hasn’t finished yet.'
+export const REGROUP_ERROR_TABLE_FULL = 'The table filled up before you got a seat.'
+export const REGROUP_ERROR_GENERIC = 'Could not start another round. Try again.'
+
+/** Ordinal for a placement: 1 → "1st", 2 → "2nd", 11 → "11th". */
+export function ordinal(n) {
+  const rem100 = n % 100
+  if (rem100 >= 11 && rem100 <= 13) return `${n}th`
+  switch (n % 10) {
+    case 1: return `${n}st`
+    case 2: return `${n}nd`
+    case 3: return `${n}rd`
+    default: return `${n}th`
+  }
+}
+
+/**
+ * Headline and sub for the return screen, from the match outcome.
+ *
+ * `complete` is `MatchResult.complete` — whether the *match* has finished,
+ * not just this participant's own play. A participant can have
+ * `reason: 'COMPLETED'` (they finished their own play) while the match is
+ * still running for others; that state has no `PlayerFinishReason` value of
+ * its own, so it's expressed here via `complete` rather than `reason`.
+ *
+ * `reason === 'ELIMINATED'` is checked first, ahead of `complete`, because
+ * elimination is real and worth calling out even while the match is still
+ * running for everyone else — "Eliminated before the end." is more specific
+ * than the generic "Waiting for others to finish." and shouldn't be masked
+ * by it.
+ */
+export function matchHeadline({ reason, complete, placement, playerCount }) {
+  // `placement` is nullable on MatchParticipantResult — the game may report a finish with no
+  // placement, or not have reported this player at all — and ordinal(null) is "nullth". Such
+  // a player keeps the sub that describes their situation and simply loses the number.
+  if (placement == null) {
+    if (reason === 'ELIMINATED') {
+      return { headline: RESULTS_PLACEMENT_UNKNOWN, sub: 'Eliminated before the end.' }
+    }
+    if (!complete) {
+      return { headline: RESULTS_PLACEMENT_UNKNOWN, sub: 'Waiting for others to finish.' }
+    }
+    return { headline: RESULTS_PLACEMENT_UNKNOWN, sub: `Out of ${playerCount} players.` }
+  }
+  if (reason === 'ELIMINATED') {
+    return { headline: `${ordinal(placement)} of ${playerCount}.`, sub: 'Eliminated before the end.' }
+  }
+  if (!complete) {
+    return { headline: `${ordinal(placement)} place.`, sub: 'Waiting for others to finish.' }
+  }
+  if (placement === 1) {
+    return { headline: '1st place.', sub: 'You finished on top.' }
+  }
+  if (placement === playerCount) {
+    return { headline: `${ordinal(placement)} place.`, sub: 'Better luck next time.' }
+  }
+  return { headline: `${ordinal(placement)} place.`, sub: `Out of ${playerCount} players.` }
+}

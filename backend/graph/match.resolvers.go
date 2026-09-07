@@ -7,11 +7,13 @@ package graph
 import (
 	"context"
 	"errors"
+	"fmt"
 	"strings"
 	"time"
 
 	"github.com/google/uuid"
 	"github.com/scruffyprodigy/playhub/graph/model"
+	"github.com/scruffyprodigy/playhub/internal/pubsub"
 	"github.com/scruffyprodigy/playhub/internal/store"
 )
 
@@ -35,7 +37,17 @@ func (r *mutationResolver) ReportPlayerFinished(ctx context.Context, matchID str
 	}
 
 	now := time.Now()
-	if err := st.MarkParticipantFinished(ctx, sessionID, playerID, now); err != nil {
+	// The reported payload is persisted first, and it — not the mark below — is what
+	// validates the player: RecordPlayerFinish matches the participant row regardless of
+	// finished_at, so an unknown lobby user id still surfaces as ErrNotFound.
+	if err := st.RecordPlayerFinish(ctx, sessionID, playerID, string(reason), placement, metadata); err != nil {
+		return false, err
+	}
+	// ErrNotFound here means the player already reached /return and AcknowledgePlayerReturn
+	// stamped finished_at first (MarkParticipantFinished has AND finished_at IS NULL). The
+	// browser winning that race must not cost the game's placement report, and must not hand
+	// the game server a failure it would retry forever against an applied write.
+	if err := st.MarkParticipantFinished(ctx, sessionID, playerID, now); err != nil && !errors.Is(err, store.ErrNotFound) {
 		return false, err
 	}
 	if session.ModeQueueID != nil {
@@ -54,9 +66,10 @@ func (r *mutationResolver) ReportPlayerFinished(ctx context.Context, matchID str
 		}
 	}
 
-	_ = reason
-	_ = placement
-	_ = metadata
+	// Fire-and-forget: the finish is already committed, and a pub/sub blip must not tell
+	// the game server its lifecycle report failed (it would retry an applied write).
+	_ = r.publishMatchEvent(ctx, sessionID, pubsub.MatchEventPlayerFinished)
+
 	return true, nil
 }
 
@@ -75,23 +88,123 @@ func (r *mutationResolver) ReportMatchResult(ctx context.Context, matchID string
 		return false, err
 	}
 
-	table, _ := st.GetRoomTableBySessionID(ctx, sessionID)
-
-	if err := st.CompleteSession(ctx, sessionID, time.Now()); err != nil {
-		if errors.Is(err, store.ErrNotFound) {
-			return true, nil
+	winnerIDs := make([]uuid.UUID, 0, len(winnerLobbyUserIds))
+	for _, raw := range winnerLobbyUserIds {
+		id, err := parseUUID(raw, "winner lobby user id")
+		if err != nil {
+			return false, err
 		}
+		winnerIDs = append(winnerIDs, id)
+	}
+	if err := st.RecordMatchResult(ctx, sessionID, string(status), winnerIDs, metadata, time.Now()); err != nil {
 		return false, err
 	}
 
-	if table != nil {
+	table, _ := st.GetRoomTableBySessionID(ctx, sessionID)
+
+	// ErrNotFound here only means the session was already completed — the last
+	// reportPlayerFinished completes it — so the result still stands, and only the
+	// table reset (already done by that earlier completion) is skipped.
+	completeErr := st.CompleteSession(ctx, sessionID, time.Now())
+	if completeErr != nil && !errors.Is(completeErr, store.ErrNotFound) {
+		return false, completeErr
+	}
+	if completeErr == nil && table != nil {
 		_ = r.publishTableUpdated(ctx, table.RoomID, table.ID)
 	}
 
-	_ = status
-	_ = winnerLobbyUserIds
-	_ = metadata
+	// Published on every path that recorded a result: subscribers watching the results
+	// screen flip to the final standings here, and an already-completed session must
+	// not silence that.
+	_ = r.publishMatchEvent(ctx, sessionID, pubsub.MatchEventResult)
+
 	return true, nil
+}
+
+// PlayAgain is the resolver for the playAgain field. It converges every accepting player on
+// the single regroup table for this match — ClaimRegroupTable's row lock is what makes that
+// hold under concurrent calls, this resolver only reports the result.
+func (r *mutationResolver) PlayAgain(ctx context.Context, matchID string) (*model.PlayAgainResult, error) {
+	userID, err := requireAuthUserID(ctx)
+	if err != nil {
+		return nil, err
+	}
+	st, err := r.requireStore()
+	if err != nil {
+		return nil, err
+	}
+	sessionID, err := parseUUID(strings.TrimSpace(matchID), "match id")
+	if err != nil {
+		return nil, err
+	}
+	if err := requireMatchParticipant(ctx, st, sessionID, userID); err != nil {
+		return nil, err
+	}
+
+	table, room, err := st.ClaimRegroupTable(ctx, sessionID, userID)
+	if err != nil {
+		return nil, regroupClientError(err)
+	}
+
+	seats, err := st.ListTableSeats(ctx, table.ID)
+	if err != nil {
+		return nil, err
+	}
+	seated := false
+	for _, seat := range seats {
+		if seat.UserID == userID {
+			seated = true
+			break
+		}
+	}
+
+	if err := r.publishTableUpdated(ctx, table.RoomID, table.ID); err != nil {
+		return nil, err
+	}
+	// Fire-and-forget: the seat is already claimed, so a publish failure must not cost
+	// the caller the invite code for the table they are now sitting at.
+	_ = r.publishMatchEvent(ctx, sessionID, pubsub.MatchEventRegroup)
+
+	return &model.PlayAgainResult{
+		Table:      toGraphQLTable(table),
+		InviteCode: room.InviteCode,
+		Seated:     seated,
+	}, nil
+}
+
+// DeclinePlayAgain is the resolver for the declinePlayAgain field. It records the caller as
+// out and routes them through the same return-destination logic as the returnDestination
+// query, so a decliner and someone who never played again land on the same result.
+func (r *mutationResolver) DeclinePlayAgain(ctx context.Context, matchID string) (*model.ReturnDestination, error) {
+	userID, err := requireAuthUserID(ctx)
+	if err != nil {
+		return nil, err
+	}
+	st, err := r.requireStore()
+	if err != nil {
+		return nil, err
+	}
+	sessionID, err := parseUUID(strings.TrimSpace(matchID), "match id")
+	if err != nil {
+		return nil, err
+	}
+	if err := requireMatchParticipant(ctx, st, sessionID, userID); err != nil {
+		return nil, err
+	}
+	release, err := st.DeclineRegroup(ctx, sessionID, userID, time.Now())
+	if err != nil && !errors.Is(err, store.ErrNotFound) {
+		return nil, err
+	}
+	// Fire-and-forget: the decline is already recorded, so a publish failure must not
+	// strand the caller on the results screen without a return destination.
+	if release != nil {
+		// The freed seat is a table change, and everyone at /room/{code} watches
+		// tableUpdated rather than matchResultUpdated — without this they keep seeing the
+		// decliner seated. playAgain publishes both for the same reason.
+		_ = r.publishTableUpdated(ctx, release.RoomID, release.TableID)
+	}
+	_ = r.publishMatchEvent(ctx, sessionID, pubsub.MatchEventRegroup)
+	return resolveReturnDestination(ctx, st, sessionID, userID)
 }
 
 // ReturnDestination is the resolver for the returnDestination field.
@@ -124,23 +237,96 @@ func (r *queryResolver) ReturnDestination(ctx context.Context, matchID *string) 
 		sessionID = *view.SessionID
 	}
 
-	if err := st.AcknowledgePlayerReturn(ctx, sessionID, userID, time.Now()); err != nil && !errors.Is(err, store.ErrNotFound) {
-		return nil, err
-	}
+	return resolveReturnDestination(ctx, st, sessionID, userID)
+}
 
-	if err := st.ParticipantIsActive(ctx, sessionID, userID); err != nil {
-		if errors.Is(err, store.ErrNotFound) {
-			return defaultDest, nil
-		}
-		return nil, err
-	}
-
-	ctxData, err := st.GetParticipantReturnContext(ctx, sessionID, userID)
+// MatchResult is the resolver for the matchResult field.
+func (r *queryResolver) MatchResult(ctx context.Context, matchID string) (*model.MatchResult, error) {
+	userID, err := requireAuthUserID(ctx)
 	if err != nil {
-		if errors.Is(err, store.ErrNotFound) {
-			return defaultDest, nil
-		}
 		return nil, err
 	}
-	return returnDestinationFromContext(ctxData), nil
+	st, err := r.requireStore()
+	if err != nil {
+		return nil, err
+	}
+	sessionID, err := parseUUID(strings.TrimSpace(matchID), "match id")
+	if err != nil {
+		return nil, err
+	}
+	if err := requireMatchParticipant(ctx, st, sessionID, userID); err != nil {
+		return nil, err
+	}
+	return loadMatchResultModel(ctx, st, sessionID)
+}
+
+// MatchResultUpdated is the resolver for the matchResultUpdated field.
+func (r *subscriptionResolver) MatchResultUpdated(ctx context.Context, matchID string) (<-chan *model.MatchResult, error) {
+	if r.PubSub == nil {
+		return nil, fmt.Errorf("pubsub is not configured")
+	}
+	userID, err := requireAuthUserID(ctx)
+	if err != nil {
+		return nil, err
+	}
+	sessionID, err := parseUUID(strings.TrimSpace(matchID), "match id")
+	if err != nil {
+		return nil, err
+	}
+	st, err := r.requireStore()
+	if err != nil {
+		return nil, err
+	}
+	if err := requireMatchParticipant(ctx, st, sessionID, userID); err != nil {
+		return nil, err
+	}
+
+	initial, err := loadMatchResultModel(ctx, st, sessionID)
+	if err != nil {
+		return nil, err
+	}
+
+	messages, unsubscribe, err := r.PubSub.Subscribe(ctx, pubsub.MatchChannel(sessionID.String()))
+	if err != nil {
+		return nil, err
+	}
+
+	updates := make(chan *model.MatchResult, 4)
+	go func() {
+		defer close(updates)
+		defer unsubscribe()
+
+		if initial != nil {
+			select {
+			case updates <- initial:
+			case <-ctx.Done():
+				return
+			}
+		}
+
+		for {
+			select {
+			case <-ctx.Done():
+				return
+			case payload, ok := <-messages:
+				if !ok {
+					return
+				}
+				if _, err := pubsub.UnmarshalMatchEvent(payload); err != nil {
+					continue
+				}
+				result, err := loadMatchResultModel(ctx, st, sessionID)
+				if err != nil {
+					continue
+				}
+				select {
+				case updates <- result:
+				case <-ctx.Done():
+					return
+				}
+			}
+		}
+	}()
+
+	return updates, nil
 }

@@ -172,6 +172,27 @@ func (s *Store) addRoomMemberTx(ctx context.Context, tx *sql.Tx, roomID, userID 
 	return err
 }
 
+// ensureRoomMemberTx puts the user in the room, leaving whichever room they are in now.
+// room_members is unique per user, so a blind insert fails for someone who is already
+// here — which a regrouping room-table group always is.
+func (s *Store) ensureRoomMemberTx(ctx context.Context, tx *sql.Tx, roomID, userID uuid.UUID) error {
+	var currentRoomID uuid.UUID
+	err := tx.QueryRowContext(ctx, `
+		SELECT room_id FROM room_members WHERE user_id = $1
+	`, userID).Scan(&currentRoomID)
+	switch {
+	case err == nil && currentRoomID == roomID:
+		return nil
+	case err != nil && !errors.Is(err, sql.ErrNoRows):
+		return err
+	}
+
+	if _, err := s.leaveRoomTx(ctx, tx, userID); err != nil {
+		return err
+	}
+	return s.addRoomMemberTx(ctx, tx, roomID, userID)
+}
+
 // CreateRoom opens a new chat room and adds the host as the sole member.
 func (s *Store) CreateRoom(ctx context.Context, hostUserID uuid.UUID) (*Room, error) {
 	tx, err := s.db.BeginTx(ctx, nil)
@@ -180,6 +201,18 @@ func (s *Store) CreateRoom(ctx context.Context, hostUserID uuid.UUID) (*Room, er
 	}
 	defer func() { _ = tx.Rollback() }()
 
+	room, err := s.createRoomTx(ctx, tx, hostUserID)
+	if err != nil {
+		return nil, err
+	}
+
+	if err := tx.Commit(); err != nil {
+		return nil, err
+	}
+	return room, nil
+}
+
+func (s *Store) createRoomTx(ctx context.Context, tx *sql.Tx, hostUserID uuid.UUID) (*Room, error) {
 	if _, err := s.leaveRoomTx(ctx, tx, hostUserID); err != nil {
 		return nil, err
 	}
@@ -203,9 +236,6 @@ func (s *Store) CreateRoom(ctx context.Context, hostUserID uuid.UUID) (*Room, er
 		return nil, err
 	}
 
-	if err := tx.Commit(); err != nil {
-		return nil, err
-	}
 	return room, nil
 }
 
@@ -286,7 +316,11 @@ func (s *Store) LeaveRoom(ctx context.Context, userID uuid.UUID) (bool, error) {
 
 // GetRoomByID loads a room by id.
 func (s *Store) GetRoomByID(ctx context.Context, roomID uuid.UUID) (*Room, error) {
-	row := s.db.QueryRowContext(ctx, `
+	return s.getRoomByIDTx(ctx, s.db, roomID)
+}
+
+func (s *Store) getRoomByIDTx(ctx context.Context, q sqlQueryRowContext, roomID uuid.UUID) (*Room, error) {
+	row := q.QueryRowContext(ctx, `
 		SELECT `+roomColumns+` FROM rooms WHERE id = $1
 	`, roomID)
 	return scanRoom(row)
@@ -308,7 +342,11 @@ func (s *Store) GetRoomByInviteCode(ctx context.Context, inviteCode string) (*Ro
 
 // GetUserRoom returns the room the user is currently in, if any.
 func (s *Store) GetUserRoom(ctx context.Context, userID uuid.UUID) (*Room, error) {
-	row := s.db.QueryRowContext(ctx, `
+	return s.getUserRoomTx(ctx, s.db, userID)
+}
+
+func (s *Store) getUserRoomTx(ctx context.Context, q sqlQueryRowContext, userID uuid.UUID) (*Room, error) {
+	row := q.QueryRowContext(ctx, `
 		SELECT r.id, r.invite_code, r.host_user_id, r.status, r.created_at, r.updated_at
 		FROM rooms r
 		INNER JOIN room_members rm ON rm.room_id = r.id
@@ -319,8 +357,12 @@ func (s *Store) GetUserRoom(ctx context.Context, userID uuid.UUID) (*Room, error
 
 // IsRoomMember reports whether the user belongs to the room.
 func (s *Store) IsRoomMember(ctx context.Context, roomID, userID uuid.UUID) (bool, error) {
+	return s.isRoomMemberTx(ctx, s.db, roomID, userID)
+}
+
+func (s *Store) isRoomMemberTx(ctx context.Context, q sqlQueryRowContext, roomID, userID uuid.UUID) (bool, error) {
 	var exists bool
-	err := s.db.QueryRowContext(ctx, `
+	err := q.QueryRowContext(ctx, `
 		SELECT EXISTS(
 			SELECT 1 FROM room_members rm
 			INNER JOIN rooms r ON r.id = rm.room_id

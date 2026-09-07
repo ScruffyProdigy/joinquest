@@ -64,6 +64,11 @@ type StartTableResult struct {
 
 const roomTableColumns = `id, room_id, game_id, mode_id, status, session_id, created_at, updated_at`
 
+// roomTableColumnsT is roomTableColumns qualified with the alias `t`, for the queries that
+// join rooms — id, status, created_at and updated_at exist on both tables, so an unqualified
+// list is ambiguous. Derived rather than duplicated so it cannot drift.
+var roomTableColumnsT = "t." + strings.ReplaceAll(roomTableColumns, ", ", ", t.")
+
 func scanRoomTable(row interface{ Scan(dest ...any) error }) (*RoomTable, error) {
 	var t RoomTable
 	var sessionID sql.NullString
@@ -544,6 +549,22 @@ func (s *Store) SitAtTable(ctx context.Context, tableID, userID uuid.UUID, seatK
 	}
 	defer tx.Rollback()
 
+	table, err := s.sitAtTableTx(ctx, tx, tableID, userID, seatKey)
+	if err != nil {
+		return nil, err
+	}
+	if err := tx.Commit(); err != nil {
+		return nil, err
+	}
+	return table, nil
+}
+
+func (s *Store) sitAtTableTx(ctx context.Context, tx *sql.Tx, tableID, userID uuid.UUID, seatKey string) (*RoomTable, error) {
+	seatKey = strings.TrimSpace(seatKey)
+	if seatKey == "" {
+		return nil, fmt.Errorf("store: seat key is required")
+	}
+
 	if err := ensureNotQueueMatchedTx(ctx, tx, userID); err != nil {
 		return nil, err
 	}
@@ -564,7 +585,9 @@ func (s *Store) SitAtTable(ctx context.Context, tableID, userID uuid.UUID, seatK
 	if table.Status != TableStatusForming {
 		return nil, fmt.Errorf("store: table is not accepting seats")
 	}
-	member, err := s.IsRoomMember(ctx, table.RoomID, userID)
+	// Read membership through tx: a caller that joined the room earlier in this same
+	// transaction has not committed yet, and s.db would not see them.
+	member, err := s.isRoomMemberTx(ctx, tx, table.RoomID, userID)
 	if err != nil {
 		return nil, err
 	}
@@ -634,9 +657,6 @@ func (s *Store) SitAtTable(ctx context.Context, tableID, userID uuid.UUID, seatK
 	if _, err := tx.ExecContext(ctx, `
 		UPDATE room_tables SET updated_at = NOW() WHERE id = $1
 	`, tableID); err != nil {
-		return nil, err
-	}
-	if err := tx.Commit(); err != nil {
 		return nil, err
 	}
 	return table, nil

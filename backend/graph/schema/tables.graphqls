@@ -34,6 +34,8 @@ type Table {
   backfillActive: Boolean!
   """Roles still needed to start via backfill or from current seated counts."""
   formingGaps: [QueuePathGap!]!
+  """Originating match roster and regroup state; empty for tables not reached from a finished match."""
+  regroupRoster: [MatchParticipantResult!]!
 }
 
 type MyTableSeat {

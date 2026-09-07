@@ -509,6 +509,35 @@ func (r *tableResolver) FormingGaps(ctx context.Context, obj *model.Table) ([]*m
 	return gaps, err
 }
 
+// RegroupRoster is the resolver for the regroupRoster field. Unlike matchResult, this is
+// not gated on match participation: the whole point is to show named, ghosted pending
+// seats to backfill joiners who never played the originating match. The table's own
+// visibility rules (room membership) already govern who can see this field at all.
+func (r *tableResolver) RegroupRoster(ctx context.Context, obj *model.Table) ([]*model.MatchParticipantResult, error) {
+	st, err := r.requireStore()
+	if err != nil {
+		return nil, err
+	}
+	tableID, err := tableRoomIDFromObj(obj)
+	if err != nil {
+		return nil, err
+	}
+	sessionID, err := st.GetSessionIDByRegroupTable(ctx, tableID)
+	if err != nil {
+		return nil, err
+	}
+	if sessionID == nil {
+		// An ordinary table (never claimed via playAgain) has no originating match.
+		// Non-null list contract: empty, never nil.
+		return []*model.MatchParticipantResult{}, nil
+	}
+	result, err := loadMatchResultModel(ctx, st, *sessionID)
+	if err != nil {
+		return nil, err
+	}
+	return result.Participants, nil
+}
+
 // User is the resolver for the user field.
 func (r *tableSeatResolver) User(ctx context.Context, obj *model.TableSeat) (*model.User, error) {
 	return obj.User, nil

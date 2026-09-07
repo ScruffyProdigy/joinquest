@@ -199,6 +199,37 @@ type JoinResult struct {
 	Message     *string `json:"message,omitempty"`
 }
 
+type MatchParticipantResult struct {
+	// No email: a queue match introduces strangers, so the roster must not expose contact details.
+	User       *PublicPlayer `json:"user"`
+	Role       *string       `json:"role,omitempty"`
+	Finished   bool          `json:"finished"`
+	FinishedAt *time.Time    `json:"finishedAt,omitempty"`
+	// Null when the game never reported this player — distinct from the player merely returning.
+	Reason    *PlayerFinishReason `json:"reason,omitempty"`
+	Placement *int                `json:"placement,omitempty"`
+	Winner    bool                `json:"winner"`
+	Regroup   RegroupState        `json:"regroup"`
+}
+
+type MatchResult struct {
+	MatchID string `json:"matchId"`
+	Game    *Game  `json:"game"`
+	// The mode this session was played in, so the client can read its real minimum instead of
+	// guessing across the game's modes. Null when the session has no mode, or when the mode it
+	// named has since been removed from the catalog — sessions outlive their modes.
+	Mode *GameMode `json:"mode,omitempty"`
+	// Null when the game reported no result.
+	Status   *MatchResultStatus `json:"status,omitempty"`
+	Reported bool               `json:"reported"`
+	// True when the session is completed; drives "Final standings" vs "Results so far".
+	Complete     bool                      `json:"complete"`
+	EndedAt      *time.Time                `json:"endedAt,omitempty"`
+	Participants []*MatchParticipantResult `json:"participants"`
+	// Set once a regroup table exists, so the client can route to it.
+	RegroupInviteCode *string `json:"regroupInviteCode,omitempty"`
+}
+
 type ModeEligibility struct {
 	Accessible    bool                `json:"accessible"`
 	Reason        *string             `json:"reason,omitempty"`
@@ -248,6 +279,12 @@ type PartyNodeInput struct {
 	Role     *string             `json:"role,omitempty"`
 	Children []*PartyNodeInput   `json:"children,omitempty"`
 	Members  []*PartyMemberInput `json:"members,omitempty"`
+}
+
+type PlayAgainResult struct {
+	Table      *Table `json:"table"`
+	InviteCode string `json:"inviteCode"`
+	Seated     bool   `json:"seated"`
 }
 
 type PublicPlayer struct {
@@ -465,6 +502,8 @@ type Table struct {
 	BackfillActive bool `json:"backfillActive"`
 	// Roles still needed to start via backfill or from current seated counts.
 	FormingGaps []*QueuePathGap `json:"formingGaps"`
+	// Originating match roster and regroup state; empty for tables not reached from a finished match.
+	RegroupRoster []*MatchParticipantResult `json:"regroupRoster"`
 }
 
 type TableLookForGroupOption struct {
@@ -932,6 +971,63 @@ func (e *QueueStatus) UnmarshalJSON(b []byte) error {
 }
 
 func (e QueueStatus) MarshalJSON() ([]byte, error) {
+	var buf bytes.Buffer
+	e.MarshalGQL(&buf)
+	return buf.Bytes(), nil
+}
+
+type RegroupState string
+
+const (
+	RegroupStateIn      RegroupState = "IN"
+	RegroupStateOut     RegroupState = "OUT"
+	RegroupStatePending RegroupState = "PENDING"
+)
+
+var AllRegroupState = []RegroupState{
+	RegroupStateIn,
+	RegroupStateOut,
+	RegroupStatePending,
+}
+
+func (e RegroupState) IsValid() bool {
+	switch e {
+	case RegroupStateIn, RegroupStateOut, RegroupStatePending:
+		return true
+	}
+	return false
+}
+
+func (e RegroupState) String() string {
+	return string(e)
+}
+
+func (e *RegroupState) UnmarshalGQL(v any) error {
+	str, ok := v.(string)
+	if !ok {
+		return fmt.Errorf("enums must be strings")
+	}
+
+	*e = RegroupState(str)
+	if !e.IsValid() {
+		return fmt.Errorf("%s is not a valid RegroupState", str)
+	}
+	return nil
+}
+
+func (e RegroupState) MarshalGQL(w io.Writer) {
+	fmt.Fprint(w, strconv.Quote(e.String()))
+}
+
+func (e *RegroupState) UnmarshalJSON(b []byte) error {
+	s, err := strconv.Unquote(string(b))
+	if err != nil {
+		return err
+	}
+	return e.UnmarshalGQL(s)
+}
+
+func (e RegroupState) MarshalJSON() ([]byte, error) {
 	var buf bytes.Buffer
 	e.MarshalGQL(&buf)
 	return buf.Bytes(), nil

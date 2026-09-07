@@ -147,6 +147,28 @@ func createTestUserSession(t *testing.T, ctx context.Context, env *queueIntegrat
 	return "Bearer " + token, &http.Cookie{Name: cfg.Name, Value: token}
 }
 
+// createTestUser creates a fully identified user (name + avatar, JQ-126 — play entry needs
+// both) and tracks it for cleanup, without also minting a session. Several integration test
+// files seed their own users this way and then hand the ID to
+// createTestUserSessionForUser, so the CreateUser+UpdateUserProfile pairing lives here once
+// instead of being copied at every call site.
+func createTestUser(t *testing.T, ctx context.Context, env *queueIntegrationEnv, cleaner *store.TestCleaner, email, displayName string) *store.User {
+	t.Helper()
+
+	user, err := env.Store.CreateUser(ctx, store.CreateUserParams{
+		Email:       email,
+		DisplayName: displayName,
+	})
+	if err != nil {
+		t.Fatalf("CreateUser: %v", err)
+	}
+	cleaner.TrackUser(user.ID)
+	if _, err := env.Store.UpdateUserProfile(ctx, user.ID, displayName, testAvatarKey, "http://localhost:5173"); err != nil {
+		t.Fatalf("UpdateUserProfile: %v", err)
+	}
+	return user
+}
+
 func createTestUserSessionForUser(t *testing.T, env *queueIntegrationEnv, userID uuid.UUID) (bearer string, cookie *http.Cookie) {
 	t.Helper()
 

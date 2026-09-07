@@ -1,4 +1,10 @@
 import { expect } from '@playwright/test'
+import {
+  FIND_A_GAME_HEADING,
+  RESULTS_LEAVE_MATCH,
+  RESULTS_STILL_PLAYING,
+  RESULTS_YOUR_RESULT_SO_FAR,
+} from '../../../src/lib/playerCopy.js'
 
 const RPS_GAME_NAME = 'Rock Paper Scissors Lizard Robot'
 
@@ -46,9 +52,29 @@ export async function readLaunchMatchId(page) {
   return matchId
 }
 
+/**
+ * Walk the post-match screen the way a player does (JQ-135).
+ *
+ * `/return?match=…` no longer bounces the player home on its own — it renders the
+ * post-match screen, and leaving is an explicit action. No game in these fixtures reports
+ * a finish or a result, so the session is still `active` when the browser arrives:
+ * `MatchResult.complete` is false and ReturnPage takes its still-playing branch ("Your
+ * result so far" + "Still playing" + the exit button). That branch is asserted rather than
+ * clicked straight through, so a regression that stops rendering the screen fails here
+ * instead of silently falling back to the old redirect.
+ *
+ * Landing home is still the assertion that matters: it is what proves the return released
+ * the player's matched queue row and left them free to queue again.
+ */
 export async function returnFromMatch(page, matchId) {
   await page.goto(`/return?match=${encodeURIComponent(matchId)}`)
-  await expect(page.getByRole('heading', { level: 1, name: 'Find a game' })).toBeVisible({
+
+  await expect(page.getByText(RESULTS_YOUR_RESULT_SO_FAR)).toBeVisible({ timeout: 20000 })
+  await expect(page.getByText(RESULTS_STILL_PLAYING)).toBeVisible()
+
+  await page.getByRole('button', { name: RESULTS_LEAVE_MATCH }).click()
+
+  await expect(page.getByRole('heading', { level: 1, name: FIND_A_GAME_HEADING })).toBeVisible({
     timeout: 20000,
   })
 }

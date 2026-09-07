@@ -101,6 +101,8 @@ models:
         resolver: true
       formingGaps:
         resolver: true
+      regroupRoster:
+        resolver: true
   TableSeat:
     fields:
       user:

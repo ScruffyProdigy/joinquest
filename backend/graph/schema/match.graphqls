@@ -17,10 +17,63 @@ type ReturnDestination {
   kind: String!
 }
 
+enum RegroupState {
+  IN
+  OUT
+  PENDING
+}
+
+type MatchParticipantResult {
+  """No email: a queue match introduces strangers, so the roster must not expose contact details."""
+  user: PublicPlayer!
+  role: String
+  finished: Boolean!
+  finishedAt: Time
+  """Null when the game never reported this player — distinct from the player merely returning."""
+  reason: PlayerFinishReason
+  placement: Int
+  winner: Boolean!
+  regroup: RegroupState!
+}
+
+type MatchResult {
+  matchId: ID!
+  game: Game!
+  """
+  The mode this session was played in, so the client can read its real minimum instead of
+  guessing across the game's modes. Null when the session has no mode, or when the mode it
+  named has since been removed from the catalog — sessions outlive their modes.
+  """
+  mode: GameMode
+  """Null when the game reported no result."""
+  status: MatchResultStatus
+  reported: Boolean!
+  """True when the session is completed; drives "Final standings" vs "Results so far"."""
+  complete: Boolean!
+  endedAt: Time
+  participants: [MatchParticipantResult!]!
+  """Set once a regroup table exists, so the client can route to it."""
+  regroupInviteCode: String
+}
+
+type PlayAgainResult {
+  table: Table!
+  inviteCode: String!
+  seated: Boolean!
+}
+
 extend type Query {
   # Player return hub: resolves stored return context for the current user.
   # Pass match (externalMatchId / session id) when returning from a game.
   returnDestination(matchId: ID): ReturnDestination!
+
+  """The stored result of a finished match. Visible only to its participants."""
+  matchResult(matchId: ID!): MatchResult
+}
+
+extend type Subscription {
+  """Live standings and regroup roster for a match the caller played in."""
+  matchResultUpdated(matchId: ID!): MatchResult!
 }
 
 extend type Mutation {
@@ -39,4 +92,9 @@ extend type Mutation {
     winnerLobbyUserIds: [ID!]
     metadata: JSON
   ): Boolean!
+
+  """Join the single regroup table for a finished match, creating it if nobody has yet."""
+  playAgain(matchId: ID!): PlayAgainResult!
+  """Record that the caller is not playing again, and resolve where to send them."""
+  declinePlayAgain(matchId: ID!): ReturnDestination!
 }
