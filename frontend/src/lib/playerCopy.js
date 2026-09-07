@@ -235,12 +235,26 @@ export function ordinal(n) {
   }
 }
 
-/** Headline and sub for the return screen, from the match outcome. */
-export function matchHeadline({ reason, placement, playerCount }) {
+/**
+ * Headline and sub for the return screen, from the match outcome.
+ *
+ * `complete` is `MatchResult.complete` — whether the *match* has finished,
+ * not just this participant's own play. A participant can have
+ * `reason: 'COMPLETED'` (they finished their own play) while the match is
+ * still running for others; that state has no `PlayerFinishReason` value of
+ * its own, so it's expressed here via `complete` rather than `reason`.
+ *
+ * `reason === 'ELIMINATED'` is checked first, ahead of `complete`, because
+ * elimination is real and worth calling out even while the match is still
+ * running for everyone else — "Eliminated before the end." is more specific
+ * than the generic "Waiting for others to finish." and shouldn't be masked
+ * by it.
+ */
+export function matchHeadline({ reason, complete, placement, playerCount }) {
   if (reason === 'ELIMINATED') {
     return { headline: `${ordinal(placement)} of ${playerCount}.`, sub: 'Eliminated before the end.' }
   }
-  if (reason === 'FINISHED_EARLY') {
+  if (!complete) {
     return { headline: `${ordinal(placement)} place.`, sub: 'Waiting for others to finish.' }
   }
   if (placement === 1) {
