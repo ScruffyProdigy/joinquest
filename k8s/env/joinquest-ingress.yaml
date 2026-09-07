@@ -50,6 +50,15 @@ spec:
                 name: lobby-backend
                 port:
                   number: 80
+          # Guest sigils are rendered per colour by the backend; everything else
+          # under /avatars is a static file served by the frontend.
+          - path: /avatars/sigils
+            pathType: Prefix
+            backend:
+              service:
+                name: lobby-backend
+                port:
+                  number: 80
           - path: /auth/oauth/complete
             pathType: Exact
             backend:

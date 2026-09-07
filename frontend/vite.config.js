@@ -17,6 +17,11 @@ export default defineConfig({
   base: "/",
   server: {
     proxy: {
+      // Sigils are rendered by the backend, not shipped as files in public/.
+      '/avatars/sigils': {
+        target: 'http://127.0.0.1:8080',
+        changeOrigin: true,
+      },
       '/graphql': {
         target: 'http://127.0.0.1:8080',
         changeOrigin: true,

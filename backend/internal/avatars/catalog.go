@@ -2,7 +2,6 @@ package avatars
 
 import (
 	"fmt"
-	"slices"
 	"strings"
 )
 
@@ -96,41 +95,4 @@ func ResolveURL(publicOrigin string, storedURL, avatarKey *string) *string {
 	}
 	url := PublicAssetURL(publicOrigin, entry.File)
 	return &url
-}
-
-// SourceSigil marks the guest-tier avatars picked from the first-entry overlay.
-// They stay deliberately plainer than SPIRIT_ANIMAL avatars, which are earned by
-// signing in and finishing the spirit animal journey.
-const SourceSigil = "sigil"
-
-// SigilFamilies are the guest-tier silhouettes. A generated guest name picks the
-// noun that matches its family, so a player called FrostFox gets the canine one.
-var SigilFamilies = []string{"canine", "feline", "horned", "raptor", "corvid", "ursine"}
-
-// SigilTints are the colours a sigil can be drawn in. The tint is also the
-// adjective in the guest's name, so FrostFox really is the icy blue one.
-var SigilTints = []string{
-	"frost", "ember", "blaze", "dawn", "dusk", "storm",
-	"moss", "tide", "solar", "nova", "rust", "bloom",
-}
-
-// SigilByKey resolves a "sigil-<family>-<tint>" key, e.g. "sigil-canine-frost".
-// Keys are composite rather than a flat catalog because every family is drawn in
-// every tint; frontend/scripts/generate-sigils.mjs writes the matching files.
-func SigilByKey(key string) (StarterEntry, bool) {
-	normalized := strings.ToLower(strings.TrimSpace(key))
-	rest, ok := strings.CutPrefix(normalized, "sigil-")
-	if !ok {
-		return StarterEntry{}, false
-	}
-	family, tint, ok := strings.Cut(rest, "-")
-	if !ok || !slices.Contains(SigilFamilies, family) || !slices.Contains(SigilTints, tint) {
-		return StarterEntry{}, false
-	}
-	return StarterEntry{
-		Key:  normalized,
-		Name: family,
-		Slot: family,
-		File: fmt.Sprintf("sigils/%s-%s.svg", family, tint),
-	}, true
 }

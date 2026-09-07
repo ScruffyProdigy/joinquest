@@ -262,7 +262,10 @@ func TestUpdatePlayerProfileAcceptsGuestSigil(t *testing.T) {
 	if profile.AvatarKey == nil || *profile.AvatarKey != "sigil-canine-frost" {
 		t.Fatalf("avatarKey: %+v", profile.AvatarKey)
 	}
-	if profile.AvatarURL == nil || *profile.AvatarURL != "https://joinquest.test/avatars/sigils/canine-frost.svg" {
+	// The key keeps the name it was saved under, but the URL it resolves to is the
+	// rendered one: "frost" is the hex it always stood for, and a key with no
+	// expression gets the plain face.
+	if profile.AvatarURL == nil || *profile.AvatarURL != "https://joinquest.test/avatars/sigils/canine-0284c7-wide.svg" {
 		t.Fatalf("avatarUrl: %+v", profile.AvatarURL)
 	}
 	if profile.AvatarSource == nil || *profile.AvatarSource != "SIGIL" {
