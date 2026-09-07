@@ -44,14 +44,37 @@ describe('MatchStandings', () => {
     expect(screen.queryByText('Ada')).not.toBeInTheDocument()
   })
 
-  it('renders a viewer row cleanly when the participant has no role', () => {
+  it('omits the role subtitle when the participant has no role', () => {
     const noRole = {
       complete: true,
       reported: true,
       participants: [{ user: { id: 'a', displayName: 'Ada' }, placement: 1, winner: true, finished: true, regroup: 'IN' }],
     }
     render(<MatchStandings result={noRole} viewerId="a" />)
-    expect(screen.getByText('You')).toBeInTheDocument()
+    const nameEl = screen.getByText('You')
+    // Only the name span should be present — no leaked empty/undefined role subtitle.
+    expect(nameEl.parentElement.children).toHaveLength(1)
+  })
+
+  it('gives the unknown-placement dot a screen-reader-only label when the row has no "Still playing" badge', () => {
+    const doneWithoutPlacement = {
+      complete: true,
+      reported: true,
+      participants: [
+        { user: { id: 'a', displayName: 'Ada' }, placement: null, winner: false, finished: true, regroup: 'PENDING' },
+      ],
+    }
+    render(<MatchStandings result={doneWithoutPlacement} viewerId="z" />)
+    expect(screen.getByText('Placement not yet known')).toBeInTheDocument()
+    expect(screen.queryByText('Still playing')).not.toBeInTheDocument()
+  })
+
+  it('does not duplicate the unknown-placement announcement when "Still playing" already covers it', () => {
+    render(<MatchStandings result={result} viewerId="z" />)
+    // Bo (placement: null, finished: false) already gets the "Still playing" badge —
+    // the sr-only placement-unknown text would be redundant on that row.
+    expect(screen.getByText('Still playing')).toBeInTheDocument()
+    expect(screen.queryByText('Placement not yet known')).not.toBeInTheDocument()
   })
 
   it('sorts known placements first, then the rest in their original order', () => {

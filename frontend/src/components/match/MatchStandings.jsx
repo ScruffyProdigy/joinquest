@@ -7,6 +7,7 @@ import {
   ordinal,
   RESULTS_FINAL_TITLE,
   RESULTS_IN_PROGRESS_TITLE,
+  RESULTS_PLACEMENT_UNKNOWN,
   RESULTS_STILL_PLAYING,
   RESULTS_WINNER,
   RESULTS_YOU,
@@ -50,7 +51,12 @@ function StandingRow({ participant, viewerId, reported }) {
         {knownPlacement ? (
           ordinal(placement)
         ) : (
-          <span className="size-2 animate-pulse rounded-full bg-muted-foreground" aria-hidden="true" />
+          <>
+            <span className="size-2 animate-pulse rounded-full bg-muted-foreground" aria-hidden="true" />
+            {/* The "Still playing" badge already announces this for an unfinished row — only add
+                text here for the case that badge doesn't cover: reported-finished-but-unplaced. */}
+            {finished ? <span className="sr-only">{RESULTS_PLACEMENT_UNKNOWN}</span> : null}
+          </>
         )}
       </span>
       <PlayerAvatar user={user} size="sm" />

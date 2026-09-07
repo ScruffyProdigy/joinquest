@@ -205,6 +205,8 @@ export const RESULTS_FINAL_TITLE = 'Final standings'
 export const RESULTS_WINNER = 'Winner'
 export const RESULTS_STILL_PLAYING = 'Still playing'
 export const RESULTS_IN_PROGRESS = 'In progress…'
+/** Screen-reader text for the pulsing placement dot — only when it isn't already covered by "Still playing". */
+export const RESULTS_PLACEMENT_UNKNOWN = 'Placement not yet known'
 export const RESULTS_YOU = 'You'
 export const RESULTS_YOUR_RESULT_SO_FAR = 'Your result so far'
 
