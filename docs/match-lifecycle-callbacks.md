@@ -26,6 +26,7 @@ A synchronous 1v1 might only call `reportMatchResult` when both sides are done.
 - **Player UX** — JoinQuest can show “You placed 2nd” and enable re-queue while others are still racing.
 - **Queue rules** — A player who is **finished** should not block “one queue at a time” as if they were still in an active match; Lobby clears their `matched` queue row when the game reports finish.
 - **Integrity** — Final `reportMatchResult` is the authoritative outcome for leaderboards and disputes.
+- **Degrades gracefully, but degrades** — a game that never calls either callback is not broken, but the player's `/return` shows only the roster: no standings, no winner, no placements. See [player-return-routing.md](./player-return-routing.md).
 
 ---
 
@@ -61,7 +62,7 @@ mutation reportMatchResult(
 ): Boolean!
 ```
 
-Lobby validates `matchId` against the game id embedded in `serviceToken`. Optional fields (`reason`, `placement`, `metadata`, `winnerLobbyUserIds`) are accepted but not yet persisted.
+Lobby validates `matchId` against the game id embedded in `serviceToken`. All fields are persisted: `reportPlayerFinished` stores `reason`, `placement`, and `metadata` against that participant; `reportMatchResult` stores `status`, `winnerLobbyUserIds`, and `metadata` against the session (winner ids not seated in the match are dropped). The stored result is surfaced back to participants only — via the `matchResult` query, the `matchResultUpdated` subscription, and the standings shown on `/return` (see [player-return-routing.md](./player-return-routing.md)).
 
 ---
 
