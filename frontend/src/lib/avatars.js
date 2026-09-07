@@ -1,4 +1,5 @@
 import { graphqlRequest } from './graphql'
+import { displayNameOrFallback } from './viewer'
 
 export const USER_AVATAR_FIELDS = `
   id
@@ -91,6 +92,5 @@ export async function updatePlayerProfile(displayName, avatarKey) {
 }
 
 export function avatarInitial(user) {
-  const name = user?.displayName?.trim() || 'Player'
-  return name.charAt(0).toUpperCase()
+  return displayNameOrFallback(user).charAt(0).toUpperCase()
 }

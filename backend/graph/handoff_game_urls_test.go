@@ -32,15 +32,20 @@ func TestFinalizeMatchedSessionUsesGameMintedURLs(t *testing.T) {
 	t.Setenv("LOBBY_PUBLIC_URL", "http://localhost:5173")
 	t.Setenv("LOBBY_GAME_TOKEN_PEPPER", "test-pepper")
 
+	// Named on purpose: this test drives the store directly and so skips the
+	// play-entry guard, but the handoff still requires a seat to name its
+	// player (JQ-124). The subject here is game-minted URLs, not identity.
 	userA, err := env.Store.CreateUser(ctx, store.CreateUserParams{
-		Email: "game-url-a-" + uuid.NewString() + "@example.com",
+		Email:       "game-url-a-" + uuid.NewString() + "@example.com",
+		DisplayName: "Game URL A",
 	})
 	if err != nil {
 		t.Fatalf("CreateUser A: %v", err)
 	}
 	cleaner.TrackUser(userA.ID)
 	userB, err := env.Store.CreateUser(ctx, store.CreateUserParams{
-		Email: "game-url-b-" + uuid.NewString() + "@example.com",
+		Email:       "game-url-b-" + uuid.NewString() + "@example.com",
+		DisplayName: "Game URL B",
 	})
 	if err != nil {
 		t.Fatalf("CreateUser B: %v", err)
