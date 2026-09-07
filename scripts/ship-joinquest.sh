@@ -52,6 +52,9 @@ run_check() {
   echo "==> developer doc sync"
   "$ROOT/scripts/check-developer-docs-sync.sh"
 
+  echo "==> static asset permissions"
+  "$ROOT/scripts/check-static-asset-permissions.sh"
+
   echo "==> backend tests"
   "$ROOT/scripts/test-backend.sh"
 
