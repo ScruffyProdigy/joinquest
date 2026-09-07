@@ -96,6 +96,42 @@ describe('tableShouldLeaveRoomList', () => {
       }),
     ).toBe(false)
   })
+
+  // A private table is created with nobody seated, so "empty and cannot start" is the
+  // opening state of every group, not a finished one. Occupancy cannot tell those
+  // apart; status can (JQ-132).
+  it('keeps a forming table that nobody has claimed a seat at yet', () => {
+    expect(
+      tableShouldLeaveRoomList({
+        id: 't1',
+        status: 'forming',
+        canStart: false,
+        seats: [],
+        seatSlots: [
+          { seatKey: '1', displayName: '1', user: null },
+          { seatKey: '2', displayName: '2', user: null },
+        ],
+      }),
+    ).toBe(false)
+  })
+
+  it('removes a table once it has started', () => {
+    expect(
+      tableShouldLeaveRoomList({
+        id: 't1',
+        status: 'started',
+        canStart: true,
+        seats: [{ seatKey: '1', user: { id: 'u1' } }],
+        seatSlots: [{ seatKey: '1', displayName: '1', user: { id: 'u1' } }],
+      }),
+    ).toBe(true)
+  })
+
+  it('removes a discarded table', () => {
+    expect(
+      tableShouldLeaveRoomList({ id: 't1', status: 'discarded', canStart: false, seats: [], seatSlots: [] }),
+    ).toBe(true)
+  })
 })
 
 describe('pooled role helpers', () => {

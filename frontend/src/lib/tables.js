@@ -11,6 +11,7 @@ import { displayNameOrFallback } from './viewer'
 export const TABLE_FIELDS = `
   id
   createdAt
+  status
   canStart
   canDiscard
   game {
@@ -547,10 +548,22 @@ export function formatGroupSeatCaption(seatedCount, meta) {
   return text
 }
 
-/** Remove tables that finished forming (started/discarded) from room snapshots. */
+/**
+ * Remove tables that finished forming (started/discarded) from room snapshots.
+ *
+ * Prefer the table's own status. The occupancy heuristic below cannot tell a table
+ * that emptied because it started from one nobody has sat at yet — and since a private
+ * table is created with no seats, "empty and cannot start" is the opening state of
+ * every group rather than a finished one (JQ-132). It remains the fallback for partial
+ * payloads that carry no status.
+ */
 export function tableShouldLeaveRoomList(table) {
   if (!table) {
     return false
+  }
+  const status = table.status?.trim?.()
+  if (status) {
+    return status !== 'forming'
   }
   const enriched = enrichTableSeats(table)
   const seatedFromSlots = (enriched.seatSlots ?? []).filter((slot) => slot.user).length
