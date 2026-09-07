@@ -292,11 +292,17 @@ export function sigilImageUrl(familyKey, hex, expression) {
 /**
  * Builds one identity: a tint word, a noun from `family`, and a 4-digit number.
  * The number is what keeps two guests from colliding on the same name.
+ *
+ * `label` is the same colour and animal without the number, for a picker that
+ * offers the face alone — someone who already has a name still needs to be told
+ * which disc they are reaching for.
  */
 export function generateGuestIdentity(family, tint = generateTint(), expression = pickOne(SIGIL_EXPRESSIONS)) {
   const number = NUMBER_MIN + randomInt(NUMBER_MAX - NUMBER_MIN + 1)
+  const noun = pickOne(family.nouns)
   return {
-    name: `${tint.word}${pickOne(family.nouns)}${number}`,
+    name: `${tint.word}${noun}${number}`,
+    label: `${tint.word} ${noun}`,
     avatarKey: sigilAvatarKey(family.key, tint.hex, expression),
     imageUrl: sigilImageUrl(family.key, tint.hex, expression),
   }
