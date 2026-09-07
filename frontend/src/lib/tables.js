@@ -1,5 +1,5 @@
 import { graphqlRequest } from './graphql'
-import { USER_AVATAR_FIELDS } from './avatars'
+import { PUBLIC_PLAYER_FIELDS, USER_AVATAR_FIELDS } from './avatars'
 import { createClient } from 'graphql-ws'
 import { getGraphQLWsUrl } from './env'
 import { prefetchSubscriptionAuth } from './queue'
@@ -63,8 +63,10 @@ export const TABLE_FIELDS = `
     needed
   }
   regroupRoster {
+    # PublicPlayer, not User: the roster of a finished match must not leak
+    # contact details, so it has no avatarKey to select.
     user {
-      ${USER_AVATAR_FIELDS}
+      ${PUBLIC_PLAYER_FIELDS}
     }
     role
     finished

@@ -2,6 +2,7 @@ import { createClient } from 'graphql-ws'
 import { getGraphQLWsUrl } from './env'
 import { graphqlRequest } from './graphql'
 import { prefetchSubscriptionAuth } from './queue'
+import { PUBLIC_PLAYER_FIELDS } from './avatars'
 import { TABLE_FIELDS } from './tables'
 
 // PublicPlayer (not User): a queue match introduces strangers, so the roster
@@ -33,9 +34,7 @@ const MATCH_RESULT_FIELDS = `
   }
   participants {
     user {
-      id
-      displayName
-      avatarUrl
+      ${PUBLIC_PLAYER_FIELDS}
     }
     role
     finished

@@ -1,11 +1,23 @@
 import { graphqlRequest } from './graphql'
 import { displayNameOrFallback } from './viewer'
 
+// User-typed fields. `avatarKey` exists only on User, so spreading this into a
+// PublicPlayer-typed selection fails validation for the whole document — use
+// PUBLIC_PLAYER_FIELDS there instead.
 export const USER_AVATAR_FIELDS = `
   id
   displayName
   avatarUrl
   avatarKey
+`
+
+// PublicPlayer-typed fields: a public roster introduces strangers, so it exposes
+// no email and no avatarKey. avatarUrl is already resolved server-side, so an
+// avatar still renders from this alone.
+export const PUBLIC_PLAYER_FIELDS = `
+  id
+  displayName
+  avatarUrl
 `
 
 export const STARTER_AVATARS_QUERY = `
