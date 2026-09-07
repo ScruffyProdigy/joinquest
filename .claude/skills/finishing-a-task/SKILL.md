@@ -44,12 +44,23 @@ Move it to Done — but **check first**, don't assume either way. The GitHub int
 
 ## Orphan recovery
 
-If the worktree is already gone and the stack is still running, the project name is still on the containers:
+Two kinds, and the second is invisible to the first check.
+
+**Stack still exists** — the project name is on the containers:
 
 ```bash
 docker ps -a --format '{{.Label "com.docker.compose.project"}}' | sort -u | grep '^lobby-'
 docker compose -p <project> down -v
 ```
+
+**Containers gone, volume left behind** — belongs to no project, so it appears in no `docker ps` and no compose listing. Torn down without `-v`, or the containers were pruned separately. These accumulate silently at ~70MB each:
+
+```bash
+docker volume ls -q -f dangling=true | grep playhub      # look first
+docker volume ls -q -f dangling=true | grep playhub | xargs -r docker volume rm
+```
+
+The invariant worth checking: surviving `*_playhub_pgdata` volumes should map one-to-one to live worktrees plus the main clone. Anything else is an orphan.
 
 ## Red flags — stop
 
