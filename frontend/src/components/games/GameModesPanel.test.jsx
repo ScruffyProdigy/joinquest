@@ -14,6 +14,12 @@ vi.mock('../../lib/tables', () => ({
   createPrivateTable: vi.fn(),
 }))
 
+const navigateTo = vi.fn()
+vi.mock('../../lib/usePathname', () => ({
+  navigateTo: (...args) => navigateTo(...args),
+  usePathname: () => '/games/legendary-quest',
+}))
+
 vi.mock('../../lib/queue', () => ({
   joinQueue: vi.fn(),
   fetchMyQueueStatus: vi.fn(),
@@ -228,5 +234,45 @@ describe('GameModesPanel prominent mode-card badges', () => {
       />,
     )
     expect(screen.queryByLabelText('Mode details')).not.toBeInTheDocument()
+  })
+})
+
+describe('GameModesPanel friends action', () => {
+  function friendsGame() {
+    return {
+      id: 'game-1',
+      slug: 'legendary-quest',
+      modes: [
+        {
+          id: 'mode-1',
+          modeKey: 'legendary',
+          displayName: 'Legendary',
+          status: 'active',
+          queues: [],
+          seats: [],
+          queuePaths: [],
+          eligibility: { accessible: true },
+        },
+      ],
+    }
+  }
+
+  it('offers the friends action in the prototype wording', () => {
+    render(<GameModesPanel game={friendsGame()} />)
+
+    expect(screen.getByRole('button', { name: 'Play with friends' })).toBeInTheDocument()
+  })
+
+  it('takes the player to their group instead of opening the room panel', async () => {
+    const user = userEvent.setup()
+    const { createPrivateTable } = await import('../../lib/tables')
+    createPrivateTable.mockResolvedValue({ id: 'table-1' })
+    navigateTo.mockClear()
+
+    render(<GameModesPanel game={friendsGame()} />)
+    await user.click(screen.getByRole('button', { name: 'Play with friends' }))
+
+    expect(createPrivateTable).toHaveBeenCalledWith('game-1', 'mode-1')
+    expect(navigateTo).toHaveBeenCalledWith('/group')
   })
 })

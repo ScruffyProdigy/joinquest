@@ -862,3 +862,24 @@ func (s *Store) TableCanDiscard(ctx context.Context, tableID, userID uuid.UUID) 
 	}
 	return tableCanDiscard(table, len(seated), userID, tableKingUserID(seated)), nil
 }
+
+// AssertCanTakeTableSeat enforces queue ↔ table mutual exclusion for a player who is
+// about to claim a seat themselves (JQ-132, AC #6).
+//
+// Deliberately separate from ensureNotQueueMatchedTx, which guards the seating that
+// happens *to* a player: Look for group backfill seats people who are, by definition,
+// still waiting in a queue, so widening that check would break backfill. This one
+// covers the other direction — a player choosing a seat while they are also queued —
+// and so belongs on the user-initiated mutation path only.
+func (s *Store) AssertCanTakeTableSeat(ctx context.Context, userID uuid.UUID) error {
+	var exists bool
+	if err := s.db.QueryRowContext(ctx, `
+		SELECT EXISTS(SELECT 1 FROM game_queues WHERE user_id = $1 AND status = 'waiting')
+	`, userID).Scan(&exists); err != nil {
+		return err
+	}
+	if exists {
+		return ErrAlreadyQueued
+	}
+	return nil
+}

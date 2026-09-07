@@ -95,6 +95,14 @@ func (r *mutationResolver) SitAtTable(ctx context.Context, tableID string, seatK
 	if _, err := r.requireTableRoomMember(ctx, tid, userID); err != nil {
 		return nil, err
 	}
+	// The group screen claims seats straight through this mutation, so queue ↔ table
+	// exclusion is enforced here rather than only in the catalog's button (JQ-132).
+	if err := st.AssertCanTakeTableSeat(ctx, userID); err != nil {
+		if errors.Is(err, store.ErrAlreadyQueued) {
+			return nil, fmt.Errorf("stop looking for a group before taking a seat")
+		}
+		return nil, err
+	}
 	table, err := st.SitAtTable(ctx, tid, userID, seatKey)
 	if err != nil {
 		if errors.Is(err, store.ErrAlreadyMatched) {

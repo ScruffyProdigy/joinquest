@@ -159,7 +159,7 @@ export function bannerLiveUpdatesPausedHint() {
   return 'Live updates paused — refreshing every few seconds.'
 }
 
-export const CREATE_PRIVATE_GAME = 'Create private game'
+export const PLAY_WITH_FRIENDS = 'Play with friends'
 export const START_GAME = 'Start now'
 export const DISCARD = 'Discard'
 export const KING_LABEL = 'King'

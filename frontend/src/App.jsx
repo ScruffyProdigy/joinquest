@@ -17,6 +17,8 @@ import { useActiveIntent } from './components/games/useActiveIntent'
 import { APP_NAME } from './lib/brand'
 import { onIdentityRequired } from './lib/identityPrompt'
 import { parseRoomInviteCode } from './lib/rooms'
+import { parseGroupRoute } from './lib/group'
+import GroupPage from './components/group/GroupPage'
 import { parseGameSlug } from './lib/games'
 import { MOBILE_ROOM_QUERY, useMediaQuery } from './lib/useMediaQuery'
 import { usePathname } from './lib/usePathname'
@@ -103,11 +105,14 @@ function MainLayout() {
   const { user } = useAuth()
   const { room, roomOpen, dismissRoom, openRoom, unreadCount, hasRoomMembership } = useActiveRoom()
   const isMobile = useMediaQuery(MOBILE_ROOM_QUERY)
+  const onGroup = parseGroupRoute(pathname)
   const inRoomContext = Boolean(room || inviteCode || hasRoomMembership)
   // Desktop keeps the room panel visible whenever the user belongs to a room; mobile toggles via dock/sheet.
-  const showDesktopRoom = Boolean(room && user && !isMobile)
-  const showMobileSheet = Boolean(user && isMobile && roomOpen)
-  const showDock = Boolean(user && isMobile && inRoomContext)
+  // The group page is the exception: it is a presentation over the same room, so the
+  // room must not also show through beside it (JQ-132).
+  const showDesktopRoom = Boolean(room && user && !isMobile && !onGroup)
+  const showMobileSheet = Boolean(user && isMobile && roomOpen && !onGroup)
+  const showDock = Boolean(user && isMobile && inRoomContext && !onGroup)
 
   useEffect(() => {
     const root = document.getElementById('root')
@@ -123,7 +128,7 @@ function MainLayout() {
     <>
       <div className={`app-layout ${showDesktopRoom ? 'app-layout--split' : ''}`}>
         <div className="app-layout__catalog">
-          {gameSlug ? <GameDetailShell slug={gameSlug} /> : <CatalogPage />}
+          {onGroup ? <GroupPage /> : gameSlug ? <GameDetailShell slug={gameSlug} /> : <CatalogPage />}
         </div>
         {showDesktopRoom ? (
           <aside className="app-layout__room" aria-label="Room chat">
@@ -196,6 +201,7 @@ function App() {
   const developerRoute = parseDeveloperRoute(pathname)
   const isMainRoute =
     pathname === '/' ||
+    parseGroupRoute(pathname) ||
     Boolean(parseRoomInviteCode(pathname)) ||
     Boolean(parseGameSlug(pathname))
 

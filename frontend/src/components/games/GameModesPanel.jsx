@@ -2,12 +2,13 @@ import { useState } from 'react'
 import { isSoloMode, joinGroupOptionsForMode, modePlayerRangeLabel } from '../../lib/games'
 import { accentColorFor } from '../../lib/gameAccent'
 import { hasPlayingIntent, hasWaitingIntent } from '../../lib/intent'
-import { CREATE_PRIVATE_GAME } from '../../lib/playerCopy'
+import { PLAY_WITH_FRIENDS } from '../../lib/playerCopy'
 import { createPrivateTable } from '../../lib/tables'
 import { useActiveRoom } from '../rooms/ActiveRoomProvider'
 import GameQueueActions from './GameQueueActions'
 import ModeRequirement from './ModeRequirement'
 import { useGameQueue } from './useGameQueue'
+import { navigateTo } from '../../lib/usePathname'
 
 function ModeRow({
   game,
@@ -20,7 +21,7 @@ function ModeRow({
   onNavigateToMode,
   prominent = false,
 }) {
-  const { refresh: refreshRoom, openRoom } = useActiveRoom()
+  const { refresh: refreshRoom } = useActiveRoom()
   const defaultQueue = mode.queues?.find((q) => q.status === 'active') ?? null
   const playerRangeLabel = modePlayerRangeLabel(mode)
   const accent = prominent ? accentColorFor(game.slug, game.accentColor) : null
@@ -88,8 +89,10 @@ function ModeRow({
     try {
       await createPrivateTable(game.id, mode.id)
       await refreshRoom()
-      openRoom()
       await onTableChange?.()
+      // The room is implicit: the player asked to play with friends, not to make a
+      // room, so they land straight on their group (JQ-132).
+      navigateTo('/group')
     } catch (err) {
       setTableError(err.message || 'Could not create private game.')
     } finally {
@@ -198,7 +201,7 @@ function ModeRow({
                 disabled={tableBusy || blockedByMatch}
                 onClick={handleCreatePrivate}
               >
-                {tableBusy ? '…' : CREATE_PRIVATE_GAME}
+                {tableBusy ? '…' : PLAY_WITH_FRIENDS}
               </button>
             )}
           </>
