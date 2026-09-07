@@ -29,33 +29,33 @@ const markSaturation = 72
 // *perceived* degrees. Specifying it in HSL degrees instead made the sweep ten
 // times stronger in cyan than in green — the same non-uniformity the hue draw
 // already works around — so greens came out looking flat.
-const gradientSweep = 18.0
+const gradientSweep = 21.0
 
-// gradientLift is how far apart the two stops sit in lightness, in L*, at the ends
-// of the disc lightness range. The hue rotation alone reads as a colour shift; a
-// little lightness behind it reads as a lit surface.
+// gradientLift is how far apart the two stops sit in lightness, in L*.
 //
-// It tapers to nothing in the middle of the range, and that taper is not a
-// nicety — it is what makes the lift free. A mid-lightness disc is the hardest
-// case for the mark, which has to be reachable either well above or well below
-// the disc; spreading such a disc in both directions leaves nowhere to go, and
-// the mark bottoms out at black. A flat lift of this size would strand a sixth of
-// all discs there. Tapered, the lift is largest exactly where the mark has the
-// most headroom and absent where it has the least.
+// It is spent unevenly, because the two directions are not equally free. Going
+// darker costs nothing. Going lighter runs into markFlip: past that the mark can
+// no longer be the lighter of the two and flips dark, which would turn the animal
+// into a hole in the disc. So the light stop takes whatever headroom is left below
+// markFlip and the dark stop takes the full share, which gives a disc sitting near
+// the ceiling a real gradient instead of almost none.
+//
+// Splitting it evenly instead looked fine while discs were drawn either side of
+// markFlip, and collapsed to almost nothing once they all sat below it.
 const gradientLift = 10.0
 
-// The lightness range the picker draws discs from, mirroring LIGHTNESS_MIN and
-// LIGHTNESS_MAX in frontend/src/lib/guestIdentity.js. Only the taper depends on
-// it, so a drift between the two costs a little gradient, never legibility.
-const (
-	discLightnessMid   = 50.0
-	discLightnessReach = 42.0
-)
+// liftCeiling is how light the light stop may go. The hard limit is L*~50, past
+// which no light mark can hold MarkContrast at all — but a mark solved against a
+// stop that close to it comes out very near white, and loses the hue that makes it
+// a tint rather than a highlight. This sits far enough below to keep some colour
+// in it.
+const liftCeiling = 46.0
 
-// gradientHalfLift is how far each stop moves from the disc's own lightness.
-func gradientHalfLift(baseL float64) float64 {
-	towardEdge := math.Min(1, math.Abs(baseL-discLightnessMid)/discLightnessReach)
-	return gradientLift * towardEdge / 2
+// gradientLifts returns how far the light and dark stops move from the disc's own
+// lightness. Only the light one is bounded.
+func gradientLifts(baseL float64) (up, down float64) {
+	share := gradientLift / 2
+	return math.Min(share, math.Max(0, liftCeiling-baseL)), share
 }
 
 func srgbToLinear(channel float64) float64 {
@@ -209,13 +209,13 @@ func sigilGradient(hex string) (string, string) {
 	hue, sat, _ := rgbToHSL(rgb)
 	baseY := luminance(rgb)
 	baseL := lightnessStar(baseY)
-	half := gradientHalfLift(baseL)
+	up, down := gradientLifts(baseL)
 	stop := func(shift, lift float64) string {
 		h := hueForPerceivedShift(hue, sat, baseY, shift)
 		y := luminanceForLightnessStar(math.Max(0, math.Min(100, baseL+lift)))
 		return formatHex(hslToRGB(h, sat, lightnessForLuminance(h, sat, y)))
 	}
-	return stop(-gradientSweep, half), stop(gradientSweep, -half)
+	return stop(-gradientSweep, up), stop(gradientSweep, -down)
 }
 
 // sigilMark is the colour the silhouette and the rim are drawn in: the disc's own
@@ -432,12 +432,10 @@ func drawEye(e eye, mode, body, tint string) string {
 
 // sigilFace draws the whole expression. A wink closes one eye and leaves the
 // other open, so on a one-eyed family — a corvid in profile, a snake — it reads
-// as the closed one alone, which is the same joke. A family with no face at all
-// spends the same axis on its markings instead.
+// as the closed one alone, which is the same joke. Every family has a face —
+// including the ones that have no business having one, because a starfish that
+// can wink is worth more here than a starfish that is anatomically right.
 func sigilFace(family, expression, body, tint string) string {
-	if flourish, ok := sigilFlourishes[family]; ok {
-		return flourish(expression, body, tint)
-	}
 	eyes, ok := sigilEyes[family]
 	if !ok {
 		return ""
@@ -455,92 +453,6 @@ func sigilFace(family, expression, body, tint string) string {
 		out += drawEye(e, mode, body, tint)
 	}
 	return out
-}
-
-// sigilFlourishes carries the three families that have no face to give an
-// expression to — a raptor seen from below, a butterfly, a starfish. They take the
-// same axis and spend it on their markings instead, so every family answers to all
-// five values and no key is wasted. The wink slot is asymmetric in each of them,
-// because a marking that is deliberately off-balance is where the playfulness in a
-// faceless shape actually comes from.
-var sigilFlourishes = map[string]func(expression, body, tint string) string{
-	"raptor": func(expression, body, tint string) string {
-		bar := func(d string) string {
-			return fmt.Sprintf(`
-  <path d="%s" fill="none" stroke="%s" stroke-width="1.8" stroke-linecap="round"/>`, d, tint)
-		}
-		switch expression {
-		case "bright":
-			return bar("M11 24 L20 27 M53 24 L44 27") + bar("M27 45 L37 45")
-		case "squint":
-			return bar("M11 23 L16 26 L11 28 M53 23 L48 26 L53 28")
-		case "wink":
-			return bar("M11 24 L21 28 M14 21 L22 25")
-		case "sleepy":
-			return bar("M29 45 L35 45")
-		default:
-			return bar("M12 24 L20 27 M52 24 L44 27")
-		}
-	},
-	"lepidopteran": func(expression, body, tint string) string {
-		spot := func(x, y, r float64) string {
-			return fmt.Sprintf(`
-  <circle cx="%g" cy="%g" r="%g" fill="%s"/>`, x, y, r, tint)
-		}
-		switch expression {
-		case "bright":
-			return spot(17, 22, 4.4) + spot(47, 22, 4.4) +
-				fmt.Sprintf(`
-  <circle cx="17" cy="22" r="1.8" fill="%[1]s"/>
-  <circle cx="47" cy="22" r="1.8" fill="%[1]s"/>`, body)
-		case "squint":
-			return fmt.Sprintf(`
-  <path d="M12 20 Q17 26 22 20 M42 20 Q47 26 52 20" fill="none" stroke="%s" stroke-width="2.4" stroke-linecap="round"/>`, tint)
-		case "wink":
-			return spot(17, 22, 4.2) + fmt.Sprintf(`
-  <path d="M42 20 Q47 26 52 20" fill="none" stroke="%s" stroke-width="2.4" stroke-linecap="round"/>`, tint)
-		case "sleepy":
-			return spot(14, 21, 1.9) + spot(19, 25, 1.9) + spot(45, 21, 1.9) + spot(50, 25, 1.9)
-		default:
-			return spot(17, 22, 3.6) + spot(47, 22, 3.6)
-		}
-	},
-	"echinoderm": func(expression, body, tint string) string {
-		arms := [5][2]float64{{32, 18}, {43, 27}, {39, 41}, {25, 41}, {21, 27}}
-		dot := func(x, y, r float64) string {
-			return fmt.Sprintf(`
-  <circle cx="%g" cy="%g" r="%g" fill="%s"/>`, x, y, r, tint)
-		}
-		out := ""
-		switch expression {
-		case "bright":
-			for _, a := range arms {
-				out += dot(a[0], a[1], 2.6)
-			}
-			return out + fmt.Sprintf(`
-  <circle cx="32" cy="31" r="1.8" fill="%s"/>`, body)
-		case "squint":
-			for _, a := range arms {
-				out += dot(a[0], a[1], 1.5) + dot(32+(a[0]-32)*0.6, 31+(a[1]-31)*0.6, 1.2)
-			}
-			return out
-		case "wink":
-			for i, a := range arms {
-				if i == 1 {
-					continue
-				}
-				out += dot(a[0], a[1], 1.7)
-			}
-			return out
-		case "sleepy":
-			return ""
-		default:
-			for _, a := range arms {
-				out += dot(a[0], a[1], 1.7)
-			}
-			return out
-		}
-	},
 }
 
 // sigilTilt is a few degrees of lean, so a row of sigils does not sit to
@@ -569,13 +481,16 @@ var sigilEyes = map[string][]eye{
 	"chelonian":  {{28.5, 12, 1.9}, {35.5, 12, 1.9}},
 	"corvid":     {{27, 26, 2.8}},
 	"crustacean": {{26, 34, 2.6}, {38, 34, 2.6}},
+	"echinoderm": {{28.6, 30, 2.6}, {35.4, 30, 2.6}},
 	"equine":     {{33, 27, 2.2}},
 	"feline":     {{25, 33, 2.4}, {39, 33, 2.4}},
 	"gastropod":  {{52, 25, 1.5}, {45, 27, 1.4}},
 	"horned":     {{27, 31, 2.4}, {37, 31, 2.4}},
 	"lagomorph":  {{25, 39, 2.4}, {39, 39, 2.4}},
+	"lepidopteran": {{29.9, 20.4, 1.8}, {34.1, 20.4, 1.8}},
 	"primate":    {{26, 31, 2.4}, {38, 31, 2.4}},
 	"proboscid":  {{25, 25, 2.4}, {39, 25, 2.4}},
+	"raptor":     {{37, 29, 3.6}},
 	"rodent":     {{25, 32, 2.4}, {39, 32, 2.4}},
 	"serpent":    {{41, 22, 2.2}},
 	"spheniscid": {{27, 22, 2.1}, {37, 22, 2.1}},
@@ -609,12 +524,10 @@ var sigilShapes = map[string]func(body, tint string) string{
 	},
 	"raptor": func(body, tint string) string {
 		return fmt.Sprintf(`
-  <path d="M30 23 C22 20 12 20 5 24 C11 26 20 29 26 35 L31 31 Z" fill="%[1]s"/>
-  <path d="M34 23 C42 20 52 20 59 24 C53 26 44 29 38 35 L33 31 Z" fill="%[1]s"/>
-  <ellipse cx="32" cy="28" rx="4" ry="11" fill="%[1]s"/>
-  <circle cx="32" cy="18" r="3.6" fill="%[1]s"/>
-  <path d="M28 36 L36 36 L38 49 L32 45 L26 49 Z" fill="%[1]s"/>
-  <path d="M28 42 L36 42" fill="none" stroke="%[2]s" stroke-width="2" stroke-linecap="round"/>`, body, tint)
+  <path d="M20 25 C13 26 7 29 4 33 C7 37 10 41 14 44 C15 38 17 33 21 32 Z" fill="%[1]s"/>
+  <path d="M36 12 C47 12 55 21 55 32 C55 44 47 52 36 52 C29 52 23 48 20 42 L20 24 C23 17 29 12 36 12 Z" fill="%[1]s"/>
+  <path d="M25 22 L47 26 L47 19 Z" fill="%[2]s"/>
+  <path d="M44 44 C48 42 51 39 53 36" fill="none" stroke="%[2]s" stroke-width="2" stroke-linecap="round"/>`, body, tint)
 	},
 	"corvid": func(body, tint string) string {
 		return fmt.Sprintf(`
@@ -751,13 +664,20 @@ var sigilShapes = map[string]func(body, tint string) string{
   <path d="M31 22 C28 14 20 8 13 11 C6 14 5 24 14 30 C6 33 4 44 11 49 C18 53 28 45 31 36 Z" fill="%[1]s"/>
   <path d="M33 22 C36 14 44 8 51 11 C58 14 59 24 50 30 C58 33 60 44 53 49 C46 53 36 45 33 36 Z" fill="%[1]s"/>
   <path d="M31 20 C29 15 26 12 23 10 M33 20 C35 15 38 12 41 10" fill="none" stroke="%[1]s" stroke-width="2" stroke-linecap="round"/>
-  <ellipse cx="32" cy="32" rx="2.8" ry="13" fill="%[1]s"/>
+  <ellipse cx="32" cy="33" rx="2.8" ry="12" fill="%[1]s"/>
+  <circle cx="32" cy="21" r="4.4" fill="%[1]s"/>
+  <circle cx="17" cy="24" r="3.4" fill="%[2]s"/>
+  <circle cx="47" cy="24" r="3.4" fill="%[2]s"/>
 `, body, tint)
 	},
 	"echinoderm": func(body, tint string) string {
 		return fmt.Sprintf(`
   <path d="M32 9 L37.6 24.3 L53.9 24.9 L41 34.9 L45.5 50.6 L32 41.5 L18.5 50.6 L23 34.9 L10.1 24.9 L26.4 24.3 Z" fill="%[1]s"/>
-  <circle cx="32" cy="31" r="4.2" fill="%[2]s"/>`, body, tint)
+  <circle cx="32" cy="17" r="1.7" fill="%[2]s"/>
+  <circle cx="43" cy="27" r="1.7" fill="%[2]s"/>
+  <circle cx="39" cy="41" r="1.7" fill="%[2]s"/>
+  <circle cx="25" cy="41" r="1.7" fill="%[2]s"/>
+  <circle cx="21" cy="27" r="1.7" fill="%[2]s"/>`, body, tint)
 	},
 	"gastropod": func(body, tint string) string {
 		return fmt.Sprintf(`

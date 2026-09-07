@@ -96,7 +96,7 @@ const SATURATION_MAX = 100
  * and the lean do — which is the right trade, because those cost nothing.
  */
 const LIGHTNESS_MIN = 30
-const LIGHTNESS_MAX = 49
+const LIGHTNESS_MAX = 46
 
 /** Four digits keeps names distinct without making them unreadable. */
 const NUMBER_MIN = 1000

@@ -173,40 +173,39 @@ func TestSigilGradientSweepsEvenlyByEye(t *testing.T) {
 }
 
 // The two stops part in lightness as well as hue, always the same way round so a
-// row of avatars reads as lit from one place, and by an amount that tapers to
-// nothing in the middle of the lightness range — which is what keeps the lift from
-// stranding the mark on discs that have no room for it.
-func TestSigilGradientLiftTapersTowardTheMiddle(t *testing.T) {
-	spread := func(hex string) float64 {
+// row of avatars reads as lit from one place. The light stop is bounded by the
+// headroom left below markFlip and the dark one is not, so a disc near the ceiling
+// still gets a gradient instead of almost none.
+func TestSigilGradientLiftUsesTheHeadroomItHas(t *testing.T) {
+	spread := func(hex string) (float64, float64) {
 		from, to := sigilGradient(hex)
 		a := lightnessStar(luminance(parseHex(strings.TrimPrefix(from, "#"))))
 		b := lightnessStar(luminance(parseHex(strings.TrimPrefix(to, "#"))))
-		return a - b
+		return a, b
 	}
-	for _, hex := range []string{"0a2312", "c04a2a", "9ad4a8", "e8e2b0", "f2f6f3"} {
+	for _, hex := range []string{"0a2312", "123a5c", "2f6f3f", "c04a2a", "1f8f9a"} {
 		baseL := lightnessStar(luminance(parseHex(hex)))
-		got := spread(hex)
-		if got <= 0 {
-			t.Fatalf("gradient on %q does not lift its first stop: %.1f L*", hex, got)
+		up, down := gradientLifts(baseL)
+		light, dark := spread(hex)
+		if light <= dark {
+			t.Fatalf("gradient on %q does not lift its first stop: L* %.1f then %.1f", hex, light, dark)
 		}
-		// A disc close to black or white has one stop clamped at the end of the
-		// scale, so the expected spread is what survives the clamp.
-		half := gradientHalfLift(baseL)
-		want := math.Min(100, baseL+half) - math.Max(0, baseL-half)
-		if math.Abs(got-want) > 1.5 {
-			t.Fatalf("gradient on %q lifts by %.1f L*, want %.1f", hex, got, want)
+		if want := up + down; math.Abs((light-dark)-want) > 1.5 {
+			t.Fatalf("gradient on %q spreads %.1f L*, want %.1f", hex, light-dark, want)
+		}
+		// A fixture may already sit above the ceiling; what matters is that the
+		// lift never pushes it further up.
+		if light > math.Max(baseL, liftCeiling)+0.5 {
+			t.Fatalf("gradient on %q lifts to L* %.1f, past the ceiling at %.1f", hex, light, liftCeiling)
 		}
 	}
 
-	// A disc sitting at the middle gets essentially no lift, and one at the edge
-	// gets the full amount.
-	middle := formatHex(hslToRGB(150, 70, lightnessForLuminance(150, 70, luminanceForLightnessStar(discLightnessMid))))
-	if got := spread(strings.TrimPrefix(middle, "#")); got > 1.0 {
-		t.Fatalf("a mid-lightness disc should barely lift, got %.1f L*", got)
-	}
-	edge := formatHex(hslToRGB(150, 70, lightnessForLuminance(150, 70, luminanceForLightnessStar(88))))
-	if got := spread(strings.TrimPrefix(edge, "#")); got < gradientLift*0.8 {
-		t.Fatalf("a disc at the edge should lift fully, got %.1f L*", got)
+	// Every disc gets a real gradient, including one sitting at the ceiling.
+	for _, baseL := range []float64{30, 36, 42, 46, 49} {
+		up, down := gradientLifts(baseL)
+		if up+down < gradientLift/2 {
+			t.Fatalf("a disc at L* %.0f only spreads %.1f L*", baseL, up+down)
+		}
 	}
 }
 
@@ -234,7 +233,7 @@ func TestSigilByKeyDefaultsTheExpression(t *testing.T) {
 // The whole point of the expression axis is that it distinguishes two guests who
 // already share a family and a colour, so it has to actually change the drawing.
 func TestSigilExpressionsDrawDifferently(t *testing.T) {
-	for family := range sigilEyes {
+	for _, family := range SigilFamilies {
 		seen := map[string]string{}
 		for _, expression := range SigilExpressions {
 			svg, ok := RenderSigil(family, "2f6f3f", expression)
@@ -249,27 +248,19 @@ func TestSigilExpressionsDrawDifferently(t *testing.T) {
 	}
 }
 
-// Every family answers to all five values now: nineteen wear them as a face, two
-// more got eyes they always had the anatomy for, and the three with no face at all
-// spend the axis on their markings. This pins that partition so a family cannot
-// quietly fall out of it.
-func TestEveryFamilyAnswersToTheExpression(t *testing.T) {
-	faceless := []string{"raptor", "lepidopteran", "echinoderm"}
-	for _, family := range faceless {
-		if _, ok := sigilFlourishes[family]; !ok {
-			t.Fatalf("%q has no face and no flourish either", family)
-		}
-	}
-	if len(sigilEyes)+len(faceless) != len(SigilFamilies) {
-		t.Fatalf("%d families have eyes and %d have flourishes, but there are %d",
-			len(sigilEyes), len(faceless), len(SigilFamilies))
-	}
+// Every family has a face, including the two with no anatomical business having
+// one. That is deliberate: the expression is the axis that separates two guests
+// who already share an animal and a colour, and a family without one would waste a
+// fifth of its keys — a starfish that can wink is worth more here than a starfish
+// that is anatomically right.
+func TestEveryFamilyHasAFace(t *testing.T) {
 	for _, family := range SigilFamilies {
-		_, hasEyes := sigilEyes[family]
-		_, hasFlourish := sigilFlourishes[family]
-		if hasEyes == hasFlourish {
-			t.Fatalf("%q should have exactly one of eyes or a flourish", family)
+		if eyes, ok := sigilEyes[family]; !ok || len(eyes) == 0 {
+			t.Fatalf("%q has no eyes, so its expression would do nothing", family)
 		}
+	}
+	if len(sigilEyes) != len(SigilFamilies) {
+		t.Fatalf("sigilEyes has %d entries for %d families", len(sigilEyes), len(SigilFamilies))
 	}
 }
 
