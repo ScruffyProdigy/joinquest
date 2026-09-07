@@ -2,7 +2,6 @@ package store
 
 import (
 	"context"
-	"errors"
 	"testing"
 
 	"github.com/google/uuid"
@@ -49,8 +48,13 @@ func TestCreatePrivateTableReusesThePlayersExistingRoom(t *testing.T) {
 
 // Queue and table stay mutually exclusive for a player who arrives through the group
 // screen (JQ-132, AC #6). The group page claims seats with sitAtTable directly, so the
-// check cannot live only in the catalog's create-table button.
-func TestAssertCanTakeTableSeatRefusesAPlayerWaitingInAQueue(t *testing.T) {
+// guarantee has to hold on that mutation and not only in the catalog's button.
+//
+// Exclusion here is resolved rather than refused: sitting down cancels the waiting
+// queue entry (leaveUserWaitingQueuesTx), so a player who was looking for a group and
+// then takes a seat with friends ends up in exactly one of the two. Asserting on the
+// end state rather than on an error keeps this honest if the mechanism moves.
+func TestSittingAtATableCancelsAWaitingQueueEntry(t *testing.T) {
 	st := openTestStore(t)
 	cleaner := st.NewTestCleaner(t)
 	ctx := context.Background()
@@ -61,21 +65,51 @@ func TestAssertCanTakeTableSeatRefusesAPlayerWaitingInAQueue(t *testing.T) {
 	}
 	cleaner.TrackUser(player.ID)
 
-	_, _, queueID := setupWordHuntMode(t, st, cleaner)
+	game, mode, queueID := setupWordHuntMode(t, st, cleaner)
 
-	if err := st.AssertCanTakeTableSeat(ctx, player.ID); err != nil {
-		t.Fatalf("a player in no queue may take a seat, got %v", err)
+	table, err := st.CreatePrivateTable(ctx, player.ID, game.ID, mode.ID)
+	if err != nil {
+		t.Fatalf("CreatePrivateTable: %v", err)
 	}
 
 	if _, err := st.JoinModeQueue(ctx, queueID, player.ID, "Guesser", nil); err != nil {
 		t.Fatalf("JoinModeQueue: %v", err)
 	}
+	if waiting := countWaitingQueueRows(t, st, player.ID); waiting != 1 {
+		t.Fatalf("expected the player to be waiting in one queue, got %d", waiting)
+	}
 
-	err = st.AssertCanTakeTableSeat(ctx, player.ID)
-	if err == nil {
-		t.Fatal("expected a waiting queue player to be refused a table seat")
+	seats, err := st.ListGameModeSeats(ctx, mode.ID)
+	if err != nil {
+		t.Fatalf("ListGameModeSeats: %v", err)
 	}
-	if !errors.Is(err, ErrAlreadyQueued) {
-		t.Fatalf("expected ErrAlreadyQueued, got %v", err)
+	if len(seats) == 0 {
+		t.Fatal("mode has no seats")
 	}
+	if _, err := st.SitAtTable(ctx, table.ID, player.ID, seats[0].SeatKey); err != nil {
+		t.Fatalf("SitAtTable: %v", err)
+	}
+
+	if waiting := countWaitingQueueRows(t, st, player.ID); waiting != 0 {
+		t.Fatalf("taking a seat should leave no waiting queue entry, got %d", waiting)
+	}
+
+	seated, err := st.GetUserTableSeat(ctx, player.ID)
+	if err != nil {
+		t.Fatalf("GetUserTableSeat: %v", err)
+	}
+	if seated == nil || seated.TableID != table.ID {
+		t.Fatalf("expected the player seated at %s, got %+v", table.ID, seated)
+	}
+}
+
+func countWaitingQueueRows(t *testing.T, st *Store, userID uuid.UUID) int {
+	t.Helper()
+	var count int
+	if err := st.db.QueryRowContext(context.Background(), `
+		SELECT COUNT(*) FROM game_queues WHERE user_id = $1 AND status = 'waiting'
+	`, userID).Scan(&count); err != nil {
+		t.Fatalf("count waiting queue rows: %v", err)
+	}
+	return count
 }

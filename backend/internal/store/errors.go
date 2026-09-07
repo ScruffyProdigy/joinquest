@@ -7,5 +7,4 @@ var (
 	ErrAlreadyExists  = errors.New("store: already exists")
 	ErrAlreadyMatched = errors.New("store: already matched for this game")
 	ErrActiveGame     = errors.New("store: active game in progress")
-	ErrAlreadyQueued  = errors.New("store: already looking for a group")
 )
