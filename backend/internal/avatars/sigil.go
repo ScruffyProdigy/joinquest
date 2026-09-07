@@ -473,30 +473,30 @@ func sigilTilt(key string) float64 {
 // give an expression to — the raptor is seen from below, the starfish has none —
 // and renders the same whichever expression its key carries.
 var sigilEyes = map[string][]eye{
-	"amphibian":  {{20, 20, 3.6}, {44, 20, 3.6}},
-	"arachnid":   {{29, 24, 2}, {35, 24, 2}},
-	"canine":     {{25, 31, 2.4}, {39, 31, 2.4}},
-	"cephalopod": {{24, 31, 3.2}, {40, 31, 3.2}},
-	"cetacean":   {{44, 28, 2.4}},
-	"chelonian":  {{28.5, 12, 1.9}, {35.5, 12, 1.9}},
-	"corvid":     {{27, 26, 2.8}},
-	"crustacean": {{26, 34, 2.6}, {38, 34, 2.6}},
-	"echinoderm": {{28.6, 30, 2.6}, {35.4, 30, 2.6}},
-	"equine":     {{33, 27, 2.2}},
-	"feline":     {{25, 33, 2.4}, {39, 33, 2.4}},
-	"gastropod":  {{52, 25, 1.5}, {45, 27, 1.4}},
-	"horned":     {{27, 31, 2.4}, {37, 31, 2.4}},
-	"lagomorph":  {{25, 39, 2.4}, {39, 39, 2.4}},
+	"amphibian":    {{20, 20, 3.6}, {44, 20, 3.6}},
+	"arachnid":     {{29, 24, 2}, {35, 24, 2}},
+	"canine":       {{25, 31, 2.4}, {39, 31, 2.4}},
+	"cephalopod":   {{24, 31, 3.2}, {40, 31, 3.2}},
+	"cetacean":     {{44, 28, 2.4}},
+	"chelonian":    {{28.5, 12, 1.9}, {35.5, 12, 1.9}},
+	"corvid":       {{27, 26, 2.8}},
+	"crustacean":   {{26, 34, 2.6}, {38, 34, 2.6}},
+	"echinoderm":   {{28.6, 30, 2.6}, {35.4, 30, 2.6}},
+	"equine":       {{33, 27, 2.2}},
+	"feline":       {{25, 33, 2.4}, {39, 33, 2.4}},
+	"gastropod":    {{52, 25, 1.5}, {45, 27, 1.4}},
+	"horned":       {{27, 31, 2.4}, {37, 31, 2.4}},
+	"lagomorph":    {{25, 39, 2.4}, {39, 39, 2.4}},
 	"lepidopteran": {{29.9, 20.4, 1.8}, {34.1, 20.4, 1.8}},
-	"primate":    {{26, 31, 2.4}, {38, 31, 2.4}},
-	"proboscid":  {{25, 25, 2.4}, {39, 25, 2.4}},
-	"raptor":     {{37, 29, 3.6}},
-	"rodent":     {{25, 32, 2.4}, {39, 32, 2.4}},
-	"serpent":    {{41, 22, 2.2}},
-	"spheniscid": {{27, 22, 2.1}, {37, 22, 2.1}},
-	"suid":       {{24, 30, 2.4}, {40, 30, 2.4}},
-	"ursine":     {{25, 31, 2.4}, {39, 31, 2.4}},
-	"waterfowl":  {{42, 12, 1.8}},
+	"primate":      {{26, 31, 2.4}, {38, 31, 2.4}},
+	"proboscid":    {{25, 25, 2.4}, {39, 25, 2.4}},
+	"raptor":       {{26.3, 25, 4.7}, {37.7, 25, 4.7}},
+	"rodent":       {{25, 32, 2.4}, {39, 32, 2.4}},
+	"serpent":      {{41, 22, 2.2}},
+	"spheniscid":   {{27, 22, 2.1}, {37, 22, 2.1}},
+	"suid":         {{24, 30, 2.4}, {40, 30, 2.4}},
+	"ursine":       {{25, 31, 2.4}, {39, 31, 2.4}},
+	"waterfowl":    {{42, 12, 1.8}},
 }
 
 // sigilShapes draws each family's head in `body`, with details cut back out in
@@ -524,10 +524,11 @@ var sigilShapes = map[string]func(body, tint string) string{
 	},
 	"raptor": func(body, tint string) string {
 		return fmt.Sprintf(`
-  <path d="M20 25 C13 26 7 29 4 33 C7 37 10 41 14 44 C15 38 17 33 21 32 Z" fill="%[1]s"/>
-  <path d="M36 12 C47 12 55 21 55 32 C55 44 47 52 36 52 C29 52 23 48 20 42 L20 24 C23 17 29 12 36 12 Z" fill="%[1]s"/>
-  <path d="M25 22 L47 26 L47 19 Z" fill="%[2]s"/>
-  <path d="M44 44 C48 42 51 39 53 36" fill="none" stroke="%[2]s" stroke-width="2" stroke-linecap="round"/>`, body, tint)
+  <path d="M22 30 C16 26 8 26 3 31 C8 34 15 37 21 41 L25 35 Z" fill="%[1]s"/>
+  <path d="M42 30 C48 26 56 26 61 31 C56 34 49 37 43 41 L39 35 Z" fill="%[1]s"/>
+  <path d="M27 40 L37 40 L39 53 L32 49 L25 53 Z" fill="%[1]s"/>
+  <circle cx="32" cy="26" r="13" fill="%[1]s"/>
+  <path d="M32 32 L29.4 34.5 L32 39 L34.6 34.5 Z" fill="%[2]s"/>`, body, tint)
 	},
 	"corvid": func(body, tint string) string {
 		return fmt.Sprintf(`
