@@ -59,9 +59,9 @@ func (r *mutationResolver) ReportPlayerFinished(ctx context.Context, matchID str
 		}
 	}
 
-	if err := r.publishMatchEvent(ctx, sessionID, pubsub.MatchEventPlayerFinished); err != nil {
-		return false, err
-	}
+	// Fire-and-forget: the finish is already committed, and a pub/sub blip must not tell
+	// the game server its lifecycle report failed (it would retry an applied write).
+	_ = r.publishMatchEvent(ctx, sessionID, pubsub.MatchEventPlayerFinished)
 
 	return true, nil
 }
@@ -95,16 +95,20 @@ func (r *mutationResolver) ReportMatchResult(ctx context.Context, matchID string
 
 	table, _ := st.GetRoomTableBySessionID(ctx, sessionID)
 
-	if err := st.CompleteSession(ctx, sessionID, time.Now()); err != nil {
-		if errors.Is(err, store.ErrNotFound) {
-			return true, nil
-		}
-		return false, err
+	// ErrNotFound here only means the session was already completed — the last
+	// reportPlayerFinished completes it — so the result still stands, and only the
+	// table reset (already done by that earlier completion) is skipped.
+	completeErr := st.CompleteSession(ctx, sessionID, time.Now())
+	if completeErr != nil && !errors.Is(completeErr, store.ErrNotFound) {
+		return false, completeErr
 	}
-
-	if table != nil {
+	if completeErr == nil && table != nil {
 		_ = r.publishTableUpdated(ctx, table.RoomID, table.ID)
 	}
+
+	// Published on every path that recorded a result: subscribers watching the results
+	// screen flip to the final standings here, and an already-completed session must
+	// not silence that.
 	_ = r.publishMatchEvent(ctx, sessionID, pubsub.MatchEventResult)
 
 	return true, nil
@@ -150,9 +154,9 @@ func (r *mutationResolver) PlayAgain(ctx context.Context, matchID string) (*mode
 	if err := r.publishTableUpdated(ctx, table.RoomID, table.ID); err != nil {
 		return nil, err
 	}
-	if err := r.publishMatchEvent(ctx, sessionID, pubsub.MatchEventRegroup); err != nil {
-		return nil, err
-	}
+	// Fire-and-forget: the seat is already claimed, so a publish failure must not cost
+	// the caller the invite code for the table they are now sitting at.
+	_ = r.publishMatchEvent(ctx, sessionID, pubsub.MatchEventRegroup)
 
 	return &model.PlayAgainResult{
 		Table:      toGraphQLTable(table),
@@ -183,9 +187,9 @@ func (r *mutationResolver) DeclinePlayAgain(ctx context.Context, matchID string)
 	if err := st.DeclineRegroup(ctx, sessionID, userID, time.Now()); err != nil && !errors.Is(err, store.ErrNotFound) {
 		return nil, err
 	}
-	if err := r.publishMatchEvent(ctx, sessionID, pubsub.MatchEventRegroup); err != nil {
-		return nil, err
-	}
+	// Fire-and-forget: the decline is already recorded, so a publish failure must not
+	// strand the caller on the results screen without a return destination.
+	_ = r.publishMatchEvent(ctx, sessionID, pubsub.MatchEventRegroup)
 	return resolveReturnDestination(ctx, st, sessionID, userID)
 }
 

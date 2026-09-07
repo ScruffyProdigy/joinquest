@@ -2,12 +2,25 @@ package graph
 
 import (
 	"context"
+	"errors"
 	"fmt"
+	"net"
+	"os"
 	"testing"
 	"time"
 
 	"github.com/gorilla/websocket"
 )
+
+// isWSReadTimeout reports whether a websocket read failed because the read deadline these
+// helpers set on the connection expired, rather than because the peer went away.
+func isWSReadTimeout(err error) bool {
+	if errors.Is(err, os.ErrDeadlineExceeded) {
+		return true
+	}
+	var netErr net.Error
+	return errors.As(err, &netErr) && netErr.Timeout()
+}
 
 // subscribeMatchResultUpdated starts a matchResultUpdated subscription over an already
 // connection_init'd websocket and returns its operation id.
@@ -15,7 +28,7 @@ func subscribeMatchResultUpdated(t *testing.T, conn *websocket.Conn, matchID str
 	t.Helper()
 
 	subID := "sub-" + matchID
-	query := fmt.Sprintf(`subscription { matchResultUpdated(matchId: %q) { matchId complete status participants { user { id } regroup } } }`, matchID)
+	query := fmt.Sprintf(`subscription { matchResultUpdated(matchId: %q) { matchId complete reported status participants { user { id } regroup winner } } }`, matchID)
 	if err := writeGraphQLWS(conn, map[string]any{
 		"id":   subID,
 		"type": "start",
@@ -35,9 +48,18 @@ func nextMatchResultUpdatedPayload(t *testing.T, conn *websocket.Conn, subID str
 	t.Helper()
 
 	deadline := time.Now().Add(timeout)
+	// Without a read deadline on the connection the loop condition below is decorative:
+	// a subscription that silently stops pushing parks in ReadJSON until the whole test
+	// binary times out, instead of failing here with a useful message.
+	if err := conn.SetReadDeadline(deadline); err != nil {
+		t.Fatalf("SetReadDeadline: %v", err)
+	}
 	for time.Now().Before(deadline) {
 		msg, err := readGraphQLWS(conn)
 		if err != nil {
+			if isWSReadTimeout(err) {
+				t.Fatalf("timed out waiting for matchResultUpdated event")
+			}
 			t.Fatalf("read websocket: %v", err)
 		}
 		typ, _ := msg["type"].(string)
@@ -74,9 +96,18 @@ func waitForMatchSubscriptionError(t *testing.T, conn *websocket.Conn, subID str
 	t.Helper()
 
 	deadline := time.Now().Add(timeout)
+	// See nextMatchResultUpdatedPayload: the deadline has to be on the connection, not
+	// only on the loop, or a silent subscription hangs the test binary instead of
+	// failing here.
+	if err := conn.SetReadDeadline(deadline); err != nil {
+		t.Fatalf("SetReadDeadline: %v", err)
+	}
 	for time.Now().Before(deadline) {
 		msg, err := readGraphQLWS(conn)
 		if err != nil {
+			if isWSReadTimeout(err) {
+				t.Fatalf("timed out waiting for matchResultUpdated to be refused")
+			}
 			t.Fatalf("read websocket: %v", err)
 		}
 		typ, _ := msg["type"].(string)
@@ -189,5 +220,58 @@ func TestMatchResultUpdatedPushesOnRegroup(t *testing.T) {
 	}
 	if !found {
 		t.Fatalf("player B missing from pushed participants: %+v", updated)
+	}
+}
+
+// TestMatchResultUpdatedPushesResultAfterSessionCompleted pins the ordering the real
+// lifecycle actually produces: the game reports every player finished — which completes
+// the session inside reportPlayerFinished — and only then reports the match result. The
+// result is recorded either way, so a subscriber still parked on the results screen must
+// receive it and flip to the final standings. Before the fix, ReportMatchResult returned
+// early on CompleteSession's ErrNotFound (the session was already completed) and published
+// nothing, leaving every subscriber on winner:false / status:null until they navigated
+// away and refetched.
+func TestMatchResultUpdatedPushesResultAfterSessionCompleted(t *testing.T) {
+	env := newQueueIntegrationEnv(t)
+	cleaner := env.newCleaner(t)
+	match := seedActiveMatch(t, env, cleaner)
+
+	// Both players finish: the second report drives remaining == 0 and completes the
+	// session, so the later reportMatchResult hits CompleteSession's ErrNotFound branch.
+	reportPlayerFinished(t, env, match.sessionID, match.userA.ID, 1)
+	reportPlayerFinished(t, env, match.sessionID, match.userB.ID, 2)
+
+	tokenA, err := env.Signer.SignUserToken(match.userA.ID, time.Hour)
+	if err != nil {
+		t.Fatalf("SignUserToken: %v", err)
+	}
+	conn := connectGraphQLWS(t, graphQLWSURL(env.Server.URL), "http://localhost:5173", "Bearer "+tokenA)
+	subID := subscribeMatchResultUpdated(t, conn, match.sessionID.String())
+
+	initial := nextMatchResultUpdatedPayload(t, conn, subID, 5*time.Second)
+	if initial["reported"] != false {
+		t.Fatalf("expected reported=false before the result lands, got %+v", initial)
+	}
+
+	reportMatchResult(t, env, match.sessionID, "COMPLETED", match.userA.ID.String())
+
+	updated := nextMatchResultUpdatedPayload(t, conn, subID, 5*time.Second)
+	if updated["reported"] != true {
+		t.Fatalf("expected reported=true on the pushed result, got %+v", updated)
+	}
+	if updated["status"] != "COMPLETED" {
+		t.Fatalf("status = %v, want COMPLETED: %+v", updated["status"], updated)
+	}
+	participants, _ := updated["participants"].([]any)
+	sawWinner := false
+	for _, raw := range participants {
+		p, _ := raw.(map[string]any)
+		user, _ := p["user"].(map[string]any)
+		if user["id"] == match.userA.ID.String() && p["winner"] == true {
+			sawWinner = true
+		}
+	}
+	if !sawWinner {
+		t.Fatalf("expected player A flagged as the winner in the pushed result: %+v", updated)
 	}
 }

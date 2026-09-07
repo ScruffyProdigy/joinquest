@@ -82,6 +82,18 @@ type finishedMatch struct {
 
 func seedFinishedMatch(t *testing.T, env *queueIntegrationEnv, cleaner *store.TestCleaner) finishedMatch {
 	t.Helper()
+
+	match := seedActiveMatch(t, env, cleaner)
+	reportPlayerFinished(t, env, match.sessionID, match.userA.ID, 1)
+	reportMatchResult(t, env, match.sessionID, "COMPLETED", match.userA.ID.String())
+	return match
+}
+
+// seedActiveMatch stops one step earlier than seedFinishedMatch: a provisioned, still
+// active two-player demo match with nobody reported finished and no result recorded, so a
+// test can drive the lifecycle mutations itself in whatever order it needs.
+func seedActiveMatch(t *testing.T, env *queueIntegrationEnv, cleaner *store.TestCleaner) finishedMatch {
+	t.Helper()
 	ctx := context.Background()
 
 	t.Setenv("LOBBY_ISSUER_URL", "http://localhost:8080")
@@ -125,31 +137,42 @@ func seedFinishedMatch(t *testing.T, env *queueIntegrationEnv, cleaner *store.Te
 		t.Fatalf("parse session id: %v", err)
 	}
 
-	serviceToken, err := auth.FormatGameServiceToken(uuid.MustParse(store.DemoPrimaryGameIDStr))
+	return finishedMatch{sessionID: sessionID, userA: userA, userB: userB, cookieA: cookieA, cookieB: cookieB}
+}
+
+// demoGameServiceToken is the bearer a game server presents on the lifecycle mutations.
+func demoGameServiceToken(t *testing.T) string {
+	t.Helper()
+	token, err := auth.FormatGameServiceToken(uuid.MustParse(store.DemoPrimaryGameIDStr))
 	if err != nil {
 		t.Fatalf("FormatGameServiceToken: %v", err)
 	}
+	return token
+}
 
-	finishMutation := `mutation Finish($matchId: ID!, $lobbyUserId: ID!, $reason: PlayerFinishReason!, $placement: Int) {
+func reportPlayerFinished(t *testing.T, env *queueIntegrationEnv, sessionID, userID uuid.UUID, placement int) {
+	t.Helper()
+	mutation := `mutation Finish($matchId: ID!, $lobbyUserId: ID!, $reason: PlayerFinishReason!, $placement: Int) {
 		reportPlayerFinished(matchId: $matchId, lobbyUserId: $lobbyUserId, reason: $reason, placement: $placement)
 	}`
-	requireNoGraphQLErrors(t, postGraphQLWithBearer(t, env.Handler, serviceToken, finishMutation, map[string]any{
-		"matchId":     matchID,
-		"lobbyUserId": userA.ID.String(),
+	requireNoGraphQLErrors(t, postGraphQLWithBearer(t, env.Handler, demoGameServiceToken(t), mutation, map[string]any{
+		"matchId":     sessionID.String(),
+		"lobbyUserId": userID.String(),
 		"reason":      "COMPLETED",
-		"placement":   1,
+		"placement":   placement,
 	}))
+}
 
-	resultMutation := `mutation Report($matchId: ID!, $status: MatchResultStatus!, $winnerLobbyUserIds: [ID!]) {
+func reportMatchResult(t *testing.T, env *queueIntegrationEnv, sessionID uuid.UUID, status string, winnerIDs ...string) {
+	t.Helper()
+	mutation := `mutation Report($matchId: ID!, $status: MatchResultStatus!, $winnerLobbyUserIds: [ID!]) {
 		reportMatchResult(matchId: $matchId, status: $status, winnerLobbyUserIds: $winnerLobbyUserIds)
 	}`
-	requireNoGraphQLErrors(t, postGraphQLWithBearer(t, env.Handler, serviceToken, resultMutation, map[string]any{
-		"matchId":            matchID,
-		"status":             "COMPLETED",
-		"winnerLobbyUserIds": []string{userA.ID.String()},
+	requireNoGraphQLErrors(t, postGraphQLWithBearer(t, env.Handler, demoGameServiceToken(t), mutation, map[string]any{
+		"matchId":            sessionID.String(),
+		"status":             status,
+		"winnerLobbyUserIds": winnerIDs,
 	}))
-
-	return finishedMatch{sessionID: sessionID, userA: userA, userB: userB, cookieA: cookieA, cookieB: cookieB}
 }
 
 func requireNoGraphQLErrors(t *testing.T, body []byte) {
