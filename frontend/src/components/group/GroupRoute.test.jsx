@@ -5,6 +5,14 @@ import { mockAuthenticatedSession } from '../../test/setup'
 
 // jsdom's matchMedia reports mobile, where the desktop room panel never renders at
 // all — the suppression assertion below would pass vacuously. Pin it to desktop.
+// Loading a real room starts the room WebSocket. jsdom has no server, and the client
+// retries with backoff (lazy: false, shouldRetry: true), which starves the other test
+// files in this worker. Nothing here is testing live updates, so stub the subscription.
+vi.mock('../../lib/rooms', async (importOriginal) => ({
+  ...(await importOriginal()),
+  subscribeToRoom: async () => () => {},
+}))
+
 vi.mock('../../lib/useMediaQuery', () => ({
   MOBILE_ROOM_QUERY: '(max-width: 900px)',
   useMediaQuery: () => false,
