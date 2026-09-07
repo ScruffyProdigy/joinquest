@@ -1,7 +1,23 @@
-import { describe, expect, it, vi } from 'vitest'
-import { act, render, screen, waitFor } from '@testing-library/react'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import GameModesPanel from './GameModesPanel'
+import IdentityPromptProvider from '../avatars/IdentityPromptProvider'
+import { joinQueue } from '../../lib/queue'
+
+const authState = { user: null, loading: false, refreshSession: async () => {} }
+
+vi.mock('../auth/AuthProvider', () => ({
+  useAuth: () => authState,
+}))
+
+vi.mock('../avatars/IdentityGate', () => ({
+  default: () => <div data-testid="identity-gate">Pick an avatar</div>,
+}))
+
+function identifiedUser() {
+  return { id: 'user-1', isGuest: true, displayName: 'Ryan', avatarKey: 'sigil-canine' }
+}
 
 vi.mock('../rooms/ActiveRoomProvider', () => ({
   useActiveRoom: () => ({
@@ -300,27 +316,108 @@ describe('GameModesPanel friends action for a visitor with no identity', () => {
   it('continues into the group once the visitor picks an identity', async () => {
     const user = userEvent.setup()
     const { createPrivateTable } = await import('../../lib/tables')
-    const { notifyAuthComplete } = await import('../../lib/authBroadcast')
-    window.sessionStorage.clear()
     navigateTo.mockClear()
     createPrivateTable.mockReset()
-    // The backend turns away a visitor with no name or avatar; the shell raises the
-    // identity picker off the same rejection.
-    createPrivateTable.mockRejectedValueOnce(new Error('identity required'))
+    createPrivateTable.mockResolvedValue({ id: 'table-1' })
+    authState.user = null
 
-    render(<GameModesPanel game={friendsGame()} />)
+    const { rerender } = render(
+      <IdentityPromptProvider>
+        <GameModesPanel game={friendsGame()} />
+      </IdentityPromptProvider>,
+    )
     await user.click(screen.getByRole('button', { name: 'Play with friends' }))
 
-    // Held, not lost, and no error shouted at someone who did nothing wrong.
+    // Held, not lost, and no error shouted at someone who did nothing wrong. The
+    // table is not created yet either — the intent waits on the prompt rather
+    // than firing a mutation the backend is bound to refuse.
     expect(navigateTo).not.toHaveBeenCalled()
+    expect(createPrivateTable).not.toHaveBeenCalled()
     expect(screen.queryByText(/identity required/i)).not.toBeInTheDocument()
+    expect(screen.getByTestId('identity-gate')).toBeInTheDocument()
 
-    createPrivateTable.mockResolvedValueOnce({ id: 'table-1' })
-    await act(async () => {
-      notifyAuthComplete()
-    })
+    authState.user = identifiedUser()
+    rerender(
+      <IdentityPromptProvider>
+        <GameModesPanel game={friendsGame()} />
+      </IdentityPromptProvider>,
+    )
 
     await waitFor(() => expect(navigateTo).toHaveBeenCalledWith('/group'))
-    expect(createPrivateTable).toHaveBeenCalledTimes(2)
+    expect(createPrivateTable).toHaveBeenCalledTimes(1)
+    expect(screen.queryByTestId('identity-gate')).not.toBeInTheDocument()
+  })
+})
+
+describe('GameModesPanel identity at join time', () => {
+  const queuedGame = {
+    id: 'game-1',
+    slug: 'legendary-quest',
+    name: 'Legendary Quest',
+    modes: [
+      {
+        id: 'mode-1',
+        modeKey: 'legendary',
+        displayName: 'Legendary',
+        status: 'active',
+        queues: [{ id: 'queue-1', status: 'active' }],
+        seats: [],
+        queuePaths: [],
+        eligibility: { accessible: true },
+      },
+    ],
+  }
+
+  function renderPanel() {
+    return render(
+      <IdentityPromptProvider>
+        <GameModesPanel game={queuedGame} />
+      </IdentityPromptProvider>,
+    )
+  }
+
+  beforeEach(() => {
+    vi.clearAllMocks()
+    authState.user = null
+    authState.loading = false
+    authState.refreshSession = async () => {}
+    joinQueue.mockResolvedValue({ queued: true, queuedCount: 1 })
+  })
+
+  it('prompts instead of joining when the visitor has no name yet', async () => {
+    renderPanel()
+
+    await userEvent.click(screen.getByRole('button', { name: 'Look for group' }))
+
+    expect(screen.getByTestId('identity-gate')).toBeInTheDocument()
+    expect(joinQueue).not.toHaveBeenCalled()
+  })
+
+  it('runs the join the visitor asked for once they have picked a name', async () => {
+    const { rerender } = renderPanel()
+
+    await userEvent.click(screen.getByRole('button', { name: 'Look for group' }))
+    expect(joinQueue).not.toHaveBeenCalled()
+
+    authState.user = identifiedUser()
+    rerender(
+      <IdentityPromptProvider>
+        <GameModesPanel game={queuedGame} />
+      </IdentityPromptProvider>,
+    )
+
+    await waitFor(() => expect(joinQueue).toHaveBeenCalledWith('queue-1', undefined))
+    expect(screen.queryByTestId('identity-gate')).not.toBeInTheDocument()
+    expect(await screen.findByText('Looking…')).toBeInTheDocument()
+  })
+
+  it('joins straight away for a player who already has a name', async () => {
+    authState.user = identifiedUser()
+    renderPanel()
+
+    await userEvent.click(screen.getByRole('button', { name: 'Look for group' }))
+
+    await waitFor(() => expect(joinQueue).toHaveBeenCalledWith('queue-1', undefined))
+    expect(screen.queryByTestId('identity-gate')).not.toBeInTheDocument()
   })
 })

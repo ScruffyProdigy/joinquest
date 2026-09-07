@@ -15,7 +15,6 @@ import RoomSheet from './components/rooms/RoomSheet'
 import { AuthProvider, useAuth } from './components/auth/AuthProvider'
 import { useActiveIntent } from './components/games/useActiveIntent'
 import { APP_NAME } from './lib/brand'
-import { onIdentityRequired } from './lib/identityPrompt'
 import { parseRoomInviteCode } from './lib/rooms'
 import { parseGroupRoute } from './lib/group'
 import GroupPage from './components/group/GroupPage'
@@ -29,11 +28,11 @@ import DeveloperLandingPage from './components/developers/DeveloperLandingPage'
 import DeveloperWelcomePage from './components/developers/DeveloperWelcomePage'
 import YourGamesStrip from './components/developers/YourGamesStrip'
 import HomeHeader, { HOME_HEADING_ID } from './components/home/HomeHeader'
-import IdentityGate from './components/avatars/IdentityGate'
+import IdentityPromptProvider, { useIdentityPromptOnMount } from './components/avatars/IdentityPromptProvider'
 import AppFooter from './components/legal/AppFooter'
 import TermsPage from './components/legal/TermsPage'
 import PrivacyPage from './components/legal/PrivacyPage'
-import { useEffect, useState } from 'react'
+import { useEffect } from 'react'
 
 function CatalogPage() {
   const { user, loading: authLoading } = useAuth()
@@ -179,19 +178,15 @@ function DeveloperShell() {
 function MainShell() {
   const pathname = usePathname()
   const inviteCode = parseRoomInviteCode(pathname)
-  // The backend turns away anyone without a name and an avatar at every queue,
-  // room and seat. That rejection is a cue to finish the identity prompt, not an
-  // error to print, so raise the same picker here. IdentityGate hides itself
-  // once both are chosen.
-  const [identityRequired, setIdentityRequired] = useState(false)
-  useEffect(() => onIdentityRequired(() => setIdentityRequired(true)), [])
+  // Browsing the catalog and game pages stays open to a nameless visitor. An
+  // invite link is different: following it is already an intent to join, so the
+  // picker goes up before the visitor reaches the room. Every other surface
+  // raises it from the action itself, through IdentityPromptProvider.
+  useIdentityPromptOnMount(Boolean(inviteCode))
 
   return (
     <ActiveRoomProvider pendingInviteCode={inviteCode}>
       <MainLayout />
-      {/* Browsing the catalog and game pages stays open to guests, so the picker
-          only blocks a room invite, where the visitor is joining a table. */}
-      {inviteCode || identityRequired ? <IdentityGate /> : null}
     </ActiveRoomProvider>
   )
 }
@@ -207,36 +202,38 @@ function App() {
 
   return (
     <AuthProvider>
-      {pathname.startsWith('/auth/oauth/complete') ? (
-        <OAuthCompletePage />
-      ) : pathname.startsWith('/auth/complete') ? (
-        <CompleteSignInPage />
-      ) : pathname.startsWith('/auth/link') ? (
-        <LinkEmailPage />
-      ) : pathname.startsWith('/terms') ? (
-        <TermsPage />
-      ) : pathname.startsWith('/privacy') ? (
-        <PrivacyPage />
-      ) : pathname.startsWith('/account') ? (
-        <AccountPage />
-      ) : pathname.startsWith('/dev/style-preview') && isStylePreviewEnabled() ? (
-        <StylePreviewPage />
-      ) : pathname.startsWith('/return') ? (
-        <ReturnPage />
-      ) : developerRoute ? (
-        <ActiveRoomProvider>
-          <DeveloperShell />
-        </ActiveRoomProvider>
-      ) : isMainRoute ? (
-        <MainShell />
-      ) : (
-        <main className="app-shell auth-page">
-          <h1>Page not found</h1>
-          <a className="auth-link" href="/">
-            Back to {APP_NAME}
-          </a>
-        </main>
-      )}
+      <IdentityPromptProvider>
+        {pathname.startsWith('/auth/oauth/complete') ? (
+          <OAuthCompletePage />
+        ) : pathname.startsWith('/auth/complete') ? (
+          <CompleteSignInPage />
+        ) : pathname.startsWith('/auth/link') ? (
+          <LinkEmailPage />
+        ) : pathname.startsWith('/terms') ? (
+          <TermsPage />
+        ) : pathname.startsWith('/privacy') ? (
+          <PrivacyPage />
+        ) : pathname.startsWith('/account') ? (
+          <AccountPage />
+        ) : pathname.startsWith('/dev/style-preview') && isStylePreviewEnabled() ? (
+          <StylePreviewPage />
+        ) : pathname.startsWith('/return') ? (
+          <ReturnPage />
+        ) : developerRoute ? (
+          <ActiveRoomProvider>
+            <DeveloperShell />
+          </ActiveRoomProvider>
+        ) : isMainRoute ? (
+          <MainShell />
+        ) : (
+          <main className="app-shell auth-page">
+            <h1>Page not found</h1>
+            <a className="auth-link" href="/">
+              Back to {APP_NAME}
+            </a>
+          </main>
+        )}
+      </IdentityPromptProvider>
     </AuthProvider>
   )
 }

@@ -11,6 +11,7 @@ import TableCard from './TableCard'
 import { useActiveTableSeat } from '../games/useActiveTableSeat'
 import { useActiveIntent } from '../games/useActiveIntent'
 import PlayerAvatar from '../avatars/PlayerAvatar'
+import { useIdentityPrompt } from '../avatars/IdentityPromptProvider'
 import { Card, CardContent } from '../ui/card'
 import { Button } from '../ui/button'
 import { cn } from '../../lib/utils'
@@ -42,6 +43,7 @@ export default function RoomPanel({ compact = false }) {
   } = useActiveRoom()
   const { refresh: refreshTableSeat } = useActiveTableSeat()
   const { refresh: refreshIntent } = useActiveIntent()
+  const { requireIdentity } = useIdentityPrompt()
   const [draft, setDraft] = useState('')
   const [busy, setBusy] = useState(false)
   const [tableBusy, setTableBusy] = useState(false)
@@ -130,10 +132,15 @@ export default function RoomPanel({ compact = false }) {
     setTableBusy(true)
     setError('')
     try {
-      const updated = await sitAtTable(tableId, seatKey)
-      mergeTableUpdate(updated)
-      await refreshTableSeat()
-      void refresh()
+      // Claiming a seat is the intent, so this is where a nameless player is
+      // asked. The table and seat ride along in the closure and the sit runs
+      // itself once the profile saves.
+      await requireIdentity(async () => {
+        const updated = await sitAtTable(tableId, seatKey)
+        mergeTableUpdate(updated)
+        await refreshTableSeat()
+        void refresh()
+      })
     } catch (err) {
       setError(err.message || 'Could not sit at that seat.')
     } finally {
