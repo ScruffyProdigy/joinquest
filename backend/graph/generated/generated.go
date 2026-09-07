@@ -4046,7 +4046,8 @@ enum RegroupState {
 }
 
 type MatchParticipantResult {
-  user: User!
+  """No email: a queue match introduces strangers, so the roster must not expose contact details."""
+  user: PublicPlayer!
   role: String
   finished: Boolean!
   finishedAt: Time
@@ -8578,7 +8579,7 @@ func (ec *executionContext) _MatchParticipantResult_user(ctx context.Context, fi
 			return obj.User, nil
 		},
 		nil,
-		ec.marshalNUser2ᚖgithubᚗcomᚋscruffyprodigyᚋplayhubᚋgraphᚋmodelᚐUser,
+		ec.marshalNPublicPlayer2ᚖgithubᚗcomᚋscruffyprodigyᚋplayhubᚋgraphᚋmodelᚐPublicPlayer,
 		true,
 		true,
 	)
@@ -8593,29 +8594,15 @@ func (ec *executionContext) fieldContext_MatchParticipantResult_user(_ context.C
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			switch field.Name {
 			case "id":
-				return ec.fieldContext_User_id(ctx, field)
-			case "email":
-				return ec.fieldContext_User_email(ctx, field)
+				return ec.fieldContext_PublicPlayer_id(ctx, field)
 			case "displayName":
-				return ec.fieldContext_User_displayName(ctx, field)
+				return ec.fieldContext_PublicPlayer_displayName(ctx, field)
 			case "avatarUrl":
-				return ec.fieldContext_User_avatarUrl(ctx, field)
-			case "avatarKey":
-				return ec.fieldContext_User_avatarKey(ctx, field)
+				return ec.fieldContext_PublicPlayer_avatarUrl(ctx, field)
 			case "avatarSource":
-				return ec.fieldContext_User_avatarSource(ctx, field)
-			case "createdAt":
-				return ec.fieldContext_User_createdAt(ctx, field)
-			case "isAdmin":
-				return ec.fieldContext_User_isAdmin(ctx, field)
-			case "isGuest":
-				return ec.fieldContext_User_isGuest(ctx, field)
-			case "emails":
-				return ec.fieldContext_User_emails(ctx, field)
-			case "identities":
-				return ec.fieldContext_User_identities(ctx, field)
+				return ec.fieldContext_PublicPlayer_avatarSource(ctx, field)
 			}
-			return nil, fmt.Errorf("no field named %q was found under type User", field.Name)
+			return nil, fmt.Errorf("no field named %q was found under type PublicPlayer", field.Name)
 		},
 	}
 	return fc, nil
@@ -28018,6 +28005,16 @@ func (ec *executionContext) unmarshalNPlayerFinishReason2githubᚗcomᚋscruffyp
 
 func (ec *executionContext) marshalNPlayerFinishReason2githubᚗcomᚋscruffyprodigyᚋplayhubᚋgraphᚋmodelᚐPlayerFinishReason(ctx context.Context, sel ast.SelectionSet, v model.PlayerFinishReason) graphql.Marshaler {
 	return v
+}
+
+func (ec *executionContext) marshalNPublicPlayer2ᚖgithubᚗcomᚋscruffyprodigyᚋplayhubᚋgraphᚋmodelᚐPublicPlayer(ctx context.Context, sel ast.SelectionSet, v *model.PublicPlayer) graphql.Marshaler {
+	if v == nil {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			ec.Errorf(ctx, "the requested element is null which the schema does not allow")
+		}
+		return graphql.Null
+	}
+	return ec._PublicPlayer(ctx, sel, v)
 }
 
 func (ec *executionContext) marshalNQueuePathGap2ᚕᚖgithubᚗcomᚋscruffyprodigyᚋplayhubᚋgraphᚋmodelᚐQueuePathGapᚄ(ctx context.Context, sel ast.SelectionSet, v []*model.QueuePathGap) graphql.Marshaler {

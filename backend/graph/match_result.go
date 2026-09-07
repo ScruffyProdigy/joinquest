@@ -57,7 +57,7 @@ func loadMatchResultModel(ctx context.Context, st *store.Store, sessionID uuid.U
 	for i := range result.Participants {
 		p := result.Participants[i]
 		entry := &model.MatchParticipantResult{
-			User:       participantUser(byID[p.UserID], p),
+			User:       ToGraphQLPublicPlayer(byID[p.UserID]),
 			Finished:   p.FinishedAt != nil,
 			FinishedAt: p.FinishedAt,
 			// Stays nil when the game never reported this player: that is what
@@ -74,21 +74,6 @@ func loadMatchResultModel(ctx context.Context, st *store.Store, sessionID uuid.U
 		out.Participants = append(out.Participants, entry)
 	}
 	return out, nil
-}
-
-// participantUser prefers the full user row, falling back to what the result roster
-// already carries. GetMatchResult returns every participant row while
-// ListSessionParticipants skips anyone marked as having left, and user is non-null in the
-// schema — a missing row must not blank out the whole query.
-func participantUser(user *store.User, p store.MatchParticipantResult) *model.User {
-	if user != nil {
-		return ToGraphQLUser(user)
-	}
-	fallback := &model.User{ID: p.UserID.String()}
-	if name := strings.TrimSpace(p.DisplayName); name != "" {
-		fallback.DisplayName = &name
-	}
-	return fallback
 }
 
 // regroupInviteCode resolves the room code of the table this match converged on, or nil

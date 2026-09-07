@@ -200,10 +200,11 @@ type JoinResult struct {
 }
 
 type MatchParticipantResult struct {
-	User       *User      `json:"user"`
-	Role       *string    `json:"role,omitempty"`
-	Finished   bool       `json:"finished"`
-	FinishedAt *time.Time `json:"finishedAt,omitempty"`
+	// No email: a queue match introduces strangers, so the roster must not expose contact details.
+	User       *PublicPlayer `json:"user"`
+	Role       *string       `json:"role,omitempty"`
+	Finished   bool          `json:"finished"`
+	FinishedAt *time.Time    `json:"finishedAt,omitempty"`
 	// Null when the game never reported this player — distinct from the player merely returning.
 	Reason    *PlayerFinishReason `json:"reason,omitempty"`
 	Placement *int                `json:"placement,omitempty"`

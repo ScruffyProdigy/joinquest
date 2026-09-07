@@ -1,9 +1,12 @@
 package graph
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"net/http"
+	"net/http/httptest"
+	"strings"
 	"testing"
 
 	"github.com/google/uuid"
@@ -348,5 +351,62 @@ func TestMatchResultSurfacesClaimedRegroupTable(t *testing.T) {
 	}
 	if states[match.userB.ID.String()] != "PENDING" {
 		t.Errorf("non-answering player regroup = %q, want PENDING", states[match.userB.ID.String()])
+	}
+}
+
+// postGraphQLTolerantOfStatus is postGraphQL without its "HTTP >= 400 fails the test" rule:
+// gqlgen answers a query that fails *validation* with 422, and a rejected selection is
+// exactly what the email test below asserts.
+func postGraphQLTolerantOfStatus(t *testing.T, handler http.Handler, query string, variables map[string]any, cookies ...*http.Cookie) (int, []byte) {
+	t.Helper()
+
+	payload, err := json.Marshal(map[string]any{"query": query, "variables": variables})
+	if err != nil {
+		t.Fatalf("marshal: %v", err)
+	}
+	req := httptest.NewRequest(http.MethodPost, "/", bytes.NewReader(payload))
+	req.Header.Set("Content-Type", "application/json")
+	for _, c := range cookies {
+		req.AddCookie(c)
+	}
+	rec := httptest.NewRecorder()
+	handler.ServeHTTP(rec, req)
+	return rec.Code, rec.Body.Bytes()
+}
+
+// TestMatchResultRosterCannotExposeEmail pins the privacy decision the schema encodes: a
+// queue match introduces strangers, so the roster is PublicPlayer, which has no email
+// field at all. Asking for one must be rejected outright — if MatchParticipantResult.user
+// ever regresses to User, this query starts succeeding and hands one stranger another's
+// real address.
+func TestMatchResultRosterCannotExposeEmail(t *testing.T) {
+	env := newQueueIntegrationEnv(t)
+	cleaner := env.newCleaner(t)
+	match := seedFinishedMatch(t, env, cleaner)
+
+	const emailQuery = `query Leak($matchId: ID!) {
+		matchResult(matchId: $matchId) {
+			participants { user { email } }
+		}
+	}`
+	// Asked by a genuine participant, so the only thing that can refuse it is the type.
+	status, body := postGraphQLTolerantOfStatus(t, env.Handler, emailQuery,
+		map[string]any{"matchId": match.sessionID.String()}, match.cookieA)
+
+	var resp matchResultResponse
+	if err := json.Unmarshal(body, &resp); err != nil {
+		t.Fatalf("decode: %v body=%s", err, body)
+	}
+	if len(resp.Errors) == 0 {
+		t.Fatalf("selecting participants.user.email was accepted (HTTP %d): %s", status, body)
+	}
+	if resp.Data.MatchResult != nil {
+		t.Fatalf("rejected query still returned roster data: %s", body)
+	}
+	// Belt and braces: whatever the error text says, no address may appear in it.
+	for _, email := range []string{match.userA.Email, match.userB.Email} {
+		if email != "" && strings.Contains(string(body), email) {
+			t.Fatalf("response leaked participant email %q: %s", email, body)
+		}
 	}
 }

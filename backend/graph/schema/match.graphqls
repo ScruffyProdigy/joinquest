@@ -24,7 +24,8 @@ enum RegroupState {
 }
 
 type MatchParticipantResult {
-  user: User!
+  """No email: a queue match introduces strangers, so the roster must not expose contact details."""
+  user: PublicPlayer!
   role: String
   finished: Boolean!
   finishedAt: Time
