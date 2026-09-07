@@ -81,4 +81,9 @@ extend type Mutation {
     winnerLobbyUserIds: [ID!]
     metadata: JSON
   ): Boolean!
+
+  """Join the single regroup table for a finished match, creating it if nobody has yet."""
+  playAgain(matchId: ID!): PlayAgainResult!
+  """Record that the caller is not playing again, and resolve where to send them."""
+  declinePlayAgain(matchId: ID!): ReturnDestination!
 }

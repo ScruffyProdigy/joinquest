@@ -103,6 +103,79 @@ func (r *mutationResolver) ReportMatchResult(ctx context.Context, matchID string
 	return true, nil
 }
 
+// PlayAgain is the resolver for the playAgain field. It converges every accepting player on
+// the single regroup table for this match — ClaimRegroupTable's row lock is what makes that
+// hold under concurrent calls, this resolver only reports the result.
+func (r *mutationResolver) PlayAgain(ctx context.Context, matchID string) (*model.PlayAgainResult, error) {
+	userID, err := requireAuthUserID(ctx)
+	if err != nil {
+		return nil, err
+	}
+	st, err := r.requireStore()
+	if err != nil {
+		return nil, err
+	}
+	sessionID, err := parseUUID(strings.TrimSpace(matchID), "match id")
+	if err != nil {
+		return nil, err
+	}
+	if err := requireMatchParticipant(ctx, st, sessionID, userID); err != nil {
+		return nil, err
+	}
+
+	table, room, err := st.ClaimRegroupTable(ctx, sessionID, userID)
+	if err != nil {
+		return nil, regroupClientError(err)
+	}
+
+	seats, err := st.ListTableSeats(ctx, table.ID)
+	if err != nil {
+		return nil, err
+	}
+	seated := false
+	for _, seat := range seats {
+		if seat.UserID == userID {
+			seated = true
+			break
+		}
+	}
+
+	if err := r.publishTableUpdated(ctx, table.RoomID, table.ID); err != nil {
+		return nil, err
+	}
+
+	return &model.PlayAgainResult{
+		Table:      toGraphQLTable(table),
+		InviteCode: room.InviteCode,
+		Seated:     seated,
+	}, nil
+}
+
+// DeclinePlayAgain is the resolver for the declinePlayAgain field. It records the caller as
+// out and routes them through the same return-destination logic as the returnDestination
+// query, so a decliner and someone who never played again land on the same result.
+func (r *mutationResolver) DeclinePlayAgain(ctx context.Context, matchID string) (*model.ReturnDestination, error) {
+	userID, err := requireAuthUserID(ctx)
+	if err != nil {
+		return nil, err
+	}
+	st, err := r.requireStore()
+	if err != nil {
+		return nil, err
+	}
+	sessionID, err := parseUUID(strings.TrimSpace(matchID), "match id")
+	if err != nil {
+		return nil, err
+	}
+	if err := requireMatchParticipant(ctx, st, sessionID, userID); err != nil {
+		return nil, err
+	}
+	if err := st.DeclineRegroup(ctx, sessionID, userID, time.Now()); err != nil && !errors.Is(err, store.ErrNotFound) {
+		return nil, err
+	}
+	return resolveReturnDestination(ctx, st, sessionID, userID)
+}
+
 // ReturnDestination is the resolver for the returnDestination field.
 func (r *queryResolver) ReturnDestination(ctx context.Context, matchID *string) (*model.ReturnDestination, error) {
 	userID, err := requireAuthUserID(ctx)
@@ -133,25 +206,7 @@ func (r *queryResolver) ReturnDestination(ctx context.Context, matchID *string) 
 		sessionID = *view.SessionID
 	}
 
-	if err := st.AcknowledgePlayerReturn(ctx, sessionID, userID, time.Now()); err != nil && !errors.Is(err, store.ErrNotFound) {
-		return nil, err
-	}
-
-	if err := st.ParticipantIsActive(ctx, sessionID, userID); err != nil {
-		if errors.Is(err, store.ErrNotFound) {
-			return defaultDest, nil
-		}
-		return nil, err
-	}
-
-	ctxData, err := st.GetParticipantReturnContext(ctx, sessionID, userID)
-	if err != nil {
-		if errors.Is(err, store.ErrNotFound) {
-			return defaultDest, nil
-		}
-		return nil, err
-	}
-	return returnDestinationFromContext(ctxData), nil
+	return resolveReturnDestination(ctx, st, sessionID, userID)
 }
 
 // MatchResult is the resolver for the matchResult field.

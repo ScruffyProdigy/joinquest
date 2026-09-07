@@ -354,6 +354,216 @@ func TestMatchResultSurfacesClaimedRegroupTable(t *testing.T) {
 	}
 }
 
+const playAgainMutation = `mutation PlayAgain($matchId: ID!) {
+	playAgain(matchId: $matchId) {
+		table { id }
+		inviteCode
+		seated
+	}
+}`
+
+const declinePlayAgainMutation = `mutation Decline($matchId: ID!) {
+	declinePlayAgain(matchId: $matchId) {
+		path
+		kind
+	}
+}`
+
+type playAgainResponse struct {
+	Errors []struct {
+		Message string `json:"message"`
+	} `json:"errors"`
+	Data struct {
+		PlayAgain *struct {
+			Table struct {
+				ID string `json:"id"`
+			} `json:"table"`
+			InviteCode string `json:"inviteCode"`
+			Seated     bool   `json:"seated"`
+		} `json:"playAgain"`
+	} `json:"data"`
+}
+
+type declinePlayAgainResponse struct {
+	Errors []struct {
+		Message string `json:"message"`
+	} `json:"errors"`
+	Data struct {
+		DeclinePlayAgain *struct {
+			Path string `json:"path"`
+			Kind string `json:"kind"`
+		} `json:"declinePlayAgain"`
+	} `json:"data"`
+}
+
+func playAgain(t *testing.T, env *queueIntegrationEnv, sessionID uuid.UUID, cookie *http.Cookie) playAgainResponse {
+	t.Helper()
+	body := postGraphQL(t, env.Handler, playAgainMutation, map[string]any{"matchId": sessionID.String()}, cookie)
+	var resp playAgainResponse
+	if err := json.Unmarshal(body, &resp); err != nil {
+		t.Fatalf("decode playAgain: %v body=%s", err, body)
+	}
+	return resp
+}
+
+func declinePlayAgain(t *testing.T, env *queueIntegrationEnv, sessionID uuid.UUID, cookie *http.Cookie) declinePlayAgainResponse {
+	t.Helper()
+	body := postGraphQL(t, env.Handler, declinePlayAgainMutation, map[string]any{"matchId": sessionID.String()}, cookie)
+	var resp declinePlayAgainResponse
+	if err := json.Unmarshal(body, &resp); err != nil {
+		t.Fatalf("decode declinePlayAgain: %v body=%s", err, body)
+	}
+	return resp
+}
+
+// TestPlayAgainSeatsBothPlayersAtOneTable is the product guarantee: every player who accepts
+// play-again lands at the SAME table, never one table each. This is the assertion that would
+// catch a naive "create a table per caller" implementation — it fails unless the second
+// caller's claim resolves to the first caller's table id.
+func TestPlayAgainSeatsBothPlayersAtOneTable(t *testing.T) {
+	env := newQueueIntegrationEnv(t)
+	cleaner := env.newCleaner(t)
+	match := seedFinishedMatch(t, env, cleaner)
+
+	first := playAgain(t, env, match.sessionID, match.cookieA)
+	if len(first.Errors) > 0 || first.Data.PlayAgain == nil {
+		t.Fatalf("PlayAgain A: %+v", first.Errors)
+	}
+	second := playAgain(t, env, match.sessionID, match.cookieB)
+	if len(second.Errors) > 0 || second.Data.PlayAgain == nil {
+		t.Fatalf("PlayAgain B: %+v", second.Errors)
+	}
+
+	if first.Data.PlayAgain.Table.ID != second.Data.PlayAgain.Table.ID {
+		t.Fatalf("players landed on different tables: %s vs %s",
+			first.Data.PlayAgain.Table.ID, second.Data.PlayAgain.Table.ID)
+	}
+	if first.Data.PlayAgain.InviteCode == "" {
+		t.Error("expected an invite code to route to")
+	}
+	if first.Data.PlayAgain.InviteCode != second.Data.PlayAgain.InviteCode {
+		t.Errorf("invite codes differ: %q vs %q", first.Data.PlayAgain.InviteCode, second.Data.PlayAgain.InviteCode)
+	}
+	if !first.Data.PlayAgain.Seated {
+		t.Error("player A expected to be seated at the regroup table")
+	}
+	if !second.Data.PlayAgain.Seated {
+		t.Error("player B expected to be seated at the regroup table")
+	}
+
+	// The roster read side (Task 6) must agree: both callers read IN.
+	result := queryMatchResult(t, env, match.sessionID, match.cookieA)
+	if len(result.Errors) > 0 {
+		t.Fatalf("matchResult errors: %+v", result.Errors)
+	}
+	states := map[string]string{}
+	for _, p := range result.Data.MatchResult.Participants {
+		states[p.User.ID] = p.Regroup
+	}
+	if states[match.userA.ID.String()] != "IN" {
+		t.Errorf("player A regroup = %q, want IN", states[match.userA.ID.String()])
+	}
+	if states[match.userB.ID.String()] != "IN" {
+		t.Errorf("player B regroup = %q, want IN", states[match.userB.ID.String()])
+	}
+}
+
+// TestDeclinePlayAgainMarksOut covers the decline path: the caller's roster entry reads OUT
+// afterward, and the mutation itself resolves to a usable return destination.
+func TestDeclinePlayAgainMarksOut(t *testing.T) {
+	env := newQueueIntegrationEnv(t)
+	cleaner := env.newCleaner(t)
+	match := seedFinishedMatch(t, env, cleaner)
+
+	resp := declinePlayAgain(t, env, match.sessionID, match.cookieA)
+	if len(resp.Errors) > 0 {
+		t.Fatalf("DeclinePlayAgain: %+v", resp.Errors)
+	}
+	if resp.Data.DeclinePlayAgain == nil {
+		t.Fatal("declinePlayAgain returned a null destination")
+	}
+
+	got := queryMatchResult(t, env, match.sessionID, match.cookieA)
+	if len(got.Errors) > 0 {
+		t.Fatalf("matchResult errors: %+v", got.Errors)
+	}
+	for _, p := range got.Data.MatchResult.Participants {
+		if p.User.ID == match.userA.ID.String() && p.Regroup != "OUT" {
+			t.Fatalf("userA regroup = %q, want OUT", p.Regroup)
+		}
+	}
+}
+
+// TestPlayAgainAndDeclinePlayAgainRefuseNonParticipant is the authorization gate: match ids
+// travel in a player-editable return URL, so a signed-in stranger who is not in the match must
+// be refused by both write mutations, exactly like the read side.
+func TestPlayAgainAndDeclinePlayAgainRefuseNonParticipant(t *testing.T) {
+	env := newQueueIntegrationEnv(t)
+	cleaner := env.newCleaner(t)
+	match := seedFinishedMatch(t, env, cleaner)
+	_, outsiderCookie := createTestUserSession(t, context.Background(), env, cleaner)
+
+	playResp := playAgain(t, env, match.sessionID, outsiderCookie)
+	if len(playResp.Errors) == 0 {
+		t.Fatal("expected playAgain to refuse a non-participant")
+	}
+	if playResp.Data.PlayAgain != nil {
+		t.Fatalf("non-participant received a table: %+v", playResp.Data.PlayAgain)
+	}
+
+	declineResp := declinePlayAgain(t, env, match.sessionID, outsiderCookie)
+	if len(declineResp.Errors) == 0 {
+		t.Fatal("expected declinePlayAgain to refuse a non-participant")
+	}
+	if declineResp.Data.DeclinePlayAgain != nil {
+		t.Fatalf("non-participant received a destination: %+v", declineResp.Data.DeclinePlayAgain)
+	}
+}
+
+// TestPlayAgainRefusesUnfinishedMatch pins ErrSessionNotFinished's distinct surfacing: a real
+// participant in a match that has not completed yet gets an error that is NOT "you did not
+// play in this match" — the client needs to tell "too early" apart from "not your match" so it
+// can say something true instead of a generic failure.
+func TestPlayAgainRefusesUnfinishedMatch(t *testing.T) {
+	env := newQueueIntegrationEnv(t)
+	cleaner := env.newCleaner(t)
+	ctx := context.Background()
+	clearDemoQueue(t, env.Store)
+
+	t.Setenv("LOBBY_ISSUER_URL", "http://localhost:8080")
+	t.Setenv("LOBBY_PUBLIC_URL", "http://localhost:5173")
+	t.Setenv("LOBBY_GAME_TOKEN_PEPPER", "play-again-unfinished-pepper")
+
+	provisioner := &syncProvisioner{}
+	env.resolverWithProvisioner(t, provisioner)
+
+	_, cookieA := createTestUserSession(t, ctx, env, cleaner)
+	_, cookieB := createTestUserSession(t, ctx, env, cleaner)
+
+	joinQuery := `mutation Join($id: ID!) { joinQueue(queueId: $id) { queued queuedCount } }`
+	vars := map[string]any{"id": demoDefaultQueueID}
+	postGraphQL(t, env.Handler, joinQuery, vars, cookieA)
+	postGraphQL(t, env.Handler, joinQuery, vars, cookieB)
+	flushFormingWorker(t, env, ctx, uuid.MustParse(demoDefaultQueueID))
+	waitForProvisionCalls(t, provisioner, 1)
+
+	matchID := provisioner.lastCall().Assignment.ExternalMatchID
+	sessionID, err := uuid.Parse(matchID)
+	if err != nil {
+		t.Fatalf("parse session id: %v", err)
+	}
+
+	resp := playAgain(t, env, sessionID, cookieA)
+	if len(resp.Errors) == 0 {
+		t.Fatal("expected playAgain to refuse a still-running match")
+	}
+	for _, e := range resp.Errors {
+		if strings.Contains(e.Message, "did not play") {
+			t.Fatalf("still-running match reported as non-participant, want a distinct message: %q", e.Message)
+		}
+	}
+}
+
 // postGraphQLTolerantOfStatus is postGraphQL without its "HTTP >= 400 fails the test" rule:
 // gqlgen answers a query that fails *validation* with 422, and a rejected selection is
 // exactly what the email test below asserts.

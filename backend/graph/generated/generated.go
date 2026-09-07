@@ -264,6 +264,7 @@ type ComplexityRoot struct {
 		CreatePrivateTable           func(childComplexity int, gameID string, modeID string) int
 		CreateRoom                   func(childComplexity int) int
 		CreateTable                  func(childComplexity int, roomID string, gameID string, modeID string) int
+		DeclinePlayAgain             func(childComplexity int, matchID string) int
 		DiscardTable                 func(childComplexity int, tableID string) int
 		GrantGood                    func(childComplexity int, userID string, goodID string, quantity *int) int
 		JoinQueue                    func(childComplexity int, queueID string, queuePath *string, party *model.PartyNodeInput) int
@@ -273,6 +274,7 @@ type ComplexityRoot struct {
 		LeaveRoom                    func(childComplexity int) int
 		LeaveTable                   func(childComplexity int, tableID string) int
 		Logout                       func(childComplexity int) int
+		PlayAgain                    func(childComplexity int, matchID string) int
 		RefreshGameManifest          func(childComplexity int, gameID string) int
 		RegenerateSpiritAnimalImages func(childComplexity int) int
 		RegisterGame                 func(childComplexity int, input model.RegisterGameInput) int
@@ -654,6 +656,8 @@ type MutationResolver interface {
 	ReviewGameRelease(ctx context.Context, gameID string, approve bool, reason *string) (*model.Game, error)
 	ReportPlayerFinished(ctx context.Context, matchID string, lobbyUserID string, reason model.PlayerFinishReason, placement *int, metadata map[string]any) (bool, error)
 	ReportMatchResult(ctx context.Context, matchID string, status model.MatchResultStatus, winnerLobbyUserIds []string, metadata map[string]any) (bool, error)
+	PlayAgain(ctx context.Context, matchID string) (*model.PlayAgainResult, error)
+	DeclinePlayAgain(ctx context.Context, matchID string) (*model.ReturnDestination, error)
 	CreateRoom(ctx context.Context) (*model.Room, error)
 	JoinRoom(ctx context.Context, inviteCode string) (*model.Room, error)
 	LeaveRoom(ctx context.Context) (bool, error)
@@ -1693,6 +1697,17 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.Mutation.CreateTable(childComplexity, args["roomId"].(string), args["gameId"].(string), args["modeId"].(string)), true
+	case "Mutation.declinePlayAgain":
+		if e.complexity.Mutation.DeclinePlayAgain == nil {
+			break
+		}
+
+		args, err := ec.field_Mutation_declinePlayAgain_args(ctx, rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.complexity.Mutation.DeclinePlayAgain(childComplexity, args["matchId"].(string)), true
 	case "Mutation.discardTable":
 		if e.complexity.Mutation.DiscardTable == nil {
 			break
@@ -1777,6 +1792,17 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.Mutation.Logout(childComplexity), true
+	case "Mutation.playAgain":
+		if e.complexity.Mutation.PlayAgain == nil {
+			break
+		}
+
+		args, err := ec.field_Mutation_playAgain_args(ctx, rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.complexity.Mutation.PlayAgain(childComplexity, args["matchId"].(string)), true
 	case "Mutation.refreshGameManifest":
 		if e.complexity.Mutation.RefreshGameManifest == nil {
 			break
@@ -4103,6 +4129,11 @@ extend type Mutation {
     winnerLobbyUserIds: [ID!]
     metadata: JSON
   ): Boolean!
+
+  """Join the single regroup table for a finished match, creating it if nobody has yet."""
+  playAgain(matchId: ID!): PlayAgainResult!
+  """Record that the caller is not playing again, and resolve where to send them."""
+  declinePlayAgain(matchId: ID!): ReturnDestination!
 }
 `, BuiltIn: false},
 	{Name: "../schema/parties.graphqls", Input: `input PartyMemberInput {
@@ -4511,6 +4542,17 @@ func (ec *executionContext) field_Mutation_createTable_args(ctx context.Context,
 	return args, nil
 }
 
+func (ec *executionContext) field_Mutation_declinePlayAgain_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
+	var err error
+	args := map[string]any{}
+	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "matchId", ec.unmarshalNID2string)
+	if err != nil {
+		return nil, err
+	}
+	args["matchId"] = arg0
+	return args, nil
+}
+
 func (ec *executionContext) field_Mutation_discardTable_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
 	var err error
 	args := map[string]any{}
@@ -4594,6 +4636,17 @@ func (ec *executionContext) field_Mutation_leaveTable_args(ctx context.Context, 
 		return nil, err
 	}
 	args["tableId"] = arg0
+	return args, nil
+}
+
+func (ec *executionContext) field_Mutation_playAgain_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
+	var err error
+	args := map[string]any{}
+	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "matchId", ec.unmarshalNID2string)
+	if err != nil {
+		return nil, err
+	}
+	args["matchId"] = arg0
 	return args, nil
 }
 
@@ -11131,6 +11184,102 @@ func (ec *executionContext) fieldContext_Mutation_reportMatchResult(ctx context.
 	}()
 	ctx = graphql.WithFieldContext(ctx, fc)
 	if fc.Args, err = ec.field_Mutation_reportMatchResult_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Mutation_playAgain(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_Mutation_playAgain,
+		func(ctx context.Context) (any, error) {
+			fc := graphql.GetFieldContext(ctx)
+			return ec.resolvers.Mutation().PlayAgain(ctx, fc.Args["matchId"].(string))
+		},
+		nil,
+		ec.marshalNPlayAgainResult2ᚖgithubᚗcomᚋscruffyprodigyᚋplayhubᚋgraphᚋmodelᚐPlayAgainResult,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_Mutation_playAgain(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Mutation",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "table":
+				return ec.fieldContext_PlayAgainResult_table(ctx, field)
+			case "inviteCode":
+				return ec.fieldContext_PlayAgainResult_inviteCode(ctx, field)
+			case "seated":
+				return ec.fieldContext_PlayAgainResult_seated(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type PlayAgainResult", field.Name)
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Mutation_playAgain_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Mutation_declinePlayAgain(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_Mutation_declinePlayAgain,
+		func(ctx context.Context) (any, error) {
+			fc := graphql.GetFieldContext(ctx)
+			return ec.resolvers.Mutation().DeclinePlayAgain(ctx, fc.Args["matchId"].(string))
+		},
+		nil,
+		ec.marshalNReturnDestination2ᚖgithubᚗcomᚋscruffyprodigyᚋplayhubᚋgraphᚋmodelᚐReturnDestination,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_Mutation_declinePlayAgain(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Mutation",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "path":
+				return ec.fieldContext_ReturnDestination_path(ctx, field)
+			case "kind":
+				return ec.fieldContext_ReturnDestination_kind(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type ReturnDestination", field.Name)
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Mutation_declinePlayAgain_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
 		ec.Error(ctx, err)
 		return fc, err
 	}
@@ -23232,6 +23381,20 @@ func (ec *executionContext) _Mutation(ctx context.Context, sel ast.SelectionSet)
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
+		case "playAgain":
+			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
+				return ec._Mutation_playAgain(ctx, field)
+			})
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "declinePlayAgain":
+			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
+				return ec._Mutation_declinePlayAgain(ctx, field)
+			})
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
 		case "createRoom":
 			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
 				return ec._Mutation_createRoom(ctx, field)
@@ -27995,6 +28158,20 @@ func (ec *executionContext) unmarshalNPartyMemberInput2ᚖgithubᚗcomᚋscruffy
 func (ec *executionContext) unmarshalNPartyNodeInput2ᚖgithubᚗcomᚋscruffyprodigyᚋplayhubᚋgraphᚋmodelᚐPartyNodeInput(ctx context.Context, v any) (*model.PartyNodeInput, error) {
 	res, err := ec.unmarshalInputPartyNodeInput(ctx, v)
 	return &res, graphql.ErrorOnPath(ctx, err)
+}
+
+func (ec *executionContext) marshalNPlayAgainResult2githubᚗcomᚋscruffyprodigyᚋplayhubᚋgraphᚋmodelᚐPlayAgainResult(ctx context.Context, sel ast.SelectionSet, v model.PlayAgainResult) graphql.Marshaler {
+	return ec._PlayAgainResult(ctx, sel, &v)
+}
+
+func (ec *executionContext) marshalNPlayAgainResult2ᚖgithubᚗcomᚋscruffyprodigyᚋplayhubᚋgraphᚋmodelᚐPlayAgainResult(ctx context.Context, sel ast.SelectionSet, v *model.PlayAgainResult) graphql.Marshaler {
+	if v == nil {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			ec.Errorf(ctx, "the requested element is null which the schema does not allow")
+		}
+		return graphql.Null
+	}
+	return ec._PlayAgainResult(ctx, sel, v)
 }
 
 func (ec *executionContext) unmarshalNPlayerFinishReason2githubᚗcomᚋscruffyprodigyᚋplayhubᚋgraphᚋmodelᚐPlayerFinishReason(ctx context.Context, v any) (model.PlayerFinishReason, error) {
