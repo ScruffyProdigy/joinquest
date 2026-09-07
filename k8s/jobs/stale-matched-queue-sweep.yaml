@@ -1,0 +1,39 @@
+# Cancel `matched` game_queues rows that have no live session behind them, across all
+# users. This is the scheduled counterpart to the per-user heal that runs lazily inside
+# GetUserActiveIntent — that one only fires for whoever happens to make a request, so an
+# orphaned row belonging to an idle player sat until a human noticed a stuck banner.
+#
+# A matched row is legitimately transient while the session is created and the handoff
+# completes, so STALE_MATCHED_QUEUE_AGE acts as the match-proposal deadline: past it, an
+# unfulfilled match dissolves instead of stranding the player. Tune it here without a
+# code change. See docs/lobby-maintenance.md.
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: lobby-stale-matched-queue-sweep
+  namespace: playhub
+spec:
+  schedule: "*/15 * * * *"
+  concurrencyPolicy: Forbid
+  successfulJobsHistoryLimit: 3
+  failedJobsHistoryLimit: 3
+  jobTemplate:
+    spec:
+      ttlSecondsAfterFinished: 3600
+      template:
+        spec:
+          restartPolicy: Never
+          containers:
+            - name: queuesweep
+              image: docker.io/scruffyprodigy/playhub-backend:latest
+              command: ["./queuesweep"]
+              env:
+                - name: DATABASE_URL
+                  valueFrom:
+                    secretKeyRef:
+                      name: pg-dsn
+                      key: DATABASE_URL
+                # How old a matched row must be before the sweep treats it as
+                # orphaned rather than still provisioning. Defaults to 5m in code.
+                - name: STALE_MATCHED_QUEUE_AGE
+                  value: "5m"

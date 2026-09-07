@@ -11,7 +11,8 @@ RUN go mod download
 COPY . .
 
 RUN CGO_ENABLED=0 GOOS=linux go build -a -installsuffix cgo -o main ./server.go && \
-    CGO_ENABLED=0 GOOS=linux go build -a -installsuffix cgo -o migrate ./cmd/migrate
+    CGO_ENABLED=0 GOOS=linux go build -a -installsuffix cgo -o migrate ./cmd/migrate && \
+    CGO_ENABLED=0 GOOS=linux go build -a -installsuffix cgo -o queuesweep ./cmd/queuesweep
 
 # Final stage
 FROM alpine:latest
@@ -25,6 +26,7 @@ WORKDIR /app
 
 COPY --from=builder /app/main .
 COPY --from=builder /app/migrate .
+COPY --from=builder /app/queuesweep .
 COPY --from=builder /app/migrations ./migrations
 
 RUN chown -R appuser:appgroup /app

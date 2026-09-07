@@ -162,6 +162,121 @@ Requires npm login with publish access to `@joinquest` scope. GitHub Actions alt
 
 Verify: `npx -y @joinquest/mcp-integration@<version>` (stdio MCP; Ctrl+C to exit).
 
+## Stale matched queue entries (JQ-133)
+
+### The condition
+
+A `game_queues` row sits in `status = 'matched'` with no live session behind it. The
+player is stuck: the lobby shows them in a match that does not exist, the leave path
+does not clear it, and joining anything else is blocked by mutual exclusion. On
+2026-09-06 production accumulated these and the first signal was a person noticing a
+stuck banner.
+
+`matched` is legitimately transient for a short window while the session is created and
+the handoff completes, so age is what separates "still forming" from "orphaned".
+
+### Inspect
+
+First, read the last scheduled run — it already reports the count, so most of the time
+no query is needed at all:
+
+```bash
+kubectl -n playhub get jobs --selector=batch.kubernetes.io/cronjob-name=lobby-stale-matched-queue-sweep
+kubectl -n playhub logs job/<most-recent-job-name> --tail=20
+```
+
+To check right now, query directly. Note the `matched_at` age guard and the
+`game_id`/`mode_queue_id` match, which keep this count consistent with what the sweep
+actually cancels — the naive query without them over-reports rows that are merely
+mid-provisioning:
+
+```sql
+SELECT count(*) FROM game_queues gq
+WHERE gq.status = 'matched'
+  AND gq.mode_queue_id IS NOT NULL
+  AND COALESCE(gq.matched_at, gq.joined_at) < NOW() - INTERVAL '5 minutes'
+  AND NOT EXISTS (
+    SELECT 1 FROM game_session_participants gsp
+    JOIN game_sessions gs
+      ON gs.id = gsp.session_id
+     AND gs.status = 'active'
+     AND gs.game_id = gq.game_id
+     AND gs.mode_queue_id = gq.mode_queue_id
+    WHERE gsp.user_id = gq.user_id
+      AND gsp.left_at IS NULL AND gsp.finished_at IS NULL);
+```
+
+To see who is affected rather than how many, swap `count(*)` for
+`gq.id, gq.user_id, gq.matched_at`.
+
+Running the binary directly (locally, or anywhere with `DATABASE_URL` set) reports the
+count and writes nothing:
+
+```bash
+./queuesweep -dry-run
+```
+```
+{"metric":"lobby.queue.stale_matched.count","signal":"metric","type":"gauge","value":0,...}
+dry run: 0 stale matched queue rows older than 5m0s
+```
+
+### Clear manually
+
+Run the sweep on demand — this is the same binary the CronJob runs, so it is the
+preferred manual clear. Prefer it over hand-written SQL against production:
+
+```bash
+kubectl -n playhub create job stale-queue-clear \
+  --from=cronjob/lobby-stale-matched-queue-sweep
+kubectl -n playhub logs job/stale-queue-clear
+```
+
+Observed output when it finds and clears one row:
+
+```
+{"metric":"lobby.queue.stale_matched.count","...","type":"gauge","value":1}
+{"metric":"lobby.queue.stale_matched.cancelled","...","type":"count","value":1}
+{"metric":"lobby.queue.stale_matched.remaining","...","type":"gauge","value":0}
+stale matched queue sweep: found=1 cancelled=1 remaining=0 threshold=5m0s
+```
+
+Running it again immediately reports `found=0 cancelled=0 remaining=0` — it is
+idempotent, so a re-run is always safe.
+
+To clear one specific player ahead of the age threshold, have them load the lobby: the
+per-user heal in `GetUserActiveIntent` cancels their orphaned row on read, with no age
+guard. That is the narrowest possible fix and needs no production write.
+
+### What the sweep does automatically
+
+`lobby-stale-matched-queue-sweep` (`k8s/jobs/stale-matched-queue-sweep.yaml`) runs every
+15 minutes and cancels stale matched rows **across all users**. It is the scheduled
+counterpart to the per-user heal, which only ever fires for whoever happens to make a
+request — that is why an idle player's orphaned row could sit indefinitely.
+
+- **Threshold**: `STALE_MATCHED_QUEUE_AGE` on the CronJob, default `5m`. This is the
+  match-proposal deadline: past it, an unfulfilled match dissolves rather than stranding
+  the player. Tune it in the manifest, no code change needed.
+- **Safety**: a row with a live session never matches the predicate, and a row younger
+  than the threshold is left alone to finish provisioning. Safe to run while players are
+  queueing and playing.
+- **Idempotent**: the predicate only selects rows still in `matched`, so repeat runs are
+  no-ops.
+- **Signal**: three metrics per run —
+  `lobby.queue.stale_matched.count` (found), `.cancelled`, and `.remaining`. They are
+  emitted as structured JSON lines tagged `"signal":"metric"`, so a log pipeline can
+  alert without an agent installed. Alert on `.count` staying above zero across
+  consecutive runs, which means rows are appearing faster than they are cleared.
+- **Failure is a signal too**: if any row survives its own sweep, the job exits non-zero
+  so the CronJob's failure count surfaces it.
+
+The emitter (`backend/internal/observe`) is a deliberate placeholder — the platform has
+no metrics backend yet. Choosing one is JQ-166; swapping it in means adding an `Emitter`
+implementation and changing the constructor in `backend/cmd/queuesweep/main.go`.
+
+Not covered: stale `room_tables` / `table_seats` seats, which block a player the same
+way. Tracked separately.
+
 ## Typical ship sequence
 
 When the user asks to commit, push, deploy, and publish:
