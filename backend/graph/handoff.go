@@ -2,6 +2,7 @@ package graph
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"log"
 	"net/url"
@@ -60,37 +61,80 @@ func assignmentFromParticipants(
 		GameMode:        modeKey,
 		Seats:           make([]gameclient.AssignmentSeat, 0, len(participants)),
 	}
+	var nameless []uuid.UUID
 	for _, p := range participants {
-		seat := gameclient.AssignmentSeat{
+		user, err := st.GetUserByID(ctx, p.UserID)
+		if err != nil {
+			return gameclient.Assignment{}, fmt.Errorf("seat %s: load player %s: %w", p.SeatKey, p.UserID, err)
+		}
+		player, err := provisionPlayerFromUser(user)
+		if err != nil {
+			if errors.Is(err, ErrPlayerIdentityMissing) {
+				// Gather every offender rather than stopping at the first, so a
+				// rollback drops all of them in one pass and returns everyone
+				// else to the queue.
+				nameless = append(nameless, p.UserID)
+				continue
+			}
+			return gameclient.Assignment{}, fmt.Errorf("seat %s: %w", p.SeatKey, err)
+		}
+		assignment.Seats = append(assignment.Seats, gameclient.AssignmentSeat{
 			SeatKey:     p.SeatKey,
 			LobbyUserID: p.UserID.String(),
-		}
-		user, err := st.GetUserByID(ctx, p.UserID)
-		if err == nil && user != nil {
-			seat.Player = provisionPlayerFromUser(user)
-		}
-		assignment.Seats = append(assignment.Seats, seat)
+			Player:      player,
+		})
+	}
+	if len(nameless) > 0 {
+		return gameclient.Assignment{}, &IdentityMissingError{UserIDs: nameless}
 	}
 	return assignment, nil
 }
 
-func provisionPlayerFromUser(user *store.User) *gameclient.ProvisionPlayer {
+// ErrPlayerIdentityMissing marks a seat that reached the handoff without a name.
+//
+// This is the handoff's half of the identity guarantee. requireIdentityUserID
+// (auth_helpers.go) keeps a nameless player out of every path into play, and
+// NormalizeDisplayName refuses to clear a name once set, so a seat with no name
+// here means a guard was bypassed — not that a player needs papering over. The
+// lobby UI substitutes "Player" because it renders strangers and half-loaded
+// rows; a game is handed a roster it will address people by for a whole match,
+// so it gets the real name or nothing at all.
+var ErrPlayerIdentityMissing = errors.New("seat has no player display name")
+
+// IdentityMissingError names every seat that reached the handoff without a
+// player name. It carries the user ids so the caller can tear the match down
+// and drop exactly those players, the way a game-rejected roster already does,
+// instead of stranding the whole match on a retry that cannot succeed.
+type IdentityMissingError struct {
+	UserIDs []uuid.UUID
+}
+
+func (e *IdentityMissingError) Error() string {
+	return fmt.Sprintf("%s: users %v", ErrPlayerIdentityMissing, e.UserIDs)
+}
+
+// Unwrap keeps errors.Is(err, ErrPlayerIdentityMissing) true for callers that
+// only care that a name was missing.
+func (e *IdentityMissingError) Unwrap() error { return ErrPlayerIdentityMissing }
+
+// provisionPlayerFromUser builds the presentation block a game reads before it
+// resolves anything over GraphQL. Every seat carries one, always with a
+// non-empty displayName.
+func provisionPlayerFromUser(user *store.User) (*gameclient.ProvisionPlayer, error) {
 	if user == nil {
-		return nil
+		return nil, fmt.Errorf("%w: no user record", ErrPlayerIdentityMissing)
 	}
-	out := &gameclient.ProvisionPlayer{}
-	if name := user.ChosenDisplayName(); name != "" {
-		out.DisplayName = name
+	name := user.ChosenDisplayName()
+	if name == "" {
+		return nil, fmt.Errorf("%w: user %s", ErrPlayerIdentityMissing, user.ID)
 	}
+	out := &gameclient.ProvisionPlayer{DisplayName: name}
 	if url := userAvatarURL(user); url != nil {
 		if trimmed := strings.TrimSpace(*url); trimmed != "" {
 			out.AvatarURL = trimmed
 		}
 	}
-	if out.DisplayName == "" && out.AvatarURL == "" {
-		return nil
-	}
-	return out
+	return out, nil
 }
 
 func lobbyProvisionInfo(game *store.Game) (gameclient.LobbyInfo, error) {
@@ -338,7 +382,13 @@ func signedLaunchURLFromBase(
 	userID uuid.UUID,
 	seatKey, displayName string,
 ) (string, error) {
-	token, err := signer.SignSeatToken(userID, audience, externalMatchID, seatKey, displayName, 0)
+	// The seat token is the second documented route to a name, so it holds the
+	// same invariant as the provision payload rather than signing a blank one.
+	name := strings.TrimSpace(displayName)
+	if name == "" {
+		return "", fmt.Errorf("%w: user %s seat %s", ErrPlayerIdentityMissing, userID, seatKey)
+	}
+	token, err := signer.SignSeatToken(userID, audience, externalMatchID, seatKey, name, 0)
 	if err != nil {
 		return "", err
 	}

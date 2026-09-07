@@ -41,6 +41,20 @@ export function chosenDisplayName(user) {
 }
 
 /**
+ * What to call someone whose name we do not have. Only the UI substitutes this
+ * — it renders strangers, half-loaded rows, and people mid-prompt. The match
+ * handoff has no counterpart on purpose: a game addresses players for a whole
+ * match, so it gets a real name or the provision fails (ErrPlayerIdentityMissing
+ * in backend/graph/handoff.go).
+ */
+export const UNKNOWN_PLAYER_NAME = 'Player'
+
+/** The name to render for someone, falling back when they have not picked one. */
+export function displayNameOrFallback(user) {
+  return chosenDisplayName(user) || UNKNOWN_PLAYER_NAME
+}
+
+/**
  * The single trigger for the identity prompt. Moving the prompt to join time
  * means changing where this is called, not what it means.
  */

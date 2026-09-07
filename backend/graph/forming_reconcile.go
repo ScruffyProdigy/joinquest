@@ -3,6 +3,7 @@ package graph
 import (
 	"context"
 	"errors"
+	"fmt"
 	"log"
 	"sync"
 
@@ -76,6 +77,30 @@ func (r *Resolver) provisionMatchedSession(ctx context.Context, work matchedSess
 			}
 			return err
 		}
+		// A nameless seat is not a transient failure — no amount of waiting adds
+		// a name — so it is rolled back rather than retried. The match is torn
+		// down, the players without an identity leave the queue, and everyone
+		// else returns to waiting with their original joined_at intact, ready
+		// for the reconcile loop to re-form them as soon as another player
+		// arrives.
+		var missing *IdentityMissingError
+		if errors.As(err, &missing) {
+			log.Printf("handoff: provision identity rollback session=%s queue=%s dropped=%d: %v",
+				work.SessionID, work.ModeQueueID, len(missing.UserIDs), err)
+			if rbErr := st.RollbackMatchedSession(ctx, work.SessionID, missing.UserIDs); rbErr != nil {
+				return fmt.Errorf("identity rollback failed: %w (provision: %v)", rbErr, err)
+			}
+			for _, uid := range missing.UserIDs {
+				if pErr := r.publishQueueLeft(ctx, work.GameID, work.ModeQueueID, uid, 0,
+					"Pick a name and an avatar before joining a game."); pErr != nil {
+					log.Printf("handoff: identity rollback notify user=%s: %v", uid, pErr)
+				}
+			}
+			// The session is gone and the returned players are queued again, so
+			// there is nothing left to retry.
+			return nil
+		}
+
 		log.Printf("handoff: provision deferred session=%s queue=%s: %v", work.SessionID, work.ModeQueueID, err)
 		if r.FormingWorker != nil {
 			r.FormingWorker.ScheduleProvisionRetry(store.UnprovisionedSession{

@@ -3,6 +3,7 @@ import { USER_AVATAR_FIELDS } from './avatars'
 import { createClient } from 'graphql-ws'
 import { getGraphQLWsUrl } from './env'
 import { prefetchSubscriptionAuth } from './queue'
+import { displayNameOrFallback } from './viewer'
 
 export { USER_AVATAR_FIELDS }
 
@@ -375,7 +376,7 @@ export function sectionTitleForSeat(seatKey, seatSlots = []) {
 }
 
 export function displayName(user) {
-  return user?.displayName?.trim() || 'Player'
+  return displayNameOrFallback(user)
 }
 
 /** Merge table.seats users into seatSlots when slot.user is missing (partial updates). */

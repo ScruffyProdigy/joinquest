@@ -7,7 +7,7 @@ import { Avatar, AvatarFallback, AvatarImage } from '../ui/avatar'
 const SIZE_MAP = { sm: 'sm', md: 'md' }
 
 export default function PlayerAvatar({ user, size = 'md', className = '', title, ring }) {
-  const baseLabel = title ?? (user ? displayName(user) : 'Player')
+  const baseLabel = title ?? displayName(user)
   const label = ring === 'king' ? `${baseLabel} (${KING_LABEL})` : baseLabel
   const avatarUrl = resolveUserAvatarUrl(user)
 

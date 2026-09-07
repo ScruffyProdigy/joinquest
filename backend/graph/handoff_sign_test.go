@@ -31,14 +31,16 @@ func TestSignLaunchURLEmptyUntilProvisioned(t *testing.T) {
 	env.resolverWithProvisioner(t, failingProvisioner{})
 
 	userA, err := env.Store.CreateUser(ctx, store.CreateUserParams{
-		Email: "launch-a-" + uuid.NewString() + "@example.com",
+		Email:       "launch-a-" + uuid.NewString() + "@example.com",
+		DisplayName: "Launch A",
 	})
 	if err != nil {
 		t.Fatalf("CreateUser A: %v", err)
 	}
 	cleaner.TrackUser(userA.ID)
 	userB, err := env.Store.CreateUser(ctx, store.CreateUserParams{
-		Email: "launch-b-" + uuid.NewString() + "@example.com",
+		Email:       "launch-b-" + uuid.NewString() + "@example.com",
+		DisplayName: "Launch B",
 	})
 	if err != nil {
 		t.Fatalf("CreateUser B: %v", err)
@@ -87,14 +89,16 @@ func TestSignLaunchURLFromStoredBase(t *testing.T) {
 	t.Setenv("LOBBY_GAME_TOKEN_PEPPER", "test-pepper")
 
 	userA, err := env.Store.CreateUser(ctx, store.CreateUserParams{
-		Email: "launch-a-" + uuid.NewString() + "@example.com",
+		Email:       "launch-a-" + uuid.NewString() + "@example.com",
+		DisplayName: "Launch A",
 	})
 	if err != nil {
 		t.Fatalf("CreateUser A: %v", err)
 	}
 	cleaner.TrackUser(userA.ID)
 	userB, err := env.Store.CreateUser(ctx, store.CreateUserParams{
-		Email: "launch-b-" + uuid.NewString() + "@example.com",
+		Email:       "launch-b-" + uuid.NewString() + "@example.com",
+		DisplayName: "Launch B",
 	})
 	if err != nil {
 		t.Fatalf("CreateUser B: %v", err)
