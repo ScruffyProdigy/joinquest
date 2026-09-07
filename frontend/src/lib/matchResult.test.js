@@ -15,6 +15,7 @@ import {
   RESULTS_FINAL_TITLE,
   RESULTS_IN_PROGRESS,
   RESULTS_IN_PROGRESS_TITLE,
+  RESULTS_PLACEMENT_UNKNOWN,
   RESULTS_STILL_PLAYING,
   RESULTS_WINNER,
   RESULTS_YOU,
@@ -76,6 +77,17 @@ describe('matchHeadline', () => {
     // wins instead of being masked by "Waiting for others to finish."
     expect(matchHeadline({ reason: 'ELIMINATED', complete: false, placement: 5, playerCount: 6 }))
       .toEqual({ headline: '5th of 6.', sub: 'Eliminated before the end.' })
+  })
+
+  // placement is nullable on MatchParticipantResult, and ordinal(null) is "nullth".
+  // Every branch below would otherwise put that in front of the player.
+  it('never builds an ordinal from a missing placement', () => {
+    expect(matchHeadline({ reason: null, complete: false, placement: null, playerCount: 4 }))
+      .toEqual({ headline: RESULTS_PLACEMENT_UNKNOWN, sub: 'Waiting for others to finish.' })
+    expect(matchHeadline({ reason: 'ELIMINATED', complete: false, placement: null, playerCount: 4 }))
+      .toEqual({ headline: RESULTS_PLACEMENT_UNKNOWN, sub: 'Eliminated before the end.' })
+    expect(matchHeadline({ reason: 'COMPLETED', complete: true, placement: null, playerCount: 4 }))
+      .toEqual({ headline: RESULTS_PLACEMENT_UNKNOWN, sub: 'Out of 4 players.' })
   })
 })
 

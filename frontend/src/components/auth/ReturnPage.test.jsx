@@ -147,6 +147,36 @@ describe('ReturnPage', () => {
       expect(assign).not.toHaveBeenCalled()
     })
 
+    // Ada is deliberately absent from the StillPlaying list above, so her own result has to
+    // be on the screen some other way — otherwise this branch tells her nothing about how
+    // she did, which is what she came back for.
+    it('tells the viewer their own result while the others play on', async () => {
+      window.location.search = '?match=match-1'
+      vi.mocked(returnLib.fetchReturnDestination).mockResolvedValue({ path: '/', kind: 'HOME' })
+      vi.mocked(matchResultLib.fetchMatchResult).mockResolvedValue(
+        makeResult({
+          complete: false,
+          participants: [
+            {
+              user: { id: 'a', displayName: 'Ada' },
+              finished: true,
+              reason: 'COMPLETED',
+              placement: 1,
+              winner: false,
+              regroup: 'PENDING',
+            },
+            { user: { id: 'b', displayName: 'Bo' }, finished: false, placement: null, winner: false, regroup: 'PENDING' },
+          ],
+        }),
+      )
+
+      render(<ReturnPage />)
+
+      expect(await screen.findByText('Your result so far')).toBeInTheDocument()
+      expect(screen.getByText('1st place.')).toBeInTheDocument()
+      expect(screen.getByText('Waiting for others to finish.')).toBeInTheDocument()
+    })
+
     it('flips to the standings when the subscription reports the match finished', async () => {
       window.location.search = '?match=match-1'
       vi.mocked(returnLib.fetchReturnDestination).mockResolvedValue({ path: '/', kind: 'HOME' })

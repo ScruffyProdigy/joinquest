@@ -2,6 +2,7 @@ package graph
 
 import (
 	"context"
+	"database/sql"
 	"errors"
 	"strings"
 
@@ -73,8 +74,18 @@ func loadMatchResultModel(ctx context.Context, st *store.Store, sessionID uuid.U
 
 	for i := range result.Participants {
 		p := result.Participants[i]
+		// byID comes from ListSessionParticipants (left_at IS NULL) while GetMatchResult
+		// includes players who left, so a non-null left_at would hand a nil User to a
+		// PublicPlayer! field and null the entire matchResult payload — which the frontend
+		// reads as "no result" and redirects the player off the screen. Nothing writes
+		// left_at today; skipping the row keeps the rest of the standings readable if
+		// something ever does.
+		user, ok := byID[p.UserID]
+		if !ok {
+			continue
+		}
 		entry := &model.MatchParticipantResult{
-			User:       ToGraphQLPublicPlayer(byID[p.UserID]),
+			User:       ToGraphQLPublicPlayer(user),
 			Finished:   p.FinishedAt != nil,
 			FinishedAt: p.FinishedAt,
 			// Stays nil when the game never reported this player: that is what
@@ -103,7 +114,9 @@ func matchResultMode(ctx context.Context, st *store.Store, modeID *uuid.UUID) (*
 	}
 	mode, err := st.GetGameModeByID(ctx, *modeID)
 	if err != nil {
-		if errors.Is(err, store.ErrNotFound) {
+		// GetGameModeByID returns raw sql.ErrNoRows, not store.ErrNotFound, so both have to
+		// be caught here or the degradation this comment promises would in fact error.
+		if errors.Is(err, store.ErrNotFound) || errors.Is(err, sql.ErrNoRows) {
 			return nil, nil
 		}
 		return nil, err

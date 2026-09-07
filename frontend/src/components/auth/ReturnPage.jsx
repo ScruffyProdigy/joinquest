@@ -22,6 +22,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '../ui/card'
 import MatchStandings from '../match/MatchStandings'
 import RegroupCard from '../match/RegroupCard'
 import StillPlaying from '../match/StillPlaying'
+import YourResult from '../match/YourResult'
 import { useAuth } from './AuthProvider'
 
 function matchIdFromLocation() {
@@ -258,6 +259,12 @@ export default function ReturnPage() {
             </>
           ) : (
             <>
+              {/*
+                The viewer's own result comes first: StillPlaying deliberately lists only the
+                others, so without this the screen answers "how is everyone else doing?" and
+                never "how did I do?".
+              */}
+              <YourResult result={result} viewerId={viewerId} />
               <StillPlaying participants={others} />
               {/*
                 The only exit from this branch. Without it a player who returns mid-match

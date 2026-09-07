@@ -134,17 +134,26 @@ func (s *Store) ClaimRegroupTable(ctx context.Context, sessionID, userID uuid.UU
 	return table, room, nil
 }
 
-// loadFormingRegroupTableTx returns the claimed table only if it still exists and is
-// forming. A swept or started table reads as unclaimed so the caller creates a fresh one.
+// loadFormingRegroupTableTx returns the claimed table only if it still exists, is forming,
+// and lives in a room that is still open. A swept or started table reads as unclaimed so
+// the caller creates a fresh one.
+//
+// The room-status join is load-bearing, not defensive. leaveRoomTx closes a room once the
+// last member leaves but the table survives, and regroup_table_id still points at it.
+// Adopting that table would insert the claimant into a closed room, and sitAtTableTx's
+// isRoomMemberTx requires r.status = open — so the claim fails with ErrNotFound, which
+// regroupClientError reports as "you did not play in this match", permanently, with no
+// path to a fresh table. Treating it as unclaimed makes the next claim build a new one.
 func (s *Store) loadFormingRegroupTableTx(ctx context.Context, tx *sql.Tx, regroupID *uuid.UUID) (*RoomTable, error) {
 	if regroupID == nil {
 		return nil, nil
 	}
 	row := tx.QueryRowContext(ctx, `
-		SELECT `+roomTableColumns+`
-		FROM room_tables
-		WHERE id = $1 AND status = $2
-	`, *regroupID, TableStatusForming)
+		SELECT `+roomTableColumnsT+`
+		FROM room_tables t
+		INNER JOIN rooms r ON r.id = t.room_id
+		WHERE t.id = $1 AND t.status = $2 AND r.status = $3
+	`, *regroupID, TableStatusForming, RoomStatusOpen)
 	table, err := scanRoomTable(row)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) || errors.Is(err, ErrNotFound) {
@@ -233,14 +242,26 @@ func (s *Store) GetRegroupRoster(ctx context.Context, sessionID uuid.UUID) (map[
 	return roster, rows.Err()
 }
 
+// RegroupSeatRelease names the table a decline actually freed a seat at, so the caller can
+// tell the room's watchers. Everyone sitting at /room/{code} watches tableUpdated, not
+// matchResultUpdated, so without this the decliner stays visibly seated until some
+// unrelated table event fires.
+type RegroupSeatRelease struct {
+	TableID uuid.UUID
+	RoomID  uuid.UUID
+}
+
 // DeclineRegroup records that a participant is not playing again and frees the seat they
 // may be holding. A room-table group is re-seated automatically when the match completes,
 // so someone who says no is still sitting there — leaving them seated would block the
 // king's Look for group backfill from filling the seat.
-func (s *Store) DeclineRegroup(ctx context.Context, sessionID, userID uuid.UUID, at time.Time) error {
+//
+// The returned release is nil when no seat was actually freed (no regroup table yet, or the
+// decliner was not sitting at it); a non-nil one is the caller's cue to publish tableUpdated.
+func (s *Store) DeclineRegroup(ctx context.Context, sessionID, userID uuid.UUID, at time.Time) (*RegroupSeatRelease, error) {
 	tx, err := s.db.BeginTx(ctx, nil)
 	if err != nil {
-		return err
+		return nil, err
 	}
 	defer func() { _ = tx.Rollback() }()
 
@@ -250,21 +271,31 @@ func (s *Store) DeclineRegroup(ctx context.Context, sessionID, userID uuid.UUID,
 		WHERE session_id = $1 AND user_id = $2
 	`, sessionID, userID, at)
 	if err != nil {
-		return err
+		return nil, err
 	}
 	if err := ensureRowsAffected(result, ErrNotFound); err != nil {
-		return err
+		return nil, err
 	}
 
-	if _, err := tx.ExecContext(ctx, `
+	var release RegroupSeatRelease
+	err = tx.QueryRowContext(ctx, `
 		DELETE FROM table_seats
 		WHERE user_id = $2
 		  AND table_id = (SELECT regroup_table_id FROM game_sessions WHERE id = $1)
-	`, sessionID, userID); err != nil {
-		return err
+		RETURNING table_id, (SELECT room_id FROM room_tables WHERE id = table_seats.table_id)
+	`, sessionID, userID).Scan(&release.TableID, &release.RoomID)
+	if err != nil && !errors.Is(err, sql.ErrNoRows) {
+		return nil, err
 	}
+	freed := err == nil
 
-	return tx.Commit()
+	if err := tx.Commit(); err != nil {
+		return nil, err
+	}
+	if !freed {
+		return nil, nil
+	}
+	return &release, nil
 }
 
 // GetRegroupTableID returns the claimed regroup table, or nil when none exists yet.

@@ -190,7 +190,7 @@ func TestGetRegroupRosterThreeStates(t *testing.T) {
 	if _, _, err := st.ClaimRegroupTable(ctx, sessionID, userA); err != nil {
 		t.Fatalf("ClaimRegroupTable: %v", err)
 	}
-	if err := st.DeclineRegroup(ctx, sessionID, userB, time.Now()); err != nil {
+	if _, err := st.DeclineRegroup(ctx, sessionID, userB, time.Now()); err != nil {
 		t.Fatalf("DeclineRegroup: %v", err)
 	}
 
@@ -385,5 +385,109 @@ func TestGetSessionIDByRegroupTableNilForOrdinaryTable(t *testing.T) {
 	}
 	if got != nil {
 		t.Fatalf("lookup = %s, want nil for a table no match points at", *got)
+	}
+}
+
+// TestClaimRegroupTableRebuildsWhenTheRoomClosed is the bricked-forever case. The table a
+// match converged on outlives its room: once the last member leaves, leaveRoomTx closes the
+// room but regroup_table_id still points at the surviving table. Adopting it would insert
+// the next claimant into a closed room, and sitAtTableTx's isRoomMemberTx requires an open
+// one — so the claim fails ErrNotFound, which the resolver reports as "you did not play in
+// this match", permanently. A closed room has to read as unclaimed so a fresh table is built.
+func TestClaimRegroupTableRebuildsWhenTheRoomClosed(t *testing.T) {
+	st := openTestStore(t)
+	cleaner := st.NewTestCleaner(t)
+	ctx := context.Background()
+
+	sessionID, userA, userB := seedMatchedSession(t, st, ctx, cleaner)
+	if err := st.CompleteSession(ctx, sessionID, time.Now()); err != nil {
+		t.Fatalf("CompleteSession: %v", err)
+	}
+
+	abandoned, _, err := st.ClaimRegroupTable(ctx, sessionID, userA)
+	if err != nil {
+		t.Fatalf("ClaimRegroupTable A: %v", err)
+	}
+
+	// A is the only member of the room the claim built, so leaving closes it while the
+	// table — and game_sessions.regroup_table_id — survive.
+	if _, err := st.LeaveRoom(ctx, userA); err != nil {
+		t.Fatalf("LeaveRoom A: %v", err)
+	}
+	room, err := st.GetRoomByID(ctx, abandoned.RoomID)
+	if err != nil {
+		t.Fatalf("GetRoomByID: %v", err)
+	}
+	if room.Status != RoomStatusClosed {
+		t.Fatalf("room status = %q, want %q — the test's premise did not hold", room.Status, RoomStatusClosed)
+	}
+	survivor, err := st.GetRoomTableByID(ctx, abandoned.ID)
+	if err != nil {
+		t.Fatalf("GetRoomTableByID: %v — the table must outlive the room for this to bite", err)
+	}
+	if survivor.Status != TableStatusForming {
+		t.Fatalf("table status = %q, want %q — the test's premise did not hold", survivor.Status, TableStatusForming)
+	}
+
+	table, _, err := st.ClaimRegroupTable(ctx, sessionID, userB)
+	if err != nil {
+		t.Fatalf("ClaimRegroupTable B after the room closed: %v", err)
+	}
+	if table.ID == abandoned.ID {
+		t.Fatal("B was seated at the table in the closed room; want a fresh one")
+	}
+
+	seats, err := st.ListTableSeats(ctx, table.ID)
+	if err != nil {
+		t.Fatalf("ListTableSeats: %v", err)
+	}
+	if len(seats) != 1 || seats[0].UserID != userB {
+		t.Fatalf("seats = %+v, want B alone on the rebuilt table", seats)
+	}
+}
+
+// TestDeclineRegroupReportsTheFreedSeat pins the payload the resolver publishes
+// tableUpdated from. Everyone at /room/{code} watches tableUpdated, not
+// matchResultUpdated, so without this the decliner stays visibly seated.
+func TestDeclineRegroupReportsTheFreedSeat(t *testing.T) {
+	st := openTestStore(t)
+	cleaner := st.NewTestCleaner(t)
+	ctx := context.Background()
+
+	sessionID, userA, userB := seedMatchedSession(t, st, ctx, cleaner)
+	if err := st.CompleteSession(ctx, sessionID, time.Now()); err != nil {
+		t.Fatalf("CompleteSession: %v", err)
+	}
+
+	table, _, err := st.ClaimRegroupTable(ctx, sessionID, userA)
+	if err != nil {
+		t.Fatalf("ClaimRegroupTable A: %v", err)
+	}
+	if _, _, err := st.ClaimRegroupTable(ctx, sessionID, userB); err != nil {
+		t.Fatalf("ClaimRegroupTable B: %v", err)
+	}
+
+	release, err := st.DeclineRegroup(ctx, sessionID, userB, time.Now())
+	if err != nil {
+		t.Fatalf("DeclineRegroup B: %v", err)
+	}
+	if release == nil {
+		t.Fatal("DeclineRegroup freed a seat but reported no table to publish")
+	}
+	if release.TableID != table.ID {
+		t.Errorf("release.TableID = %s, want %s", release.TableID, table.ID)
+	}
+	if release.RoomID != table.RoomID {
+		t.Errorf("release.RoomID = %s, want %s", release.RoomID, table.RoomID)
+	}
+
+	// Declining twice frees nothing the second time, and must not ask the resolver to
+	// publish a table change that did not happen.
+	again, err := st.DeclineRegroup(ctx, sessionID, userB, time.Now())
+	if err != nil {
+		t.Fatalf("DeclineRegroup B again: %v", err)
+	}
+	if again != nil {
+		t.Fatalf("second decline reported a freed seat: %+v", again)
 	}
 }

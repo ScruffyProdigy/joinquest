@@ -276,6 +276,18 @@ export function ordinal(n) {
  * by it.
  */
 export function matchHeadline({ reason, complete, placement, playerCount }) {
+  // `placement` is nullable on MatchParticipantResult — the game may report a finish with no
+  // placement, or not have reported this player at all — and ordinal(null) is "nullth". Such
+  // a player keeps the sub that describes their situation and simply loses the number.
+  if (placement == null) {
+    if (reason === 'ELIMINATED') {
+      return { headline: RESULTS_PLACEMENT_UNKNOWN, sub: 'Eliminated before the end.' }
+    }
+    if (!complete) {
+      return { headline: RESULTS_PLACEMENT_UNKNOWN, sub: 'Waiting for others to finish.' }
+    }
+    return { headline: RESULTS_PLACEMENT_UNKNOWN, sub: `Out of ${playerCount} players.` }
+  }
   if (reason === 'ELIMINATED') {
     return { headline: `${ordinal(placement)} of ${playerCount}.`, sub: 'Eliminated before the end.' }
   }

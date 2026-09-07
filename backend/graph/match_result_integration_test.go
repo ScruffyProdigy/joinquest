@@ -689,3 +689,77 @@ func TestMatchResultExposesPlayedMode(t *testing.T) {
 		t.Errorf("mode.minPlayers = %d, want a real minimum", got.Mode.MinPlayers)
 	}
 }
+
+// TestReportPlayerFinishedAfterReturnStillRecordsPlacement is the report-after-return race.
+// The game ends, redirects the players to {returnUrl}?match=..., and posts
+// reportPlayerFinished for each — the browser routinely wins. returnDestination runs
+// AcknowledgePlayerReturn, which stamps finished_at, and MarkParticipantFinished has
+// AND finished_at IS NULL in its WHERE, so it answers ErrNotFound from then on. If the
+// resolver treats that as fatal the reported reason and placement are never persisted, and
+// never will be — the retry fails identically — leaving the player as an unresolved pulsing
+// dot on standings that already name a winner.
+func TestReportPlayerFinishedAfterReturnStillRecordsPlacement(t *testing.T) {
+	env := newQueueIntegrationEnv(t)
+	cleaner := env.newCleaner(t)
+	match := seedActiveMatch(t, env, cleaner)
+
+	// The browser wins the race: A lands on /return before the game's callback arrives.
+	destQuery := `query Return($matchId: ID!) { returnDestination(matchId: $matchId) { path kind } }`
+	requireNoGraphQLErrors(t, postGraphQL(t, env.Handler, destQuery,
+		map[string]any{"matchId": match.sessionID.String()}, match.cookieA))
+
+	// Only now does the game report. This must not fail, and must not discard the payload.
+	reportPlayerFinished(t, env, match.sessionID, match.userA.ID, 1)
+	reportPlayerFinished(t, env, match.sessionID, match.userB.ID, 2)
+	reportMatchResult(t, env, match.sessionID, "COMPLETED", match.userA.ID.String())
+
+	resp := queryMatchResult(t, env, match.sessionID, match.cookieA)
+	if len(resp.Errors) > 0 {
+		t.Fatalf("matchResult errors: %+v", resp.Errors)
+	}
+	got := resp.Data.MatchResult
+	if got == nil {
+		t.Fatal("matchResult is null")
+	}
+
+	byUser := map[string]int{}
+	for i, p := range got.Participants {
+		byUser[p.User.ID] = i
+	}
+	aIdx, ok := byUser[match.userA.ID.String()]
+	if !ok {
+		t.Fatalf("player A missing from participants: %+v", got.Participants)
+	}
+	a := got.Participants[aIdx]
+	if a.Placement == nil || *a.Placement != 1 {
+		t.Errorf("player A placement = %v, want 1 — the report-after-return payload was discarded", a.Placement)
+	}
+	if a.Reason == nil || *a.Reason != "COMPLETED" {
+		t.Errorf("player A reason = %v, want COMPLETED", a.Reason)
+	}
+	if !a.Finished || a.FinishedAt == nil {
+		t.Errorf("player A finished = %v / finishedAt = %v, want finished", a.Finished, a.FinishedAt)
+	}
+	// The half-broken state this branch exists to eliminate: a winner on record with no
+	// placement under it.
+	if !a.Winner {
+		t.Error("player A winner = false, want true")
+	}
+	if !got.Complete {
+		t.Error("complete = false; every participant was reported finished")
+	}
+
+	// Tolerating ErrNotFound from the mark must not make the mutation tolerant of a bogus
+	// player: RecordPlayerFinish runs first precisely so it stays the participant check.
+	stranger := postGraphQLWithBearer(t, env.Handler, demoGameServiceToken(t), `mutation Finish($matchId: ID!, $lobbyUserId: ID!, $reason: PlayerFinishReason!, $placement: Int) {
+		reportPlayerFinished(matchId: $matchId, lobbyUserId: $lobbyUserId, reason: $reason, placement: $placement)
+	}`, map[string]any{
+		"matchId":     match.sessionID.String(),
+		"lobbyUserId": uuid.NewString(),
+		"reason":      "COMPLETED",
+		"placement":   3,
+	})
+	if !strings.Contains(string(stranger), "errors") {
+		t.Errorf("reportPlayerFinished accepted a lobby user id that never played: %s", stranger)
+	}
+}

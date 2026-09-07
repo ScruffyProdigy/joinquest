@@ -64,6 +64,11 @@ type StartTableResult struct {
 
 const roomTableColumns = `id, room_id, game_id, mode_id, status, session_id, created_at, updated_at`
 
+// roomTableColumnsT is roomTableColumns qualified with the alias `t`, for the queries that
+// join rooms — id, status, created_at and updated_at exist on both tables, so an unqualified
+// list is ambiguous. Derived rather than duplicated so it cannot drift.
+var roomTableColumnsT = "t." + strings.ReplaceAll(roomTableColumns, ", ", ", t.")
+
 func scanRoomTable(row interface{ Scan(dest ...any) error }) (*RoomTable, error) {
 	var t RoomTable
 	var sessionID sql.NullString

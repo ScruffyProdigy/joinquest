@@ -37,10 +37,17 @@ func (r *mutationResolver) ReportPlayerFinished(ctx context.Context, matchID str
 	}
 
 	now := time.Now()
-	if err := st.MarkParticipantFinished(ctx, sessionID, playerID, now); err != nil {
+	// The reported payload is persisted first, and it — not the mark below — is what
+	// validates the player: RecordPlayerFinish matches the participant row regardless of
+	// finished_at, so an unknown lobby user id still surfaces as ErrNotFound.
+	if err := st.RecordPlayerFinish(ctx, sessionID, playerID, string(reason), placement, metadata); err != nil {
 		return false, err
 	}
-	if err := st.RecordPlayerFinish(ctx, sessionID, playerID, string(reason), placement, metadata); err != nil {
+	// ErrNotFound here means the player already reached /return and AcknowledgePlayerReturn
+	// stamped finished_at first (MarkParticipantFinished has AND finished_at IS NULL). The
+	// browser winning that race must not cost the game's placement report, and must not hand
+	// the game server a failure it would retry forever against an applied write.
+	if err := st.MarkParticipantFinished(ctx, sessionID, playerID, now); err != nil && !errors.Is(err, store.ErrNotFound) {
 		return false, err
 	}
 	if session.ModeQueueID != nil {
@@ -184,11 +191,18 @@ func (r *mutationResolver) DeclinePlayAgain(ctx context.Context, matchID string)
 	if err := requireMatchParticipant(ctx, st, sessionID, userID); err != nil {
 		return nil, err
 	}
-	if err := st.DeclineRegroup(ctx, sessionID, userID, time.Now()); err != nil && !errors.Is(err, store.ErrNotFound) {
+	release, err := st.DeclineRegroup(ctx, sessionID, userID, time.Now())
+	if err != nil && !errors.Is(err, store.ErrNotFound) {
 		return nil, err
 	}
 	// Fire-and-forget: the decline is already recorded, so a publish failure must not
 	// strand the caller on the results screen without a return destination.
+	if release != nil {
+		// The freed seat is a table change, and everyone at /room/{code} watches
+		// tableUpdated rather than matchResultUpdated — without this they keep seeing the
+		// decliner seated. playAgain publishes both for the same reason.
+		_ = r.publishTableUpdated(ctx, release.RoomID, release.TableID)
+	}
 	_ = r.publishMatchEvent(ctx, sessionID, pubsub.MatchEventRegroup)
 	return resolveReturnDestination(ctx, st, sessionID, userID)
 }
