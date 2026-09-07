@@ -3,8 +3,12 @@ import {
   chosenDisplayName,
   hasChosenAvatar,
   hasChosenDisplayName,
+  identityGap,
   needsIdentity,
   viewerTier,
+  IDENTITY_GAP_AVATAR,
+  IDENTITY_GAP_BOTH,
+  IDENTITY_GAP_NAME,
   VIEWER_GUEST,
   VIEWER_MEMBER,
   VIEWER_PASSIVE,
@@ -84,5 +88,44 @@ describe('needsIdentity', () => {
 
   it('leaves a signed-in player with a spirit animal alone', () => {
     expect(needsIdentity({ displayName: 'Ryan', avatarUrl: 'https://cdn/spirit.png' })).toBe(false)
+  })
+})
+
+describe('identityGap', () => {
+  it('reads a visitor with no session as missing both halves', () => {
+    expect(identityGap(null)).toBe(IDENTITY_GAP_BOTH)
+    expect(identityGap({ displayName: null, avatarKey: '', avatarUrl: '' })).toBe(IDENTITY_GAP_BOTH)
+  })
+
+  it('asks only for the name when a spirit animal is already on file', () => {
+    // The state migration 000045 left every derived name in: an avatar, no name.
+    expect(
+      identityGap({ displayName: null, avatarKey: null, avatarUrl: '/avatars/fox.png', avatarSource: 'SPIRIT_ANIMAL' }),
+    ).toBe(IDENTITY_GAP_NAME)
+  })
+
+  it('treats a blank name as no name', () => {
+    expect(identityGap({ displayName: '   ', avatarKey: 'compass' })).toBe(IDENTITY_GAP_NAME)
+  })
+
+  it('asks only for the avatar when the name is chosen', () => {
+    expect(identityGap({ displayName: 'Ryan', avatarKey: '', avatarUrl: '' })).toBe(IDENTITY_GAP_AVATAR)
+  })
+
+  it('is null once both halves are on file', () => {
+    expect(identityGap({ displayName: 'Ryan', avatarKey: 'compass' })).toBeNull()
+  })
+
+  it('agrees with needsIdentity in every state', () => {
+    const states = [
+      null,
+      { displayName: null, avatarKey: '' },
+      { displayName: null, avatarSource: 'SPIRIT_ANIMAL' },
+      { displayName: 'Ryan', avatarKey: '' },
+      { displayName: 'Ryan', avatarKey: 'compass' },
+    ]
+    for (const user of states) {
+      expect(needsIdentity(user)).toBe(identityGap(user) !== null)
+    }
   })
 })

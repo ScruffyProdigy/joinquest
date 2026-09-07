@@ -17,6 +17,30 @@ const NAMELESS_GUEST = {
   createdAt: '2026-01-01T00:00:00Z',
 }
 
+/** An account migrated by 000045: the spirit animal survived, the name did not. */
+const NAMELESS_MEMBER = {
+  id: 'user-2',
+  email: 'ryan@example.com',
+  displayName: null,
+  avatarKey: null,
+  avatarUrl: '/avatars/spirit/fox.svg',
+  avatarSource: 'SPIRIT_ANIMAL',
+  isGuest: false,
+  createdAt: '2026-01-01T00:00:00Z',
+}
+
+/** The mirror case: a name on file and no face yet. */
+const FACELESS_MEMBER = {
+  id: 'user-3',
+  email: 'ryan@example.com',
+  displayName: 'Ryan',
+  avatarKey: '',
+  avatarUrl: '',
+  avatarSource: null,
+  isGuest: false,
+  createdAt: '2026-01-01T00:00:00Z',
+}
+
 function renderGate() {
   return render(
     <AuthProvider>
@@ -36,6 +60,19 @@ async function waitForGate() {
   await waitFor(() => {
     expect(screen.getByRole('heading', { name: 'Welcome to JoinQuest' })).toBeInTheDocument()
   })
+}
+
+async function waitForHeading(name) {
+  await waitFor(() => {
+    expect(screen.getByRole('heading', { name })).toBeInTheDocument()
+  })
+}
+
+/** The variables of the updatePlayerProfile mutation, once one has been sent. */
+function profileCallVariables() {
+  return global.fetch.mock.calls
+    .map(([, init]) => JSON.parse(init.body))
+    .find((body) => body.query.includes('updatePlayerProfile'))?.variables
 }
 
 describe('IdentityGate', () => {
@@ -98,11 +135,9 @@ describe('IdentityGate', () => {
       expect(screen.queryByRole('heading', { name: 'Welcome to JoinQuest' })).not.toBeInTheDocument()
     })
 
-    const profileCall = global.fetch.mock.calls
-      .map(([, init]) => JSON.parse(init.body))
-      .find((body) => body.query.includes('updatePlayerProfile'))
-    expect(profileCall.variables.displayName).toBe(chosenName)
-    expect(profileCall.variables.avatarKey).toMatch(/^sigil-/)
+    const variables = profileCallVariables()
+    expect(variables.displayName).toBe(chosenName)
+    expect(variables.avatarKey).toMatch(/^sigil-/)
   })
 
   it('creates a session first when the visitor has none', async () => {
@@ -176,5 +211,125 @@ describe('IdentityGate', () => {
       expect(global.fetch).toHaveBeenCalled()
     })
     expect(screen.queryByRole('heading', { name: 'Welcome to JoinQuest' })).not.toBeInTheDocument()
+  })
+})
+
+describe('IdentityGate, when only the name is missing', () => {
+  beforeEach(() => {
+    window.history.replaceState({}, '', '/')
+  })
+
+  it('asks for a name alone and leaves the avatar out of it', async () => {
+    mockAuthenticatedSession(NAMELESS_MEMBER)
+    renderGate()
+    await waitForHeading('One more thing')
+
+    expect(screen.getByLabelText('What should we call you?')).toBeInTheDocument()
+    expect(screen.getByText('Your avatar stays as it is.')).toBeInTheDocument()
+    expect(avatarChoices()).toHaveLength(0)
+  })
+
+  it('shows the avatar they already have rather than offering to replace it', async () => {
+    mockAuthenticatedSession(NAMELESS_MEMBER)
+    renderGate()
+    await waitForHeading('One more thing')
+
+    const dialog = screen.getByRole('dialog')
+    expect(dialog.querySelector(`img[src="${NAMELESS_MEMBER.avatarUrl}"]`)).not.toBeNull()
+  })
+
+  it('does not present itself as a guest sign-in to an account holder', async () => {
+    mockAuthenticatedSession(NAMELESS_MEMBER)
+    renderGate()
+    await waitForHeading('One more thing')
+
+    expect(screen.queryByRole('heading', { name: 'Welcome to JoinQuest' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Log in or create account' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Jump in' })).not.toBeInTheDocument()
+  })
+
+  it('saves the typed name without sending an avatar key', async () => {
+    const user = userEvent.setup()
+    mockAuthenticatedSession(NAMELESS_MEMBER)
+    renderGate()
+    await waitForHeading('One more thing')
+
+    await user.type(screen.getByLabelText('What should we call you?'), 'Ryan')
+    await user.click(screen.getByRole('button', { name: 'Save and continue' }))
+
+    await waitFor(() => {
+      expect(profileCallVariables()).toBeDefined()
+    })
+    // No avatarKey at all: the backend leaves the spirit animal untouched.
+    expect(profileCallVariables()).toEqual({ displayName: 'Ryan' })
+  })
+
+  it('will not save an empty name', async () => {
+    mockAuthenticatedSession(NAMELESS_MEMBER)
+    renderGate()
+    await waitForHeading('One more thing')
+
+    expect(screen.getByRole('button', { name: 'Save and continue' })).toBeDisabled()
+  })
+
+  it('keeps the sign-in path for a guest, who has an account to gain', async () => {
+    mockAuthenticatedSession({ ...NAMELESS_MEMBER, id: 'guest-2', email: null, isGuest: true })
+    renderGate()
+    await waitForHeading('One more thing')
+
+    expect(screen.getByRole('button', { name: 'Log in or create account' })).toBeInTheDocument()
+  })
+})
+
+describe('IdentityGate, when only the avatar is missing', () => {
+  beforeEach(() => {
+    window.history.replaceState({}, '', '/')
+  })
+
+  it('offers faces alone, under the name they already chose', async () => {
+    mockAuthenticatedSession(FACELESS_MEMBER)
+    renderGate()
+    await waitForHeading('Pick your face')
+
+    expect(screen.getByText('Playing as Ryan.')).toBeInTheDocument()
+    expect(avatarChoices()).toHaveLength(GUEST_IDENTITY_CHOICES)
+    // No generated handles: their own name is not up for replacement.
+    for (const button of avatarChoices()) {
+      expect(button).not.toHaveTextContent(/\d{4}/)
+    }
+    expect(screen.queryByLabelText('What should we call you?')).not.toBeInTheDocument()
+  })
+
+  it('does not present itself as a guest sign-in to an account holder', async () => {
+    mockAuthenticatedSession(FACELESS_MEMBER)
+    renderGate()
+    await waitForHeading('Pick your face')
+
+    expect(screen.queryByRole('button', { name: 'Log in or create account' })).not.toBeInTheDocument()
+  })
+
+  it('saves the picked avatar against the name already on file', async () => {
+    const user = userEvent.setup()
+    mockAuthenticatedSession(FACELESS_MEMBER)
+    renderGate()
+    await waitForHeading('Pick your face')
+
+    await user.click(avatarChoices()[0])
+
+    await waitFor(() => {
+      expect(profileCallVariables()).toBeDefined()
+    })
+    expect(profileCallVariables().displayName).toBe('Ryan')
+    expect(profileCallVariables().avatarKey).toMatch(/^sigil-/)
+  })
+
+  it('names each face for anyone not reading by sight', async () => {
+    mockAuthenticatedSession(FACELESS_MEMBER)
+    renderGate()
+    await waitForHeading('Pick your face')
+
+    for (const button of avatarChoices()) {
+      expect(button.getAttribute('aria-label')).toMatch(/^[A-Za-z]+ [A-Za-z]+$/)
+    }
   })
 })

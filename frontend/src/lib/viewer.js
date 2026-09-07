@@ -54,10 +54,35 @@ export function displayNameOrFallback(user) {
   return chosenDisplayName(user) || UNKNOWN_PLAYER_NAME
 }
 
+/** Neither half is on file — a visitor or a guest who has not started. */
+export const IDENTITY_GAP_BOTH = 'both'
+/** They have a face but nothing to call them by. */
+export const IDENTITY_GAP_NAME = 'name'
+/** They have a name but no face. */
+export const IDENTITY_GAP_AVATAR = 'avatar'
+
+/**
+ * Which half of an identity is missing, or null once both are on file. The
+ * prompt asks for exactly this much: a migrated account that already has a
+ * spirit animal is asked to name itself, not to pick a face it already chose.
+ */
+export function identityGap(user) {
+  const named = hasChosenDisplayName(user)
+  const faced = hasChosenAvatar(user)
+  if (named && faced) {
+    return null
+  }
+  if (!named && !faced) {
+    return IDENTITY_GAP_BOTH
+  }
+  return named ? IDENTITY_GAP_AVATAR : IDENTITY_GAP_NAME
+}
+
 /**
  * The single trigger for the identity prompt. Moving the prompt to join time
- * means changing where this is called, not what it means.
+ * means changing where this is called, not what it means. What the prompt then
+ * *asks for* is identityGap's business, not this one's.
  */
 export function needsIdentity(user) {
-  return !user || !hasChosenAvatar(user) || !hasChosenDisplayName(user)
+  return identityGap(user) !== null
 }

@@ -39,6 +39,35 @@ export const IDENTITY_GATE_SCOPE_HINT =
 export const IDENTITY_GATE_DIVIDER = 'or'
 export const IDENTITY_GATE_SIGN_IN = 'Log in or create account'
 export const IDENTITY_GATE_ERROR = 'Could not start your session. Pick an avatar to try again.'
+export const IDENTITY_GATE_BACK_TO_AVATARS = 'Back to avatars'
+export const IDENTITY_GATE_BACK = 'Back'
+
+/**
+ * Half an identity. Someone signed in whose name or avatar is missing is not a
+ * guest and must not be greeted as one — they are asked for the missing half
+ * only, and told the half they already have is staying.
+ */
+export const NAME_PROMPT_HEADING = 'One more thing'
+export const NAME_PROMPT_TAGLINE = 'We have your avatar — we just need a name to go with it.'
+export const NAME_PROMPT_KEEPING_AVATAR = 'Your avatar stays as it is.'
+export const NAME_PROMPT_LABEL = 'What should we call you?'
+export const NAME_PROMPT_PLACEHOLDER = 'Your name'
+export const NAME_PROMPT_SCOPE_HINT =
+  'This is your name across all of JoinQuest, not just one game.'
+export const NAME_PROMPT_SUBMIT = 'Save and continue'
+export const NAME_PROMPT_SAVING = 'Saving…'
+export const NAME_PROMPT_ERROR = 'Could not save your name. Try again.'
+
+export const AVATAR_PROMPT_HEADING = 'Pick your face'
+export const AVATAR_PROMPT_TAGLINE = 'We have your name — we just need a face to go with it.'
+export const AVATAR_PROMPT_SCOPE_HINT =
+  'This is your avatar across all of JoinQuest, not just one game.'
+export const AVATAR_PROMPT_ERROR = 'Could not save your avatar. Pick one to try again.'
+
+/** Names the player already has, so the picker cannot read as a fresh start. */
+export function playingAsLine(name) {
+  return `Playing as ${name}.`
+}
 
 export const GUEST_ACCOUNT_PROMPT =
   'You’re playing as a guest. Add an email in Account settings to keep your progress across visits.'
