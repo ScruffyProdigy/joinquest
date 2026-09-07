@@ -57,9 +57,9 @@ func (r *Resolver) signals() observe.Emitter {
 // NewResolver creates a resolver backed by the store and auth service.
 func NewResolver(st *store.Store, authService *auth.Service, broker pubsub.Broker) *Resolver {
 	return &Resolver{
-		Store:            st,
-		Auth:             authService,
-		PubSub:           broker,
+		Store:             st,
+		Auth:              authService,
+		PubSub:            broker,
 		EligibilityCache:  gameclient.NewEligibilityCache(gameclient.NewClient(), 5*time.Second),
 		QueueOptionsCache: gameclient.NewQueueOptionsCache(gameclient.NewClient(), 5*time.Second),
 		LiveCountsCache:   catalogstats.NewCache(liveCountsSource(st), 5*time.Second),
