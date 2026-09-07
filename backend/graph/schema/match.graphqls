@@ -65,6 +65,11 @@ extend type Query {
   matchResult(matchId: ID!): MatchResult
 }
 
+extend type Subscription {
+  """Live standings and regroup roster for a match the caller played in."""
+  matchResultUpdated(matchId: ID!): MatchResult!
+}
+
 extend type Mutation {
   # Game server (Bearer serviceToken from provision).
   reportPlayerFinished(

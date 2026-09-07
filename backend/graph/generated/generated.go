@@ -525,6 +525,7 @@ type ComplexityRoot struct {
 	}
 
 	Subscription struct {
+		MatchResultUpdated func(childComplexity int, matchID string) int
 		MyTableSeatUpdated func(childComplexity int) int
 		QueueUpdated       func(childComplexity int, queueID string) int
 		RoomMessageAdded   func(childComplexity int, roomID string) int
@@ -730,6 +731,7 @@ type SessionResolver interface {
 }
 type SubscriptionResolver interface {
 	QueueUpdated(ctx context.Context, queueID string) (<-chan *model.QueueUpdate, error)
+	MatchResultUpdated(ctx context.Context, matchID string) (<-chan *model.MatchResult, error)
 	RoomUpdated(ctx context.Context, roomID string) (<-chan *model.Room, error)
 	RoomMessageAdded(ctx context.Context, roomID string) (<-chan *model.RoomMessage, error)
 	TableUpdated(ctx context.Context, roomID string) (<-chan *model.Table, error)
@@ -3095,6 +3097,17 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 
 		return e.complexity.StarterAvatar.Slot(childComplexity), true
 
+	case "Subscription.matchResultUpdated":
+		if e.complexity.Subscription.MatchResultUpdated == nil {
+			break
+		}
+
+		args, err := ec.field_Subscription_matchResultUpdated_args(ctx, rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.complexity.Subscription.MatchResultUpdated(childComplexity, args["matchId"].(string)), true
 	case "Subscription.myTableSeatUpdated":
 		if e.complexity.Subscription.MyTableSeatUpdated == nil {
 			break
@@ -4111,6 +4124,11 @@ extend type Query {
 
   """The stored result of a finished match. Visible only to its participants."""
   matchResult(matchId: ID!): MatchResult
+}
+
+extend type Subscription {
+  """Live standings and regroup roster for a match the caller played in."""
+  matchResultUpdated(matchId: ID!): MatchResult!
 }
 
 extend type Mutation {
@@ -5183,6 +5201,17 @@ func (ec *executionContext) field_Room_messages_args(ctx context.Context, rawArg
 		return nil, err
 	}
 	args["before"] = arg1
+	return args, nil
+}
+
+func (ec *executionContext) field_Subscription_matchResultUpdated_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
+	var err error
+	args := map[string]any{}
+	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "matchId", ec.unmarshalNID2string)
+	if err != nil {
+		return nil, err
+	}
+	args["matchId"] = arg0
 	return args, nil
 }
 
@@ -17934,6 +17963,65 @@ func (ec *executionContext) fieldContext_Subscription_queueUpdated(ctx context.C
 	return fc, nil
 }
 
+func (ec *executionContext) _Subscription_matchResultUpdated(ctx context.Context, field graphql.CollectedField) (ret func(ctx context.Context) graphql.Marshaler) {
+	return graphql.ResolveFieldStream(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_Subscription_matchResultUpdated,
+		func(ctx context.Context) (any, error) {
+			fc := graphql.GetFieldContext(ctx)
+			return ec.resolvers.Subscription().MatchResultUpdated(ctx, fc.Args["matchId"].(string))
+		},
+		nil,
+		ec.marshalNMatchResult2ᚖgithubᚗcomᚋscruffyprodigyᚋplayhubᚋgraphᚋmodelᚐMatchResult,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_Subscription_matchResultUpdated(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Subscription",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "matchId":
+				return ec.fieldContext_MatchResult_matchId(ctx, field)
+			case "game":
+				return ec.fieldContext_MatchResult_game(ctx, field)
+			case "status":
+				return ec.fieldContext_MatchResult_status(ctx, field)
+			case "reported":
+				return ec.fieldContext_MatchResult_reported(ctx, field)
+			case "complete":
+				return ec.fieldContext_MatchResult_complete(ctx, field)
+			case "endedAt":
+				return ec.fieldContext_MatchResult_endedAt(ctx, field)
+			case "participants":
+				return ec.fieldContext_MatchResult_participants(ctx, field)
+			case "regroupInviteCode":
+				return ec.fieldContext_MatchResult_regroupInviteCode(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type MatchResult", field.Name)
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Subscription_matchResultUpdated_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _Subscription_roomUpdated(ctx context.Context, field graphql.CollectedField) (ret func(ctx context.Context) graphql.Marshaler) {
 	return graphql.ResolveFieldStream(
 		ctx,
@@ -25850,6 +25938,8 @@ func (ec *executionContext) _Subscription(ctx context.Context, sel ast.Selection
 	switch fields[0].Name {
 	case "queueUpdated":
 		return ec._Subscription_queueUpdated(ctx, fields[0])
+	case "matchResultUpdated":
+		return ec._Subscription_matchResultUpdated(ctx, fields[0])
 	case "roomUpdated":
 		return ec._Subscription_roomUpdated(ctx, fields[0])
 	case "roomMessageAdded":
@@ -28002,6 +28092,20 @@ func (ec *executionContext) marshalNMatchParticipantResult2ᚖgithubᚗcomᚋscr
 		return graphql.Null
 	}
 	return ec._MatchParticipantResult(ctx, sel, v)
+}
+
+func (ec *executionContext) marshalNMatchResult2githubᚗcomᚋscruffyprodigyᚋplayhubᚋgraphᚋmodelᚐMatchResult(ctx context.Context, sel ast.SelectionSet, v model.MatchResult) graphql.Marshaler {
+	return ec._MatchResult(ctx, sel, &v)
+}
+
+func (ec *executionContext) marshalNMatchResult2ᚖgithubᚗcomᚋscruffyprodigyᚋplayhubᚋgraphᚋmodelᚐMatchResult(ctx context.Context, sel ast.SelectionSet, v *model.MatchResult) graphql.Marshaler {
+	if v == nil {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			ec.Errorf(ctx, "the requested element is null which the schema does not allow")
+		}
+		return graphql.Null
+	}
+	return ec._MatchResult(ctx, sel, v)
 }
 
 func (ec *executionContext) unmarshalNMatchResultStatus2githubᚗcomᚋscruffyprodigyᚋplayhubᚋgraphᚋmodelᚐMatchResultStatus(ctx context.Context, v any) (model.MatchResultStatus, error) {

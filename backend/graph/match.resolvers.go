@@ -7,11 +7,13 @@ package graph
 import (
 	"context"
 	"errors"
+	"fmt"
 	"strings"
 	"time"
 
 	"github.com/google/uuid"
 	"github.com/scruffyprodigy/playhub/graph/model"
+	"github.com/scruffyprodigy/playhub/internal/pubsub"
 	"github.com/scruffyprodigy/playhub/internal/store"
 )
 
@@ -57,6 +59,10 @@ func (r *mutationResolver) ReportPlayerFinished(ctx context.Context, matchID str
 		}
 	}
 
+	if err := r.publishMatchEvent(ctx, sessionID, pubsub.MatchEventPlayerFinished); err != nil {
+		return false, err
+	}
+
 	return true, nil
 }
 
@@ -99,6 +105,7 @@ func (r *mutationResolver) ReportMatchResult(ctx context.Context, matchID string
 	if table != nil {
 		_ = r.publishTableUpdated(ctx, table.RoomID, table.ID)
 	}
+	_ = r.publishMatchEvent(ctx, sessionID, pubsub.MatchEventResult)
 
 	return true, nil
 }
@@ -143,6 +150,9 @@ func (r *mutationResolver) PlayAgain(ctx context.Context, matchID string) (*mode
 	if err := r.publishTableUpdated(ctx, table.RoomID, table.ID); err != nil {
 		return nil, err
 	}
+	if err := r.publishMatchEvent(ctx, sessionID, pubsub.MatchEventRegroup); err != nil {
+		return nil, err
+	}
 
 	return &model.PlayAgainResult{
 		Table:      toGraphQLTable(table),
@@ -171,6 +181,9 @@ func (r *mutationResolver) DeclinePlayAgain(ctx context.Context, matchID string)
 		return nil, err
 	}
 	if err := st.DeclineRegroup(ctx, sessionID, userID, time.Now()); err != nil && !errors.Is(err, store.ErrNotFound) {
+		return nil, err
+	}
+	if err := r.publishMatchEvent(ctx, sessionID, pubsub.MatchEventRegroup); err != nil {
 		return nil, err
 	}
 	return resolveReturnDestination(ctx, st, sessionID, userID)
@@ -227,4 +240,75 @@ func (r *queryResolver) MatchResult(ctx context.Context, matchID string) (*model
 		return nil, err
 	}
 	return loadMatchResultModel(ctx, st, sessionID)
+}
+
+// MatchResultUpdated is the resolver for the matchResultUpdated field.
+func (r *subscriptionResolver) MatchResultUpdated(ctx context.Context, matchID string) (<-chan *model.MatchResult, error) {
+	if r.PubSub == nil {
+		return nil, fmt.Errorf("pubsub is not configured")
+	}
+	userID, err := requireAuthUserID(ctx)
+	if err != nil {
+		return nil, err
+	}
+	sessionID, err := parseUUID(strings.TrimSpace(matchID), "match id")
+	if err != nil {
+		return nil, err
+	}
+	st, err := r.requireStore()
+	if err != nil {
+		return nil, err
+	}
+	if err := requireMatchParticipant(ctx, st, sessionID, userID); err != nil {
+		return nil, err
+	}
+
+	initial, err := loadMatchResultModel(ctx, st, sessionID)
+	if err != nil {
+		return nil, err
+	}
+
+	messages, unsubscribe, err := r.PubSub.Subscribe(ctx, pubsub.MatchChannel(sessionID.String()))
+	if err != nil {
+		return nil, err
+	}
+
+	updates := make(chan *model.MatchResult, 4)
+	go func() {
+		defer close(updates)
+		defer unsubscribe()
+
+		if initial != nil {
+			select {
+			case updates <- initial:
+			case <-ctx.Done():
+				return
+			}
+		}
+
+		for {
+			select {
+			case <-ctx.Done():
+				return
+			case payload, ok := <-messages:
+				if !ok {
+					return
+				}
+				if _, err := pubsub.UnmarshalMatchEvent(payload); err != nil {
+					continue
+				}
+				result, err := loadMatchResultModel(ctx, st, sessionID)
+				if err != nil {
+					continue
+				}
+				select {
+				case updates <- result:
+				case <-ctx.Done():
+					return
+				}
+			}
+		}
+	}()
+
+	return updates, nil
 }

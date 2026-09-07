@@ -6,6 +6,7 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/scruffyprodigy/playhub/graph/model"
+	"github.com/scruffyprodigy/playhub/internal/pubsub"
 	"github.com/scruffyprodigy/playhub/internal/store"
 )
 
@@ -13,6 +14,15 @@ import (
 // match result is only "final" once the session reaches it; before that the same query
 // serves a partial, still-playing view.
 const sessionStatusCompleted = "completed"
+
+// publishMatchEvent notifies matchResultUpdated subscribers that a match's result or
+// regroup state changed. It is a no-op when pub/sub is not configured.
+func (r *Resolver) publishMatchEvent(ctx context.Context, sessionID uuid.UUID, eventType string) error {
+	if r.PubSub == nil {
+		return nil
+	}
+	return pubsub.PublishMatchEvent(ctx, r.PubSub, sessionID.String(), pubsub.MatchEvent{Type: eventType})
+}
 
 // loadMatchResultModel maps a match's stored outcome onto the GraphQL model. It is
 // deliberately free of resolver state and does no authorization of its own — every caller
