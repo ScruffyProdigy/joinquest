@@ -10,6 +10,17 @@ import (
 	"github.com/scruffyprodigy/joinquest/internal/store"
 )
 
+// metricCompletionPreempted counts completions that found the session already ended.
+// A steady trickle is the benign reportPlayerFinished race; a burst on a schedule is a
+// cleanup job ending live sessions behind the lobby's back.
+//
+// It lives here rather than beside its use in match.resolvers.go because gqlgen rewrites
+// the resolver files on every `make generate` and moves hand-written top-level
+// declarations into a commented-out "one last chance" block at the end of the file. That
+// leaves the package uncompilable, which fails generation itself — so the next schema
+// change in any domain cannot be generated at all.
+const metricCompletionPreempted = "lobby.match.completion_preempted"
+
 // requireMatchParticipant is the authorization gate on everything a match knows about
 // itself: the standings, the roster, and the regroup offer are for the people who played
 // that match and for nobody else. Match ids travel in a player-editable return URL, so a
