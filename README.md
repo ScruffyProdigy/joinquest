@@ -62,7 +62,7 @@ Maintaining this repo (backend, dashboard, deploy): start with **[AGENTS.md](AGE
 
 Helping a game developer integrate with JoinQuest: use the skill in [`.agents/skills/joinquest-integration/`](.agents/skills/joinquest-integration/) (usually installed into their game repo).
 
-> **Naming:** the product is **JoinQuest** (`joinquest.cc`). This folder is often named `lobby` locally. Some internals still use the legacy name `playhub` (Docker images, database names).
+> **Naming:** the product is **JoinQuest** (`joinquest.cc`). This folder is often named `lobby` locally. The legacy name `playhub` survives only in the Go module path (JQ-168).
 
 ## Getting Started
 

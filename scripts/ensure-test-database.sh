@@ -11,7 +11,7 @@ PGPASSWORD="${PGPASSWORD:-app-pass}"
 
 # Prefer the database DATABASE_URL actually points at, so this cannot drift from
 # what the tests connect to.
-TEST_DB="playhub_test"
+TEST_DB="joinquest_test"
 if [ -n "${DATABASE_URL:-}" ]; then
   parsed="${DATABASE_URL##*/}"
   parsed="${parsed%%\?*}"
@@ -19,9 +19,9 @@ if [ -n "${DATABASE_URL:-}" ]; then
 fi
 
 case "$TEST_DB" in
-  playhub_test|playhub_test_*) ;;
+  joinquest_test|joinquest_test_*) ;;
   *)
-    echo "Refusing to create '$TEST_DB': integration databases must be playhub_test or playhub_test_<run id>." >&2
+    echo "Refusing to create '$TEST_DB': integration databases must be joinquest_test or joinquest_test_<run id>." >&2
     exit 1
     ;;
 esac

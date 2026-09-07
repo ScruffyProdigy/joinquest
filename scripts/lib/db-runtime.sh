@@ -3,7 +3,7 @@
 #
 # Ryan routinely runs several agents on different tickets at once. Without this,
 # two of them running the backend suite collide twice over: on the published
-# host port (only one process can bind 5432) and on the shared playhub_test
+# host port (only one process can bind 5432) and on the shared joinquest_test
 # database (each truncates the other's fixtures mid-test).
 #
 # Sourced by scripts/db.sh and scripts/test-backend.sh. Nothing here talks to
@@ -53,7 +53,7 @@ lobby_test_database() {
   local sanitized
   sanitized="$(printf '%s' "$run_id" | tr '[:upper:]' '[:lower:]' | tr -c 'a-z0-9_' '_' | sed -E 's/_+/_/g; s/^_|_$//g')"
   [ -n "$sanitized" ] || sanitized="default"
-  printf 'playhub_test_%s' "${sanitized:0:50}"
+  printf 'joinquest_test_%s' "${sanitized:0:50}"
 }
 
 # Host port docker actually published for a service, e.g. lobby_host_port postgres 5432.

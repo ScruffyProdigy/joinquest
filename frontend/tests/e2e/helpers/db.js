@@ -28,7 +28,7 @@ export function runSql(sql) {
     })
   }
 
-  return execSync(`docker compose exec -T postgres psql -U app -d playhub -v ON_ERROR_STOP=1 -c "${sql}"`, {
+  return execSync(`docker compose exec -T postgres psql -U app -d joinquest -v ON_ERROR_STOP=1 -c "${sql}"`, {
     cwd: repoRoot,
     encoding: 'utf8',
     stdio: ['ignore', 'pipe', 'pipe'],

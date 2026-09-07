@@ -16,12 +16,13 @@ This repository is the **JoinQuest platform** (player shell + GraphQL API + deve
 |------|---------|
 | `lobby` | Local folder / this repo |
 | **JoinQuest** | Product name; production at [joinquest.cc](https://joinquest.cc) |
-| `playhub` | Legacy internal name — still used for Docker images (`joinquest-backend`), DB names (`playhub`, `playhub_test`), and the Go module path (`github.com/scruffyprodigy/playhub`). The GitHub repo is now [`scruffyprodigy/joinquest`](https://github.com/scruffyprodigy/joinquest) |
+| `playhub` | Legacy internal name. Retired everywhere except the Go module path (`github.com/scruffyprodigy/playhub`), which is JQ-168. The GitHub repo is now [`scruffyprodigy/joinquest`](https://github.com/scruffyprodigy/joinquest) |
 
-Public-facing text and package metadata have been de-`playhub`ed (JQ-167). The
-remaining `playhub` identifiers — Go module path, Docker image names, database
-names, k8s namespaces — carry deployment and schema risk and are tracked
-separately (JQ-168–JQ-170). Do not rename them unless explicitly asked.
+Public-facing text and package metadata (JQ-167), Docker images and k8s
+resources (JQ-169), and database and volume names (JQ-170) have all been
+de-`playhub`ed. Only the Go module path remains: 120 files import through
+`github.com/scruffyprodigy/playhub`, tracked as JQ-168. That rewrite conflicts
+with every in-flight backend branch, so do not do it unless explicitly asked.
 
 ## Repo map
 
@@ -68,14 +69,14 @@ the suite.
 - Each working copy gets its own compose project (`./scripts/db.sh compose-project`),
   so `docker compose down` here cannot stop another agent's stack. Any direct
   `docker compose` call must run with that project name — prefer `db.sh`.
-- Each suite run gets its own `playhub_test_<run id>` database, created and
-  dropped by the harness. Do not target a bare `playhub_test`.
+- Each suite run gets its own `joinquest_test_<run id>` database, created and
+  dropped by the harness. Do not target a bare `joinquest_test`.
 - A stray container holding a port is reported by name with the fix. If you hit
   a port or database conflict, read the message — do not add sleeps, retries, or
   a hand-rolled second stack.
 - Verify isolation with `./scripts/check-concurrent-test-isolation.sh`.
 
-The dev database (`playhub`) is intentionally shared and long-lived within a
+The dev database (`joinquest`) is intentionally shared and long-lived within a
 working copy; only the test database is per-run. See
 [docs/development.md](docs/development.md#running-suites-concurrently).
 

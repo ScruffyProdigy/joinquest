@@ -8,7 +8,7 @@ Operational guide for **JoinQuest platform contributors** — local dev, testing
 |------|---------|
 | `lobby` | This git repo / local folder |
 | **JoinQuest** | Product; [joinquest.cc](https://joinquest.cc) |
-| `playhub` | Legacy name in Docker images, DB names, k8s templates |
+| `playhub` | Legacy name, now only in the Go module path (JQ-168) |
 
 Clone:
 
@@ -28,7 +28,7 @@ cd joinquest    # folder may be named lobby locally
 |---------|-----|
 | Frontend | http://localhost:5173 |
 | GraphQL | http://localhost:8080/graphql |
-| Postgres | `playhub` (dev), `playhub_test_<run id>` (backend tests). Ephemeral host port — get it with `./scripts/db.sh url` |
+| Postgres | `joinquest` (dev), `joinquest_test_<run id>` (backend tests). Ephemeral host port — get it with `./scripts/db.sh url` |
 
 Stop: Ctrl+C in the dev terminal, or `./scripts/db.sh down` (a bare `docker compose down` misses this working copy's compose project).
 

@@ -56,7 +56,7 @@ function runPsql(sql) {
     }).trim()
   }
 
-  return execSync(`docker compose exec -T postgres psql -U app -d playhub -tAc "${sql}"`, {
+  return execSync(`docker compose exec -T postgres psql -U app -d joinquest -tAc "${sql}"`, {
     cwd: repoRoot,
     encoding: 'utf8',
     stdio: ['ignore', 'pipe', 'pipe'],
