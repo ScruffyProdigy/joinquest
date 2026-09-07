@@ -1,4 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
+import { classifyRegroupError, REGROUP_ERROR } from './matchResult'
 import {
   formatBackToGame,
   formatNeedMorePlayers,
@@ -162,5 +163,33 @@ describe('matchResult data layer', () => {
 
     expect(data).toEqual(result)
     expect(graphqlRequest).toHaveBeenCalledWith(expect.stringContaining('declinePlayAgain'), { matchId: 'm1' })
+  })
+})
+
+describe('classifyRegroupError', () => {
+  // Pinned to the exact phrasing backend/graph/match_helpers.go sends (regroupClientError).
+  it('recognises a session with no mode to rebuild from', () => {
+    expect(classifyRegroupError(new Error('this match no longer has a mode to build a table from')))
+      .toBe(REGROUP_ERROR.NO_MODE)
+  })
+
+  it('recognises a match that is still running', () => {
+    expect(classifyRegroupError(new Error("this match hasn't finished yet")))
+      .toBe(REGROUP_ERROR.NOT_FINISHED)
+    expect(classifyRegroupError('this match hasn\u2019t finished yet'))
+      .toBe(REGROUP_ERROR.NOT_FINISHED)
+  })
+
+  it('recognises a full table', () => {
+    expect(classifyRegroupError(new Error('the table is full'))).toBe(REGROUP_ERROR.TABLE_FULL)
+  })
+
+  it('keeps "not your match" distinct from "too early"', () => {
+    expect(classifyRegroupError(new Error('you did not play in this match'))).toBe(REGROUP_ERROR.UNKNOWN)
+  })
+
+  it('survives a missing or malformed error', () => {
+    expect(classifyRegroupError(null)).toBe(REGROUP_ERROR.UNKNOWN)
+    expect(classifyRegroupError({})).toBe(REGROUP_ERROR.UNKNOWN)
   })
 })

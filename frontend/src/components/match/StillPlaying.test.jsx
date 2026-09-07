@@ -14,6 +14,11 @@ describe('StillPlaying', () => {
     expect(screen.getAllByText('In progress…')).toHaveLength(2)
   })
 
+  it('heads the list so the section reads on its own', () => {
+    render(<StillPlaying participants={[{ user: { id: 'b', displayName: 'Bo' } }]} />)
+    expect(screen.getByText('Still playing')).toBeInTheDocument()
+  })
+
   it('renders cleanly with no participants', () => {
     render(<StillPlaying participants={[]} />)
     expect(screen.queryByText('In progress…')).not.toBeInTheDocument()

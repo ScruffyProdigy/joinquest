@@ -15,9 +15,12 @@ const MATCH_RESULT_FIELDS = `
   regroupInviteCode
   game {
     id
+    slug
     name
     modes {
       id
+      status
+      minPlayers
     }
   }
   participants {
@@ -161,4 +164,31 @@ export async function subscribeToMatchResult(matchId, { onUpdate, onError } = {}
   return () => {
     unsubscribe()
   }
+}
+
+/**
+ * The three regroup failures a client should treat differently, as the resolver phrases
+ * them (backend/graph/match_helpers.go, `regroupClientError`). GraphQL carries no error
+ * code on this path, so the sent message text is all there is to match on.
+ */
+export const REGROUP_ERROR = {
+  NO_MODE: 'NO_REGROUP_MODE',
+  NOT_FINISHED: 'SESSION_NOT_FINISHED',
+  TABLE_FULL: 'TABLE_FULL',
+  UNKNOWN: 'UNKNOWN',
+}
+
+export function classifyRegroupError(error) {
+  const message = typeof error === 'string' ? error : error?.message || ''
+  if (/no longer has a mode/i.test(message)) {
+    return REGROUP_ERROR.NO_MODE
+  }
+  // The server writes a straight apostrophe; tolerate a curly one in case the copy is retouched.
+  if (/hasn['\u2019]t finished yet/i.test(message)) {
+    return REGROUP_ERROR.NOT_FINISHED
+  }
+  if (/table is full/i.test(message)) {
+    return REGROUP_ERROR.TABLE_FULL
+  }
+  return REGROUP_ERROR.UNKNOWN
 }

@@ -225,6 +225,15 @@ export function formatNeedMorePlayers(missing) {
   return `Need ${missing} more to play again`
 }
 
+/**
+ * Regroup failures the player can act on. `ErrNoRegroupMode` has no message: it is a
+ * documented degradation, so the client routes to the game's detail page instead of
+ * telling the player about a mode that no longer exists.
+ */
+export const REGROUP_ERROR_NOT_FINISHED = 'That match hasn’t finished yet.'
+export const REGROUP_ERROR_TABLE_FULL = 'The table filled up before you got a seat.'
+export const REGROUP_ERROR_GENERIC = 'Could not start another round. Try again.'
+
 /** Ordinal for a placement: 1 → "1st", 2 → "2nd", 11 → "11th". */
 export function ordinal(n) {
   const rem100 = n % 100

@@ -1,7 +1,7 @@
-import { Card, CardContent } from '../ui/card'
+import { Card, CardContent, CardHeader, CardTitle } from '../ui/card'
 import PlayerAvatar from '../avatars/PlayerAvatar'
 import { displayName } from '../../lib/tables'
-import { RESULTS_IN_PROGRESS } from '../../lib/playerCopy'
+import { RESULTS_IN_PROGRESS, RESULTS_STILL_PLAYING } from '../../lib/playerCopy'
 
 /** The other players, still shown as in progress, while the viewer waits. */
 export default function StillPlaying({ participants }) {
@@ -9,6 +9,9 @@ export default function StillPlaying({ participants }) {
 
   return (
     <Card>
+      <CardHeader>
+        <CardTitle>{RESULTS_STILL_PLAYING}</CardTitle>
+      </CardHeader>
       <CardContent>
         <ul className="flex flex-col gap-2">
           {list.map((participant) => (
