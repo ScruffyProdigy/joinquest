@@ -57,6 +57,30 @@ func mergedUserEmail(userID uuid.UUID) string {
 }
 
 // MergeUserInto moves sign-in methods and transferable state from source into target, then deactivates source.
+//
+// EVERY NEW PER-PLAYER TABLE MUST BE ADDED HERE. Once this commits, the source is
+// deactivated and there is no reliable key linking it back to the target, so anything
+// this function forgets is lost permanently and cannot be reconstructed later (JQ-153).
+// Adding a table with a user_id — or any other column referencing users(id) — without
+// adding it below silently drops that data on every merge.
+//
+// The rules, and the constraint behind each, live in carryUserScopedRowsTx
+// (user_merge_carry.go). In short:
+//
+//	sign-in     users, user_emails, user_identities        — below, in this function
+//	live intent game_queues (waiting/matched), live game_session_participants,
+//	            room_members, table_seats, parties, forming_match_assignments
+//	                                                       — unwound on source, target wins
+//	history     game_session_participants, game_queues, room_messages,
+//	            avatar_readings, party_members, user_inventory
+//	                                                       — moved to target
+//	ownership   games.owner_user_id, developer_api_keys, rooms.host_user_id,
+//	            parties.leader_user_id                     — moved to target
+//	credentials magic_links                                — destroyed, never moved
+//
+// Note the direction: callers pass the *pre-existing* account as source and the
+// *currently signed-in* user as target, so it is the older account that gets
+// deactivated and the guest that survives.
 func (s *Store) MergeUserInto(ctx context.Context, sourceID, targetID uuid.UUID) error {
 	if sourceID == targetID {
 		return nil
@@ -165,6 +189,10 @@ func (s *Store) MergeUserInto(ctx context.Context, sourceID, targetID uuid.UUID)
 		return err
 	}
 	if _, err := tx.ExecContext(ctx, `DELETE FROM user_inventory WHERE user_id = $1`, sourceID); err != nil {
+		return err
+	}
+
+	if err := s.carryUserScopedRowsTx(ctx, tx, sourceID, targetID); err != nil {
 		return err
 	}
 
