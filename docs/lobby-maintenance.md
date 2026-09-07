@@ -175,6 +175,17 @@ stuck banner.
 `matched` is legitimately transient for a short window while the session is created and
 the handoff completes, so age is what separates "still forming" from "orphaned".
 
+**Where they came from.** A handoff that dies mid-flight leaves one behind, but until
+JQ-171 the lobby also manufactured them on a schedule. `lobby-stale-session-cleanup` ran
+raw `psql` that kept one active session per `mode_queue_id` and completed the rest — and
+completing meant flipping `game_sessions.status` alone, skipping the participant queue-row
+cancellation and room-table reset that `CompleteSession` does. Every session it touched
+therefore produced exactly this condition, for every player in it. Because a mode queue is
+catalog configuration reused by every match on a mode, the sessions it ended were usually
+live games. Both halves are fixed (see [Stuck active sessions](#stuck-active-sessions-jq-171)),
+so a burst of orphans arriving on a 6-hour boundary is no longer the expected explanation
+— but it is worth ruling out first on any incident predating that fix.
+
 ### Inspect
 
 First, read the last scheduled run — it already reports the count, so most of the time
@@ -276,6 +287,65 @@ implementation and changing the constructor in `backend/cmd/queuesweep/main.go`.
 
 Not covered: stale `room_tables` / `table_seats` seats, which block a player the same
 way. Tracked separately.
+
+## Stuck active sessions (JQ-171)
+
+### The condition
+
+A `game_sessions` row sits in `status = 'active'` long after anyone could still be
+playing. The only thing that legitimately produces this is a `reportMatchResult` that
+never landed, so the session never got its completion.
+
+The cost is not the row itself — it is that the players' `matched` `game_queues` rows are
+still tied to it, so they are stuck in the same way as [above](#stale-matched-queue-entries-jq-133).
+
+### What the sweep does automatically
+
+`lobby-stale-session-cleanup` (`k8s/jobs/stale-session-cleanup.yaml`) runs every 6 hours
+and completes sessions that have been active past the threshold.
+
+- **Age is the only test.** This job used to keep one active session per `mode_queue_id`
+  and complete every other one. `mode_queues` is catalog configuration created once per
+  `(mode, name)` by `ensureDefaultModeQueueTx` and reused forever; concurrent matches on
+  one queue are normal and carry their identity on `forming_matches`, not the queue. The
+  old predicate treated the queue as if it were the match and so ended live games —
+  silently, because the game server was never told and play continued while the lobby
+  forgot the match.
+- **Threshold**: `STALE_SESSION_AGE` on the CronJob, default `6h` (`store.DefaultStaleSessionAge`).
+  Nothing in the catalog pins down the longest legitimate match, so this is deliberately
+  far above all of them. Err high: a stuck session waiting one more tick costs a player
+  nothing, ending a live one loses their game.
+- **It delegates.** The job runs `backend/cmd/sessionsweep` against the backend image and
+  calls `store.CompleteSession`, so a swept session gets the whole completion — status,
+  participant queue-row cancellation, room-table reset — in one transaction. That is the
+  rule for every path that ends a session; a partial `UPDATE` is what generated the
+  JQ-133 orphans.
+- **Idempotent**: the predicate only selects sessions still `active`. A session another
+  path completes mid-sweep comes back `ErrNotFound` and is skipped, not failed.
+- **Signal**: `lobby.session.stale_active.count` (found), `.completed`, `.remaining`, plus
+  a non-zero exit if any session survives its own sweep.
+
+`--dry-run` reports the count without writing, which is the safe way to check a threshold
+change before it ships.
+
+### Pre-empted completions
+
+`reportMatchResult` emits `lobby.match.completion_preempted` when `CompleteSession`
+returns `ErrNotFound` — something ended the session before the result arrived. The
+mutation still answers `true`, because the result itself is recorded and the game server
+must not retry an applied write.
+
+A steady trickle is benign: the last `reportPlayerFinished` completes the session, and a
+result arriving just behind it lands here. A **burst on a schedule** is not — that is a
+cleanup job ending sessions behind the lobby's back, which is precisely the failure that
+went unnoticed before JQ-171 because this path logged nothing at all.
+
+### Requeue is not a cleanup
+
+Re-queueing finishes the player in their own previous session and completes it only once
+no seated player is left in it (`completeEmptiedSessionsForUserTx`). It must never end
+sessions by queue: a partner still playing keeps their match, and the session closes on
+whoever leaves last.
 
 ## Typical ship sequence
 

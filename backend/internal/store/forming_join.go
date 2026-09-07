@@ -138,9 +138,13 @@ func (s *Store) fireFormingMatchTx(
 	if err != nil {
 		return nil, err
 	}
-	if err := completePriorActiveSessionsForModeQueueTx(ctx, tx, joinCtx.ModeQueue.ID, session.ID, time.Now()); err != nil {
-		return nil, err
-	}
+	// Deliberately no "complete every other active session on this queue" step here.
+	// mode_queues is catalog configuration reused by every match on a mode, so a step
+	// like that ended other players' live games (JQ-171). Nothing needs it: a player's
+	// own stale participation is already resolved per-user, by JoinModeQueue's
+	// finishReturnedQueueSessionsForRequeueTx and completeEmptiedSessionsForUserTx, by
+	// AcknowledgePlayerReturn, and by GetMatchedSessionForUserAndModeQueue joining
+	// through this user's own participant row.
 
 	notifyIDs := make([]uuid.UUID, 0, len(assignments))
 	tableIDs := make([]uuid.UUID, 0)

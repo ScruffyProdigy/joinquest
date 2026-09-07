@@ -8,6 +8,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"log"
 	"strings"
 	"time"
 
@@ -73,6 +74,11 @@ func (r *mutationResolver) ReportPlayerFinished(ctx context.Context, matchID str
 	return true, nil
 }
 
+// metricCompletionPreempted counts completions that found the session already ended.
+// A steady trickle is the benign reportPlayerFinished race; a burst on a schedule is a
+// cleanup job ending live sessions behind the lobby's back.
+const metricCompletionPreempted = "lobby.match.completion_preempted"
+
 // ReportMatchResult is the resolver for the reportMatchResult field.
 func (r *mutationResolver) ReportMatchResult(ctx context.Context, matchID string, status model.MatchResultStatus, winnerLobbyUserIds []string, metadata map[string]any) (bool, error) {
 	if err := requireGameServiceAuth(ctx); err != nil {
@@ -102,12 +108,23 @@ func (r *mutationResolver) ReportMatchResult(ctx context.Context, matchID string
 
 	table, _ := st.GetRoomTableBySessionID(ctx, sessionID)
 
-	// ErrNotFound here only means the session was already completed — the last
-	// reportPlayerFinished completes it — so the result still stands, and only the
-	// table reset (already done by that earlier completion) is skipped.
+	// ErrNotFound means something completed the session before this call. Usually that
+	// is the last reportPlayerFinished, and the result still stands — so this stays a
+	// success rather than a failure the game server would retry against an applied
+	// write. But it is also what a bad cleanup job looks like from in here (JQ-171),
+	// and this used to be the one place that knew and said nothing: steps two and three
+	// of the completion never ran, and no signal marked it. Record it either way and
+	// let the rate say which it is.
 	completeErr := st.CompleteSession(ctx, sessionID, time.Now())
 	if completeErr != nil && !errors.Is(completeErr, store.ErrNotFound) {
 		return false, completeErr
+	}
+	if errors.Is(completeErr, store.ErrNotFound) {
+		log.Printf("reportMatchResult: completion pre-empted session=%s status=%s; result recorded, table reset skipped",
+			sessionID, status)
+		r.signals().Count(metricCompletionPreempted, 1, map[string]string{
+			"mutation": "reportMatchResult",
+		})
 	}
 	if completeErr == nil && table != nil {
 		_ = r.publishTableUpdated(ctx, table.RoomID, table.ID)
