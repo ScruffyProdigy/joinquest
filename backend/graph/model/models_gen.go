@@ -351,6 +351,20 @@ type RegisterMyGamePayload struct {
 	ConnectError  *string `json:"connectError,omitempty"`
 }
 
+// Who played the originating match, and whether they are coming back — nothing more.
+//
+// Deliberately narrower than MatchParticipantResult. A regroup table is joinable by players
+// who never played that match (the king's Look for group backfill), so this field carries no
+// `requireMatchParticipant` gate; it relies on the parent Table's room-membership rules. The
+// standings therefore must not be reachable from here at all. Participants read placement,
+// winner and finish reasons through `matchResult`, which *is* gated on participation.
+type RegroupRosterEntry struct {
+	User *PublicPlayer `json:"user"`
+	// The seat this player held. Pairs with TableSeatSlot.seatKey to ghost a named pending seat.
+	Role    *string      `json:"role,omitempty"`
+	Regroup RegroupState `json:"regroup"`
+}
+
 type RequirementGroup struct {
 	Label    string                `json:"label"`
 	Operator RequirementOperator   `json:"operator"`
@@ -488,11 +502,12 @@ type SyncMyGameManifestPayload struct {
 }
 
 type Table struct {
-	ID                  string                     `json:"id"`
-	Game                *Game                      `json:"game"`
-	Mode                *GameMode                  `json:"mode"`
-	CreatedAt           time.Time                  `json:"createdAt"`
-	King                *User                      `json:"king,omitempty"`
+	ID        string    `json:"id"`
+	Game      *Game     `json:"game"`
+	Mode      *GameMode `json:"mode"`
+	CreatedAt time.Time `json:"createdAt"`
+	// No email: a table admits strangers via Look for group and the catalog queue.
+	King                *PublicPlayer              `json:"king,omitempty"`
 	Seats               []*TableSeat               `json:"seats"`
 	SeatSlots           []*TableSeatSlot           `json:"seatSlots"`
 	CanStart            bool                       `json:"canStart"`
@@ -503,7 +518,7 @@ type Table struct {
 	// Roles still needed to start via backfill or from current seated counts.
 	FormingGaps []*QueuePathGap `json:"formingGaps"`
 	// Originating match roster and regroup state; empty for tables not reached from a finished match.
-	RegroupRoster []*MatchParticipantResult `json:"regroupRoster"`
+	RegroupRoster []*RegroupRosterEntry `json:"regroupRoster"`
 }
 
 type TableLookForGroupOption struct {
@@ -514,9 +529,10 @@ type TableLookForGroupOption struct {
 }
 
 type TableSeat struct {
-	SeatKey  string    `json:"seatKey"`
-	User     *User     `json:"user"`
-	SeatedAt time.Time `json:"seatedAt"`
+	SeatKey string `json:"seatKey"`
+	// No email: a table admits strangers via Look for group and the catalog queue.
+	User     *PublicPlayer `json:"user"`
+	SeatedAt time.Time     `json:"seatedAt"`
 }
 
 type TableSeatSlot struct {
@@ -524,7 +540,8 @@ type TableSeatSlot struct {
 	QueuePath   *string `json:"queuePath,omitempty"`
 	DisplayName string  `json:"displayName"`
 	TeamPrefix  *string `json:"teamPrefix,omitempty"`
-	User        *User   `json:"user,omitempty"`
+	// No email: a table admits strangers via Look for group and the catalog queue.
+	User *PublicPlayer `json:"user,omitempty"`
 }
 
 type UpdateMyGameMetadataInput struct {

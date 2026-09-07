@@ -1,6 +1,7 @@
 type TableSeat {
   seatKey: String!
-  user: User!
+  """No email: a table admits strangers via Look for group and the catalog queue."""
+  user: PublicPlayer!
   seatedAt: Time!
 }
 
@@ -9,7 +10,8 @@ type TableSeatSlot {
   queuePath: String
   displayName: String!
   teamPrefix: String
-  user: User
+  """No email: a table admits strangers via Look for group and the catalog queue."""
+  user: PublicPlayer
 }
 
 type TableLookForGroupOption {
@@ -24,7 +26,8 @@ type Table {
   game: Game!
   mode: GameMode!
   createdAt: Time!
-  king: User
+  """No email: a table admits strangers via Look for group and the catalog queue."""
+  king: PublicPlayer
   seats: [TableSeat!]!
   seatSlots: [TableSeatSlot!]!
   canStart: Boolean!
@@ -35,7 +38,23 @@ type Table {
   """Roles still needed to start via backfill or from current seated counts."""
   formingGaps: [QueuePathGap!]!
   """Originating match roster and regroup state; empty for tables not reached from a finished match."""
-  regroupRoster: [MatchParticipantResult!]!
+  regroupRoster: [RegroupRosterEntry!]!
+}
+
+"""
+Who played the originating match, and whether they are coming back — nothing more.
+
+Deliberately narrower than MatchParticipantResult. A regroup table is joinable by players
+who never played that match (the king's Look for group backfill), so this field carries no
+`requireMatchParticipant` gate; it relies on the parent Table's room-membership rules. The
+standings therefore must not be reachable from here at all. Participants read placement,
+winner and finish reasons through `matchResult`, which *is* gated on participation.
+"""
+type RegroupRosterEntry {
+  user: PublicPlayer!
+  """The seat this player held. Pairs with TableSeatSlot.seatKey to ghost a named pending seat."""
+  role: String
+  regroup: RegroupState!
 }
 
 type MyTableSeat {

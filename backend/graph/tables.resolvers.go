@@ -390,7 +390,7 @@ func (r *tableResolver) Mode(ctx context.Context, obj *model.Table) (*model.Game
 }
 
 // King is the resolver for the king field.
-func (r *tableResolver) King(ctx context.Context, obj *model.Table) (*model.User, error) {
+func (r *tableResolver) King(ctx context.Context, obj *model.Table) (*model.PublicPlayer, error) {
 	st, err := r.requireStore()
 	if err != nil {
 		return nil, err
@@ -410,7 +410,7 @@ func (r *tableResolver) King(ctx context.Context, obj *model.Table) (*model.User
 	if err != nil {
 		return nil, err
 	}
-	return ToGraphQLUser(user), nil
+	return ToGraphQLPublicPlayer(user), nil
 }
 
 // Seats is the resolver for the seats field.
@@ -435,7 +435,7 @@ func (r *tableResolver) Seats(ctx context.Context, obj *model.Table) ([]*model.T
 		}
 		user, uErr := st.GetUserByID(ctx, seat.UserID)
 		if uErr == nil {
-			out[i].User = ToGraphQLUser(user)
+			out[i].User = ToGraphQLPublicPlayer(user)
 		}
 	}
 	return out, nil
@@ -513,7 +513,10 @@ func (r *tableResolver) FormingGaps(ctx context.Context, obj *model.Table) ([]*m
 // not gated on match participation: the whole point is to show named, ghosted pending
 // seats to backfill joiners who never played the originating match. The table's own
 // visibility rules (room membership) already govern who can see this field at all.
-func (r *tableResolver) RegroupRoster(ctx context.Context, obj *model.Table) ([]*model.MatchParticipantResult, error) {
+//
+// Because that gate is missing, the payload is RegroupRosterEntry rather than
+// MatchParticipantResult: identity, seat and intent only, never the standings (JQ-174).
+func (r *tableResolver) RegroupRoster(ctx context.Context, obj *model.Table) ([]*model.RegroupRosterEntry, error) {
 	st, err := r.requireStore()
 	if err != nil {
 		return nil, err
@@ -529,22 +532,18 @@ func (r *tableResolver) RegroupRoster(ctx context.Context, obj *model.Table) ([]
 	if sessionID == nil {
 		// An ordinary table (never claimed via playAgain) has no originating match.
 		// Non-null list contract: empty, never nil.
-		return []*model.MatchParticipantResult{}, nil
+		return []*model.RegroupRosterEntry{}, nil
 	}
-	result, err := loadMatchResultModel(ctx, st, *sessionID)
-	if err != nil {
-		return nil, err
-	}
-	return result.Participants, nil
+	return loadRegroupRosterEntries(ctx, st, *sessionID)
 }
 
 // User is the resolver for the user field.
-func (r *tableSeatResolver) User(ctx context.Context, obj *model.TableSeat) (*model.User, error) {
+func (r *tableSeatResolver) User(ctx context.Context, obj *model.TableSeat) (*model.PublicPlayer, error) {
 	return obj.User, nil
 }
 
 // User is the resolver for the user field.
-func (r *tableSeatSlotResolver) User(ctx context.Context, obj *model.TableSeatSlot) (*model.User, error) {
+func (r *tableSeatSlotResolver) User(ctx context.Context, obj *model.TableSeatSlot) (*model.PublicPlayer, error) {
 	return obj.User, nil
 }
 

@@ -131,7 +131,7 @@ func (r *Resolver) buildTableSeatSlots(ctx context.Context, tableID uuid.UUID) (
 		if uid, ok := byKey[seat.SeatKey]; ok {
 			user, uErr := st.GetUserByID(ctx, uid)
 			if uErr == nil {
-				slot.User = ToGraphQLUser(user)
+				slot.User = ToGraphQLPublicPlayer(user)
 			}
 		}
 		out[i] = slot
