@@ -49,7 +49,7 @@ const gradientLift = 10.0
 // it, so a drift between the two costs a little gradient, never legibility.
 const (
 	discLightnessMid   = 50.0
-	discLightnessReach = 38.0
+	discLightnessReach = 42.0
 )
 
 // gradientHalfLift is how far each stop moves from the disc's own lightness.
@@ -350,6 +350,7 @@ func RenderSigil(family, tint, expression string) (string, bool) {
 	id := "g" + family + hex + expression
 	fill := fmt.Sprintf("url(#%s)", id)
 	tilt := sigilTilt(family + hex + expression)
+
 	body := shape(mark, fill) + sigilFace(family, expression, mark, fill)
 	return fmt.Sprintf(`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64" role="img" aria-label="%s sigil">
   <defs><linearGradient id="%s" x1="0" y1="0" x2="1" y2="1">
@@ -431,8 +432,12 @@ func drawEye(e eye, mode, body, tint string) string {
 
 // sigilFace draws the whole expression. A wink closes one eye and leaves the
 // other open, so on a one-eyed family — a corvid in profile, a snake — it reads
-// as the closed one alone, which is the same joke.
+// as the closed one alone, which is the same joke. A family with no face at all
+// spends the same axis on its markings instead.
 func sigilFace(family, expression, body, tint string) string {
+	if flourish, ok := sigilFlourishes[family]; ok {
+		return flourish(expression, body, tint)
+	}
 	eyes, ok := sigilEyes[family]
 	if !ok {
 		return ""
@@ -450,6 +455,92 @@ func sigilFace(family, expression, body, tint string) string {
 		out += drawEye(e, mode, body, tint)
 	}
 	return out
+}
+
+// sigilFlourishes carries the three families that have no face to give an
+// expression to — a raptor seen from below, a butterfly, a starfish. They take the
+// same axis and spend it on their markings instead, so every family answers to all
+// five values and no key is wasted. The wink slot is asymmetric in each of them,
+// because a marking that is deliberately off-balance is where the playfulness in a
+// faceless shape actually comes from.
+var sigilFlourishes = map[string]func(expression, body, tint string) string{
+	"raptor": func(expression, body, tint string) string {
+		bar := func(d string) string {
+			return fmt.Sprintf(`
+  <path d="%s" fill="none" stroke="%s" stroke-width="1.8" stroke-linecap="round"/>`, d, tint)
+		}
+		switch expression {
+		case "bright":
+			return bar("M11 24 L20 27 M53 24 L44 27") + bar("M27 45 L37 45")
+		case "squint":
+			return bar("M11 23 L16 26 L11 28 M53 23 L48 26 L53 28")
+		case "wink":
+			return bar("M11 24 L21 28 M14 21 L22 25")
+		case "sleepy":
+			return bar("M29 45 L35 45")
+		default:
+			return bar("M12 24 L20 27 M52 24 L44 27")
+		}
+	},
+	"lepidopteran": func(expression, body, tint string) string {
+		spot := func(x, y, r float64) string {
+			return fmt.Sprintf(`
+  <circle cx="%g" cy="%g" r="%g" fill="%s"/>`, x, y, r, tint)
+		}
+		switch expression {
+		case "bright":
+			return spot(17, 22, 4.4) + spot(47, 22, 4.4) +
+				fmt.Sprintf(`
+  <circle cx="17" cy="22" r="1.8" fill="%[1]s"/>
+  <circle cx="47" cy="22" r="1.8" fill="%[1]s"/>`, body)
+		case "squint":
+			return fmt.Sprintf(`
+  <path d="M12 20 Q17 26 22 20 M42 20 Q47 26 52 20" fill="none" stroke="%s" stroke-width="2.4" stroke-linecap="round"/>`, tint)
+		case "wink":
+			return spot(17, 22, 4.2) + fmt.Sprintf(`
+  <path d="M42 20 Q47 26 52 20" fill="none" stroke="%s" stroke-width="2.4" stroke-linecap="round"/>`, tint)
+		case "sleepy":
+			return spot(14, 21, 1.9) + spot(19, 25, 1.9) + spot(45, 21, 1.9) + spot(50, 25, 1.9)
+		default:
+			return spot(17, 22, 3.6) + spot(47, 22, 3.6)
+		}
+	},
+	"echinoderm": func(expression, body, tint string) string {
+		arms := [5][2]float64{{32, 18}, {43, 27}, {39, 41}, {25, 41}, {21, 27}}
+		dot := func(x, y, r float64) string {
+			return fmt.Sprintf(`
+  <circle cx="%g" cy="%g" r="%g" fill="%s"/>`, x, y, r, tint)
+		}
+		out := ""
+		switch expression {
+		case "bright":
+			for _, a := range arms {
+				out += dot(a[0], a[1], 2.6)
+			}
+			return out + fmt.Sprintf(`
+  <circle cx="32" cy="31" r="1.8" fill="%s"/>`, body)
+		case "squint":
+			for _, a := range arms {
+				out += dot(a[0], a[1], 1.5) + dot(32+(a[0]-32)*0.6, 31+(a[1]-31)*0.6, 1.2)
+			}
+			return out
+		case "wink":
+			for i, a := range arms {
+				if i == 1 {
+					continue
+				}
+				out += dot(a[0], a[1], 1.7)
+			}
+			return out
+		case "sleepy":
+			return ""
+		default:
+			for _, a := range arms {
+				out += dot(a[0], a[1], 1.7)
+			}
+			return out
+		}
+	},
 }
 
 // sigilTilt is a few degrees of lean, so a row of sigils does not sit to
@@ -475,10 +566,12 @@ var sigilEyes = map[string][]eye{
 	"canine":     {{25, 31, 2.4}, {39, 31, 2.4}},
 	"cephalopod": {{24, 31, 3.2}, {40, 31, 3.2}},
 	"cetacean":   {{44, 28, 2.4}},
+	"chelonian":  {{28.5, 12, 1.9}, {35.5, 12, 1.9}},
 	"corvid":     {{27, 26, 2.8}},
 	"crustacean": {{26, 34, 2.6}, {38, 34, 2.6}},
-	"equine":     {{27.5, 27, 2.2}, {36.5, 27, 2.2}},
+	"equine":     {{33, 27, 2.2}},
 	"feline":     {{25, 33, 2.4}, {39, 33, 2.4}},
+	"gastropod":  {{52, 25, 1.5}, {45, 27, 1.4}},
 	"horned":     {{27, 31, 2.4}, {37, 31, 2.4}},
 	"lagomorph":  {{25, 39, 2.4}, {39, 39, 2.4}},
 	"primate":    {{26, 31, 2.4}, {38, 31, 2.4}},
@@ -521,7 +614,6 @@ var sigilShapes = map[string]func(body, tint string) string{
   <ellipse cx="32" cy="28" rx="4" ry="11" fill="%[1]s"/>
   <circle cx="32" cy="18" r="3.6" fill="%[1]s"/>
   <path d="M28 36 L36 36 L38 49 L32 45 L26 49 Z" fill="%[1]s"/>
-  <path d="M12 24 L20 27 M52 24 L44 27" fill="none" stroke="%[2]s" stroke-width="1.8" stroke-linecap="round"/>
   <path d="M28 42 L36 42" fill="none" stroke="%[2]s" stroke-width="2" stroke-linecap="round"/>`, body, tint)
 	},
 	"corvid": func(body, tint string) string {
@@ -583,11 +675,12 @@ var sigilShapes = map[string]func(body, tint string) string{
 	},
 	"equine": func(body, tint string) string {
 		return fmt.Sprintf(`
-  <path d="M24 8 C20 13 21 21 26 25 C30 21 28 11 24 8 Z" fill="%[1]s"/>
-  <path d="M40 8 C44 13 43 21 38 25 C34 21 36 11 40 8 Z" fill="%[1]s"/>
-  <path d="M24 22 C24 18 40 18 40 22 L41 31 C41 37 39 43 36 47 C34 50 30 50 28 47 C25 43 23 37 23 31 Z" fill="%[1]s"/>
-  <ellipse cx="29.5" cy="43" rx="1.8" ry="2.5" fill="%[2]s"/>
-  <ellipse cx="34.5" cy="43" rx="1.8" ry="2.5" fill="%[2]s"/>`, body, tint)
+  <path d="M38 7 L45 18 L34 16 Z" fill="%[1]s"/>
+  <path d="M29 9 L37 19 L27 18 Z" fill="%[1]s"/>
+  <path d="M35 14 C42 17 46 24 46 32 L46 54 L33 54 L33 43 C28 43 22 45 18 47 C14 48 11 46 11 42 C11 37 14 32 18 28 C23 21 29 16 35 14 Z" fill="%[1]s"/>
+  <path d="M40 13 C44 18 46 25 46 32" fill="none" stroke="%[2]s" stroke-width="2.2" stroke-linecap="round"/>
+  <ellipse cx="15" cy="41" rx="1.9" ry="1.5" fill="%[2]s"/>
+  <path d="M13 46 C16 45 19 45 22 45" fill="none" stroke="%[2]s" stroke-width="1.6" stroke-linecap="round"/>`, body, tint)
 	},
 	"proboscid": func(body, tint string) string {
 		return fmt.Sprintf(`
@@ -659,25 +752,19 @@ var sigilShapes = map[string]func(body, tint string) string{
   <path d="M33 22 C36 14 44 8 51 11 C58 14 59 24 50 30 C58 33 60 44 53 49 C46 53 36 45 33 36 Z" fill="%[1]s"/>
   <path d="M31 20 C29 15 26 12 23 10 M33 20 C35 15 38 12 41 10" fill="none" stroke="%[1]s" stroke-width="2" stroke-linecap="round"/>
   <ellipse cx="32" cy="32" rx="2.8" ry="13" fill="%[1]s"/>
-  <circle cx="17" cy="22" r="3.6" fill="%[2]s"/>
-  <circle cx="47" cy="22" r="3.6" fill="%[2]s"/>`, body, tint)
+`, body, tint)
 	},
 	"echinoderm": func(body, tint string) string {
 		return fmt.Sprintf(`
   <path d="M32 9 L37.6 24.3 L53.9 24.9 L41 34.9 L45.5 50.6 L32 41.5 L18.5 50.6 L23 34.9 L10.1 24.9 L26.4 24.3 Z" fill="%[1]s"/>
-  <circle cx="32" cy="31" r="4.2" fill="%[2]s"/>
-  <circle cx="32" cy="18" r="1.7" fill="%[2]s"/>
-  <circle cx="43" cy="27" r="1.7" fill="%[2]s"/>
-  <circle cx="39" cy="41" r="1.7" fill="%[2]s"/>
-  <circle cx="25" cy="41" r="1.7" fill="%[2]s"/>
-  <circle cx="21" cy="27" r="1.7" fill="%[2]s"/>`, body, tint)
+  <circle cx="32" cy="31" r="4.2" fill="%[2]s"/>`, body, tint)
 	},
 	"gastropod": func(body, tint string) string {
 		return fmt.Sprintf(`
   <path d="M9 45 C9 41 13 38 19 38 L45 38 C51 38 55 41 55 45 C55 47 53 49 51 49 L13 49 C11 49 9 47 9 45 Z" fill="%[1]s"/>
   <path d="M46 39 C50 34 52 30 52 26 M40 38 C43 34 45 31 45 28" fill="none" stroke="%[1]s" stroke-width="2.8" stroke-linecap="round"/>
-  <circle cx="52" cy="25" r="2.6" fill="%[1]s"/>
-  <circle cx="45" cy="27" r="2.4" fill="%[1]s"/>
+  <circle cx="52" cy="25" r="3.1" fill="%[1]s"/>
+  <circle cx="45" cy="27" r="2.9" fill="%[1]s"/>
   <circle cx="27" cy="27" r="15" fill="%[1]s"/>
   <circle cx="27" cy="27" r="10.5" fill="%[2]s"/>
   <circle cx="27" cy="27" r="6.5" fill="%[1]s"/>

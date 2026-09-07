@@ -83,11 +83,20 @@ const SATURATION_MAX = 100
  *
  * The range can be this wide because the mark is derived from the disc rather than
  * fixed: its lightness is solved against whatever disc it lands on, so no disc
- * lightness is off limits. The bounds are where colour itself gives out — below 32
- * a disc reads black, above 88 it washes out to paper.
+ * lightness is off limits. The bounds are where colour itself gives out — below 34
+ * a disc reads black, above 92 it washes out to paper.
+ *
+ * The ceiling is where the animal stops being the lightest thing in the picture.
+ * Above L*≈50 no light mark can clear its contrast any more and the mark flips
+ * dark, which turns the animal into a hole in the disc rather than a shape sitting
+ * on it. A pale animal is what keeps a saturated disc from reading as heavy, so
+ * the range gives up its top rather than give that up.
+ *
+ * Lightness therefore carries less of the variety here than hue, chroma, the face
+ * and the lean do — which is the right trade, because those cost nothing.
  */
-const LIGHTNESS_MIN = 32
-const LIGHTNESS_MAX = 88
+const LIGHTNESS_MIN = 30
+const LIGHTNESS_MAX = 49
 
 /** Four digits keeps names distinct without making them unreadable. */
 const NUMBER_MIN = 1000

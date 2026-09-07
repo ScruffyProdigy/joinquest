@@ -249,28 +249,27 @@ func TestSigilExpressionsDrawDifferently(t *testing.T) {
 	}
 }
 
-// Five families have no eyes to put an expression on — a raptor seen from below,
-// a starfish. Their keys still carry one, and it still separates them in the key,
-// but the drawing is the same. This is a known gap, pinned so it stays deliberate.
-func TestEyelessFamiliesIgnoreTheExpression(t *testing.T) {
-	eyeless := []string{"raptor", "chelonian", "lepidopteran", "echinoderm", "gastropod"}
-	for _, family := range eyeless {
-		if _, ok := sigilEyes[family]; ok {
-			t.Fatalf("%q has eyes now — give it expressions and drop it from this list", family)
-		}
-		first, _ := RenderSigil(family, "2f6f3f", SigilExpressions[0])
-		for _, expression := range SigilExpressions[1:] {
-			svg, _ := RenderSigil(family, "2f6f3f", expression)
-			// The gradient id carries the expression, so compare the drawing itself.
-			if strings.Count(svg, "<circle") != strings.Count(first, "<circle") ||
-				strings.Count(svg, "<path") != strings.Count(first, "<path") {
-				t.Fatalf("%q unexpectedly changed shape for %q", family, expression)
-			}
+// Every family answers to all five values now: nineteen wear them as a face, two
+// more got eyes they always had the anatomy for, and the three with no face at all
+// spend the axis on their markings. This pins that partition so a family cannot
+// quietly fall out of it.
+func TestEveryFamilyAnswersToTheExpression(t *testing.T) {
+	faceless := []string{"raptor", "lepidopteran", "echinoderm"}
+	for _, family := range faceless {
+		if _, ok := sigilFlourishes[family]; !ok {
+			t.Fatalf("%q has no face and no flourish either", family)
 		}
 	}
-	if len(sigilEyes)+len(eyeless) != len(SigilFamilies) {
-		t.Fatalf("%d families have eyes and %d are listed eyeless, but there are %d",
-			len(sigilEyes), len(eyeless), len(SigilFamilies))
+	if len(sigilEyes)+len(faceless) != len(SigilFamilies) {
+		t.Fatalf("%d families have eyes and %d have flourishes, but there are %d",
+			len(sigilEyes), len(faceless), len(SigilFamilies))
+	}
+	for _, family := range SigilFamilies {
+		_, hasEyes := sigilEyes[family]
+		_, hasFlourish := sigilFlourishes[family]
+		if hasEyes == hasFlourish {
+			t.Fatalf("%q should have exactly one of eyes or a flourish", family)
+		}
 	}
 }
 

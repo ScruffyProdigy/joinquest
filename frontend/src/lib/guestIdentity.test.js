@@ -56,15 +56,18 @@ describe('generateTint', () => {
     }
   })
 
-  it('uses the whole lightness range, not just the dark end', () => {
-    // The mark is solved against whatever disc it lands on, so nothing here is
-    // capped by it. Contrast is the renderer's guarantee and is covered in
-    // backend/internal/avatars/sigil_test.go.
-    const lums = Array.from({ length: 600 }, () =>
+  it('keeps every disc dark enough for the animal to be the lightest thing', () => {
+    // Past this luminance no light mark can clear its contrast, and the renderer
+    // flips the mark dark — which turns the animal into a hole in the disc instead
+    // of a shape sitting on it. The contrast itself is the renderer's guarantee and
+    // is covered in backend/internal/avatars/sigil_test.go.
+    const FLIP = 0.1833
+    const lums = Array.from({ length: 800 }, () =>
       relativeLuminance(hexToRgb(generateTint().hex)),
     )
-    expect(lums.filter((y) => y > 0.285).length / lums.length).toBeGreaterThan(0.25)
-    expect(lums.filter((y) => y < 0.2).length / lums.length).toBeGreaterThan(0.1)
+    expect(Math.max(...lums)).toBeLessThan(FLIP)
+    // It should still use the room it has rather than bunching at one depth.
+    expect(Math.min(...lums)).toBeLessThan(0.07)
   })
 
   it('lands each word on its own slice of perceived hue', () => {
