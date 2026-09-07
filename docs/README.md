@@ -58,14 +58,14 @@ Documentation for **JoinQuest** — the platform that connects players to third-
 ## Quick start
 
 1. **Prerequisites**: Go 1.25+, Node.js 20+, Docker
-2. **Clone**: `git clone https://github.com/scruffyprodigy/playhub.git` (folder may be `lobby` locally)
+2. **Clone**: `git clone https://github.com/scruffyprodigy/joinquest.git` (folder may be `lobby` locally)
 3. **Setup**: `./scripts/setup.sh` from the project root
 4. **Start**: `./scripts/dev.sh` (frontend `:5173`, GraphQL `:8080/graphql`)
 
 ## Project structure
 
 ```text
-lobby/ (playhub on GitHub)   # JoinQuest platform — repo root
+lobby/ (joinquest on GitHub)  # JoinQuest platform — repo root
 ├── AGENTS.md            # Maintainer / AI agent guide
 ├── backend/             # Go GraphQL API (Lobby / JoinQuest server)
 ├── frontend/            # React + Vite — player-facing JoinQuest UI

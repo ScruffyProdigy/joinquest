@@ -165,7 +165,7 @@ const PLATFORM_INSTALL_NOTES = {
 }
 
 const INSTALL_GLOBAL_MCP =
-  'curl -fsSL https://raw.githubusercontent.com/scruffyprodigy/playhub/main/scripts/install-joinquest-mcp.sh | sh'
+  'curl -fsSL https://raw.githubusercontent.com/scruffyprodigy/joinquest/main/scripts/install-joinquest-mcp.sh | sh'
 
 function buildClaudeCodeConfig(base) {
   const server = base.mcpServers['joinquest-integration']

@@ -496,14 +496,14 @@ function joinquestMcpEnv({ apiKey }) {
 const MCP_NPX_PACKAGE = '@joinquest/mcp-integration'
 export const JOINQUEST_CLI_PACKAGE = 'joinquest'
 export const INSTALL_DEV_SCRIPT_BASE =
-  'https://raw.githubusercontent.com/scruffyprodigy/playhub/main/scripts'
+  'https://raw.githubusercontent.com/scruffyprodigy/joinquest/main/scripts'
 export const INSTALL_DEV_SCRIPT_URL = `${INSTALL_DEV_SCRIPT_BASE}/install-joinquest-dev.sh`
 export const INSTALL_DEV_SCRIPT_GITHUB =
-  'https://github.com/scruffyprodigy/playhub/blob/main/scripts/install-joinquest-dev.sh'
+  'https://github.com/scruffyprodigy/joinquest/blob/main/scripts/install-joinquest-dev.sh'
 export const INSTALL_SETUP_MANIFEST_GITHUB =
-  'https://github.com/scruffyprodigy/playhub/blob/main/scripts/joinquest-setup/README.md'
+  'https://github.com/scruffyprodigy/joinquest/blob/main/scripts/joinquest-setup/README.md'
 export const JOINQUEST_CLI_GITHUB =
-  'https://github.com/scruffyprodigy/playhub/tree/main/packages/joinquest'
+  'https://github.com/scruffyprodigy/joinquest/tree/main/packages/joinquest'
 /** @deprecated Shell libs — use npx joinquest install instead. */
 export const INSTALL_DEV_LIB_FILES = [
   'joinquest-skill.sh',
@@ -512,15 +512,15 @@ export const INSTALL_DEV_LIB_FILES = [
   'joinquest-platform.sh',
 ]
 export const INSTALL_CURSOR_PLUGIN_SCRIPT_URL =
-  'https://raw.githubusercontent.com/scruffyprodigy/playhub/main/scripts/install-joinquest-cursor-plugin.sh'
+  'https://raw.githubusercontent.com/scruffyprodigy/joinquest/main/scripts/install-joinquest-cursor-plugin.sh'
 export const INSTALL_CURSOR_PLUGIN_SCRIPT_GITHUB =
-  'https://github.com/scruffyprodigy/playhub/blob/main/scripts/install-joinquest-cursor-plugin.sh'
+  'https://github.com/scruffyprodigy/joinquest/blob/main/scripts/install-joinquest-cursor-plugin.sh'
 export const INSTALL_CLAUDE_PLUGIN_SCRIPT_URL =
-  'https://raw.githubusercontent.com/scruffyprodigy/playhub/main/scripts/install-joinquest-claude-plugin.sh'
+  'https://raw.githubusercontent.com/scruffyprodigy/joinquest/main/scripts/install-joinquest-claude-plugin.sh'
 export const INSTALL_CLAUDE_PLUGIN_SCRIPT_GITHUB =
-  'https://github.com/scruffyprodigy/playhub/blob/main/scripts/install-joinquest-claude-plugin.sh'
+  'https://github.com/scruffyprodigy/joinquest/blob/main/scripts/install-joinquest-claude-plugin.sh'
 export const CURSOR_PLUGIN_GITHUB =
-  'https://github.com/scruffyprodigy/playhub/tree/main/plugins/joinquest'
+  'https://github.com/scruffyprodigy/joinquest/tree/main/plugins/joinquest'
 
 function joinquestInstallPlatform(client) {
   switch (client) {

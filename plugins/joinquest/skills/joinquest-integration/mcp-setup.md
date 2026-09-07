@@ -21,12 +21,12 @@ Or run manually:
 
 ```bash
 export JOINQUEST_API_KEY=lq_dev_PASTE_HERE
-curl -fsSL https://raw.githubusercontent.com/scruffyprodigy/playhub/main/scripts/install-joinquest-cursor-plugin.sh | sh
+curl -fsSL https://raw.githubusercontent.com/scruffyprodigy/joinquest/main/scripts/install-joinquest-cursor-plugin.sh | sh
 ```
 
 Then **Cmd+Q** Cursor, reopen your game project, and start a fresh Agent chat.
 
-Plugin source: [plugins/joinquest](https://github.com/scruffyprodigy/playhub/tree/main/plugins/joinquest)
+Plugin source: [plugins/joinquest](https://github.com/scruffyprodigy/joinquest/tree/main/plugins/joinquest)
 
 **Manual MCP only** — paste into `.cursor/mcp.json`:
 
@@ -53,7 +53,7 @@ Or run manually:
 
 ```bash
 export JOINQUEST_API_KEY=lq_dev_PASTE_HERE
-curl -fsSL https://raw.githubusercontent.com/scruffyprodigy/playhub/main/scripts/install-joinquest-claude-plugin.sh | sh
+curl -fsSL https://raw.githubusercontent.com/scruffyprodigy/joinquest/main/scripts/install-joinquest-claude-plugin.sh | sh
 ```
 
 Start a new Claude Code session in your game repo (or run `/reload-plugins`).
@@ -71,7 +71,7 @@ claude mcp add --scope project --transport stdio \
 From your game repo:
 
 ```bash
-JOINQUEST_API_KEY=lq_dev_PASTE_HERE curl -fsSL https://raw.githubusercontent.com/scruffyprodigy/playhub/main/scripts/install-joinquest-dev.sh | sh -s -- --claude-desktop
+JOINQUEST_API_KEY=lq_dev_PASTE_HERE curl -fsSL https://raw.githubusercontent.com/scruffyprodigy/joinquest/main/scripts/install-joinquest-dev.sh | sh -s -- --claude-desktop
 ```
 
 That merges MCP into Claude Desktop's config (macOS / Windows / Linux). Fully quit Claude Desktop and reopen.
@@ -134,14 +134,14 @@ JoinQuest MCP runs locally via `npx` (stdio). ChatGPT connectors need a hosted H
 
 ## Agent skill + unified install (recommended for game repos)
 
-From your **game repo root**. [Read the install script on GitHub](https://github.com/scruffyprodigy/playhub/blob/main/scripts/install-joinquest-dev.sh) before running.
+From your **game repo root**. [Read the install script on GitHub](https://github.com/scruffyprodigy/joinquest/blob/main/scripts/install-joinquest-dev.sh) before running.
 
 It copies `.agents/skills/joinquest-integration/` from GitHub, merges MCP for your platform, and adds platform rules where helpful. MCP only calls joinquest.cc when tools run.
 
 **Review first:**
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/scruffyprodigy/playhub/main/scripts/install-joinquest-dev.sh -o install-joinquest-dev.sh
+curl -fsSL https://raw.githubusercontent.com/scruffyprodigy/joinquest/main/scripts/install-joinquest-dev.sh -o install-joinquest-dev.sh
 less install-joinquest-dev.sh
 JOINQUEST_API_KEY=lq_dev_... bash install-joinquest-dev.sh --copilot
 ```

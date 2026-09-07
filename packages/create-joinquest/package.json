@@ -12,9 +12,13 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/scruffyprodigy/playhub.git",
+    "url": "git+https://github.com/scruffyprodigy/joinquest.git",
     "directory": "packages/create-joinquest"
   },
+  "bugs": {
+    "url": "https://github.com/scruffyprodigy/joinquest/issues"
+  },
+  "homepage": "https://joinquest.cc/developers",
   "publishConfig": {
     "access": "public"
   },

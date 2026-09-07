@@ -103,7 +103,7 @@ Config paths: Cursor → `.cursor/mcp.json`; Claude Code → `.mcp.json`; Copilo
 **Optional — one-line install from game repo** (skill + MCP + platform rules):
 
 ```bash
-JOINQUEST_API_KEY=lq_dev_... curl -fsSL https://raw.githubusercontent.com/scruffyprodigy/playhub/main/scripts/install-joinquest-dev.sh | sh -s -- --cursor
+JOINQUEST_API_KEY=lq_dev_... curl -fsSL https://raw.githubusercontent.com/scruffyprodigy/joinquest/main/scripts/install-joinquest-dev.sh | sh -s -- --cursor
 ```
 
 Flags: `--claude`, `--claude-desktop`, `--copilot`, `--roo`, `--windsurf`, `--cline`, or `--all` (Cursor + Claude Code). Skill-only: `--skill-only`.

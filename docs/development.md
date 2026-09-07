@@ -6,7 +6,7 @@ This guide will help you set up and run JoinQuest locally for development.
 
 **Context:** JoinQuest is the shared lobby and integration platform described in **[Product vision](vision.md)**. This repo is the server + player UI; partner games (e.g. `demo-game-rps`) integrate via the handoff protocol.
 
-> **Naming:** product = **JoinQuest**. GitHub repo = `scruffyprodigy/playhub`. Local folder is often `lobby`. Legacy `playhub` identifiers (DB, Docker images) are intentional.
+> **Naming:** product = **JoinQuest**. GitHub repo = `scruffyprodigy/joinquest`. Local folder is often `lobby`. Legacy `playhub` identifiers (DB, Docker images) are intentional.
 
 ## Current Development Status
 
@@ -38,8 +38,8 @@ This guide will help you set up and run JoinQuest locally for development.
 
 1. **Clone the repository**
    ```bash
-   git clone https://github.com/scruffyprodigy/playhub.git
-   cd playhub   # folder may be named lobby locally
+   git clone https://github.com/scruffyprodigy/joinquest.git
+   cd joinquest   # folder may be named lobby locally
    ```
 
 2. **Run the setup script**
