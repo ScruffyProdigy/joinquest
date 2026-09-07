@@ -198,3 +198,56 @@ export function bannerTableSeatLine(gameName, modeName, seatDisplayName) {
 export function switchedFromGroupMessage(gameName) {
   return `You left the group for ${gameName} to look for a group here.`
 }
+
+/** Post-game return: standings, regroup, and the actions that leave it. */
+export const RESULTS_IN_PROGRESS_TITLE = 'Results so far'
+export const RESULTS_FINAL_TITLE = 'Final standings'
+export const RESULTS_WINNER = 'Winner'
+export const RESULTS_STILL_PLAYING = 'Still playing'
+export const RESULTS_IN_PROGRESS = 'In progress…'
+export const RESULTS_YOU = 'You'
+export const RESULTS_YOUR_RESULT_SO_FAR = 'Your result so far'
+
+export const REGROUP_TITLE = 'Who’s playing again?'
+export const REGROUP_IN = 'In'
+export const REGROUP_OUT = 'Out'
+export const REGROUP_PENDING = 'Not back yet'
+export const REGROUP_ANOTHER_ROUND = 'Another round'
+export const REGROUP_FIND_SOMETHING_NEW = 'Find something new'
+
+export function formatBackToGame(gameName) {
+  return `Back to ${gameName}`
+}
+
+export function formatNeedMorePlayers(missing) {
+  return `Need ${missing} more to play again`
+}
+
+/** Ordinal for a placement: 1 → "1st", 2 → "2nd", 11 → "11th". */
+export function ordinal(n) {
+  const rem100 = n % 100
+  if (rem100 >= 11 && rem100 <= 13) return `${n}th`
+  switch (n % 10) {
+    case 1: return `${n}st`
+    case 2: return `${n}nd`
+    case 3: return `${n}rd`
+    default: return `${n}th`
+  }
+}
+
+/** Headline and sub for the return screen, from the match outcome. */
+export function matchHeadline({ reason, placement, playerCount }) {
+  if (reason === 'ELIMINATED') {
+    return { headline: `${ordinal(placement)} of ${playerCount}.`, sub: 'Eliminated before the end.' }
+  }
+  if (reason === 'FINISHED_EARLY') {
+    return { headline: `${ordinal(placement)} place.`, sub: 'Waiting for others to finish.' }
+  }
+  if (placement === 1) {
+    return { headline: '1st place.', sub: 'You finished on top.' }
+  }
+  if (placement === playerCount) {
+    return { headline: `${ordinal(placement)} place.`, sub: 'Better luck next time.' }
+  }
+  return { headline: `${ordinal(placement)} place.`, sub: `Out of ${playerCount} players.` }
+}
