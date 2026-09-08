@@ -444,7 +444,9 @@ describe('GameModesPanel identity at join time', () => {
       </IdentityPromptProvider>,
     )
 
-    await waitFor(() => expect(joinQueue).toHaveBeenCalledWith('queue-1', undefined))
+    // Third argument is the pre-queue selection; this mode declares no option
+    // groups, so nothing is sent.
+    await waitFor(() => expect(joinQueue).toHaveBeenCalledWith('queue-1', undefined, undefined))
     expect(screen.queryByTestId('identity-gate')).not.toBeInTheDocument()
     expect(await screen.findByText('Looking…')).toBeInTheDocument()
   })
@@ -455,7 +457,9 @@ describe('GameModesPanel identity at join time', () => {
 
     await userEvent.click(screen.getByRole('button', { name: 'Look for group' }))
 
-    await waitFor(() => expect(joinQueue).toHaveBeenCalledWith('queue-1', undefined))
+    // Third argument is the pre-queue selection; this mode declares no option
+    // groups, so nothing is sent.
+    await waitFor(() => expect(joinQueue).toHaveBeenCalledWith('queue-1', undefined, undefined))
     expect(screen.queryByTestId('identity-gate')).not.toBeInTheDocument()
   })
 })

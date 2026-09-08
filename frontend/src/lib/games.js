@@ -23,6 +23,46 @@ const GAME_MODE_FIELDS = `
       playersToStart
       status
     }
+    preQueueGroups {
+      key
+      kind
+      label
+      min
+      max
+    }
+    queueOptions(playerId: $playerId) @include(if: $hasPlayer) {
+      available
+      unavailableReason
+      groups {
+        key
+        choices {
+          id
+          label
+          description
+          locked
+          unlockModeKey
+          requirement {
+            __typename
+            label
+            ... on RequirementLeaf {
+              current
+              target
+            }
+            ... on RequirementGroup {
+              operator
+              children {
+                __typename
+                label
+                ... on RequirementLeaf {
+                  current
+                  target
+                }
+              }
+            }
+          }
+        }
+      }
+    }
     eligibility(playerId: $playerId) @include(if: $hasPlayer) {
       accessible
       reason

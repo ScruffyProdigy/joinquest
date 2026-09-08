@@ -131,14 +131,37 @@ Four things this settles that the sections above got wrong or left open:
 
 1. **Selection order is mode → role → options.** Which options exist can depend on the mode, so a
    mode must be chosen first. `preQueue` is a property of the mode.
-2. **Options are mode-scoped, not role-scoped.** `roleSelect` and `preQueue` are sibling fields;
-   picking a role does not narrow the option roster.
+2. **Options are mode-scoped, not role-scoped.** Picking a role does not narrow the option roster.
+   (In the built prototype the mode's roster is *copied onto every role* and read back through the
+   selected one, so the plumbing for role-scoped rosters exists — but every role carries the same
+   list, which is what makes the behaviour mode-scoped. Shipped as mode-scoped; see JQ-163.)
 3. **Locked options are shown with a reason**, not hidden. The prototype renders
    `lockedReason: "Unlock by playing more matches"`. Step 4 above has been corrected accordingly.
 4. **Unlocks are usually not purchases.** Every unlock condition in the prototype is progression —
    "Finish one Settlement game", "Reach account level 12", "Win 5 Casual matches". Option locking
    therefore has no dependency on payments, which is why it is MVP scope.
 
-`preQueue` is `{ kind, label, options, locking }`, where `kind` is `Loadout` or `Character`, `label`
-is the player-facing prompt ("Choose your champion"), and `locking` is `none` or `some` — `some`
-meaning part of the roster is locked for this player, not that the mode is.
+In the prototype's catalog data `preQueue` is `{ kind, label, options, locking }`, where `kind` is
+`Loadout`, `Character` or `Deck`, `label` is the player-facing prompt ("Choose your champion"), and
+`locking` is `none` or `some` — `some` meaning part of the roster is locked for this player, not
+that the mode is.
+
+## Shipped shape (JQ-163)
+
+Production splits that summary in two, because a roster that can include "the decks you built" can
+never live in a manifest:
+
+- **The mode's manifest declares the groups only** — `preQueue: { groups: [{ key, kind, label, min,
+  max }] }`. `min`/`max` generalise the prototype's implicit pick-one (RPSLR asks for two helpers);
+  `min: 0` makes a group optional.
+- **The game serves the choices per player** at
+  `GET {apiBaseUrl}/api/v1/players/{lobbyUserId}/queue-options?modeKey=…`, each with `locked` and
+  the same requirement tree mode-eligibility uses.
+
+Unlike mode-eligibility this does **not** fail open — a mode whose roster cannot be loaded becomes
+unjoinable and says so, because neither an empty nor a permissive guess is safe. Selections travel
+on `joinQueue` and on `sitAtTable` (each player answers for themselves as they claim a seat), are
+validated server-side against the roster the player was actually served, and reach the game as
+`assignment.seats[].options`.
+
+Contract details: [§13 of the developer integration guide](./developer-integration-guide.md#13-pre-queue-options-optional).

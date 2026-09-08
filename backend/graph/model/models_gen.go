@@ -36,6 +36,9 @@ type ActiveIntent struct {
 	JoinURL              *string `json:"joinUrl,omitempty"`
 	// Remaining role needs for the active forming match (catalog wait).
 	FormingGaps []*QueuePathGap `json:"formingGaps"`
+	// What this player picked before queueing, labelled as the game named it at the
+	// time, so the waiting banner can say "… as Clue Giver · Good Old Rock, Tempered".
+	SelectedOptions []*QueueOptionSelection `json:"selectedOptions"`
 }
 
 // One allowed value on a catalog axis (genre, difficulty, social mode).
@@ -167,6 +170,12 @@ type GameMode struct {
 	QueuePaths  []*GameModeQueuePath `json:"queuePaths"`
 	Queues      []*ModeQueue         `json:"queues"`
 	Eligibility *ModeEligibility     `json:"eligibility,omitempty"`
+	// Option rosters this mode asks the player to pick from before queueing, from
+	// the mode manifest. Empty for the modes that have no pre-queue step.
+	PreQueueGroups []*PreQueueGroup `json:"preQueueGroups"`
+	// This player's actual choices, live from the game. Null when the mode declares
+	// no groups; unavailable (rather than empty) when the game cannot be reached.
+	QueueOptions *QueueOptions `json:"queueOptions,omitempty"`
 }
 
 // One join bucket from seatTemplate (composition modes).
@@ -306,6 +315,17 @@ type PlayAgainResult struct {
 	Seated     bool   `json:"seated"`
 }
 
+// One roster a mode asks the player to pick from — a champion, a kit, a deck.
+type PreQueueGroup struct {
+	Key  string       `json:"key"`
+	Kind PreQueueKind `json:"kind"`
+	// The player-facing prompt, e.g. "Choose your two helpers".
+	Label string `json:"label"`
+	// How many choices this group takes. min 0 makes the group optional.
+	Min int `json:"min"`
+	Max int `json:"max"`
+}
+
 type PublicPlayer struct {
 	ID           string        `json:"id"`
 	DisplayName  *string       `json:"displayName,omitempty"`
@@ -314,6 +334,47 @@ type PublicPlayer struct {
 }
 
 type Query struct {
+}
+
+type QueueOption struct {
+	ID          string  `json:"id"`
+	Label       string  `json:"label"`
+	Description *string `json:"description,omitempty"`
+	Locked      bool    `json:"locked"`
+	// Why a locked choice is locked, and how far along the player is. Same shape as
+	// mode eligibility, so unlock progress renders identically at both levels.
+	Requirement   ModeRequirementNode `json:"requirement,omitempty"`
+	UnlockModeKey *string             `json:"unlockModeKey,omitempty"`
+}
+
+type QueueOptionGroup struct {
+	Key     string         `json:"key"`
+	Choices []*QueueOption `json:"choices"`
+}
+
+// A player's picks with the game's own labels, for display.
+type QueueOptionSelection struct {
+	GroupKey  string   `json:"groupKey"`
+	OptionIds []string `json:"optionIds"`
+	Labels    []string `json:"labels"`
+}
+
+// One group's picks, sent when joining a queue or claiming a table seat.
+type QueueOptionSelectionInput struct {
+	GroupKey  string   `json:"groupKey"`
+	OptionIds []string `json:"optionIds"`
+}
+
+// A player's roster for one mode.
+//
+// The roster comes only from the game, so there is no safe fallback when the game
+// is unreachable: available is false and the mode cannot be joined until it
+// answers. Guessing an empty roster would block a legitimate join; guessing a full
+// one would hand out options the game never offered.
+type QueueOptions struct {
+	Available         bool                `json:"available"`
+	UnavailableReason *string             `json:"unavailableReason,omitempty"`
+	Groups            []*QueueOptionGroup `json:"groups"`
 }
 
 type QueuePathGap struct {
@@ -556,6 +617,8 @@ type TableSeat struct {
 	// No email: a table admits strangers via Look for group and the catalog queue.
 	User     *PublicPlayer `json:"user"`
 	SeatedAt time.Time     `json:"seatedAt"`
+	// What this player picked as they claimed the seat, for the table to see.
+	SelectedOptions []*QueueOptionSelection `json:"selectedOptions"`
 }
 
 type TableSeatSlot struct {
@@ -957,6 +1020,63 @@ func (e *PlayerFinishReason) UnmarshalJSON(b []byte) error {
 }
 
 func (e PlayerFinishReason) MarshalJSON() ([]byte, error) {
+	var buf bytes.Buffer
+	e.MarshalGQL(&buf)
+	return buf.Bytes(), nil
+}
+
+type PreQueueKind string
+
+const (
+	PreQueueKindCharacter PreQueueKind = "CHARACTER"
+	PreQueueKindLoadout   PreQueueKind = "LOADOUT"
+	PreQueueKindDeck      PreQueueKind = "DECK"
+)
+
+var AllPreQueueKind = []PreQueueKind{
+	PreQueueKindCharacter,
+	PreQueueKindLoadout,
+	PreQueueKindDeck,
+}
+
+func (e PreQueueKind) IsValid() bool {
+	switch e {
+	case PreQueueKindCharacter, PreQueueKindLoadout, PreQueueKindDeck:
+		return true
+	}
+	return false
+}
+
+func (e PreQueueKind) String() string {
+	return string(e)
+}
+
+func (e *PreQueueKind) UnmarshalGQL(v any) error {
+	str, ok := v.(string)
+	if !ok {
+		return fmt.Errorf("enums must be strings")
+	}
+
+	*e = PreQueueKind(str)
+	if !e.IsValid() {
+		return fmt.Errorf("%s is not a valid PreQueueKind", str)
+	}
+	return nil
+}
+
+func (e PreQueueKind) MarshalGQL(w io.Writer) {
+	fmt.Fprint(w, strconv.Quote(e.String()))
+}
+
+func (e *PreQueueKind) UnmarshalJSON(b []byte) error {
+	s, err := strconv.Unquote(string(b))
+	if err != nil {
+		return err
+	}
+	return e.UnmarshalGQL(s)
+}
+
+func (e PreQueueKind) MarshalJSON() ([]byte, error) {
 	var buf bytes.Buffer
 	e.MarshalGQL(&buf)
 	return buf.Bytes(), nil

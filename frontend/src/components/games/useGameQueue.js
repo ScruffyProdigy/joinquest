@@ -249,7 +249,7 @@ export function useGameQueue(queueId, { skipSubscription = false } = {}) {
     }
   }, [queueId, skipSubscription, ensureSubscribed, clearSubscription])
 
-  async function handleJoin(queuePath) {
+  async function handleJoin(queuePath, options) {
     if (!queueId) {
       setError('This game is not available for group matchmaking yet')
       return null
@@ -263,7 +263,7 @@ export function useGameQueue(queueId, { skipSubscription = false } = {}) {
       if (!skipSubscription) {
         await ensureSubscribed()
       }
-      const result = await joinQueue(queueId, queuePath)
+      const result = await joinQueue(queueId, queuePath, options)
       applyJoinResponse(result, {
         setQueueState,
         setJoinUrl,

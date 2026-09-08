@@ -63,7 +63,8 @@ describe('useGameQueue', () => {
     await waitFor(() => {
       expect(result.current.queueState).toBe('waiting')
       expect(result.current.selectedQueuePath).toBe('DPS')
-      expect(queue.joinQueue).toHaveBeenCalledWith(queueId, 'DPS')
+      // A mode with no pre-queue picker passes no options through.
+      expect(queue.joinQueue).toHaveBeenCalledWith(queueId, 'DPS', undefined)
     })
   })
 

@@ -74,9 +74,13 @@ type GameMode struct {
 	MaxPlayers   int
 	SocialMode   *string
 	SeatTemplate json.RawMessage
-	Status       string
-	CreatedAt    time.Time
-	UpdatedAt    time.Time
+	// PreQueue is the mode's option-group declaration, or nil when the mode has
+	// no pre-queue step. The choices inside the groups are per player and never
+	// stored here — see internal/prequeue.
+	PreQueue  json.RawMessage
+	Status    string
+	CreatedAt time.Time
+	UpdatedAt time.Time
 }
 
 type GameModeSeat struct {

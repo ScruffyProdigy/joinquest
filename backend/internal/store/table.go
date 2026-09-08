@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/scruffyprodigy/joinquest/internal/prequeue"
 	"github.com/scruffyprodigy/joinquest/internal/seattemplate"
 )
 
@@ -40,6 +41,8 @@ type TableSeat struct {
 	UserID   uuid.UUID
 	SeatKey  string
 	SeatedAt time.Time
+	// QueueOptions is what this player picked as they claimed the seat.
+	QueueOptions []prequeue.Selection
 }
 
 // UserTableSeatView is the caller's active table seat for the intent banner.
@@ -93,12 +96,18 @@ func scanRoomTable(row interface{ Scan(dest ...any) error }) (*RoomTable, error)
 
 func scanTableSeat(row interface{ Scan(dest ...any) error }) (*TableSeat, error) {
 	var s TableSeat
-	if err := row.Scan(&s.ID, &s.TableID, &s.UserID, &s.SeatKey, &s.SeatedAt); err != nil {
+	var queueOptions []byte
+	if err := row.Scan(&s.ID, &s.TableID, &s.UserID, &s.SeatKey, &s.SeatedAt, &queueOptions); err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return nil, ErrNotFound
 		}
 		return nil, err
 	}
+	selections, err := decodeQueueOptions(queueOptions)
+	if err != nil {
+		return nil, err
+	}
+	s.QueueOptions = selections
 	return &s, nil
 }
 
@@ -295,7 +304,7 @@ func (s *Store) sweepStaleEmptyTablesTx(ctx context.Context, tx *sql.Tx, roomID 
 
 func (s *Store) listTableSeatsTx(ctx context.Context, tx *sql.Tx, tableID uuid.UUID) ([]TableSeat, error) {
 	rows, err := tx.QueryContext(ctx, `
-		SELECT id, table_id, user_id, seat_key, seated_at
+		SELECT id, table_id, user_id, seat_key, seated_at, queue_options
 		FROM table_seats
 		WHERE table_id = $1
 		ORDER BY seated_at ASC
@@ -460,7 +469,7 @@ func (s *Store) GetRoomTableByID(ctx context.Context, tableID uuid.UUID) (*RoomT
 // ListTableSeats returns seated players ordered by seated_at.
 func (s *Store) ListTableSeats(ctx context.Context, tableID uuid.UUID) ([]TableSeat, error) {
 	rows, err := s.db.QueryContext(ctx, `
-		SELECT id, table_id, user_id, seat_key, seated_at
+		SELECT id, table_id, user_id, seat_key, seated_at, queue_options
 		FROM table_seats
 		WHERE table_id = $1
 		ORDER BY seated_at ASC
@@ -538,6 +547,14 @@ func (s *Store) GetUserStartedTableSession(ctx context.Context, userID uuid.UUID
 // For pooled fifo groups (shared queue path or flat duel seats), the server assigns
 // the next open seat in that group so stale clients do not need the exact seat number.
 func (s *Store) SitAtTable(ctx context.Context, tableID, userID uuid.UUID, seatKey string) (*RoomTable, error) {
+	return s.SitAtTableWithOptions(ctx, tableID, userID, seatKey, nil)
+}
+
+// SitAtTableWithOptions seats a player carrying their own pre-queue picks.
+//
+// A table is where a group plays together, so each player answers the picker for
+// themselves as they claim a seat — nobody chooses another player's champion.
+func (s *Store) SitAtTableWithOptions(ctx context.Context, tableID, userID uuid.UUID, seatKey string, options []prequeue.Selection) (*RoomTable, error) {
 	seatKey = strings.TrimSpace(seatKey)
 	if seatKey == "" {
 		return nil, fmt.Errorf("store: seat key is required")
@@ -549,7 +566,7 @@ func (s *Store) SitAtTable(ctx context.Context, tableID, userID uuid.UUID, seatK
 	}
 	defer tx.Rollback()
 
-	table, err := s.sitAtTableTx(ctx, tx, tableID, userID, seatKey)
+	table, err := s.sitAtTableTx(ctx, tx, tableID, userID, seatKey, options)
 	if err != nil {
 		return nil, err
 	}
@@ -559,7 +576,7 @@ func (s *Store) SitAtTable(ctx context.Context, tableID, userID uuid.UUID, seatK
 	return table, nil
 }
 
-func (s *Store) sitAtTableTx(ctx context.Context, tx *sql.Tx, tableID, userID uuid.UUID, seatKey string) (*RoomTable, error) {
+func (s *Store) sitAtTableTx(ctx context.Context, tx *sql.Tx, tableID, userID uuid.UUID, seatKey string, options []prequeue.Selection) (*RoomTable, error) {
 	seatKey = strings.TrimSpace(seatKey)
 	if seatKey == "" {
 		return nil, fmt.Errorf("store: seat key is required")
@@ -645,10 +662,14 @@ func (s *Store) sitAtTableTx(ctx context.Context, tx *sql.Tx, tableID, userID uu
 		}
 	}
 
+	encodedOptions, err := encodeQueueOptions(options)
+	if err != nil {
+		return nil, err
+	}
 	if _, err := tx.ExecContext(ctx, `
-		INSERT INTO table_seats (table_id, user_id, seat_key)
-		VALUES ($1, $2, $3)
-	`, tableID, userID, seatKey); err != nil {
+		INSERT INTO table_seats (table_id, user_id, seat_key, queue_options)
+		VALUES ($1, $2, $3, $4)
+	`, tableID, userID, seatKey, encodedOptions); err != nil {
 		if isUniqueViolation(err) {
 			return nil, fmt.Errorf("store: already seated at a table")
 		}
@@ -790,7 +811,7 @@ func (s *Store) StartTable(ctx context.Context, tableID, userID uuid.UUID) (*Sta
 
 	notifyIDs := make([]uuid.UUID, 0, len(seated))
 	for _, seat := range seated {
-		if err := addSessionParticipantTx(ctx, tx, session.ID, seat.UserID, seat.SeatKey, returnCtx); err != nil {
+		if err := addSessionParticipantTx(ctx, tx, session.ID, seat.UserID, seat.SeatKey, returnCtx, seat.QueueOptions); err != nil {
 			return nil, err
 		}
 		notifyIDs = append(notifyIDs, seat.UserID)

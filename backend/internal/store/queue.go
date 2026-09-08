@@ -8,20 +8,26 @@ import (
 	"github.com/google/uuid"
 )
 
-const queueColumns = `id, game_id, user_id, status, joined_at, mode_queue_id, queue_path, party_id, forming_match_id`
+const queueColumns = `id, game_id, user_id, status, joined_at, mode_queue_id, queue_path, party_id, forming_match_id, queue_options`
 
 func scanQueueEntry(row interface{ Scan(dest ...any) error }) (*QueueEntry, error) {
 	var entry QueueEntry
 	var modeQueueID, queuePath, partyID, formingMatchID sql.NullString
+	var queueOptions []byte
 	if err := row.Scan(
 		&entry.ID, &entry.GameID, &entry.UserID, &entry.Status, &entry.JoinedAt,
-		&modeQueueID, &queuePath, &partyID, &formingMatchID,
+		&modeQueueID, &queuePath, &partyID, &formingMatchID, &queueOptions,
 	); err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return nil, ErrNotFound
 		}
 		return nil, err
 	}
+	selections, err := decodeQueueOptions(queueOptions)
+	if err != nil {
+		return nil, err
+	}
+	entry.QueueOptions = selections
 	if modeQueueID.Valid {
 		id, err := uuid.Parse(modeQueueID.String)
 		if err != nil {
@@ -52,12 +58,18 @@ func scanQueueEntry(row interface{ Scan(dest ...any) error }) (*QueueEntry, erro
 func scanQueueEntryRow(rows *sql.Rows) (*QueueEntry, error) {
 	var entry QueueEntry
 	var modeQueueID, queuePath, partyID, formingMatchID sql.NullString
+	var queueOptions []byte
 	if err := rows.Scan(
 		&entry.ID, &entry.GameID, &entry.UserID, &entry.Status, &entry.JoinedAt,
-		&modeQueueID, &queuePath, &partyID, &formingMatchID,
+		&modeQueueID, &queuePath, &partyID, &formingMatchID, &queueOptions,
 	); err != nil {
 		return nil, err
 	}
+	selections, err := decodeQueueOptions(queueOptions)
+	if err != nil {
+		return nil, err
+	}
+	entry.QueueOptions = selections
 	if modeQueueID.Valid {
 		id, err := uuid.Parse(modeQueueID.String)
 		if err != nil {

@@ -79,7 +79,7 @@ func (r *mutationResolver) CreateTable(ctx context.Context, roomID string, gameI
 }
 
 // SitAtTable is the resolver for the sitAtTable field.
-func (r *mutationResolver) SitAtTable(ctx context.Context, tableID string, seatKey string) (*model.Table, error) {
+func (r *mutationResolver) SitAtTable(ctx context.Context, tableID string, seatKey string, options []*model.QueueOptionSelectionInput) (*model.Table, error) {
 	st, err := r.requireStore()
 	if err != nil {
 		return nil, err
@@ -95,7 +95,19 @@ func (r *mutationResolver) SitAtTable(ctx context.Context, tableID string, seatK
 	if _, err := r.requireTableRoomMember(ctx, tid, userID); err != nil {
 		return nil, err
 	}
-	table, err := st.SitAtTable(ctx, tid, userID, seatKey)
+
+	// The picker is answered on the way into the seat: each player chooses for
+	// themselves, and a mode that requires a pick will not seat them without one.
+	seatGame, seatMode, err := r.modeForTable(ctx, tid)
+	if err != nil {
+		return nil, err
+	}
+	selections, err := r.resolveSelections(ctx, seatGame, seatMode, userID.String(), options)
+	if err != nil {
+		return nil, err
+	}
+
+	table, err := st.SitAtTableWithOptions(ctx, tid, userID, seatKey, selections)
 	if err != nil {
 		if errors.Is(err, store.ErrAlreadyMatched) {
 			return nil, fmt.Errorf("leave your active match before sitting at a table")
@@ -430,8 +442,9 @@ func (r *tableResolver) Seats(ctx context.Context, obj *model.Table) ([]*model.T
 	out := make([]*model.TableSeat, len(seated))
 	for i, seat := range seated {
 		out[i] = &model.TableSeat{
-			SeatKey:  seat.SeatKey,
-			SeatedAt: seat.SeatedAt,
+			SeatKey:         seat.SeatKey,
+			SeatedAt:        seat.SeatedAt,
+			SelectedOptions: toGraphQLSelections(seat.QueueOptions),
 		}
 		user, uErr := st.GetUserByID(ctx, seat.UserID)
 		if uErr == nil {

@@ -82,6 +82,7 @@ func assignmentFromParticipants(
 			SeatKey:     p.SeatKey,
 			LobbyUserID: p.UserID.String(),
 			Player:      player,
+			Options:     p.QueueOptions,
 		})
 	}
 	if len(nameless) > 0 {

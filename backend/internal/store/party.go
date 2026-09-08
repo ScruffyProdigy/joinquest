@@ -10,6 +10,7 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/scruffyprodigy/joinquest/internal/lfg/partytree"
+	"github.com/scruffyprodigy/joinquest/internal/prequeue"
 )
 
 // Catalog play intent lives on game_queues (status = waiting). Parties are forming-engine
@@ -24,6 +25,9 @@ type SoloPartyInput struct {
 type JoinPartyMemberInput struct {
 	UserID    uuid.UUID
 	QueuePath string
+	// QueueOptions is this member's own pre-queue picks. Nobody may pick for
+	// anyone else, so only the member who claimed the seat fills this in.
+	QueueOptions []prequeue.Selection
 }
 
 // JoinPartyInput describes a party joining a mode queue.

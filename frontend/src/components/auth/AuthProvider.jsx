@@ -52,18 +52,39 @@ export function AuthProvider({ children }) {
   // it as a dependency — a callback whose identity changed with the user would
   // re-trigger every effect keyed on it, which is the loop we are closing.
   const userRef = useRef(null)
+  // Bumped every time the session is torn down. A request issued under an older
+  // generation belongs to a session that no longer exists, so its result must be
+  // dropped rather than written back — otherwise a `myAccount` or `me` response
+  // still in flight when the user logs out re-seats the user they just cleared
+  // (JQ-205). Callers capture this before awaiting and check it after.
+  const sessionGenerationRef = useRef(0)
+
+  const getSessionGeneration = useCallback(() => sessionGenerationRef.current, [])
 
   const setSessionUser = useCallback((nextUser) => {
     if (isSameSessionUser(userRef.current, nextUser)) {
       return
+    }
+    if (!nextUser) {
+      // Signing out — whether through `clearSession` or a refresh that finds the
+      // session gone — supersedes everything issued under the old session.
+      sessionGenerationRef.current += 1
     }
     userRef.current = nextUser
     setUser(nextUser)
   }, [])
 
   const acceptSessionUser = useCallback(
-    (signedInUser) => {
+    (signedInUser, options = {}) => {
       if (!signedInUser) {
+        return
+      }
+      // Optional on purpose: the sign-in and profile call sites hand over a user
+      // the player just produced by hand, so there is nothing stale to guard.
+      // Anything fetched in the background passes the generation it read at
+      // issue time and is dropped here if a logout landed in between.
+      const { sessionGeneration } = options
+      if (sessionGeneration !== undefined && sessionGeneration !== sessionGenerationRef.current) {
         return
       }
       // Same account, freshly parsed: re-seating it would drop the subscription
@@ -81,6 +102,9 @@ export function AuthProvider({ children }) {
 
   const refreshSession = useCallback(async (options = {}) => {
     const { silent = false } = options
+    // Retries stretch this call to ~7s, which is the widest window in the app for
+    // a logout to land underneath it.
+    const generation = sessionGenerationRef.current
     clearSubscriptionAuthCache()
     if (!silent) {
       setLoading(true)
@@ -89,6 +113,9 @@ export function AuthProvider({ children }) {
     setSessionUnavailable(false)
     try {
       const currentUser = await fetchCurrentUserWithRetries()
+      if (generation !== sessionGenerationRef.current) {
+        return
+      }
       if (currentUser) {
         setSessionUser(currentUser)
         void prefetchSubscriptionAuth().catch(() => {})
@@ -96,6 +123,9 @@ export function AuthProvider({ children }) {
         setSessionUser(null)
       }
     } catch (err) {
+      if (generation !== sessionGenerationRef.current) {
+        return
+      }
       if (!silent) {
         const message = err.message || 'Could not load session'
         if (isTransientServerError(message)) {
@@ -133,8 +163,18 @@ export function AuthProvider({ children }) {
       refreshSession,
       acceptSessionUser,
       clearSession,
+      getSessionGeneration,
     }),
-    [user, loading, error, sessionUnavailable, refreshSession, acceptSessionUser, clearSession],
+    [
+      user,
+      loading,
+      error,
+      sessionUnavailable,
+      refreshSession,
+      acceptSessionUser,
+      clearSession,
+      getSessionGeneration,
+    ],
   )
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>
