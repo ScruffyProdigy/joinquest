@@ -1,5 +1,6 @@
 import { expect } from '@playwright/test'
 import {
+  FINDING_PLAYERS,
   FIND_A_GAME_HEADING,
   RESULTS_LEAVE_MATCH,
   RESULTS_STILL_PLAYING,
@@ -23,10 +24,12 @@ export async function joinDemoGameQueue(page) {
   await page.getByRole('button', { name: 'Look for group' }).click()
 }
 
-export async function expectWaitingBanner(page) {
-  const banner = page.getByRole('region', { name: 'Your intent' })
-  await expect(banner).toBeVisible()
-  await expect(banner).toContainText('Looking for a group')
+// The queued state is its own page now (JQ-197), not a banner over the catalog.
+export async function expectWaitingPage(page) {
+  await expect(page).toHaveURL(/\/waiting\/?$/)
+  const card = page.getByRole('region', { name: 'Looking for a group' })
+  await expect(card).toBeVisible()
+  await expect(card).toContainText(FINDING_PLAYERS)
 }
 
 export async function expectMatchedBanner(page) {
