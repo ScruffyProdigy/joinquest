@@ -1,12 +1,14 @@
 import { cva } from 'class-variance-authority'
 
 /**
- * The prototype has no underlined text anywhere: every link-shaped control is a
- * full-width pill or a plain text action, and press states are opacity rather
- * than decoration. `pill` and `quiet` are lifted from it directly. `inline` is
- * our own -- the prototype never puts a link inside a sentence, and our legal
- * pages and developer docs do -- so it leans on the brand colour to stay
- * distinguishable from body copy without reaching for an underline.
+ * `pill` and `quiet` are lifted from the prototype exactly. `inline` is ours: the
+ * prototype holds only two anchors -- a tutorial link coloured by the game's hue,
+ * and a developer-facing npm link that does underline on hover -- and neither
+ * suits a run of body copy, so this leans on the brand colour to stay
+ * distinguishable without reaching for an underline.
+ *
+ * Press states are opacity throughout, matching the prototype. Hover is our
+ * addition: the prototype is mobile-first and specifies no hover state anywhere.
  *
  * `bg-transparent` is explicit rather than inherited: a button-rendered link
  * would otherwise pick up the user agent's control background.
