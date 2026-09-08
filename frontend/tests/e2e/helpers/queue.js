@@ -2,6 +2,8 @@ import { expect } from '@playwright/test'
 import {
   FINDING_PLAYERS,
   FIND_A_GAME_HEADING,
+  LAUNCH_GAME,
+  READY_TO_LAUNCH,
   RESULTS_LEAVE_MATCH,
   RESULTS_STILL_PLAYING,
   RESULTS_YOUR_RESULT_SO_FAR,
@@ -32,30 +34,54 @@ export async function expectWaitingPage(page) {
   await expect(card).toContainText(FINDING_PLAYERS)
 }
 
-export async function expectMatchedBanner(page) {
-  const banner = page.getByRole('region', { name: 'Your intent' })
-  await expect(banner).toBeVisible({ timeout: 20000 })
-  await expect(banner).toContainText('Playing')
+// A player who was on the waiting page when the match formed gets the launch step
+// (JQ-136), not the banner: the countdown carries them into the game on its own.
+export async function expectLaunchStep(page) {
+  const card = page.getByRole('region', { name: 'Match found' })
+  await expect(card).toBeVisible({ timeout: 20000 })
+  await expect(card).toContainText(READY_TO_LAUNCH)
+}
+
+const LAUNCHED_URL = /\/return\?match=/
+
+function matchIdFromLaunchUrl(url) {
+  const matchId = new URL(url).searchParams.get('match')
+  if (!matchId) {
+    throw new Error(`Launch URL missing match param: ${url}`)
+  }
+  return matchId
+}
+
+/** Waits out the countdown and reports the match the player was carried into. */
+export async function expectAutoLaunch(page) {
+  await expect(page).toHaveURL(LAUNCHED_URL, { timeout: 30000 })
+  return matchIdFromLaunchUrl(page.url())
+}
+
+/**
+ * Either way into the match, so the walk does not depend on how fast the queue
+ * resolved: a player who was waiting is carried in by the countdown (JQ-136), and
+ * one who matched straight from the game page launches from the banner's link.
+ */
+export async function enterMatch(page) {
+  const launchLink = page
+    .getByRole('region', { name: 'Your intent' })
+    .getByRole('link', { name: LAUNCH_GAME })
+
+  await expect(async () => {
+    if (!LAUNCHED_URL.test(page.url())) {
+      if (await launchLink.isVisible()) {
+        await launchLink.click()
+      }
+      expect(page.url()).toMatch(LAUNCHED_URL)
+    }
+  }).toPass({ timeout: 30000 })
+
+  return matchIdFromLaunchUrl(page.url())
 }
 
 export async function expectNoIntentBanner(page) {
   await expect(page.getByRole('region', { name: 'Your intent' })).not.toBeVisible()
-}
-export async function readLaunchMatchId(page) {
-  const banner = page.getByRole('region', { name: 'Your intent' })
-  const launchLink = banner.getByRole('link', {
-    name: 'Launch game',
-  })
-  await expect(launchLink).toBeVisible({ timeout: 30000 })
-  const href = await launchLink.getAttribute('href')
-  if (!href) {
-    throw new Error('Launch game link is missing href')
-  }
-  const matchId = new URL(href).searchParams.get('match')
-  if (!matchId) {
-    throw new Error(`Launch URL missing match param: ${href}`)
-  }
-  return matchId
 }
 
 /**

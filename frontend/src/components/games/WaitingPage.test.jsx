@@ -149,11 +149,20 @@ describe('WaitingPage', () => {
     const { rerender } = render(<WaitingPage intent={intentState} />)
     expect(window.location.pathname).toBe('/waiting')
 
-    // The fetch lands and reports no queued intent: left the queue, or matched.
+    // The fetch lands and reports no intent at all: the player left the queue.
     setIntentState({ loading: false })
     rerender(<WaitingPage intent={intentState} />)
 
     await waitFor(() => expect(window.location.pathname).toBe('/games/word-hunt'))
+  })
+
+  it('hands a formed match to the launch step instead of routing away', async () => {
+    setIntentState({ activeIntent: { ...waitingIntent, status: 'MATCHED', joinUrl: null } })
+    render(<WaitingPage intent={intentState} />)
+
+    expect(screen.getByRole('heading', { name: "You're in!" })).toBeInTheDocument()
+    expect(screen.queryByRole('heading', { name: 'Finding players…' })).toBeNull()
+    await waitFor(() => expect(window.location.pathname).toBe('/waiting'))
   })
 
   it('sends a signed-out visitor away without waiting on a fetch', async () => {

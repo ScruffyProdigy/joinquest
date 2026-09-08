@@ -170,6 +170,58 @@
   margin-top: 1.5rem;
 }
 
+/* The launch moment (JQ-136) reuses the waiting card so the match forming reads as
+   the same screen resolving, not a different one. */
+.launch-step {
+  border-color: rgba(94, 234, 160, 0.5);
+  background: rgba(94, 234, 160, 0.12);
+}
+
+.launch-step__mark {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.75rem;
+  height: 2.75rem;
+  margin-bottom: 0.75rem;
+  border-radius: 50%;
+  background: rgba(94, 234, 160, 0.9);
+  color: #10321f;
+  font-size: 1.4rem;
+  font-weight: 700;
+  animation: launch-mark-in 0.35s ease-out;
+}
+
+@keyframes launch-mark-in {
+  from {
+    opacity: 0;
+    transform: scale(0.6);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .launch-step__mark {
+    animation: none;
+  }
+}
+
+.launch-step__countdown {
+  font-variant-numeric: tabular-nums;
+  font-size: 1.25rem;
+}
+
+.launch-step__actions {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  width: 100%;
+  margin-top: 1.5rem;
+}
+
 .app-header,
 .auth-page h1 {
   text-align: center;
@@ -501,6 +553,16 @@
   .waiting-page__need,
   .waiting-page__hint {
     color: #5558aa;
+  }
+
+  .launch-step {
+    border-color: rgba(23, 145, 84, 0.35);
+    background: rgba(23, 145, 84, 0.1);
+  }
+
+  .launch-step .waiting-page__subline,
+  .launch-step .waiting-page__hint {
+    color: #2f6b4c;
   }
 
   .intent-banner {
