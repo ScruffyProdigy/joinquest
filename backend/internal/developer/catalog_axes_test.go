@@ -33,7 +33,7 @@ func TestValidateSocialMode(t *testing.T) {
 }
 
 // Every axis value reaches the database through a CHECK constraint written by
-// migration 000051, so a value added here without the matching migration would
+// migration 000052, so a value added here without the matching migration would
 // pass validation and then fail on write.
 func TestAxisIDsAreStable(t *testing.T) {
 	for _, tc := range []struct {
