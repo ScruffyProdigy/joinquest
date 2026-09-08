@@ -46,6 +46,78 @@ type GameMode {
   queuePaths: [GameModeQueuePath!]!
   queues: [ModeQueue!]!
   eligibility(playerId: ID!): ModeEligibility
+  """
+  Option rosters this mode asks the player to pick from before queueing, from
+  the mode manifest. Empty for the modes that have no pre-queue step.
+  """
+  preQueueGroups: [PreQueueGroup!]!
+  """
+  This player's actual choices, live from the game. Null when the mode declares
+  no groups; unavailable (rather than empty) when the game cannot be reached.
+  """
+  queueOptions(playerId: ID!): QueueOptions
+}
+
+"""One roster a mode asks the player to pick from — a champion, a kit, a deck."""
+type PreQueueGroup {
+  key: String!
+  kind: PreQueueKind!
+  """The player-facing prompt, e.g. "Choose your two helpers"."""
+  label: String!
+  """How many choices this group takes. min 0 makes the group optional."""
+  min: Int!
+  max: Int!
+}
+
+enum PreQueueKind {
+  CHARACTER
+  LOADOUT
+  DECK
+}
+
+"""
+A player's roster for one mode.
+
+The roster comes only from the game, so there is no safe fallback when the game
+is unreachable: available is false and the mode cannot be joined until it
+answers. Guessing an empty roster would block a legitimate join; guessing a full
+one would hand out options the game never offered.
+"""
+type QueueOptions {
+  available: Boolean!
+  unavailableReason: String
+  groups: [QueueOptionGroup!]!
+}
+
+type QueueOptionGroup {
+  key: String!
+  choices: [QueueOption!]!
+}
+
+type QueueOption {
+  id: ID!
+  label: String!
+  description: String
+  locked: Boolean!
+  """
+  Why a locked choice is locked, and how far along the player is. Same shape as
+  mode eligibility, so unlock progress renders identically at both levels.
+  """
+  requirement: ModeRequirementNode
+  unlockModeKey: String
+}
+
+"""One group's picks, sent when joining a queue or claiming a table seat."""
+input QueueOptionSelectionInput {
+  groupKey: String!
+  optionIds: [ID!]!
+}
+
+"""A player's picks with the game's own labels, for display."""
+type QueueOptionSelection {
+  groupKey: String!
+  optionIds: [ID!]!
+  labels: [String!]!
 }
 
 type ModeEligibility {

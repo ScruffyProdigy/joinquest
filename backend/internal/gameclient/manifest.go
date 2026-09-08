@@ -11,6 +11,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/scruffyprodigy/joinquest/internal/prequeue"
 	"github.com/scruffyprodigy/joinquest/internal/seattemplate"
 )
 
@@ -20,6 +21,9 @@ type ModeManifest struct {
 	DisplayName  string          `json:"displayName"`
 	SeatTemplate json.RawMessage `json:"seatTemplate"`
 	Seats        json.RawMessage `json:"seats"`
+	// PreQueue declares the mode's option groups. The roster inside them is
+	// per player and comes from the game at request time, never from here.
+	PreQueue json.RawMessage `json:"preQueue"`
 }
 
 // StatusResponse is returned by GET /api/v1/status.
@@ -197,6 +201,11 @@ func validateModes(modes []ModeManifest) error {
 				return fmt.Errorf("gameclient: game-modes: mode %q duplicate seat %q", key, leaf.SeatKey)
 			}
 			seen[leaf.SeatKey] = struct{}{}
+		}
+		// A declaration the lobby cannot act on fails the whole sync: syncing
+		// the mode anyway would list a picker that can never render.
+		if _, err := prequeue.Parse(mode.PreQueue); err != nil {
+			return fmt.Errorf("gameclient: game-modes: mode %q: %w", key, err)
 		}
 	}
 	return nil

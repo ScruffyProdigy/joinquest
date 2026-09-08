@@ -47,6 +47,7 @@ Migrations are stored in the `backend/migrations/` directory and follow the nami
 - `000022_party_tree.up.sql` - `party_tree` JSONB on parties
 - `000023_lfg_cleanup.up.sql` - Drop deprecated `parties.together`; forming match status cleanup
 - `000024_session_launch_urls.up.sql` - `launch_url_base` on `game_session_participants` for stored game-minted URL bases
+- `000051_pre_queue_options.up.sql` - `pre_queue` declaration on `game_modes`; `queue_options` selections on `game_queues`, `table_seats`, `game_session_participants`
 
 ## CLI Usage
 

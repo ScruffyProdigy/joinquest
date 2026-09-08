@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"github.com/scruffyprodigy/joinquest/internal/gameurl"
+	"github.com/scruffyprodigy/joinquest/internal/prequeue"
 	"github.com/scruffyprodigy/joinquest/internal/runtimeenv"
 )
 
@@ -28,6 +29,10 @@ type AssignmentSeat struct {
 	Team        string           `json:"team,omitempty"`
 	Role        string           `json:"role,omitempty"`
 	Player      *ProvisionPlayer `json:"player,omitempty"`
+	// Options is what this player picked before the match — the champion, kit
+	// or deck they chose. Omitted entirely for modes without a pre-queue step,
+	// so a game that does not use them sees an unchanged payload.
+	Options []prequeue.Selection `json:"options,omitempty"`
 }
 
 // LobbyInfo tells the game how to reach Lobby after and during a match.

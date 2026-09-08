@@ -50,6 +50,7 @@ export default function IntentBanner({
               activeIntent.queuedCount,
               activeIntent.queuePathDisplayName,
               activeIntent.formingGaps,
+              activeIntent.selectedOptions,
             )}
           </p>
           <p className="intent-banner__hint">

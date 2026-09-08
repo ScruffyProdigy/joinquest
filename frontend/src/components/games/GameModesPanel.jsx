@@ -8,6 +8,7 @@ import { useIdentityPrompt } from '../avatars/IdentityPromptProvider'
 import { useActiveRoom } from '../rooms/ActiveRoomProvider'
 import GameQueueActions from './GameQueueActions'
 import ModeRequirement from './ModeRequirement'
+import PreQueueOptionsSheet from './PreQueueOptionsSheet'
 import { useGameQueue } from './useGameQueue'
 import { navigateTo } from '../../lib/usePathname'
 
@@ -31,6 +32,10 @@ function ModeRow({
   const solo = isSoloMode(mode)
   const [tableBusy, setTableBusy] = useState(false)
   const [tableError, setTableError] = useState('')
+  // A mode with option groups routes every join through the picker first, so
+  // the pending path is held until the player has answered it.
+  const preQueueGroups = mode.preQueueGroups ?? []
+  const [pendingQueuePath, setPendingQueuePath] = useState(null)
 
   const isThisQueue =
     defaultQueue?.id && activeIntent?.queueId && activeIntent.queueId === defaultQueue.id
@@ -42,7 +47,7 @@ function ModeRow({
     activeTableSeat?.gameId === game.id && activeTableSeat?.modeId === mode.id
   const inActiveGame = activeIntent?.status === 'MATCHED'
 
-  async function handleJoin(queuePath) {
+  async function handleJoin(queuePath, options) {
     if (inActiveGame) {
       setTableError('Launch or finish your current game before looking for a group.')
       return
@@ -57,11 +62,12 @@ function ModeRow({
             .map((path) => (typeof path === 'string' ? { queuePath: path, displayName: path } : path))
             .find((entry) => entry.queuePath === queuePath)?.displayName
         : null
-    // The queue and the path the player picked are the whole intent, and they
-    // are captured in this closure — so if the identity prompt goes up first,
-    // the same join runs by itself once a name and avatar are saved.
+    // The queue, the path, and the options the player picked are the whole
+    // intent, and they are captured in this closure — so if the identity
+    // prompt goes up first, the same join runs by itself, picks included, once
+    // a name and avatar are saved.
     await requireIdentity(async () => {
-      const result = await queue.handleJoin(queuePath)
+      const result = await queue.handleJoin(queuePath, options)
       if (result) {
         onQueueJoined?.(defaultQueue?.id, result, {
           gameId: game.id,
@@ -71,6 +77,24 @@ function ModeRow({
         })
       }
     })
+  }
+
+  // The mode is already settled by the time this runs, and for a composition
+  // mode so is the role — which keeps the order the prototype fixed:
+  // game -> mode -> role -> options -> queue.
+  async function handleJoinRequest(queuePath) {
+    if (preQueueGroups.length === 0) {
+      await handleJoin(queuePath)
+      return
+    }
+    setTableError('')
+    setPendingQueuePath(typeof queuePath === 'string' ? queuePath : '')
+  }
+
+  async function handleOptionsConfirmed(selections) {
+    const queuePath = pendingQueuePath
+    setPendingQueuePath(null)
+    await handleJoin(queuePath, selections)
   }
 
   async function handleLeave() {
@@ -214,7 +238,7 @@ function ModeRow({
               selectedQueuePath={
                 queue.selectedQueuePath || (isThisQueue ? activeIntent?.queuePath : '') || ''
               }
-              onJoin={handleJoin}
+              onJoin={handleJoinRequest}
               onLeave={handleLeave}
               disabled={!defaultQueue || blockedByMatch || Boolean(activeTableSeat?.tableId && !seatedHere)}
               prominent={prominent}
@@ -230,6 +254,17 @@ function ModeRow({
                 {tableBusy ? '…' : PLAY_WITH_FRIENDS}
               </button>
             )}
+            <PreQueueOptionsSheet
+              open={pendingQueuePath !== null}
+              gameName={game.name}
+              modeName={mode.displayName}
+              groups={preQueueGroups}
+              queueOptions={mode.queueOptions}
+              busy={queue.busy}
+              error={queue.error}
+              onConfirm={handleOptionsConfirmed}
+              onClose={() => setPendingQueuePath(null)}
+            />
           </>
         )}
       </div>
