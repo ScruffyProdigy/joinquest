@@ -7,11 +7,12 @@ import {
 } from './helpers/db.js'
 import { startMockGameServer, stopMockGameServer } from './helpers/mockGame.js'
 import {
-  expectMatchedBanner,
+  enterMatch,
+  expectAutoLaunch,
+  expectLaunchStep,
   expectNoIntentBanner,
   expectWaitingPage,
   joinDemoGameQueue,
-  readLaunchMatchId,
   returnFromMatch,
 } from './helpers/queue.js'
 
@@ -46,7 +47,11 @@ test.describe('Game loop', () => {
     clearDemoMatchmakingState()
   })
 
+  // Two matches, and each one now spends the launch countdown before the player is
+  // carried into the game (JQ-136). That does not fit the config's local 30s budget.
   test('match, return home, and re-queue with a fresh session', async ({ browser }) => {
+    test.setTimeout(90_000)
+
     const emailA = `loop-a-${Date.now()}@example.com`
     const emailB = `loop-b-${Date.now()}@example.com`
 
@@ -67,11 +72,11 @@ test.describe('Game loop', () => {
       await expectWaitingPage(pageA)
 
       await joinDemoGameQueue(pageB)
-      await expectMatchedBanner(pageA)
-      await expectMatchedBanner(pageB)
-
-      const firstMatchId = await readLaunchMatchId(pageA)
-      expect(await readLaunchMatchId(pageB)).toBe(firstMatchId)
+      // A was on the waiting page when the match formed, so the launch moment is
+      // its surface. Nothing is clicked: the countdown is what carries A in.
+      await expectLaunchStep(pageA)
+      const firstMatchId = await expectAutoLaunch(pageA)
+      expect(await enterMatch(pageB)).toBe(firstMatchId)
 
       await returnFromMatch(pageA, firstMatchId)
       await expectNoIntentBanner(pageA)
@@ -82,12 +87,10 @@ test.describe('Game loop', () => {
       await joinDemoGameQueue(pageA)
       await expectWaitingPage(pageA)
       await joinDemoGameQueue(pageB)
-      await expectMatchedBanner(pageA)
-      await expectMatchedBanner(pageB)
-
-      const secondMatchId = await readLaunchMatchId(pageA)
+      await expectLaunchStep(pageA)
+      const secondMatchId = await expectAutoLaunch(pageA)
       expect(secondMatchId).not.toBe(firstMatchId)
-      expect(await readLaunchMatchId(pageB)).toBe(secondMatchId)
+      expect(await enterMatch(pageB)).toBe(secondMatchId)
     } finally {
       await contextA.close()
       await contextB.close()

@@ -42,7 +42,8 @@ export function navigateToWaiting({ replace = false } = {}) {
   navigateTo(WAITING_PATH, { replace })
 }
 
-/** Every exit from the waiting page. A formed match gets its own launch step in JQ-136. */
+/** Every exit from the waiting page. A formed match is not one: it stays here for
+ * the launch step (JQ-136) and leaves by entering the game. */
 export function navigateOutOfWaiting({ replace = true } = {}) {
   const path = waitingReturnPath()
   try {
