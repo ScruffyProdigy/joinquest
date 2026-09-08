@@ -92,6 +92,12 @@ if ! run_tests "Backend Drift Detection" "go test -v -run=TestGqlgenDrift ./grap
     OVERALL_RESULT=1
 fi
 
+# Catalog identity: one writer for identity, and handoff URLs that match the
+# card they sit behind (JQ-203). Reads files only, so it needs no database.
+if ! run_tests "Catalog Identity Check" "node scripts/check-catalog-identity.mjs" ""; then
+    OVERALL_RESULT=1
+fi
+
 echo ""
 
 # Run frontend tests
