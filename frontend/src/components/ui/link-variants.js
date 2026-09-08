@@ -12,6 +12,12 @@ import { cva } from 'class-variance-authority'
  *
  * `bg-transparent` is explicit rather than inherited: a button-rendered link
  * would otherwise pick up the user agent's control background.
+ *
+ * Every colour here is a token -- `text-primary`, `border-primary`,
+ * `text-muted-foreground` -- so repainting the brand is a change to `--primary`
+ * in tailwind.css and nothing in this file. Worth keeping that way: the
+ * prototype already mixes teal with a magenta it uses for chrome, so the accent
+ * is not settled.
  */
 export const linkVariants = cva(
   'appearance-none border-0 p-0 [font-family:inherit] bg-transparent no-underline cursor-pointer transition-opacity outline-none focus-visible:ring-ring/50 focus-visible:ring-[3px] disabled:pointer-events-none disabled:opacity-50',
