@@ -25,9 +25,16 @@ describe('Link', () => {
     expect(screen.getByRole('button')).toHaveAttribute('type', 'submit')
   })
 
-  it('applies the primary text class for the default inline variant', () => {
+  it('keeps the default inline variant neutral, reserving the brand colour for CTAs', () => {
     render(<Link href="/">Home</Link>)
-    expect(screen.getByRole('link')).toHaveClass('text-primary')
+    const link = screen.getByRole('link')
+    expect(link).toHaveClass('text-foreground')
+    expect(link).not.toHaveClass('text-primary')
+  })
+
+  it('distinguishes an inline link by weight, not by colour alone', () => {
+    render(<Link href="/">Home</Link>)
+    expect(screen.getByRole('link')).toHaveClass('font-semibold')
   })
 
   it("applies the prototype's outlined pill classes for the pill variant", () => {

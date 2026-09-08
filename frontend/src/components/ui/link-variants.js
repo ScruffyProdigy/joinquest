@@ -3,9 +3,13 @@ import { cva } from 'class-variance-authority'
 /**
  * `pill` and `quiet` are lifted from the prototype exactly. `inline` is ours: the
  * prototype holds only two anchors -- a tutorial link coloured by the game's hue,
- * and a developer-facing npm link that does underline on hover -- and neither
- * suits a run of body copy, so this leans on the brand colour to stay
- * distinguishable without reaching for an underline.
+ * and a developer-facing npm link -- and neither suits a run of body copy.
+ *
+ * The brand colour is reserved for the option we actually want clicked, so only
+ * `pill` carries it. An inline link is navigation, not a call to action, and takes
+ * its colour from the text around it. Weight is what separates it instead -- which
+ * a reader can see when colour is unavailable to them, and which is how the
+ * prototype's own anchors do it (both are `font-bold`).
  *
  * Press states are opacity throughout, matching the prototype. Hover is our
  * addition: the prototype is mobile-first and specifies no hover state anywhere.
@@ -24,7 +28,7 @@ export const linkVariants = cva(
   {
     variants: {
       variant: {
-        inline: 'inline rounded-sm text-primary hover:opacity-80 active:opacity-70',
+        inline: 'inline rounded-sm font-semibold text-foreground hover:opacity-80 active:opacity-70',
         pill: 'flex w-full items-center justify-center gap-2 rounded-[99px] border-[1.5px] border-primary py-4 text-[15px] font-bold text-primary active:opacity-80',
         quiet:
           'block w-full rounded-[99px] py-3.5 text-center text-[14px] font-bold text-muted-foreground active:opacity-60',

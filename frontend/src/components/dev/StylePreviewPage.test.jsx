@@ -19,7 +19,7 @@ describe('StylePreviewPage', () => {
   it('shows every Link variant so the primitive is discoverable', () => {
     render(<StylePreviewPage />)
     expect(screen.getByRole('heading', { name: 'Links' })).toBeInTheDocument()
-    expect(screen.getByRole('link', { name: 'Inline link' })).toHaveClass('text-primary')
+    expect(screen.getByRole('link', { name: 'Inline link' })).toHaveClass('text-foreground')
     expect(screen.getByRole('link', { name: 'Pill link' })).toHaveClass('border-primary')
     expect(screen.getByRole('button', { name: 'Quiet action' })).toHaveClass('text-muted-foreground')
   })

@@ -42,7 +42,9 @@ export default function StylePreviewPage() {
         <h2 className="font-heading text-xl font-semibold">Links</h2>
         <p className="text-sm text-muted-foreground">
           Nothing here underlines, in any state. <code>href</code> picks the element: an anchor
-          for navigation, a button for an action that only runs a handler.
+          for navigation, a button for an action that only runs a handler. Only the pill carries
+          the brand colour — it is the option we want clicked. An inline link is navigation, so it
+          stays neutral and separates itself by weight.
         </p>
         <p className="text-sm">
           An <Link href="#links">Inline link</Link> sits inside a sentence.
