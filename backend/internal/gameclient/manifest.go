@@ -23,9 +23,14 @@ type ModeManifest struct {
 	// SocialMode is how play is structured in this mode — one id from
 	// developer.SocialModeTaxonomy. Optional: a manifest written before JQ-162
 	// omits it and the mode simply carries no social shape.
-	SocialMode   string          `json:"socialMode"`
-	SeatTemplate json.RawMessage `json:"seatTemplate"`
-	Seats        json.RawMessage `json:"seats"`
+	SocialMode string `json:"socialMode"`
+	// TypicalMinutes is how long a round of this mode usually runs, in whole
+	// minutes — the number the catalog card shows as "12 min". Optional, and a
+	// pointer so an omitted field stays distinguishable from a declared zero,
+	// which is rejected rather than read as "no duration".
+	TypicalMinutes *int            `json:"typicalMinutes"`
+	SeatTemplate   json.RawMessage `json:"seatTemplate"`
+	Seats          json.RawMessage `json:"seats"`
 	// PreQueue declares the mode's option groups. The roster inside them is
 	// per player and comes from the game at request time, never from here.
 	PreQueue json.RawMessage `json:"preQueue"`
@@ -197,6 +202,9 @@ func validateModes(modes []ModeManifest) error {
 			return fmt.Errorf("gameclient: game-modes: mode %q must define seatTemplate", key)
 		}
 		if err := developer.ValidateSocialMode(strings.TrimSpace(mode.SocialMode)); err != nil {
+			return fmt.Errorf("gameclient: game-modes: mode %q: %w", key, err)
+		}
+		if err := developer.ValidateTypicalMinutes(mode.TypicalMinutes); err != nil {
 			return fmt.Errorf("gameclient: game-modes: mode %q: %w", key, err)
 		}
 		leaves, err := seattemplate.Expand(mode.SeatTemplate)

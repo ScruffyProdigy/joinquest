@@ -107,7 +107,8 @@ func (r *Runner) RunManifestChecks(ctx context.Context, game *store.Game) []Resu
 		results = append(results, Result{
 			CheckID: "manifest.game_modes",
 			Status:  StatusPass,
-			Message: fmt.Sprintf("Found %d playable mode(s) with valid seat templates.", len(manifest.Modes)),
+			Message: fmt.Sprintf("Found %d playable mode(s) with valid seat templates.%s",
+				len(manifest.Modes), typicalMinutesGuidance(manifest.Modes)),
 		})
 	}
 
@@ -131,6 +132,30 @@ func (r *Runner) RunManifestChecks(ctx context.Context, game *store.Game) []Resu
 // StubChecks is deprecated; provision and JWT checks run via RunProvisionChecks and RunJWTChecks.
 func StubChecks() []Result {
 	return nil
+}
+
+// typicalMinutesGuidance nudges a developer whose modes carry no declared
+// session length (JQ-161).
+//
+// It rides on the game_modes check rather than being a check of its own, and it
+// never fails one: the field is optional and a mode without it is correct, just
+// missing a catalog pill. A check that went red here would be telling the
+// developer they had broken something they had not.
+func typicalMinutesGuidance(modes []gameclient.ModeManifest) string {
+	missing := 0
+	for _, mode := range modes {
+		if mode.TypicalMinutes == nil {
+			missing++
+		}
+	}
+	switch {
+	case missing == 0:
+		return " Every mode declares a typical duration."
+	case missing == len(modes):
+		return " None declare typicalMinutes, so your catalog card shows no session length — add it to each mode to show \"12 min\" beside the player count."
+	default:
+		return fmt.Sprintf(" %d of %d modes omit typicalMinutes, so those show no session length on the catalog card.", missing, len(modes))
+	}
 }
 
 func friendlyReachError(apiBase string, err error) string {

@@ -164,8 +164,20 @@ type GameMode struct {
 	//
 	// This sits on the mode, not the game, because a game's modes genuinely
 	// disagree: an Arena mode is free-for-all while the same game's Duel is 1v1.
-	SocialMode *string         `json:"socialMode,omitempty"`
-	Seats      []*GameModeSeat `json:"seats"`
+	SocialMode *string `json:"socialMode,omitempty"`
+	// How long a round of this mode usually runs, in whole minutes — the number the
+	// catalog card paints as "12 min". Null when the game's manifest does not
+	// declare one, in which case the card shows no duration rather than a guess.
+	//
+	// Per mode for the same reason `socialMode` is: a game's Arena and Duel modes
+	// run for genuinely different lengths.
+	//
+	// This is the resolved duration, not the raw declaration. Today it is only ever
+	// what the developer declared; when the lobby has enough match start/end times
+	// to measure a mode honestly, the measurement supersedes the declaration here,
+	// so a client that reads this field keeps reading the best answer available.
+	TypicalMinutes *int            `json:"typicalMinutes,omitempty"`
+	Seats          []*GameModeSeat `json:"seats"`
 	// Join options with human labels and per-cohort fire sizes.
 	QueuePaths  []*GameModeQueuePath `json:"queuePaths"`
 	Queues      []*ModeQueue         `json:"queues"`
