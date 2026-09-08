@@ -164,14 +164,6 @@
   line-height: 1.2;
 }
 
-.waiting-page__mode {
-  margin: 0;
-  color: #b8bcff;
-  font-size: 0.9rem;
-  text-transform: uppercase;
-  letter-spacing: 0.06em;
-}
-
 .waiting-page__status {
   margin: 0.9rem 0 0;
   font-weight: 600;
@@ -190,6 +182,24 @@
   margin: 0.35rem 0 0;
   color: #ffb4b4;
   font-size: 0.9rem;
+}
+
+.waiting-page__subline {
+  margin: 0;
+  color: #b8bcff;
+  font-size: 0.95rem;
+}
+
+.waiting-page__confirm-body {
+  margin: 0.5rem 0 1.5rem;
+  color: #b8bcff;
+  font-size: 0.9rem;
+}
+
+.waiting-page__confirm-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
 }
 
 .waiting-page__leave {
@@ -581,7 +591,8 @@
     background: rgba(100, 108, 255, 0.08);
   }
 
-  .waiting-page__mode,
+  .waiting-page__subline,
+  .waiting-page__confirm-body,
   .waiting-page__role,
   .waiting-page__need,
   .waiting-page__hint {

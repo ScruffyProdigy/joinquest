@@ -15,6 +15,10 @@ vi.mock('./useActiveIntent', () => ({
   useActiveIntent: () => intentState,
 }))
 
+vi.mock('./useLeaveQueueOnExit', () => ({
+  useLeaveQueueOnExit: vi.fn(),
+}))
+
 function setIntentState(overrides = {}) {
   Object.assign(intentState, {
     activeIntent: null,
@@ -49,8 +53,8 @@ describe('WaitingPage', () => {
     setIntentState({ activeIntent: waitingIntent })
     render(<WaitingPage />)
 
-    expect(screen.getByRole('heading', { name: 'Word Hunt' })).toBeInTheDocument()
-    expect(screen.getByText('Arena')).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: 'Finding players…' })).toBeInTheDocument()
+    expect(screen.getByText('Word Hunt · Arena')).toBeInTheDocument()
     expect(screen.getByText('Looking for players… (3 players looking)')).toBeInTheDocument()
     expect(screen.getByText('We will notify you here when your group is ready.')).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Stop looking' })).toBeInTheDocument()
@@ -71,7 +75,7 @@ describe('WaitingPage', () => {
     })
     render(<WaitingPage />)
 
-    expect(screen.getByText('Looking as Clue Giver…')).toBeInTheDocument()
+    expect(screen.getByText('Word Hunt · Arena · Clue Giver')).toBeInTheDocument()
     expect(screen.getByText('Need 1 Clue Giver, 4 Guesser')).toBeInTheDocument()
   })
 
@@ -90,14 +94,34 @@ describe('WaitingPage', () => {
     expect(window.location.pathname).toBe('/waiting')
   })
 
-  it('stops looking through the intent hook', async () => {
+  it('confirms before giving up the place in the queue', async () => {
     const handleLeave = vi.fn()
     setIntentState({ activeIntent: waitingIntent, handleLeave })
     const user = userEvent.setup()
     render(<WaitingPage />)
 
     await user.click(screen.getByRole('button', { name: 'Stop looking' }))
+    expect(handleLeave).not.toHaveBeenCalled()
+    expect(await screen.findByText('Leave the queue?')).toBeInTheDocument()
+    expect(
+      screen.getByText("You'll lose your spot and have to start over."),
+    ).toBeInTheDocument()
+
+    await user.click(screen.getByRole('button', { name: 'Leave queue' }))
     expect(handleLeave).toHaveBeenCalledTimes(1)
+  })
+
+  it('stays in the queue when the confirmation is declined', async () => {
+    const handleLeave = vi.fn()
+    setIntentState({ activeIntent: waitingIntent, handleLeave })
+    const user = userEvent.setup()
+    render(<WaitingPage />)
+
+    await user.click(screen.getByRole('button', { name: 'Stop looking' }))
+    await user.click(await screen.findByRole('button', { name: 'Stay in queue' }))
+
+    expect(handleLeave).not.toHaveBeenCalled()
+    expect(screen.queryByText('Leave the queue?')).toBeNull()
   })
 
   it('waits for the first fetch rather than bouncing a reload straight off', () => {

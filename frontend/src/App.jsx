@@ -9,7 +9,6 @@ import IntentBanner from './components/games/IntentBanner'
 import GameLobby from './components/games/GameLobby'
 import GameDetailPage from './components/games/GameDetailPage'
 import WaitingPage from './components/games/WaitingPage'
-import { useWaitingRedirect } from './components/games/useWaitingRedirect'
 import { ActiveRoomProvider, useActiveRoom } from './components/rooms/ActiveRoomProvider'
 import AppDock from './components/rooms/AppDock'
 import RoomPanel from './components/rooms/RoomPanel'
@@ -40,9 +39,6 @@ import { useEffect } from 'react'
 function CatalogPage() {
   const { user, loading: authLoading } = useAuth()
   const { activeIntent, activeTableSeat, busy, leaveError, handleLeave } = useActiveIntent()
-
-  // Queued players belong on the waiting page, not on a banner above the catalog.
-  useWaitingRedirect(activeIntent)
 
   useEffect(() => {
     restoreCatalogScrollIfPending()
@@ -75,10 +71,8 @@ function GameDetailShell({ slug }) {
   const { activeIntent, activeTableSeat, busy, leaveError, refresh, notifyQueueJoined, handleLeave } =
     useActiveIntent()
 
-  useWaitingRedirect(activeIntent)
-
-  // Joining a queue is the one entry that pushes: Back off the waiting page should
-  // return here. Every other route onto it replaces, via useWaitingRedirect.
+  // Joining a queue is the only way onto the waiting page. Leaving it — Back, a link,
+  // a closed tab — gives up the queue, in useLeaveQueueOnExit.
   function handleQueueJoined(queueId, result, meta) {
     notifyQueueJoined(queueId, result, meta)
     if (result?.queued) {

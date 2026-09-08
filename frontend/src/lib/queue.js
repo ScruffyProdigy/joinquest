@@ -1,5 +1,5 @@
 import { createClient } from 'graphql-ws'
-import { getGraphQLWsUrl } from './env'
+import { getGraphQLUrl, getGraphQLWsUrl } from './env'
 import { graphqlRequest } from './graphql'
 import { isLobbyDebugEnabled, lobbyDebug } from './lobbyDebug'
 
@@ -188,6 +188,31 @@ export async function joinQueue(queueId, queuePath) {
 export async function fetchMyQueueStatus(queueId) {
   const data = await graphqlRequest(MY_QUEUE_STATUS_QUERY, { queueId })
   return data.myQueueStatus
+}
+
+/**
+ * Leave the queue while the document is being torn down (refresh, tab close).
+ *
+ * keepalive rather than sendBeacon: the GraphQL endpoint can be configured to another
+ * origin, and sendBeacon cannot preflight an application/json body, so it would simply
+ * fail there. Auth is a cookie, so credentials are all this needs. Best effort by
+ * nature — the browser may still drop it, and nothing downstream can be told if it does.
+ */
+export function leaveQueueOnExit(queueId) {
+  if (!queueId) {
+    return
+  }
+  try {
+    void fetch(getGraphQLUrl(), {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
+      keepalive: true,
+      body: JSON.stringify({ query: LEAVE_QUEUE_MUTATION, variables: { queueId } }),
+    }).catch(() => {})
+  } catch {
+    // The player is leaving either way; there is nobody left to tell.
+  }
 }
 
 export async function leaveQueue(queueId) {
