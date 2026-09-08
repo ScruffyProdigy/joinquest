@@ -210,7 +210,16 @@ func applyManifestTx(ctx context.Context, tx *sql.Tx, game *Game, manifest *game
 			socialMode = existing.SocialMode
 		}
 
-		mode, err := upsertGameModeTx(ctx, tx, game.ID, modeKey, displayName, minPlayers, maxPlayers, socialMode, modeDef.SeatTemplate, modeDef.PreQueue)
+		// Same reasoning as socialMode above: a manifest that predates JQ-161
+		// omits typicalMinutes, and an omission means "unchanged", not "cleared".
+		typicalMinutes := modeDef.TypicalMinutes
+		if typicalMinutes == nil {
+			if existing := existingByKey[modeKey]; existing != nil {
+				typicalMinutes = existing.TypicalMinutes
+			}
+		}
+
+		mode, err := upsertGameModeTx(ctx, tx, game.ID, modeKey, displayName, minPlayers, maxPlayers, socialMode, typicalMinutes, modeDef.SeatTemplate, modeDef.PreQueue)
 		if err != nil {
 			return nil, false, err
 		}
@@ -316,7 +325,7 @@ func (s *Store) GetGameBySlug(ctx context.Context, slug string) (*Game, error) {
 
 func listGameModes(ctx context.Context, q sqlQueryRowContext, gameID uuid.UUID) ([]GameMode, error) {
 	rows, err := q.QueryContext(ctx, `
-		SELECT id, game_id, mode_key, display_name, min_players, max_players, social_mode, pre_queue, status, created_at, updated_at
+		SELECT id, game_id, mode_key, display_name, min_players, max_players, social_mode, typical_minutes, pre_queue, status, created_at, updated_at
 		FROM game_modes
 		WHERE game_id = $1
 		ORDER BY mode_key ASC
@@ -342,10 +351,11 @@ func scanGameModes(rows *sql.Rows) ([]GameMode, error) {
 	for rows.Next() {
 		var mode GameMode
 		var socialMode sql.NullString
+		var typicalMinutes sql.NullInt64
 		var preQueue []byte
 		if err := rows.Scan(
 			&mode.ID, &mode.GameID, &mode.ModeKey, &mode.DisplayName,
-			&mode.MinPlayers, &mode.MaxPlayers, &socialMode, &preQueue, &mode.Status,
+			&mode.MinPlayers, &mode.MaxPlayers, &socialMode, &typicalMinutes, &preQueue, &mode.Status,
 			&mode.CreatedAt, &mode.UpdatedAt,
 		); err != nil {
 			return nil, err
@@ -353,27 +363,29 @@ func scanGameModes(rows *sql.Rows) ([]GameMode, error) {
 		if socialMode.Valid {
 			mode.SocialMode = &socialMode.String
 		}
+		mode.TypicalMinutes = intPtrFromNull(typicalMinutes)
 		mode.PreQueue = json.RawMessage(preQueue)
 		modes = append(modes, mode)
 	}
 	return modes, rows.Err()
 }
 
-func upsertGameModeTx(ctx context.Context, tx *sql.Tx, gameID uuid.UUID, modeKey, displayName string, minPlayers, maxPlayers int, socialMode *string, seatTemplate, preQueue json.RawMessage) (*GameMode, error) {
+func upsertGameModeTx(ctx context.Context, tx *sql.Tx, gameID uuid.UUID, modeKey, displayName string, minPlayers, maxPlayers int, socialMode *string, typicalMinutes *int, seatTemplate, preQueue json.RawMessage) (*GameMode, error) {
 	row := tx.QueryRowContext(ctx, `
-		INSERT INTO game_modes (game_id, mode_key, display_name, min_players, max_players, social_mode, seat_template, pre_queue, status)
-		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, 'active')
+		INSERT INTO game_modes (game_id, mode_key, display_name, min_players, max_players, social_mode, typical_minutes, seat_template, pre_queue, status)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, 'active')
 		ON CONFLICT (game_id, mode_key) DO UPDATE SET
 			display_name = EXCLUDED.display_name,
 			min_players = EXCLUDED.min_players,
 			max_players = EXCLUDED.max_players,
 			social_mode = EXCLUDED.social_mode,
+			typical_minutes = EXCLUDED.typical_minutes,
 			seat_template = EXCLUDED.seat_template,
 			pre_queue = EXCLUDED.pre_queue,
 			status = 'active',
 			updated_at = NOW()
-		RETURNING id, game_id, mode_key, display_name, min_players, max_players, social_mode, seat_template, pre_queue, status, created_at, updated_at
-	`, gameID, modeKey, displayName, minPlayers, maxPlayers, socialMode, seatTemplate, nullJSONColumn(preQueue))
+		RETURNING id, game_id, mode_key, display_name, min_players, max_players, social_mode, typical_minutes, seat_template, pre_queue, status, created_at, updated_at
+	`, gameID, modeKey, displayName, minPlayers, maxPlayers, socialMode, typicalMinutes, seatTemplate, nullJSONColumn(preQueue))
 	return scanGameModeRow(row)
 }
 
@@ -389,10 +401,11 @@ func nullJSONColumn(raw json.RawMessage) any {
 func scanGameModeRow(row *sql.Row) (*GameMode, error) {
 	var mode GameMode
 	var socialMode sql.NullString
+	var typicalMinutes sql.NullInt64
 	var preQueue []byte
 	if err := row.Scan(
 		&mode.ID, &mode.GameID, &mode.ModeKey, &mode.DisplayName,
-		&mode.MinPlayers, &mode.MaxPlayers, &socialMode, &mode.SeatTemplate, &preQueue, &mode.Status,
+		&mode.MinPlayers, &mode.MaxPlayers, &socialMode, &typicalMinutes, &mode.SeatTemplate, &preQueue, &mode.Status,
 		&mode.CreatedAt, &mode.UpdatedAt,
 	); err != nil {
 		return nil, err
@@ -400,8 +413,19 @@ func scanGameModeRow(row *sql.Row) (*GameMode, error) {
 	if socialMode.Valid {
 		mode.SocialMode = &socialMode.String
 	}
+	mode.TypicalMinutes = intPtrFromNull(typicalMinutes)
 	mode.PreQueue = json.RawMessage(preQueue)
 	return &mode, nil
+}
+
+// intPtrFromNull turns a nullable integer column into an optional int, so an
+// undeclared duration stays nil all the way to the card rather than becoming 0.
+func intPtrFromNull(v sql.NullInt64) *int {
+	if !v.Valid {
+		return nil
+	}
+	n := int(v.Int64)
+	return &n
 }
 
 func replaceModeSeatsFromLeavesTx(ctx context.Context, tx *sql.Tx, modeID uuid.UUID, leaves []seattemplate.Leaf) error {

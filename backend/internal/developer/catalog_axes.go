@@ -97,3 +97,29 @@ func ValidateDifficulty(difficulty string) error {
 func ValidateSocialMode(socialMode string) error {
 	return validateOption("social mode", SocialModeTaxonomy, socialMode)
 }
+
+// Typical session length bounds, in minutes (JQ-161).
+//
+// Duration is a number rather than a vocabulary, so it has bounds instead of
+// options. The ceiling is deliberately loose: a day is far past any session a
+// lobby can hold players through, so it rejects what cannot be a duration at
+// all without second-guessing an unusually long game. It is not a unit check —
+// a mode that sends 12 minutes as 720 seconds lands inside the range and the
+// card will believe it.
+const (
+	MinTypicalMinutes = 1
+	MaxTypicalMinutes = 1440
+)
+
+// ValidateTypicalMinutes accepts a mode's declared session length, or nil when
+// the developer has not declared one — the field is optional and a mode without
+// it simply shows no duration.
+func ValidateTypicalMinutes(minutes *int) error {
+	if minutes == nil {
+		return nil
+	}
+	if *minutes < MinTypicalMinutes || *minutes > MaxTypicalMinutes {
+		return fmt.Errorf("developer: typicalMinutes %d out of range (%d-%d)", *minutes, MinTypicalMinutes, MaxTypicalMinutes)
+	}
+	return nil
+}

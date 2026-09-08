@@ -150,3 +150,99 @@ func TestRegisterGameAndRefreshManifest(t *testing.T) {
 		t.Fatalf("expected updated mode display name, got %+v", modes)
 	}
 }
+
+// A mode's declared duration round-trips, and a later manifest that omits it
+// leaves the stored value alone (JQ-161). An omission means the developer has
+// not re-declared, not that they have withdrawn the duration — the same rule
+// socialMode follows.
+func TestApplyManifestKeepsTypicalMinutesWhenOmitted(t *testing.T) {
+	st := openTestStore(t)
+	cleaner := st.NewTestCleaner(t)
+	ctx := context.Background()
+
+	minutes := 12
+	slug := "catalog-" + uuid.NewString()
+	manifest := sampleManifest()
+	manifest.SHA256Hash = uuid.NewString()
+	manifest.Modes[0].TypicalMinutes = &minutes
+
+	result, err := st.RegisterGame(ctx, RegisterGameParams{
+		Slug:       slug,
+		IconURL:    "/games/default.svg",
+		HeroURL:    "/games/default-hero.svg",
+		APIBaseURL: "https://api.example.com/" + slug,
+	}, manifest)
+	if err != nil {
+		t.Fatalf("RegisterGame failed: %v", err)
+	}
+	cleaner.TrackGame(result.Game.ID)
+
+	modes, err := st.ListGameModesByGameID(ctx, result.Game.ID)
+	if err != nil {
+		t.Fatalf("ListGameModesByGameID failed: %v", err)
+	}
+	if modes[0].TypicalMinutes == nil || *modes[0].TypicalMinutes != minutes {
+		t.Fatalf("expected typical minutes %d, got %v", minutes, modes[0].TypicalMinutes)
+	}
+
+	omitted := sampleManifest()
+	omitted.SHA256Hash = uuid.NewString()
+	if _, err := st.ApplyGameManifest(ctx, result.Game.ID, omitted); err != nil {
+		t.Fatalf("ApplyGameManifest failed: %v", err)
+	}
+
+	modes, err = st.ListGameModesByGameID(ctx, result.Game.ID)
+	if err != nil {
+		t.Fatalf("ListGameModesByGameID failed: %v", err)
+	}
+	if modes[0].TypicalMinutes == nil || *modes[0].TypicalMinutes != minutes {
+		t.Fatalf("expected the stored duration to survive an omitting manifest, got %v", modes[0].TypicalMinutes)
+	}
+
+	changed := 20
+	updated := sampleManifest()
+	updated.SHA256Hash = uuid.NewString()
+	updated.Modes[0].TypicalMinutes = &changed
+	if _, err := st.ApplyGameManifest(ctx, result.Game.ID, updated); err != nil {
+		t.Fatalf("ApplyGameManifest failed: %v", err)
+	}
+
+	modes, err = st.ListGameModesByGameID(ctx, result.Game.ID)
+	if err != nil {
+		t.Fatalf("ListGameModesByGameID failed: %v", err)
+	}
+	if modes[0].TypicalMinutes == nil || *modes[0].TypicalMinutes != changed {
+		t.Fatalf("expected a re-declared duration to win, got %v", modes[0].TypicalMinutes)
+	}
+}
+
+// A mode with no declared duration stays null rather than becoming zero, so the
+// card can tell "not declared" from "declared as nothing".
+func TestApplyManifestLeavesTypicalMinutesNullWhenNeverDeclared(t *testing.T) {
+	st := openTestStore(t)
+	cleaner := st.NewTestCleaner(t)
+	ctx := context.Background()
+
+	slug := "catalog-" + uuid.NewString()
+	manifest := sampleManifest()
+	manifest.SHA256Hash = uuid.NewString()
+
+	result, err := st.RegisterGame(ctx, RegisterGameParams{
+		Slug:       slug,
+		IconURL:    "/games/default.svg",
+		HeroURL:    "/games/default-hero.svg",
+		APIBaseURL: "https://api.example.com/" + slug,
+	}, manifest)
+	if err != nil {
+		t.Fatalf("RegisterGame failed: %v", err)
+	}
+	cleaner.TrackGame(result.Game.ID)
+
+	modes, err := st.ListGameModesByGameID(ctx, result.Game.ID)
+	if err != nil {
+		t.Fatalf("ListGameModesByGameID failed: %v", err)
+	}
+	if modes[0].TypicalMinutes != nil {
+		t.Fatalf("expected no duration, got %d", *modes[0].TypicalMinutes)
+	}
+}

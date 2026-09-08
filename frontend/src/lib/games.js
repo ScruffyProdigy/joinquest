@@ -9,6 +9,7 @@ const GAME_MODE_FIELDS = `
     status
     minPlayers
     maxPlayers
+    typicalMinutes
     queuePaths {
       queuePath
       displayName

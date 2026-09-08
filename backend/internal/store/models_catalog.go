@@ -66,14 +66,18 @@ func (g *Game) AllowsRoomTables() bool {
 }
 
 type GameMode struct {
-	ID           uuid.UUID
-	GameID       uuid.UUID
-	ModeKey      string
-	DisplayName  string
-	MinPlayers   int
-	MaxPlayers   int
-	SocialMode   *string
-	SeatTemplate json.RawMessage
+	ID          uuid.UUID
+	GameID      uuid.UUID
+	ModeKey     string
+	DisplayName string
+	MinPlayers  int
+	MaxPlayers  int
+	SocialMode  *string
+	// TypicalMinutes is the mode's declared session length, or nil when the
+	// developer has not declared one. Per mode rather than per game: a game's
+	// Arena and Duel modes genuinely run for different lengths.
+	TypicalMinutes *int
+	SeatTemplate   json.RawMessage
 	// PreQueue is the mode's option-group declaration, or nil when the mode has
 	// no pre-queue step. The choices inside the groups are per player and never
 	// stored here — see internal/prequeue.

@@ -37,7 +37,10 @@ describe('GameCard', () => {
   })
 
   it('orders the metadata row genre, players, duration', () => {
-    renderCard({ ...baseGame, durationMinutes: 12 })
+    renderCard({
+      ...baseGame,
+      modes: [{ id: 'mode-1', status: 'active', minPlayers: 2, maxPlayers: 8, typicalMinutes: 12 }],
+    })
 
     const labels = screen.getByText('Words & Trivia').closest('div')
     expect(labels.textContent).toBe('Words & Trivia2–812 min')

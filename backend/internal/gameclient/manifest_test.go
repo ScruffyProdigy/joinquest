@@ -6,6 +6,8 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"testing"
+
+	"github.com/scruffyprodigy/joinquest/internal/developer"
 )
 
 func newManifestTestServer(t *testing.T) *httptest.Server {
@@ -99,5 +101,49 @@ func TestValidateModesRejectsFlatSeats(t *testing.T) {
 	}})
 	if err == nil {
 		t.Fatal("expected validation error for flat seats[]")
+	}
+}
+
+func TestParseGameModesReadsTypicalMinutes(t *testing.T) {
+	modes, err := parseGameModes([]byte(`{
+		"modes": [
+			{"key": "arena", "displayName": "Arena", "typicalMinutes": 12, "seatTemplate": {"count": 8}},
+			{"key": "duel", "displayName": "Duel", "seatTemplate": {"count": 2}}
+		]
+	}`))
+	if err != nil {
+		t.Fatalf("parseGameModes failed: %v", err)
+	}
+	if modes[0].TypicalMinutes == nil || *modes[0].TypicalMinutes != 12 {
+		t.Fatalf("expected arena to declare 12 minutes, got %v", modes[0].TypicalMinutes)
+	}
+	// A mode that omits the field stays nil rather than becoming zero, so the
+	// store can tell "not declared" from "declared as nothing".
+	if modes[1].TypicalMinutes != nil {
+		t.Fatalf("expected duel to carry no duration, got %v", *modes[1].TypicalMinutes)
+	}
+}
+
+func TestValidateModesRejectsOutOfRangeTypicalMinutes(t *testing.T) {
+	tooLong := developer.MaxTypicalMinutes + 1
+	err := validateModes([]ModeManifest{{
+		Key:            "arena",
+		DisplayName:    "Arena",
+		TypicalMinutes: &tooLong,
+		SeatTemplate:   json.RawMessage(`{"count":8}`),
+	}})
+	if err == nil {
+		t.Fatal("expected validation error for a duration outside the allowed range")
+	}
+}
+
+func TestValidateModesAllowsAbsentTypicalMinutes(t *testing.T) {
+	err := validateModes([]ModeManifest{{
+		Key:          "arena",
+		DisplayName:  "Arena",
+		SeatTemplate: json.RawMessage(`{"count":8}`),
+	}})
+	if err != nil {
+		t.Fatalf("expected a mode without a duration to validate: %v", err)
 	}
 }

@@ -48,6 +48,7 @@ Read their description and identify gaps. You need enough to draft registration 
 | Structure | seatTemplate | duel, free-for-all, teams, or roles |
 | Genre | `genre` | action, strategy, deduction, words & trivia, drawing & creative, or puzzle |
 | Social mode | `socialMode` on each mode | free-for-all, 1v1, teams, hidden roles, or co-op — ask per mode, they often differ |
+| Session length | `typicalMinutes` on each mode | roughly how long one round runs — ask per mode, a Duel is usually shorter than an Arena |
 | Difficulty | `difficulty` | how much a new player must know before their first round is fun |
 | Vibe / audience | catalog voice | brainy, chaotic, tactical, etc. — copy, not a field |
 | API URL | registration | public HTTPS hosting plan (not localhost) |
@@ -62,6 +63,7 @@ Read their description and identify gaps. You need enough to draft registration 
 | `genre` | exactly one id from `joinquest_integration_get_catalog_tag_taxonomy` → `genre` |
 | `difficulty` | optional; one id from the same tool's `difficulty` list |
 | `socialMode` | one id per **mode**, declared in the game's `/api/v1/game-modes` — not in metadata |
+| `typicalMinutes` | optional; whole minutes (1–1440) per **mode**, declared in `/api/v1/game-modes` — not in metadata |
 | `seatTemplate` plan | Point to integration guide §4 + seat-templates cookbook (duel, teams, roles) |
 
 **Voice:** Plain, player-first. “Find your group. Play together.” — not “enter matchmaking” or JWT jargon.
@@ -277,10 +279,15 @@ Common fixes:
 
 Empty `websiteUrl` / `communityUrl` / `accentColor` / `genre` / `difficulty` clears those optional fields. Slug is not editable.
 
-`socialMode` is deliberately absent here: it is a property of a mode, not of the
-game, so it is declared in `GET /api/v1/game-modes` alongside `seatTemplate`. A
-game whose Arena is free-for-all and whose Duel is 1v1 cannot say that with one
-game-level value.
+`socialMode` and `typicalMinutes` are deliberately absent here: both are
+properties of a mode, not of the game, so they are declared in
+`GET /api/v1/game-modes` alongside `seatTemplate`. A game whose Arena is
+free-for-all and runs 12 minutes, and whose Duel is 1v1 and runs 5, cannot say
+either with one game-level value.
+
+Take `typicalMinutes` from the developer rather than guessing it, and leave it
+out when they are not sure — an omitted duration shows no session length on the
+catalog card, while a wrong one is a promise to players that the game breaks.
 
 The flat `tags` field was retired in JQ-162 — writing it is no longer possible,
 and existing games were migrated onto the axes automatically.

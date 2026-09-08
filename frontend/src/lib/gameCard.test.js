@@ -14,6 +14,7 @@ import {
   modeSocialModeLabel,
   gameCardMeta,
   gameDurationLabel,
+  modeDurationLabel,
   gameTitleArtStyle,
   gameTitleArtUrl,
 } from './gameCard'
@@ -144,21 +145,69 @@ describe('gameCard', () => {
     expect(gameLiveActivityLabel(undefined)).toBeNull()
   })
 
-  it('gameDurationLabel formats a session length', () => {
-    expect(gameDurationLabel({ durationMinutes: 12 })).toBe('12 min')
+  it('modeDurationLabel formats a single mode session length', () => {
+    expect(modeDurationLabel({ typicalMinutes: 12 })).toBe('12 min')
+    expect(modeDurationLabel({ typicalMinutes: 60 })).toBe('1h')
+    expect(modeDurationLabel({ typicalMinutes: 90 })).toBe('1h 30m')
+    expect(modeDurationLabel({})).toBeNull()
   })
 
-  it('gameDurationLabel returns null until a game carries a duration', () => {
-    expect(gameDurationLabel({})).toBeNull()
-    expect(gameDurationLabel({ durationMinutes: 0 })).toBeNull()
+  it('gameDurationLabel collapses to one value when the modes agree', () => {
+    expect(
+      gameDurationLabel([
+        { status: 'active', typicalMinutes: 12 },
+        { status: 'active', typicalMinutes: 12 },
+      ]),
+    ).toBe('12 min')
+  })
+
+  it('gameDurationLabel shows the spread across modes, like the player range', () => {
+    expect(
+      gameDurationLabel([
+        { status: 'active', typicalMinutes: 12 },
+        { status: 'active', typicalMinutes: 5 },
+      ]),
+    ).toBe('5–12 min')
+  })
+
+  it('gameDurationLabel spells out both ends once they need different units', () => {
+    expect(
+      gameDurationLabel([
+        { status: 'active', typicalMinutes: 40 },
+        { status: 'active', typicalMinutes: 70 },
+      ]),
+    ).toBe('40 min–1h 10m')
+  })
+
+  it('gameDurationLabel ignores modes that declare no duration', () => {
+    expect(
+      gameDurationLabel([
+        { status: 'active', typicalMinutes: 12 },
+        { status: 'active' },
+      ]),
+    ).toBe('12 min')
+  })
+
+  it('gameDurationLabel skips inactive modes', () => {
+    expect(
+      gameDurationLabel([
+        { status: 'active', typicalMinutes: 12 },
+        { status: 'inactive', typicalMinutes: 45 },
+      ]),
+    ).toBe('12 min')
+  })
+
+  it('gameDurationLabel returns null until a mode carries a duration', () => {
+    expect(gameDurationLabel([{ status: 'active' }])).toBeNull()
+    expect(gameDurationLabel([{ status: 'active', typicalMinutes: 0 }])).toBeNull()
+    expect(gameDurationLabel([])).toBeNull()
     expect(gameDurationLabel(undefined)).toBeNull()
   })
 
   it('gameCardMeta orders genre, then players, then duration', () => {
     const meta = gameCardMeta({
       genre: 'words-trivia',
-      modes: [{ status: 'active', minPlayers: 2, maxPlayers: 8 }],
-      durationMinutes: 12,
+      modes: [{ status: 'active', minPlayers: 2, maxPlayers: 8, typicalMinutes: 12 }],
     })
 
     expect(meta.map((pill) => pill.key)).toEqual(['genre', 'players', 'duration'])
