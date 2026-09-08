@@ -79,11 +79,12 @@ function ModeRow({
   }
 
   // requireIdentity replays the closure it was handed, and by then the session
-  // is not the one the visitor clicked with. refreshRoom is rebuilt whenever the
-  // session changes and clears the room when it holds no user, so a replay of
-  // the *captured* one wipes the room it just created and the group screen
-  // reports itself ended. Going through a ref means the replay runs against the
-  // session the visitor now has.
+  // is not the one the visitor clicked with. refreshRoom is safe on its own now
+  // — ActiveRoomProvider reads the session at call time (JQ-202) — but
+  // onTableChange is useActiveIntent's refresh, and that one is still rebuilt
+  // per session and clears its state when it holds no user, so a replay of the
+  // *captured* one wipes the banner for the table just created. Going through a
+  // ref means the replay runs against the session the visitor now has.
   const runStartGroupRef = useRef(null)
   runStartGroupRef.current = async () => {
     await createPrivateTable(game.id, mode.id)

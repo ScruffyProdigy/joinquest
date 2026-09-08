@@ -58,6 +58,12 @@ export function ActiveRoomProvider({ children, pendingInviteCode = null }) {
   const [memberHint, setMemberHint] = useState(() => readRoomMemberHint())
   const [tableSeatInviteCode, setTableSeatInviteCode] = useState('')
   const unsubscribeRef = useRef(null)
+  // Callers legitimately hold on to callbacks across a sign-in, a guest session
+  // being created, or a sign-out — `requireIdentity` replays the closure it was
+  // handed (JQ-84). Reading the session through a ref means those callbacks act
+  // on the session the player has now, not the one their render captured.
+  const userRef = useRef(user)
+  userRef.current = user
 
   const hasRoomMembership = useMemo(
     () => Boolean(room?.inviteCode || memberHint || tableSeatInviteCode),
@@ -170,10 +176,11 @@ export function ActiveRoomProvider({ children, pendingInviteCode = null }) {
   }, [applyRoom])
 
   const refresh = useCallback(async () => {
-    if (!user) {
-      setRoom(null)
-      setMessages([])
-      setRoomOpen(false)
+    // Signed out, `refresh` is a no-op rather than a reset: clearing the room is
+    // owned by the sign-out effect below, which fires when the session actually
+    // changes. A caller holding a stale `refresh` must never be able to wipe the
+    // room that a newer session just loaded.
+    if (!userRef.current) {
       return null
     }
     setLoading(true)
@@ -194,7 +201,7 @@ export function ActiveRoomProvider({ children, pendingInviteCode = null }) {
     } finally {
       setLoading(false)
     }
-  }, [user, loadRoomSnapshot])
+  }, [loadRoomSnapshot])
 
   useEffect(() => {
     if (authLoading || !user) {
@@ -442,6 +449,10 @@ export function ActiveRoomProvider({ children, pendingInviteCode = null }) {
   return <ActiveRoomContext.Provider value={value}>{children}</ActiveRoomContext.Provider>
 }
 
+// The accessor hook lives with its provider, the way useAuth and
+// useIdentityPrompt do. Splitting it out to satisfy fast refresh would move
+// every consumer's import for no gain at runtime.
+// eslint-disable-next-line react-refresh/only-export-components
 export function useActiveRoom() {
   const context = useContext(ActiveRoomContext)
   if (!context) {
