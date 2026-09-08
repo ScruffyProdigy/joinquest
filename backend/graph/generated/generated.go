@@ -189,6 +189,7 @@ type ComplexityRoot struct {
 		Seats          func(childComplexity int) int
 		SocialMode     func(childComplexity int) int
 		Status         func(childComplexity int) int
+		TypicalMinutes func(childComplexity int) int
 	}
 
 	GameModeQueuePath struct {
@@ -1425,6 +1426,12 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.GameMode.Status(childComplexity), true
+	case "GameMode.typicalMinutes":
+		if e.complexity.GameMode.TypicalMinutes == nil {
+			break
+		}
+
+		return e.complexity.GameMode.TypicalMinutes(childComplexity), true
 
 	case "GameModeQueuePath.displayName":
 		if e.complexity.GameModeQueuePath.DisplayName == nil {
@@ -4010,6 +4017,20 @@ type GameMode {
   disagree: an Arena mode is free-for-all while the same game's Duel is 1v1.
   """
   socialMode: String
+  """
+  How long a round of this mode usually runs, in whole minutes — the number the
+  catalog card paints as "12 min". Null when the game's manifest does not
+  declare one, in which case the card shows no duration rather than a guess.
+
+  Per mode for the same reason ` + "`" + `socialMode` + "`" + ` is: a game's Arena and Duel modes
+  run for genuinely different lengths.
+
+  This is the resolved duration, not the raw declaration. Today it is only ever
+  what the developer declared; when the lobby has enough match start/end times
+  to measure a mode honestly, the measurement supersedes the declaration here,
+  so a client that reads this field keeps reading the best answer available.
+  """
+  typicalMinutes: Int
   seats: [GameModeSeat!]!
   """Join options with human labels and per-cohort fire sizes."""
   queuePaths: [GameModeQueuePath!]!
@@ -8008,6 +8029,8 @@ func (ec *executionContext) fieldContext_Game_modes(_ context.Context, field gra
 				return ec.fieldContext_GameMode_status(ctx, field)
 			case "socialMode":
 				return ec.fieldContext_GameMode_socialMode(ctx, field)
+			case "typicalMinutes":
+				return ec.fieldContext_GameMode_typicalMinutes(ctx, field)
 			case "seats":
 				return ec.fieldContext_GameMode_seats(ctx, field)
 			case "queuePaths":
@@ -8556,6 +8579,35 @@ func (ec *executionContext) fieldContext_GameMode_socialMode(_ context.Context, 
 		IsResolver: false,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _GameMode_typicalMinutes(ctx context.Context, field graphql.CollectedField, obj *model.GameMode) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_GameMode_typicalMinutes,
+		func(ctx context.Context) (any, error) {
+			return obj.TypicalMinutes, nil
+		},
+		nil,
+		ec.marshalOInt2ᚖint,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_GameMode_typicalMinutes(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "GameMode",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Int does not have child fields")
 		},
 	}
 	return fc, nil
@@ -9834,6 +9886,8 @@ func (ec *executionContext) fieldContext_MatchResult_mode(_ context.Context, fie
 				return ec.fieldContext_GameMode_status(ctx, field)
 			case "socialMode":
 				return ec.fieldContext_GameMode_socialMode(ctx, field)
+			case "typicalMinutes":
+				return ec.fieldContext_GameMode_typicalMinutes(ctx, field)
 			case "seats":
 				return ec.fieldContext_GameMode_seats(ctx, field)
 			case "queuePaths":
@@ -20258,6 +20312,8 @@ func (ec *executionContext) fieldContext_Table_mode(_ context.Context, field gra
 				return ec.fieldContext_GameMode_status(ctx, field)
 			case "socialMode":
 				return ec.fieldContext_GameMode_socialMode(ctx, field)
+			case "typicalMinutes":
+				return ec.fieldContext_GameMode_typicalMinutes(ctx, field)
 			case "seats":
 				return ec.fieldContext_GameMode_seats(ctx, field)
 			case "queuePaths":
@@ -24382,6 +24438,8 @@ func (ec *executionContext) _GameMode(ctx context.Context, sel ast.SelectionSet,
 			}
 		case "socialMode":
 			out.Values[i] = ec._GameMode_socialMode(ctx, field, obj)
+		case "typicalMinutes":
+			out.Values[i] = ec._GameMode_typicalMinutes(ctx, field, obj)
 		case "seats":
 			field := field
 

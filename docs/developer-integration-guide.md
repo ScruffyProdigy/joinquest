@@ -32,6 +32,7 @@ Read their description and identify gaps. Ask follow-ups conversationally — on
 | Structure | seatTemplate | duel, free-for-all, teams, or roles |
 | Genre | `genre` | what the game is *about*: action, strategy, deduction, words, drawing, puzzle |
 | Social mode | `socialMode` per mode | free-for-all, 1v1, teams, hidden roles, or co-op — ask per mode, they often differ |
+| Session length | `typicalMinutes` per mode | roughly how long one round runs — ask per mode, a Duel is usually shorter than an Arena |
 | Difficulty | `difficulty` | how much a new player must know before their first round is fun |
 | Vibe / audience | catalog voice | brainy, chaotic, tactical, etc. — copy, not a field |
 | API URL | registration | public HTTPS hosting plan (not localhost) |
@@ -133,6 +134,19 @@ neither. Pick the one a player would use to find you.
 Declared on each mode in `GET /api/v1/game-modes`, not through
 `updateMyGameMetadata` — see [seat manifest](#4-seat-manifest-seattemplate) below.
 
+### `typicalMinutes` — how long a round runs (per **mode**, optional)
+
+A whole number of minutes, 1–1440. The catalog card paints it beside the player
+count: `12` shows as "12 min", `90` as "1h 30m". A game whose modes declare
+different lengths shows the spread, e.g. "5–12 min".
+
+Give your own honest estimate of a typical round — not the fastest possible one,
+and not a hard cap. Leave it out if you genuinely don't know yet: a mode without
+it simply shows no session length, which is better than a number players will
+find wrong. You can add it whenever you next publish.
+
+Declared on each mode in `GET /api/v1/game-modes`, like `socialMode`.
+
 Query `genreTaxonomy`, `difficultyTaxonomy` and `socialModeTaxonomy` for the
 machine-readable lists, or call
 `joinquest_integration_get_catalog_tag_taxonomy`, which returns all three.
@@ -140,8 +154,9 @@ machine-readable lists, or call
 > **Retired (JQ-162).** The `tags` field and its eight ids — `competitive`,
 > `cooperative`, `party`, `1v1`, `quick`, `words`, `strategy`, `casual` — are no
 > longer writable. Existing games were migrated automatically; nothing to
-> re-enter. `quick` has no replacement yet: per-mode duration arrives with
-> JQ-161.
+> re-enter. `quick` is replaced by the per-mode `typicalMinutes` below — a
+> number rather than a boolean, so declare it and the card shows the real
+> length.
 
 ---
 
@@ -162,16 +177,18 @@ Each mode needs `minPlayers`, `maxPlayers`, and a `seatTemplate` Lobby expands i
 Flat `seats[]` arrays are **rejected**. Use `count` or nested `Team` / role nodes.
 
 Each mode also carries an optional `socialMode` — its
-[social shape](#catalog-axes). It lives here rather than on the game because a
-game's modes disagree: the same game's Arena is `free-for-all` and its Duel is
-`1v1`. An unknown id is rejected at sync; omitting it leaves the mode's current
-value alone.
+[social shape](#catalog-axes) — and an optional `typicalMinutes`, its
+[session length](#typicalminutes--how-long-a-round-runs-per-mode-optional). Both
+live here rather than on the game because a game's modes disagree: the same
+game's Arena is `free-for-all` and runs about 12 minutes while its Duel is `1v1`
+and runs about 5. A value outside 1–1440, or an unknown `socialMode` id, is
+rejected at sync; omitting either leaves the mode's current value alone.
 
 ```json
 {
   "modes": [
-    { "key": "arena", "displayName": "Arena", "socialMode": "free-for-all", "seatTemplate": { "count": 8 } },
-    { "key": "duel", "displayName": "Duel", "socialMode": "1v1", "seatTemplate": { "count": 2 } }
+    { "key": "arena", "displayName": "Arena", "socialMode": "free-for-all", "typicalMinutes": 12, "seatTemplate": { "count": 8 } },
+    { "key": "duel", "displayName": "Duel", "socialMode": "1v1", "typicalMinutes": 5, "seatTemplate": { "count": 2 } }
   ]
 }
 ```

@@ -155,13 +155,58 @@ export function gamePlayerRangeLabel(modes) {
   return `${min}–${max}`
 }
 
-/** Session-length pill label, e.g. "12 min". Null until a game carries a duration. */
-export function gameDurationLabel(game) {
-  const minutes = Number(game?.durationMinutes)
-  if (!Number.isFinite(minutes) || minutes <= 0) {
+/**
+ * Format a session length the way the prototype's cards do: "12 min" below an
+ * hour, "1h" and "1h 30m" above it. Null when there is no usable number.
+ */
+function durationLabel(minutes) {
+  const value = Number(minutes)
+  if (!Number.isFinite(value) || value <= 0) {
     return null
   }
-  return `${Math.round(minutes)} min`
+  const whole = Math.round(value)
+  if (whole < 60) {
+    return `${whole} min`
+  }
+  const hours = Math.floor(whole / 60)
+  const rest = whole % 60
+  return rest === 0 ? `${hours}h` : `${hours}h ${rest}m`
+}
+
+/** One mode's session length, e.g. "12 min". Null when the mode declares none. */
+export function modeDurationLabel(mode) {
+  return durationLabel(mode?.typicalMinutes)
+}
+
+/**
+ * Session-length pill label aggregated across active modes, e.g. "5–12 min".
+ *
+ * Duration is declared per mode — Word Hunt's Arena runs about 12 minutes and
+ * its Duel about 5 — but the catalog card is about the whole game, so it shows
+ * the spread the same way the player-range pill beside it does, and collapses to
+ * a single value when the modes agree. Modes with no declared duration are left
+ * out rather than counted as zero; a game where none declare one gets no pill.
+ */
+export function gameDurationLabel(modes) {
+  const declared = (Array.isArray(modes) ? modes : [])
+    .filter((mode) => mode?.status === 'active')
+    .map((mode) => Number(mode?.typicalMinutes))
+    .filter((minutes) => Number.isFinite(minutes) && minutes > 0)
+  if (declared.length === 0) {
+    return null
+  }
+  const min = Math.min(...declared)
+  const max = Math.max(...declared)
+  if (min === max) {
+    return durationLabel(min)
+  }
+  // While both ends share a unit only the upper bound spells it out, so the pill
+  // reads as one range rather than as two durations sharing a dash. Once they
+  // differ ("40 min" to "1h 10m") both need their own.
+  if (max < 60) {
+    return `${Math.round(min)}–${durationLabel(max)}`
+  }
+  return `${durationLabel(min)}–${durationLabel(max)}`
 }
 
 /**
@@ -177,7 +222,7 @@ export function gameCardMeta(game) {
   return [
     { key: 'genre', icon: null, label: gameGenreLabel(game) },
     { key: 'players', icon: 'players', label: gamePlayerRangeLabel(game?.modes) },
-    { key: 'duration', icon: 'duration', label: gameDurationLabel(game) },
+    { key: 'duration', icon: 'duration', label: gameDurationLabel(game?.modes) },
   ].filter((pill) => Boolean(pill.label))
 }
 

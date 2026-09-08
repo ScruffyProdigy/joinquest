@@ -220,7 +220,10 @@ func ToGraphQLGameMode(mode *store.GameMode) *model.GameMode {
 		MinPlayers:  mode.MinPlayers,
 		MaxPlayers:  mode.MaxPlayers,
 		SocialMode:  mode.SocialMode,
-		Status:      mode.Status,
+		// The resolved duration is the declaration for now; when measured
+		// durations land they replace what is read here, not this field.
+		TypicalMinutes: mode.TypicalMinutes,
+		Status:         mode.Status,
 	}
 	return result
 }

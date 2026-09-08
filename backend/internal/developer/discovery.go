@@ -23,6 +23,7 @@ Read what they shared and identify gaps. You need enough to draft catalog copy a
 | Structure | seatTemplate | duel, free-for-all, teams, or roles |
 | Genre | genre | action, strategy, deduction, words & trivia, drawing & creative, or puzzle |
 | Social mode | socialMode on each mode | free-for-all, 1v1, teams, hidden roles, or co-op — ask per mode, they often differ |
+| Session length | typicalMinutes on each mode | roughly how long one round runs — ask per mode, a Duel is usually shorter than an Arena |
 | Difficulty | difficulty | how much a new player must know before their first round is fun |
 | Vibe / audience | catalog voice | brainy, chaotic, tactical, etc. — copy, not a field |
 | API URL | registration | public HTTPS hosting plan (not localhost) |
@@ -33,6 +34,7 @@ Read what they shared and identify gaps. You need enough to draft catalog copy a
 - howToPlay (3–6 bullet steps)
 - genre (exactly one ID from genreTaxonomy) and difficulty (optional, from difficultyTaxonomy)
 - socialMode per mode, declared in the game's /api/v1/game-modes rather than in metadata
+- typicalMinutes per mode (optional, 1-1440), declared in the same place — take the developer's own estimate and leave it out when they are unsure
 - seatTemplate guidance (point to seat-templates cookbook: duel, 3v3, composition)
 
 Always show drafts to the developer for approval before calling updateMyGameMetadata.

@@ -55,3 +55,42 @@ func TestAxisIDsAreStable(t *testing.T) {
 		}
 	}
 }
+
+func TestValidateTypicalMinutes(t *testing.T) {
+	minutes := func(n int) *int { return &n }
+
+	if err := ValidateTypicalMinutes(nil); err != nil {
+		t.Fatalf("expected an undeclared duration to be allowed: %v", err)
+	}
+	if err := ValidateTypicalMinutes(minutes(12)); err != nil {
+		t.Fatalf("expected a typical duration to be valid: %v", err)
+	}
+	if err := ValidateTypicalMinutes(minutes(MinTypicalMinutes)); err != nil {
+		t.Fatalf("expected the lower bound to be valid: %v", err)
+	}
+	if err := ValidateTypicalMinutes(minutes(MaxTypicalMinutes)); err != nil {
+		t.Fatalf("expected the upper bound to be valid: %v", err)
+	}
+	// Zero is a declaration, not an omission, so it fails rather than quietly
+	// reading as "no duration".
+	if err := ValidateTypicalMinutes(minutes(0)); err == nil {
+		t.Fatal("expected zero minutes to fail")
+	}
+	if err := ValidateTypicalMinutes(minutes(-5)); err == nil {
+		t.Fatal("expected a negative duration to fail")
+	}
+	// Past a day it cannot be a session length at all.
+	if err := ValidateTypicalMinutes(minutes(MaxTypicalMinutes + 1)); err == nil {
+		t.Fatal("expected an out-of-range duration to fail")
+	}
+}
+
+// The CHECK constraint in migration 000053 is the other half of this validation;
+// widening the bounds here without widening the migration would pass validation
+// and then fail on write.
+func TestTypicalMinutesBoundsMatchMigration(t *testing.T) {
+	if MinTypicalMinutes != 1 || MaxTypicalMinutes != 1440 {
+		t.Fatalf("bounds changed to %d-%d; update game_modes_typical_minutes_check in migration 000053",
+			MinTypicalMinutes, MaxTypicalMinutes)
+	}
+}
