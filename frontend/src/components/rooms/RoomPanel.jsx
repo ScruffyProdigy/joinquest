@@ -26,6 +26,12 @@ function mergeMessage(messages, incoming) {
   return [...messages, incoming]
 }
 
+// Unreachable in production since JQ-206: the dock, the room sheet and the
+// desktop room panel that mounted this are gone, so there is no route to room
+// chat. Kept, not deleted, on the JQ-132 rule — the room substrate (chat,
+// members, tables, invite codes) stays whole in the schema and the API so the
+// surface can return by being revealed rather than rebuilt. Its tests still run.
+// TableCard is unreachable for the same reason, and only through this file.
 export default function RoomPanel({ compact = false }) {
   const { user, loading: authLoading } = useAuth()
   const {
