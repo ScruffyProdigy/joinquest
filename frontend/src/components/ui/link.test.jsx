@@ -25,10 +25,11 @@ describe('Link', () => {
     expect(screen.getByRole('button')).toHaveAttribute('type', 'submit')
   })
 
-  it('keeps the default inline variant neutral, reserving the brand colour for CTAs', () => {
+  it('gives an inline link its own colour, never the brand one', () => {
     render(<Link href="/">Home</Link>)
     const link = screen.getByRole('link')
-    expect(link).toHaveClass('text-foreground')
+    expect(link).toHaveClass('text-link')
+    // --primary is reserved for the option we want clicked, which is `pill`.
     expect(link).not.toHaveClass('text-primary')
   })
 

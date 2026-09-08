@@ -44,7 +44,7 @@ export default function StylePreviewPage() {
           Nothing here underlines, in any state. <code>href</code> picks the element: an anchor
           for navigation, a button for an action that only runs a handler. Only the pill carries
           the brand colour — it is the option we want clicked. An inline link is navigation, so it
-          stays neutral and separates itself by weight.
+          takes its own <code>--link</code> colour and its weight, never the brand's.
         </p>
         <p className="text-sm">
           An <Link href="#links">Inline link</Link> sits inside a sentence.
