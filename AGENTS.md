@@ -121,11 +121,20 @@ Never edit `backend/internal/developer/*.md` or `.agents/.../playbook.md` direct
 2. `cd backend && make migrate-up` locally
 3. Update `backend/internal/store/` + tests
 
-## Shipping (human approval required)
+## Shipping
 
-Do **not** commit, push, deploy, or publish unless the user explicitly asks.
+**Open a PR as soon as there is code worth reviewing.** A branch with a PR is how
+review happens here, so commit, push the branch, and open the PR yourself rather than
+leaving finished work sitting uncommitted in a worktree — do not wait to be asked.
+Draft it if it is not ready; say what you verified in the description.
 
-Pre-ship checks:
+- Code always goes on a branch with a PR — never commit or push code to `main` directly.
+- Documentation-only changes are the exception: they do not need a PR (see *Plans and
+  specs* above).
+- Deploying and publishing are still gated on explicit approval, every time — a merged
+  PR is not approval to ship.
+
+Pre-ship checks (human approval required from here down):
 
 ```bash
 ./scripts/ship-joinquest.sh --check
@@ -153,7 +162,7 @@ Full runbook: [docs/lobby-maintenance.md](docs/lobby-maintenance.md).
 - **Match existing style** — Go: `gofmt`, store layer for DB; frontend: JSX + Vitest
 - **No secrets** — never commit `.env`, API keys, k8s secrets, or `.DS_Store`
 - **Tests** — add store/resolver tests for backend logic; component/lib tests for dashboard changes
-- **Human gates** — production deploy, npm publish, and git push require explicit user approval
+- **Human gates** — production deploy and npm publish require explicit user approval. Opening a PR does not: that is how work gets reviewed
 
 ## Key docs
 
