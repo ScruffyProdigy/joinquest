@@ -140,6 +140,9 @@ export function AuthProvider({ children }) {
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>
 }
 
+// The hook lives next to the provider on purpose — it is useless without it.
+// That costs this file fast refresh, which is a fair trade for one module.
+// eslint-disable-next-line react-refresh/only-export-components
 export function useAuth() {
   const context = useContext(AuthContext)
   if (!context) {
