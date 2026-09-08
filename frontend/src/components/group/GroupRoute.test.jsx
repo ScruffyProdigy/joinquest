@@ -3,19 +3,12 @@ import { describe, it, expect, beforeEach, vi } from 'vitest'
 import App from '../../App'
 import { mockAuthenticatedSession } from '../../test/setup'
 
-// jsdom's matchMedia reports mobile, where the desktop room panel never renders at
-// all — the suppression assertion below would pass vacuously. Pin it to desktop.
 // Loading a real room starts the room WebSocket. jsdom has no server, and the client
 // retries with backoff (lazy: false, shouldRetry: true), which starves the other test
 // files in this worker. Nothing here is testing live updates, so stub the subscription.
 vi.mock('../../lib/rooms', async (importOriginal) => ({
   ...(await importOriginal()),
   subscribeToRoom: async () => () => {},
-}))
-
-vi.mock('../../lib/useMediaQuery', () => ({
-  MOBILE_ROOM_QUERY: '(max-width: 900px)',
-  useMediaQuery: () => false,
 }))
 
 function goTo(pathname) {
@@ -60,7 +53,7 @@ describe('the /group route', () => {
     goTo('/')
   })
 
-  it('shows the group and keeps the room panel from showing through beside it', async () => {
+  it('shows the loaded group', async () => {
     goTo('/group')
     mockAuthenticatedSession(undefined, { myRoom: roomWithOneTable })
 
@@ -70,6 +63,5 @@ describe('the /group route', () => {
     // carries the "Your Group" heading, so that alone would pass vacuously.
     expect(await screen.findByRole('region', { name: /invite friends/i })).toBeInTheDocument()
     expect(screen.getByText('Still need: Player')).toBeInTheDocument()
-    expect(screen.queryByRole('complementary', { name: 'Room chat' })).not.toBeInTheDocument()
   })
 })

@@ -173,6 +173,8 @@ function SeatSection({ title, slots, mode, mySeat, userId, currentUser, kingUser
   )
 }
 
+// Reachable only through RoomPanel, which JQ-206 unmounted — see the note
+// there for why both are kept rather than deleted.
 export default function TableCard({ table, busy, onSit, onLeave, onStart, onLookForGroup, onDiscard }) {
   const { user } = useAuth()
   const [pickerSlot, setPickerSlot] = useState(null)
