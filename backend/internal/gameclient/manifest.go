@@ -11,14 +11,19 @@ import (
 	"strings"
 	"time"
 
+	"github.com/scruffyprodigy/joinquest/internal/developer"
 	"github.com/scruffyprodigy/joinquest/internal/prequeue"
 	"github.com/scruffyprodigy/joinquest/internal/seattemplate"
 )
 
 // ModeManifest is one playable mode from GET /api/v1/game-modes.
 type ModeManifest struct {
-	Key          string          `json:"key"`
-	DisplayName  string          `json:"displayName"`
+	Key         string `json:"key"`
+	DisplayName string `json:"displayName"`
+	// SocialMode is how play is structured in this mode — one id from
+	// developer.SocialModeTaxonomy. Optional: a manifest written before JQ-162
+	// omits it and the mode simply carries no social shape.
+	SocialMode   string          `json:"socialMode"`
 	SeatTemplate json.RawMessage `json:"seatTemplate"`
 	Seats        json.RawMessage `json:"seats"`
 	// PreQueue declares the mode's option groups. The roster inside them is
@@ -190,6 +195,9 @@ func validateModes(modes []ModeManifest) error {
 		}
 		if len(mode.SeatTemplate) == 0 {
 			return fmt.Errorf("gameclient: game-modes: mode %q must define seatTemplate", key)
+		}
+		if err := developer.ValidateSocialMode(strings.TrimSpace(mode.SocialMode)); err != nil {
+			return fmt.Errorf("gameclient: game-modes: mode %q: %w", key, err)
 		}
 		leaves, err := seattemplate.Expand(mode.SeatTemplate)
 		if err != nil {

@@ -5,7 +5,7 @@ import DeveloperCatalogMetadata from './DeveloperCatalogMetadata'
 import { updateMyGameMetadata } from '../../lib/developers'
 
 vi.mock('../../lib/developers', () => ({
-  fetchCatalogTagTaxonomy: vi.fn().mockResolvedValue([]),
+  fetchCatalogAxisTaxonomy: vi.fn().mockResolvedValue({ genre: [], difficulty: [] }),
   updateMyGameMetadata: vi.fn().mockResolvedValue({}),
 }))
 
@@ -19,7 +19,8 @@ const baseGame = {
   contactEmail: 'dev@example.com',
   websiteUrl: '',
   communityUrl: '',
-  tags: [],
+  genre: '',
+  difficulty: '',
   accentColor: '#7c3aed',
 }
 

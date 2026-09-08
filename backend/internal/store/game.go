@@ -16,6 +16,7 @@ func scanGame(row interface{ Scan(dest ...any) error }) (*Game, error) {
 	var description, iconURL, heroURL, catalogHeroURL, shortDescription, howToPlay, tutorialURL, slug, apiBaseURL sql.NullString
 	var titleURL, titleAnchor sql.NullString
 	var titleWidthPct sql.NullFloat64
+	var genre, difficulty sql.NullString
 	var visibility, contactEmail, websiteURL, communityURL, accentColor sql.NullString
 	var ownerUserID uuid.NullUUID
 	var manifestHash, manifestETag, gameVersion, webhookSecret sql.NullString
@@ -23,7 +24,7 @@ func scanGame(row interface{ Scan(dest ...any) error }) (*Game, error) {
 	var tags, screenshots pq.StringArray
 	if err := row.Scan(
 		&g.ID, &g.Name, &description, &iconURL, &heroURL, &catalogHeroURL, &titleURL, &titleAnchor, &titleWidthPct,
-		&shortDescription, &howToPlay, &tutorialURL, &screenshots, &tags, &slug, &apiBaseURL,
+		&shortDescription, &howToPlay, &tutorialURL, &screenshots, &tags, &genre, &difficulty, &slug, &apiBaseURL,
 		&g.Status,
 		&visibility, &ownerUserID, &contactEmail, &websiteURL, &communityURL, &accentColor,
 		&manifestHash, &manifestETag, &manifestSyncedAt, &gameVersion, &webhookSecret,
@@ -69,6 +70,12 @@ func scanGame(row interface{ Scan(dest ...any) error }) (*Game, error) {
 	}
 	if len(tags) > 0 {
 		g.Tags = []string(tags)
+	}
+	if genre.Valid {
+		g.Genre = &genre.String
+	}
+	if difficulty.Valid {
+		g.Difficulty = &difficulty.String
 	}
 	if slug.Valid {
 		g.Slug = &slug.String
@@ -149,7 +156,7 @@ var slugHeroOverrides = map[string]string{
 }
 
 const gameColumns = `id, name, description, icon_url, hero_url, catalog_hero_url, title_url, title_anchor, title_width_pct,
-	short_description, how_to_play, tutorial_url, screenshots, tags, slug, api_base_url, status,
+	short_description, how_to_play, tutorial_url, screenshots, tags, genre, difficulty, slug, api_base_url, status,
 	visibility, owner_user_id, contact_email, website_url, community_url, accent_color,
 	manifest_hash, manifest_etag, manifest_synced_at, game_version, webhook_secret, created_at`
 

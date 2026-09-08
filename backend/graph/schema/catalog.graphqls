@@ -41,6 +41,14 @@ type GameMode {
   minPlayers: Int!
   maxPlayers: Int!
   status: String!
+  """
+  How play is structured in this mode. One value from `socialModeTaxonomy`, or
+  null when the game's manifest does not declare one.
+
+  This sits on the mode, not the game, because a game's modes genuinely
+  disagree: an Arena mode is free-for-all while the same game's Duel is 1v1.
+  """
+  socialMode: String
   seats: [GameModeSeat!]!
   """Join options with human labels and per-cohort fire sizes."""
   queuePaths: [GameModeQueuePath!]!
@@ -200,7 +208,17 @@ extend type Game {
   howToPlay: String
   tutorialUrl: String
   screenshots: [String!]!
-  tags: [String!]!
+  tags: [String!]! @deprecated(reason: "Replaced by genre, difficulty and GameMode.socialMode (JQ-162). Read-only; removed one release after JQ-162.")
+  """
+  What the game is about. One value from `genreTaxonomy`, or null when the
+  developer has not chosen one. Drives the card's genre label and filter pills.
+  """
+  genre: String
+  """
+  Developer-declared difficulty floor: how much a new player must know before
+  their first round is any fun. One value from `difficultyTaxonomy`, or null.
+  """
+  difficulty: String
   """Developer-chosen hex accent (#rrggbb). Null falls back to the slug-hashed palette color."""
   accentColor: String
   """Live player counts for the catalog card. Served from a short-lived whole-catalog snapshot."""

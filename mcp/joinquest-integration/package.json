@@ -1,6 +1,6 @@
 {
   "name": "@joinquest/mcp-integration",
-  "version": "0.1.3",
+  "version": "0.2.0",
   "description": "JoinQuest integration MCP server for game developer agents",
   "type": "module",
   "private": false,

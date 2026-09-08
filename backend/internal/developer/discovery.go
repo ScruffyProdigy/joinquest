@@ -21,16 +21,18 @@ Read what they shared and identify gaps. You need enough to draft catalog copy a
 |-------|----------------|---------------------|
 | Player count | seatTemplate / game-modes | min/max, fixed or variable |
 | Structure | seatTemplate | duel, free-for-all, teams, or roles |
-| Social mode | tags + tone | competitive, cooperative, or party |
-| Session length | tags + copy | quick rounds vs longer sessions |
-| Vibe / audience | catalog voice | casual, brainy, chaotic, tactical, etc. |
+| Genre | genre | action, strategy, deduction, words & trivia, drawing & creative, or puzzle |
+| Social mode | socialMode on each mode | free-for-all, 1v1, teams, hidden roles, or co-op — ask per mode, they often differ |
+| Difficulty | difficulty | how much a new player must know before their first round is fun |
+| Vibe / audience | catalog voice | brainy, chaotic, tactical, etc. — copy, not a field |
 | API URL | registration | public HTTPS hosting plan (not localhost) |
 
 **Draft (show for approval, do not save yet):**
 - shortDescription (~120 chars, JoinQuest tone)
 - longDescription (2–4 paragraphs for the detail page)
 - howToPlay (3–6 bullet steps)
-- tags (1–3 IDs from catalogTagTaxonomy)
+- genre (exactly one ID from genreTaxonomy) and difficulty (optional, from difficultyTaxonomy)
+- socialMode per mode, declared in the game's /api/v1/game-modes rather than in metadata
 - seatTemplate guidance (point to seat-templates cookbook: duel, 3v3, composition)
 
 Always show drafts to the developer for approval before calling updateMyGameMetadata.

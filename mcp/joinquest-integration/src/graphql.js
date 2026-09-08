@@ -49,9 +49,19 @@ export const QUERIES = {
       developerDiscoveryPrompt
     }
   `,
-  catalogTagTaxonomy: `
-    query CatalogTagTaxonomy {
-      catalogTagTaxonomy {
+  catalogAxisTaxonomy: `
+    query CatalogAxisTaxonomy {
+      genreTaxonomy {
+        id
+        label
+        description
+      }
+      difficultyTaxonomy {
+        id
+        label
+        description
+      }
+      socialModeTaxonomy {
         id
         label
         description
@@ -79,7 +89,8 @@ export const QUERIES = {
         shortDescription
         longDescription
         howToPlay
-        tags
+        genre
+        difficulty
         visibility
         apiBaseUrl
         integrationChecks {
@@ -132,7 +143,8 @@ export const MUTATIONS = {
         shortDescription
         longDescription
         howToPlay
-        tags
+        genre
+        difficulty
         contactEmail
         websiteUrl
         communityUrl

@@ -32,7 +32,7 @@ You are helping a developer integrate their **multiplayer game** with [JoinQuest
 
 | # | Phase | Done when |
 |---|-------|-----------|
-| 1 | Discover game | Developer described the idea; drafts approved (copy, tags, seatTemplate plan) |
+| 1 | Discover game | Developer described the idea; drafts approved (copy, genre/difficulty, seatTemplate + socialMode plan) |
 | 2 | Connect MCP | `joinquest_integration_list_my_games` works |
 | 3 | Implement game API | healthz, status, game-modes, provision, claim on public HTTPS; **local tests** (integration guide §8) |
 | 4 | Register on JoinQuest | Game registered via MCP or dashboard (`PRIVATE_TESTING` or draft) |
@@ -47,7 +47,7 @@ You are helping a developer integrate their **multiplayer game** with [JoinQuest
 ```
 joinquest_integration_get_agent_playbook          # this workflow
 joinquest_integration_get_discovery_prompt        # Phase 1 — open-ended prompt + follow-ups
-joinquest_integration_get_catalog_tag_taxonomy    # tag IDs
+joinquest_integration_get_catalog_tag_taxonomy    # genre, difficulty and socialMode IDs
 
 # After MCP auth:
 joinquest_integration_register_game               # Phase 4 — after developer confirms fields

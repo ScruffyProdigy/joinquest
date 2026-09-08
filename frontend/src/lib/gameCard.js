@@ -72,21 +72,68 @@ export function gameDetailDescription(game) {
   return game?.shortDescription?.trim() || ''
 }
 
-/** Visible tag chips for catalog cards (max 3). */
-export function gameTagChips(tags) {
-  if (!Array.isArray(tags)) {
-    return []
-  }
-  return tags.map((tag) => String(tag).trim()).filter(Boolean).slice(0, 3)
+/**
+ * Display labels for the catalog axes (JQ-162).
+ *
+ * The server's taxonomy queries are the contract; these are the strings the card
+ * paints. They are duplicated rather than fetched because the catalog query
+ * already returns the axis *ids* on every game, and a second round trip to turn
+ * six known ids into six known words is not worth the request. An id with no
+ * entry here renders as nothing rather than as a raw slug.
+ */
+const GENRE_LABELS = {
+  action: 'Action',
+  strategy: 'Strategy',
+  deduction: 'Deduction',
+  'words-trivia': 'Words & Trivia',
+  'drawing-creative': 'Drawing & Creative',
+  puzzle: 'Puzzle',
 }
 
-/** Genre/mode badge label from the first two tag chips, e.g. "Trivia · Party". Null with no tags. */
-export function gameGenreModeLabel(tags) {
-  const chips = gameTagChips(tags)
-  if (chips.length === 0) {
-    return null
-  }
-  return chips.slice(0, 2).join(' · ')
+const DIFFICULTY_LABELS = {
+  casual: 'Casual',
+  involved: 'Involved',
+  demanding: 'Demanding',
+}
+
+const SOCIAL_MODE_LABELS = {
+  'free-for-all': 'Free-for-all',
+  '1v1': '1v1',
+  teams: 'Teams',
+  'hidden-roles': 'Hidden roles',
+  'co-op': 'Co-op',
+}
+
+function axisLabel(labels, value) {
+  const id = String(value || '').trim()
+  return labels[id] || null
+}
+
+/** The game's genre label, e.g. "Words & Trivia". Null when the developer has not set one. */
+export function gameGenreLabel(game) {
+  return axisLabel(GENRE_LABELS, game?.genre)
+}
+
+/** The game's declared difficulty floor, e.g. "Casual". Null when undeclared. */
+export function gameDifficultyLabel(game) {
+  return axisLabel(DIFFICULTY_LABELS, game?.difficulty)
+}
+
+/** A mode's social shape, e.g. "1v1". Null when the manifest does not declare one. */
+export function modeSocialModeLabel(mode) {
+  return axisLabel(SOCIAL_MODE_LABELS, mode?.socialMode)
+}
+
+/**
+ * Chips describing a game, most identifying axis first: genre, then this mode's
+ * social shape, then difficulty.
+ *
+ * Each chip answers a different question, so unlike the flat tag list it replaced
+ * the row cannot say the same thing twice. Pass the mode when the surface is
+ * about one mode (a room table); omit it on whole-game surfaces.
+ */
+export function gameAxisChips(game, mode) {
+  return [gameGenreLabel(game), modeSocialModeLabel(mode), gameDifficultyLabel(game)].filter(Boolean)
 }
 
 /**
@@ -128,7 +175,7 @@ export function gameDurationLabel(game) {
  */
 export function gameCardMeta(game) {
   return [
-    { key: 'genre', icon: null, label: gameGenreModeLabel(game?.tags) },
+    { key: 'genre', icon: null, label: gameGenreLabel(game) },
     { key: 'players', icon: 'players', label: gamePlayerRangeLabel(game?.modes) },
     { key: 'duration', icon: 'duration', label: gameDurationLabel(game) },
   ].filter((pill) => Boolean(pill.label))

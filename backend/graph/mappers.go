@@ -5,6 +5,7 @@ import (
 	"strings"
 
 	"github.com/scruffyprodigy/joinquest/graph/model"
+	"github.com/scruffyprodigy/joinquest/internal/developer"
 	"github.com/scruffyprodigy/joinquest/internal/integrationchecks"
 	"github.com/scruffyprodigy/joinquest/internal/seattemplate"
 	"github.com/scruffyprodigy/joinquest/internal/store"
@@ -57,6 +58,9 @@ func ToGraphQLGame(game *store.Game) *model.Game {
 		IconURL:   game.IconURL,
 		HeroURL:   game.HeroURL,
 		Tags:      game.Tags,
+		// Deprecated tag list plus the axes that replaced it (JQ-162).
+		Genre:      game.Genre,
+		Difficulty: game.Difficulty,
 	}
 	if result.IconURL == "" {
 		if game.Slug != nil {
@@ -215,6 +219,7 @@ func ToGraphQLGameMode(mode *store.GameMode) *model.GameMode {
 		DisplayName: mode.DisplayName,
 		MinPlayers:  mode.MinPlayers,
 		MaxPlayers:  mode.MaxPlayers,
+		SocialMode:  mode.SocialMode,
 		Status:      mode.Status,
 	}
 	return result
@@ -376,4 +381,17 @@ func gameTitleArt(game *store.Game) *model.GameTitleArt {
 		Anchor:   anchor,
 		WidthPct: *game.TitleWidthPct,
 	}
+}
+
+// axisOptions renders a catalog axis vocabulary for the taxonomy queries.
+func axisOptions(options []developer.CatalogOption) []*model.CatalogAxisOption {
+	out := make([]*model.CatalogAxisOption, len(options))
+	for i, o := range options {
+		out[i] = &model.CatalogAxisOption{
+			ID:          o.ID,
+			Label:       o.Label,
+			Description: o.Description,
+		}
+	}
+	return out
 }

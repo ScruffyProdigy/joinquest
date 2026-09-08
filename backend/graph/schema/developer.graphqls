@@ -25,6 +25,13 @@ type CatalogTagOption {
   description: String!
 }
 
+"""One allowed value on a catalog axis (genre, difficulty, social mode)."""
+type CatalogAxisOption {
+  id: String!
+  label: String!
+  description: String!
+}
+
 input RegisterMyGameInput {
   slug: String!
   name: String!
@@ -49,7 +56,10 @@ input UpdateMyGameMetadataInput {
   shortDescription: String
   longDescription: String
   howToPlay: String
-  tags: [String!]
+  """Game genre. One id from `genreTaxonomy`. Empty string clears it."""
+  genre: String
+  """Difficulty floor. One id from `difficultyTaxonomy`. Empty string clears it."""
+  difficulty: String
   contactEmail: String
   websiteUrl: String
   communityUrl: String
@@ -111,7 +121,13 @@ extend type Query {
   developerIntegrationGuide: String!
   developerAgentPlaybook: String!
   developerDiscoveryPrompt: String!
-  catalogTagTaxonomy: [CatalogTagOption!]!
+  catalogTagTaxonomy: [CatalogTagOption!]! @deprecated(reason: "The flat tag list was split into axes (JQ-162). Use genreTaxonomy, difficultyTaxonomy and socialModeTaxonomy.")
+  """Allowed game genres. Exactly one per game."""
+  genreTaxonomy: [CatalogAxisOption!]!
+  """Allowed difficulty floors. At most one per game."""
+  difficultyTaxonomy: [CatalogAxisOption!]!
+  """Allowed social modes. Declared per game mode in the game's manifest."""
+  socialModeTaxonomy: [CatalogAxisOption!]!
   pendingGameReviews: [Game!]!
 }
 

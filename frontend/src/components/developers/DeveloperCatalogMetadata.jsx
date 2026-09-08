@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Button } from '../ui/button'
 import {
-  fetchCatalogTagTaxonomy,
+  fetchCatalogAxisTaxonomy,
   updateMyGameMetadata,
 } from '../../lib/developers'
 import { accentBaseFor } from '../../lib/gameAccent'
@@ -14,9 +14,10 @@ export default function DeveloperCatalogMetadata({ game, onSaved }) {
   const [contactEmail, setContactEmail] = useState(game?.contactEmail ?? '')
   const [websiteUrl, setWebsiteUrl] = useState(game?.websiteUrl ?? '')
   const [communityUrl, setCommunityUrl] = useState(game?.communityUrl ?? '')
-  const [selectedTags, setSelectedTags] = useState(game?.tags ?? [])
+  const [genre, setGenre] = useState(game?.genre ?? '')
+  const [difficulty, setDifficulty] = useState(game?.difficulty ?? '')
   const [accentColor, setAccentColor] = useState(game?.accentColor ?? '')
-  const [taxonomy, setTaxonomy] = useState([])
+  const [taxonomy, setTaxonomy] = useState({ genre: [], difficulty: [] })
   const [status, setStatus] = useState('idle')
   const [error, setError] = useState('')
 
@@ -28,27 +29,16 @@ export default function DeveloperCatalogMetadata({ game, onSaved }) {
     setContactEmail(game?.contactEmail ?? '')
     setWebsiteUrl(game?.websiteUrl ?? '')
     setCommunityUrl(game?.communityUrl ?? '')
-    setSelectedTags(game?.tags ?? [])
+    setGenre(game?.genre ?? '')
+    setDifficulty(game?.difficulty ?? '')
     setAccentColor(game?.accentColor ?? '')
   }, [game])
 
   useEffect(() => {
-    void fetchCatalogTagTaxonomy()
+    void fetchCatalogAxisTaxonomy()
       .then(setTaxonomy)
-      .catch(() => setTaxonomy([]))
+      .catch(() => setTaxonomy({ genre: [], difficulty: [] }))
   }, [])
-
-  function toggleTag(tagId) {
-    setSelectedTags((prev) => {
-      if (prev.includes(tagId)) {
-        return prev.filter((t) => t !== tagId)
-      }
-      if (prev.length >= 3) {
-        return prev
-      }
-      return [...prev, tagId]
-    })
-  }
 
   async function handleSubmit(event) {
     event.preventDefault()
@@ -67,7 +57,8 @@ export default function DeveloperCatalogMetadata({ game, onSaved }) {
         contactEmail: contactEmail.trim(),
         websiteUrl: websiteUrl.trim(),
         communityUrl: communityUrl.trim(),
-        tags: selectedTags,
+        genre,
+        difficulty,
         accentColor: accentColor.trim(),
       })
       onSaved?.(updated)
@@ -181,25 +172,46 @@ export default function DeveloperCatalogMetadata({ game, onSaved }) {
             Tints your catalog card and game page. Leave blank to use a color picked from your slug.
           </p>
         </div>
-        {taxonomy.length > 0 ? (
-          <fieldset className="developer-form__field developer-tag-picker">
-            <legend>Tags (up to 3)</legend>
-            <ul className="developer-tag-picker__list">
-              {taxonomy.map((tag) => (
-                <li key={tag.id}>
-                  <label className="developer-tag-picker__option">
-                    <input
-                      type="checkbox"
-                      checked={selectedTags.includes(tag.id)}
-                      onChange={() => toggleTag(tag.id)}
-                    />
-                    <span>{tag.label}</span>
-                  </label>
-                </li>
+        {taxonomy.genre.length > 0 ? (
+          <div className="developer-form__field">
+            <label htmlFor="dev-game-genre">Genre</label>
+            <select id="dev-game-genre" value={genre} onChange={(event) => setGenre(event.target.value)}>
+              <option value="">No genre</option>
+              {taxonomy.genre.map((option) => (
+                <option key={option.id} value={option.id}>
+                  {option.label}
+                </option>
               ))}
-            </ul>
-          </fieldset>
+            </select>
+            <p className="panel-copy">
+              One per game — it is the label on your catalog card and the filter players browse by.
+            </p>
+          </div>
         ) : null}
+        {taxonomy.difficulty.length > 0 ? (
+          <div className="developer-form__field">
+            <label htmlFor="dev-game-difficulty">Difficulty (optional)</label>
+            <select
+              id="dev-game-difficulty"
+              value={difficulty}
+              onChange={(event) => setDifficulty(event.target.value)}
+            >
+              <option value="">Not declared</option>
+              {taxonomy.difficulty.map((option) => (
+                <option key={option.id} value={option.id}>
+                  {option.label}
+                </option>
+              ))}
+            </select>
+            <p className="panel-copy">
+              How much a new player needs to know before their first round is any fun.
+            </p>
+          </div>
+        ) : null}
+        <p className="panel-copy">
+          Each mode's social shape (1v1, teams, co-op…) comes from your game-modes manifest, not
+          this form — modes of the same game often differ.
+        </p>
         <Button type="submit" variant="secondary" disabled={status === 'saving'}>
           {status === 'saving' ? 'Saving…' : 'Save listing'}
         </Button>

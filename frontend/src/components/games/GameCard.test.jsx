@@ -8,7 +8,7 @@ const baseGame = {
   name: 'Trivia Blitz',
   heroUrl: '/games/trivia-blitz-hero.jpg',
   shortDescription: 'Fast rounds, random teams, one winner.',
-  tags: ['Trivia', 'Party'],
+  genre: 'words-trivia',
   modes: [{ id: 'mode-1', status: 'active', minPlayers: 2, maxPlayers: 8 }],
 }
 
@@ -31,7 +31,7 @@ describe('GameCard', () => {
 
     expect(heroImage(container)).toHaveAttribute('src', '/games/trivia-blitz-hero.jpg?v=1')
     expect(screen.getByRole('heading', { name: 'Trivia Blitz' })).toBeInTheDocument()
-    expect(screen.getByText('Trivia · Party')).toBeInTheDocument()
+    expect(screen.getByText('Words & Trivia')).toBeInTheDocument()
     expect(screen.getByText('2–8')).toBeInTheDocument()
     expect(screen.getByText('Fast rounds, random teams, one winner.')).toBeInTheDocument()
   })
@@ -39,8 +39,8 @@ describe('GameCard', () => {
   it('orders the metadata row genre, players, duration', () => {
     renderCard({ ...baseGame, durationMinutes: 12 })
 
-    const labels = screen.getByText('Trivia · Party').closest('div')
-    expect(labels.textContent).toBe('Trivia · Party2–812 min')
+    const labels = screen.getByText('Words & Trivia').closest('div')
+    expect(labels.textContent).toBe('Words & Trivia2–812 min')
   })
 
   it('drops the duration slot entirely while no game carries one', () => {
@@ -48,7 +48,7 @@ describe('GameCard', () => {
 
     expect(screen.queryByText(/min$/)).not.toBeInTheDocument()
     // Genre and players only -- no third, empty pill holding the slot open.
-    expect(screen.getByText('Trivia · Party').closest('div').children).toHaveLength(2)
+    expect(screen.getByText('Words & Trivia').closest('div').children).toHaveLength(2)
   })
 
   it('uses catalogHeroUrl over heroUrl when set', () => {
@@ -110,10 +110,10 @@ describe('GameCard', () => {
     expect(screen.getByRole('heading', { name: 'Trivia Blitz' })).toBeInTheDocument()
   })
 
-  it('omits the genre pill with no tags', () => {
-    renderCard({ ...baseGame, tags: [] })
+  it('omits the genre pill when the game declares no genre', () => {
+    renderCard({ ...baseGame, genre: null })
 
-    expect(screen.queryByText('Trivia · Party')).not.toBeInTheDocument()
+    expect(screen.queryByText('Words & Trivia')).not.toBeInTheDocument()
   })
 
   it('omits the player pill with no active modes', () => {

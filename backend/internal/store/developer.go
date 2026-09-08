@@ -10,7 +10,6 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	"github.com/lib/pq"
 	"github.com/scruffyprodigy/joinquest/internal/gameclient"
 )
 
@@ -265,7 +264,8 @@ type UpdateMyGameMetadataParams struct {
 	ShortDescription *string
 	LongDescription  *string
 	HowToPlay        *string
-	Tags             []string
+	Genre            *string
+	Difficulty       *string
 	ContactEmail     *string
 	WebsiteURL       *string
 	CommunityURL     *string
@@ -273,6 +273,8 @@ type UpdateMyGameMetadataParams struct {
 	ClearWebsite     bool
 	ClearCommunity   bool
 	ClearAccentColor bool
+	ClearGenre       bool
+	ClearDifficulty  bool
 }
 
 // UpdateMyGameMetadata updates owner-editable catalog and contact fields.
@@ -298,12 +300,15 @@ func (s *Store) UpdateMyGameMetadata(ctx context.Context, gameID, ownerUserID uu
 	if params.HowToPlay != nil {
 		game.HowToPlay = params.HowToPlay
 	}
-	if params.Tags != nil {
-		game.Tags = params.Tags
+	if params.ClearGenre {
+		game.Genre = nil
+	} else if params.Genre != nil {
+		game.Genre = params.Genre
 	}
-	tags := game.Tags
-	if tags == nil {
-		tags = []string{}
+	if params.ClearDifficulty {
+		game.Difficulty = nil
+	} else if params.Difficulty != nil {
+		game.Difficulty = params.Difficulty
 	}
 	if params.ContactEmail != nil {
 		email := strings.TrimSpace(*params.ContactEmail)
@@ -334,15 +339,16 @@ func (s *Store) UpdateMyGameMetadata(ctx context.Context, gameID, ownerUserID uu
 			short_description = $4,
 			description = $5,
 			how_to_play = $6,
-			tags = $7,
-			contact_email = $8,
-			website_url = $9,
-			community_url = $10,
-			accent_color = $11,
+			genre = $7,
+			difficulty = $8,
+			contact_email = $9,
+			website_url = $10,
+			community_url = $11,
+			accent_color = $12,
 			updated_at = NOW()
 		WHERE id = $1 AND owner_user_id = $2
 		RETURNING `+gameColumns+`
-	`, gameID, ownerUserID, game.Name, game.ShortDescription, game.Description, game.HowToPlay, pq.Array(tags), game.ContactEmail, game.WebsiteURL, game.CommunityURL, game.AccentColor)
+	`, gameID, ownerUserID, game.Name, game.ShortDescription, game.Description, game.HowToPlay, game.Genre, game.Difficulty, game.ContactEmail, game.WebsiteURL, game.CommunityURL, game.AccentColor)
 	return scanGame(row)
 }
 

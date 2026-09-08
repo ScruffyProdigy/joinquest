@@ -82,6 +82,12 @@ type ComplexityRoot struct {
 		Status               func(childComplexity int) int
 	}
 
+	CatalogAxisOption struct {
+		Description func(childComplexity int) int
+		ID          func(childComplexity int) int
+		Label       func(childComplexity int) int
+	}
+
 	CatalogTagOption struct {
 		Description func(childComplexity int) int
 		ID          func(childComplexity int) int
@@ -136,7 +142,9 @@ type ComplexityRoot struct {
 		CommunityURL      func(childComplexity int) int
 		ContactEmail      func(childComplexity int) int
 		CreatedAt         func(childComplexity int) int
+		Difficulty        func(childComplexity int) int
 		GameVersion       func(childComplexity int) int
+		Genre             func(childComplexity int) int
 		HeroURL           func(childComplexity int) int
 		HowToPlay         func(childComplexity int) int
 		ID                func(childComplexity int) int
@@ -179,6 +187,7 @@ type ComplexityRoot struct {
 		QueuePaths     func(childComplexity int) int
 		Queues         func(childComplexity int) int
 		Seats          func(childComplexity int) int
+		SocialMode     func(childComplexity int) int
 		Status         func(childComplexity int) int
 	}
 
@@ -354,10 +363,12 @@ type ComplexityRoot struct {
 		DeveloperAgentPlaybook           func(childComplexity int) int
 		DeveloperDiscoveryPrompt         func(childComplexity int) int
 		DeveloperIntegrationGuide        func(childComplexity int) int
+		DifficultyTaxonomy               func(childComplexity int) int
 		EnabledOAuthProviders            func(childComplexity int) int
 		Game                             func(childComplexity int, id string) int
 		GameBySlug                       func(childComplexity int, slug string) int
 		Games                            func(childComplexity int, limit *int, offset *int) int
+		GenreTaxonomy                    func(childComplexity int) int
 		Goods                            func(childComplexity int, gameID *string) int
 		Healthz                          func(childComplexity int) int
 		MatchResult                      func(childComplexity int, matchID string) int
@@ -380,6 +391,7 @@ type ComplexityRoot struct {
 		ReturnDestination                func(childComplexity int, matchID *string) int
 		Room                             func(childComplexity int, inviteCode string) int
 		Session                          func(childComplexity int, id string) int
+		SocialModeTaxonomy               func(childComplexity int) int
 		StarterAvatars                   func(childComplexity int) int
 		SubscriptionAuth                 func(childComplexity int) int
 		Version                          func(childComplexity int) int
@@ -753,6 +765,9 @@ type QueryResolver interface {
 	DeveloperAgentPlaybook(ctx context.Context) (string, error)
 	DeveloperDiscoveryPrompt(ctx context.Context) (string, error)
 	CatalogTagTaxonomy(ctx context.Context) ([]*model.CatalogTagOption, error)
+	GenreTaxonomy(ctx context.Context) ([]*model.CatalogAxisOption, error)
+	DifficultyTaxonomy(ctx context.Context) ([]*model.CatalogAxisOption, error)
+	SocialModeTaxonomy(ctx context.Context) ([]*model.CatalogAxisOption, error)
 	PendingGameReviews(ctx context.Context) ([]*model.Game, error)
 	ReturnDestination(ctx context.Context, matchID *string) (*model.ReturnDestination, error)
 	MatchResult(ctx context.Context, matchID string) (*model.MatchResult, error)
@@ -928,6 +943,25 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.ActiveIntent.Status(childComplexity), true
+
+	case "CatalogAxisOption.description":
+		if e.complexity.CatalogAxisOption.Description == nil {
+			break
+		}
+
+		return e.complexity.CatalogAxisOption.Description(childComplexity), true
+	case "CatalogAxisOption.id":
+		if e.complexity.CatalogAxisOption.ID == nil {
+			break
+		}
+
+		return e.complexity.CatalogAxisOption.ID(childComplexity), true
+	case "CatalogAxisOption.label":
+		if e.complexity.CatalogAxisOption.Label == nil {
+			break
+		}
+
+		return e.complexity.CatalogAxisOption.Label(childComplexity), true
 
 	case "CatalogTagOption.description":
 		if e.complexity.CatalogTagOption.Description == nil {
@@ -1133,12 +1167,24 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.Game.CreatedAt(childComplexity), true
+	case "Game.difficulty":
+		if e.complexity.Game.Difficulty == nil {
+			break
+		}
+
+		return e.complexity.Game.Difficulty(childComplexity), true
 	case "Game.gameVersion":
 		if e.complexity.Game.GameVersion == nil {
 			break
 		}
 
 		return e.complexity.Game.GameVersion(childComplexity), true
+	case "Game.genre":
+		if e.complexity.Game.Genre == nil {
+			break
+		}
+
+		return e.complexity.Game.Genre(childComplexity), true
 	case "Game.heroUrl":
 		if e.complexity.Game.HeroURL == nil {
 			break
@@ -1367,6 +1413,12 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.GameMode.Seats(childComplexity), true
+	case "GameMode.socialMode":
+		if e.complexity.GameMode.SocialMode == nil {
+			break
+		}
+
+		return e.complexity.GameMode.SocialMode(childComplexity), true
 	case "GameMode.status":
 		if e.complexity.GameMode.Status == nil {
 			break
@@ -2355,6 +2407,12 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.Query.DeveloperIntegrationGuide(childComplexity), true
+	case "Query.difficultyTaxonomy":
+		if e.complexity.Query.DifficultyTaxonomy == nil {
+			break
+		}
+
+		return e.complexity.Query.DifficultyTaxonomy(childComplexity), true
 	case "Query.enabledOAuthProviders":
 		if e.complexity.Query.EnabledOAuthProviders == nil {
 			break
@@ -2394,6 +2452,12 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.Query.Games(childComplexity, args["limit"].(*int), args["offset"].(*int)), true
+	case "Query.genreTaxonomy":
+		if e.complexity.Query.GenreTaxonomy == nil {
+			break
+		}
+
+		return e.complexity.Query.GenreTaxonomy(childComplexity), true
 	case "Query.goods":
 		if e.complexity.Query.Goods == nil {
 			break
@@ -2581,6 +2645,12 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.Query.Session(childComplexity, args["id"].(string)), true
+	case "Query.socialModeTaxonomy":
+		if e.complexity.Query.SocialModeTaxonomy == nil {
+			break
+		}
+
+		return e.complexity.Query.SocialModeTaxonomy(childComplexity), true
 	case "Query.starterAvatars":
 		if e.complexity.Query.StarterAvatars == nil {
 			break
@@ -3932,6 +4002,14 @@ type GameMode {
   minPlayers: Int!
   maxPlayers: Int!
   status: String!
+  """
+  How play is structured in this mode. One value from ` + "`" + `socialModeTaxonomy` + "`" + `, or
+  null when the game's manifest does not declare one.
+
+  This sits on the mode, not the game, because a game's modes genuinely
+  disagree: an Arena mode is free-for-all while the same game's Duel is 1v1.
+  """
+  socialMode: String
   seats: [GameModeSeat!]!
   """Join options with human labels and per-cohort fire sizes."""
   queuePaths: [GameModeQueuePath!]!
@@ -4091,7 +4169,17 @@ extend type Game {
   howToPlay: String
   tutorialUrl: String
   screenshots: [String!]!
-  tags: [String!]!
+  tags: [String!]! @deprecated(reason: "Replaced by genre, difficulty and GameMode.socialMode (JQ-162). Read-only; removed one release after JQ-162.")
+  """
+  What the game is about. One value from ` + "`" + `genreTaxonomy` + "`" + `, or null when the
+  developer has not chosen one. Drives the card's genre label and filter pills.
+  """
+  genre: String
+  """
+  Developer-declared difficulty floor: how much a new player must know before
+  their first round is any fun. One value from ` + "`" + `difficultyTaxonomy` + "`" + `, or null.
+  """
+  difficulty: String
   """Developer-chosen hex accent (#rrggbb). Null falls back to the slug-hashed palette color."""
   accentColor: String
   """Live player counts for the catalog card. Served from a short-lived whole-catalog snapshot."""
@@ -4168,6 +4256,13 @@ type CatalogTagOption {
   description: String!
 }
 
+"""One allowed value on a catalog axis (genre, difficulty, social mode)."""
+type CatalogAxisOption {
+  id: String!
+  label: String!
+  description: String!
+}
+
 input RegisterMyGameInput {
   slug: String!
   name: String!
@@ -4192,7 +4287,10 @@ input UpdateMyGameMetadataInput {
   shortDescription: String
   longDescription: String
   howToPlay: String
-  tags: [String!]
+  """Game genre. One id from ` + "`" + `genreTaxonomy` + "`" + `. Empty string clears it."""
+  genre: String
+  """Difficulty floor. One id from ` + "`" + `difficultyTaxonomy` + "`" + `. Empty string clears it."""
+  difficulty: String
   contactEmail: String
   websiteUrl: String
   communityUrl: String
@@ -4254,7 +4352,13 @@ extend type Query {
   developerIntegrationGuide: String!
   developerAgentPlaybook: String!
   developerDiscoveryPrompt: String!
-  catalogTagTaxonomy: [CatalogTagOption!]!
+  catalogTagTaxonomy: [CatalogTagOption!]! @deprecated(reason: "The flat tag list was split into axes (JQ-162). Use genreTaxonomy, difficultyTaxonomy and socialModeTaxonomy.")
+  """Allowed game genres. Exactly one per game."""
+  genreTaxonomy: [CatalogAxisOption!]!
+  """Allowed difficulty floors. At most one per game."""
+  difficultyTaxonomy: [CatalogAxisOption!]!
+  """Allowed social modes. Declared per game mode in the game's manifest."""
+  socialModeTaxonomy: [CatalogAxisOption!]!
   pendingGameReviews: [Game!]!
 }
 
@@ -6201,6 +6305,93 @@ func (ec *executionContext) fieldContext_ActiveIntent_selectedOptions(_ context.
 	return fc, nil
 }
 
+func (ec *executionContext) _CatalogAxisOption_id(ctx context.Context, field graphql.CollectedField, obj *model.CatalogAxisOption) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_CatalogAxisOption_id,
+		func(ctx context.Context) (any, error) {
+			return obj.ID, nil
+		},
+		nil,
+		ec.marshalNString2string,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_CatalogAxisOption_id(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "CatalogAxisOption",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _CatalogAxisOption_label(ctx context.Context, field graphql.CollectedField, obj *model.CatalogAxisOption) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_CatalogAxisOption_label,
+		func(ctx context.Context) (any, error) {
+			return obj.Label, nil
+		},
+		nil,
+		ec.marshalNString2string,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_CatalogAxisOption_label(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "CatalogAxisOption",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _CatalogAxisOption_description(ctx context.Context, field graphql.CollectedField, obj *model.CatalogAxisOption) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_CatalogAxisOption_description,
+		func(ctx context.Context) (any, error) {
+			return obj.Description, nil
+		},
+		nil,
+		ec.marshalNString2string,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_CatalogAxisOption_description(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "CatalogAxisOption",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _CatalogTagOption_id(ctx context.Context, field graphql.CollectedField, obj *model.CatalogTagOption) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
@@ -6350,6 +6541,10 @@ func (ec *executionContext) fieldContext_ConnectMyGamePayload_game(_ context.Con
 				return ec.fieldContext_Game_screenshots(ctx, field)
 			case "tags":
 				return ec.fieldContext_Game_tags(ctx, field)
+			case "genre":
+				return ec.fieldContext_Game_genre(ctx, field)
+			case "difficulty":
+				return ec.fieldContext_Game_difficulty(ctx, field)
 			case "accentColor":
 				return ec.fieldContext_Game_accentColor(ctx, field)
 			case "playerActivity":
@@ -6855,6 +7050,10 @@ func (ec *executionContext) fieldContext_DigitalGood_game(_ context.Context, fie
 				return ec.fieldContext_Game_screenshots(ctx, field)
 			case "tags":
 				return ec.fieldContext_Game_tags(ctx, field)
+			case "genre":
+				return ec.fieldContext_Game_genre(ctx, field)
+			case "difficulty":
+				return ec.fieldContext_Game_difficulty(ctx, field)
 			case "accentColor":
 				return ec.fieldContext_Game_accentColor(ctx, field)
 			case "playerActivity":
@@ -7649,6 +7848,64 @@ func (ec *executionContext) fieldContext_Game_tags(_ context.Context, field grap
 	return fc, nil
 }
 
+func (ec *executionContext) _Game_genre(ctx context.Context, field graphql.CollectedField, obj *model.Game) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_Game_genre,
+		func(ctx context.Context) (any, error) {
+			return obj.Genre, nil
+		},
+		nil,
+		ec.marshalOString2ᚖstring,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_Game_genre(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Game",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Game_difficulty(ctx context.Context, field graphql.CollectedField, obj *model.Game) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_Game_difficulty,
+		func(ctx context.Context) (any, error) {
+			return obj.Difficulty, nil
+		},
+		nil,
+		ec.marshalOString2ᚖstring,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_Game_difficulty(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Game",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _Game_accentColor(ctx context.Context, field graphql.CollectedField, obj *model.Game) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
@@ -7749,6 +8006,8 @@ func (ec *executionContext) fieldContext_Game_modes(_ context.Context, field gra
 				return ec.fieldContext_GameMode_maxPlayers(ctx, field)
 			case "status":
 				return ec.fieldContext_GameMode_status(ctx, field)
+			case "socialMode":
+				return ec.fieldContext_GameMode_socialMode(ctx, field)
 			case "seats":
 				return ec.fieldContext_GameMode_seats(ctx, field)
 			case "queuePaths":
@@ -8261,6 +8520,35 @@ func (ec *executionContext) _GameMode_status(ctx context.Context, field graphql.
 }
 
 func (ec *executionContext) fieldContext_GameMode_status(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "GameMode",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _GameMode_socialMode(ctx context.Context, field graphql.CollectedField, obj *model.GameMode) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_GameMode_socialMode,
+		func(ctx context.Context) (any, error) {
+			return obj.SocialMode, nil
+		},
+		nil,
+		ec.marshalOString2ᚖstring,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_GameMode_socialMode(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	fc = &graphql.FieldContext{
 		Object:     "GameMode",
 		Field:      field,
@@ -9479,6 +9767,10 @@ func (ec *executionContext) fieldContext_MatchResult_game(_ context.Context, fie
 				return ec.fieldContext_Game_screenshots(ctx, field)
 			case "tags":
 				return ec.fieldContext_Game_tags(ctx, field)
+			case "genre":
+				return ec.fieldContext_Game_genre(ctx, field)
+			case "difficulty":
+				return ec.fieldContext_Game_difficulty(ctx, field)
 			case "accentColor":
 				return ec.fieldContext_Game_accentColor(ctx, field)
 			case "playerActivity":
@@ -9540,6 +9832,8 @@ func (ec *executionContext) fieldContext_MatchResult_mode(_ context.Context, fie
 				return ec.fieldContext_GameMode_maxPlayers(ctx, field)
 			case "status":
 				return ec.fieldContext_GameMode_status(ctx, field)
+			case "socialMode":
+				return ec.fieldContext_GameMode_socialMode(ctx, field)
 			case "seats":
 				return ec.fieldContext_GameMode_seats(ctx, field)
 			case "queuePaths":
@@ -11015,6 +11309,10 @@ func (ec *executionContext) fieldContext_Mutation_refreshGameManifest(ctx contex
 				return ec.fieldContext_Game_screenshots(ctx, field)
 			case "tags":
 				return ec.fieldContext_Game_tags(ctx, field)
+			case "genre":
+				return ec.fieldContext_Game_genre(ctx, field)
+			case "difficulty":
+				return ec.fieldContext_Game_difficulty(ctx, field)
 			case "accentColor":
 				return ec.fieldContext_Game_accentColor(ctx, field)
 			case "playerActivity":
@@ -11455,6 +11753,10 @@ func (ec *executionContext) fieldContext_Mutation_updateMyGameMetadata(ctx conte
 				return ec.fieldContext_Game_screenshots(ctx, field)
 			case "tags":
 				return ec.fieldContext_Game_tags(ctx, field)
+			case "genre":
+				return ec.fieldContext_Game_genre(ctx, field)
+			case "difficulty":
+				return ec.fieldContext_Game_difficulty(ctx, field)
 			case "accentColor":
 				return ec.fieldContext_Game_accentColor(ctx, field)
 			case "playerActivity":
@@ -11554,6 +11856,10 @@ func (ec *executionContext) fieldContext_Mutation_requestPublicRelease(ctx conte
 				return ec.fieldContext_Game_screenshots(ctx, field)
 			case "tags":
 				return ec.fieldContext_Game_tags(ctx, field)
+			case "genre":
+				return ec.fieldContext_Game_genre(ctx, field)
+			case "difficulty":
+				return ec.fieldContext_Game_difficulty(ctx, field)
 			case "accentColor":
 				return ec.fieldContext_Game_accentColor(ctx, field)
 			case "playerActivity":
@@ -11653,6 +11959,10 @@ func (ec *executionContext) fieldContext_Mutation_reviewGameRelease(ctx context.
 				return ec.fieldContext_Game_screenshots(ctx, field)
 			case "tags":
 				return ec.fieldContext_Game_tags(ctx, field)
+			case "genre":
+				return ec.fieldContext_Game_genre(ctx, field)
+			case "difficulty":
+				return ec.fieldContext_Game_difficulty(ctx, field)
 			case "accentColor":
 				return ec.fieldContext_Game_accentColor(ctx, field)
 			case "playerActivity":
@@ -13652,6 +13962,10 @@ func (ec *executionContext) fieldContext_Query_games(ctx context.Context, field 
 				return ec.fieldContext_Game_screenshots(ctx, field)
 			case "tags":
 				return ec.fieldContext_Game_tags(ctx, field)
+			case "genre":
+				return ec.fieldContext_Game_genre(ctx, field)
+			case "difficulty":
+				return ec.fieldContext_Game_difficulty(ctx, field)
 			case "accentColor":
 				return ec.fieldContext_Game_accentColor(ctx, field)
 			case "playerActivity":
@@ -13751,6 +14065,10 @@ func (ec *executionContext) fieldContext_Query_game(ctx context.Context, field g
 				return ec.fieldContext_Game_screenshots(ctx, field)
 			case "tags":
 				return ec.fieldContext_Game_tags(ctx, field)
+			case "genre":
+				return ec.fieldContext_Game_genre(ctx, field)
+			case "difficulty":
+				return ec.fieldContext_Game_difficulty(ctx, field)
 			case "accentColor":
 				return ec.fieldContext_Game_accentColor(ctx, field)
 			case "playerActivity":
@@ -13850,6 +14168,10 @@ func (ec *executionContext) fieldContext_Query_gameBySlug(ctx context.Context, f
 				return ec.fieldContext_Game_screenshots(ctx, field)
 			case "tags":
 				return ec.fieldContext_Game_tags(ctx, field)
+			case "genre":
+				return ec.fieldContext_Game_genre(ctx, field)
+			case "difficulty":
+				return ec.fieldContext_Game_difficulty(ctx, field)
 			case "accentColor":
 				return ec.fieldContext_Game_accentColor(ctx, field)
 			case "playerActivity":
@@ -14502,6 +14824,10 @@ func (ec *executionContext) fieldContext_Query_myGames(_ context.Context, field 
 				return ec.fieldContext_Game_screenshots(ctx, field)
 			case "tags":
 				return ec.fieldContext_Game_tags(ctx, field)
+			case "genre":
+				return ec.fieldContext_Game_genre(ctx, field)
+			case "difficulty":
+				return ec.fieldContext_Game_difficulty(ctx, field)
 			case "accentColor":
 				return ec.fieldContext_Game_accentColor(ctx, field)
 			case "playerActivity":
@@ -14590,6 +14916,10 @@ func (ec *executionContext) fieldContext_Query_myGame(ctx context.Context, field
 				return ec.fieldContext_Game_screenshots(ctx, field)
 			case "tags":
 				return ec.fieldContext_Game_tags(ctx, field)
+			case "genre":
+				return ec.fieldContext_Game_genre(ctx, field)
+			case "difficulty":
+				return ec.fieldContext_Game_difficulty(ctx, field)
 			case "accentColor":
 				return ec.fieldContext_Game_accentColor(ctx, field)
 			case "playerActivity":
@@ -14838,6 +15168,117 @@ func (ec *executionContext) fieldContext_Query_catalogTagTaxonomy(_ context.Cont
 	return fc, nil
 }
 
+func (ec *executionContext) _Query_genreTaxonomy(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_Query_genreTaxonomy,
+		func(ctx context.Context) (any, error) {
+			return ec.resolvers.Query().GenreTaxonomy(ctx)
+		},
+		nil,
+		ec.marshalNCatalogAxisOption2ᚕᚖgithubᚗcomᚋscruffyprodigyᚋjoinquestᚋgraphᚋmodelᚐCatalogAxisOptionᚄ,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_Query_genreTaxonomy(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Query",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "id":
+				return ec.fieldContext_CatalogAxisOption_id(ctx, field)
+			case "label":
+				return ec.fieldContext_CatalogAxisOption_label(ctx, field)
+			case "description":
+				return ec.fieldContext_CatalogAxisOption_description(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type CatalogAxisOption", field.Name)
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Query_difficultyTaxonomy(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_Query_difficultyTaxonomy,
+		func(ctx context.Context) (any, error) {
+			return ec.resolvers.Query().DifficultyTaxonomy(ctx)
+		},
+		nil,
+		ec.marshalNCatalogAxisOption2ᚕᚖgithubᚗcomᚋscruffyprodigyᚋjoinquestᚋgraphᚋmodelᚐCatalogAxisOptionᚄ,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_Query_difficultyTaxonomy(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Query",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "id":
+				return ec.fieldContext_CatalogAxisOption_id(ctx, field)
+			case "label":
+				return ec.fieldContext_CatalogAxisOption_label(ctx, field)
+			case "description":
+				return ec.fieldContext_CatalogAxisOption_description(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type CatalogAxisOption", field.Name)
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Query_socialModeTaxonomy(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_Query_socialModeTaxonomy,
+		func(ctx context.Context) (any, error) {
+			return ec.resolvers.Query().SocialModeTaxonomy(ctx)
+		},
+		nil,
+		ec.marshalNCatalogAxisOption2ᚕᚖgithubᚗcomᚋscruffyprodigyᚋjoinquestᚋgraphᚋmodelᚐCatalogAxisOptionᚄ,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_Query_socialModeTaxonomy(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Query",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "id":
+				return ec.fieldContext_CatalogAxisOption_id(ctx, field)
+			case "label":
+				return ec.fieldContext_CatalogAxisOption_label(ctx, field)
+			case "description":
+				return ec.fieldContext_CatalogAxisOption_description(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type CatalogAxisOption", field.Name)
+		},
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _Query_pendingGameReviews(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
@@ -14900,6 +15341,10 @@ func (ec *executionContext) fieldContext_Query_pendingGameReviews(_ context.Cont
 				return ec.fieldContext_Game_screenshots(ctx, field)
 			case "tags":
 				return ec.fieldContext_Game_tags(ctx, field)
+			case "genre":
+				return ec.fieldContext_Game_genre(ctx, field)
+			case "difficulty":
+				return ec.fieldContext_Game_difficulty(ctx, field)
 			case "accentColor":
 				return ec.fieldContext_Game_accentColor(ctx, field)
 			case "playerActivity":
@@ -16238,6 +16683,10 @@ func (ec *executionContext) fieldContext_RegisterGamePayload_game(_ context.Cont
 				return ec.fieldContext_Game_screenshots(ctx, field)
 			case "tags":
 				return ec.fieldContext_Game_tags(ctx, field)
+			case "genre":
+				return ec.fieldContext_Game_genre(ctx, field)
+			case "difficulty":
+				return ec.fieldContext_Game_difficulty(ctx, field)
 			case "accentColor":
 				return ec.fieldContext_Game_accentColor(ctx, field)
 			case "playerActivity":
@@ -16383,6 +16832,10 @@ func (ec *executionContext) fieldContext_RegisterMyGamePayload_game(_ context.Co
 				return ec.fieldContext_Game_screenshots(ctx, field)
 			case "tags":
 				return ec.fieldContext_Game_tags(ctx, field)
+			case "genre":
+				return ec.fieldContext_Game_genre(ctx, field)
+			case "difficulty":
+				return ec.fieldContext_Game_difficulty(ctx, field)
 			case "accentColor":
 				return ec.fieldContext_Game_accentColor(ctx, field)
 			case "playerActivity":
@@ -17387,6 +17840,10 @@ func (ec *executionContext) fieldContext_Session_game(_ context.Context, field g
 				return ec.fieldContext_Game_screenshots(ctx, field)
 			case "tags":
 				return ec.fieldContext_Game_tags(ctx, field)
+			case "genre":
+				return ec.fieldContext_Game_genre(ctx, field)
+			case "difficulty":
+				return ec.fieldContext_Game_difficulty(ctx, field)
 			case "accentColor":
 				return ec.fieldContext_Game_accentColor(ctx, field)
 			case "playerActivity":
@@ -19556,6 +20013,10 @@ func (ec *executionContext) fieldContext_SyncMyGameManifestPayload_game(_ contex
 				return ec.fieldContext_Game_screenshots(ctx, field)
 			case "tags":
 				return ec.fieldContext_Game_tags(ctx, field)
+			case "genre":
+				return ec.fieldContext_Game_genre(ctx, field)
+			case "difficulty":
+				return ec.fieldContext_Game_difficulty(ctx, field)
 			case "accentColor":
 				return ec.fieldContext_Game_accentColor(ctx, field)
 			case "playerActivity":
@@ -19730,6 +20191,10 @@ func (ec *executionContext) fieldContext_Table_game(_ context.Context, field gra
 				return ec.fieldContext_Game_screenshots(ctx, field)
 			case "tags":
 				return ec.fieldContext_Game_tags(ctx, field)
+			case "genre":
+				return ec.fieldContext_Game_genre(ctx, field)
+			case "difficulty":
+				return ec.fieldContext_Game_difficulty(ctx, field)
 			case "accentColor":
 				return ec.fieldContext_Game_accentColor(ctx, field)
 			case "playerActivity":
@@ -19791,6 +20256,8 @@ func (ec *executionContext) fieldContext_Table_mode(_ context.Context, field gra
 				return ec.fieldContext_GameMode_maxPlayers(ctx, field)
 			case "status":
 				return ec.fieldContext_GameMode_status(ctx, field)
+			case "socialMode":
+				return ec.fieldContext_GameMode_socialMode(ctx, field)
 			case "seats":
 				return ec.fieldContext_GameMode_seats(ctx, field)
 			case "queuePaths":
@@ -22892,7 +23359,7 @@ func (ec *executionContext) unmarshalInputUpdateMyGameMetadataInput(ctx context.
 		asMap[k] = v
 	}
 
-	fieldsInOrder := [...]string{"gameId", "name", "shortDescription", "longDescription", "howToPlay", "tags", "contactEmail", "websiteUrl", "communityUrl", "accentColor"}
+	fieldsInOrder := [...]string{"gameId", "name", "shortDescription", "longDescription", "howToPlay", "genre", "difficulty", "contactEmail", "websiteUrl", "communityUrl", "accentColor"}
 	for _, k := range fieldsInOrder {
 		v, ok := asMap[k]
 		if !ok {
@@ -22934,13 +23401,20 @@ func (ec *executionContext) unmarshalInputUpdateMyGameMetadataInput(ctx context.
 				return it, err
 			}
 			it.HowToPlay = data
-		case "tags":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("tags"))
-			data, err := ec.unmarshalOString2ᚕstringᚄ(ctx, v)
+		case "genre":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("genre"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
 			if err != nil {
 				return it, err
 			}
-			it.Tags = data
+			it.Genre = data
+		case "difficulty":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("difficulty"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Difficulty = data
 		case "contactEmail":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("contactEmail"))
 			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
@@ -23140,6 +23614,55 @@ func (ec *executionContext) _ActiveIntent(ctx context.Context, sel ast.Selection
 			out.Values[i] = ec._ActiveIntent_selectedOptions(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
 				atomic.AddUint32(&out.Invalids, 1)
+			}
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch(ctx)
+	if out.Invalids > 0 {
+		return graphql.Null
+	}
+
+	atomic.AddInt32(&ec.deferred, int32(len(deferred)))
+
+	for label, dfs := range deferred {
+		ec.processDeferredGroup(graphql.DeferredGroup{
+			Label:    label,
+			Path:     graphql.GetPath(ctx),
+			FieldSet: dfs,
+			Context:  ctx,
+		})
+	}
+
+	return out
+}
+
+var catalogAxisOptionImplementors = []string{"CatalogAxisOption"}
+
+func (ec *executionContext) _CatalogAxisOption(ctx context.Context, sel ast.SelectionSet, obj *model.CatalogAxisOption) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, catalogAxisOptionImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	deferred := make(map[string]*graphql.FieldSet)
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("CatalogAxisOption")
+		case "id":
+			out.Values[i] = ec._CatalogAxisOption_id(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "label":
+			out.Values[i] = ec._CatalogAxisOption_label(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "description":
+			out.Values[i] = ec._CatalogAxisOption_description(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
 			}
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
@@ -23616,6 +24139,10 @@ func (ec *executionContext) _Game(ctx context.Context, sel ast.SelectionSet, obj
 			if out.Values[i] == graphql.Null {
 				atomic.AddUint32(&out.Invalids, 1)
 			}
+		case "genre":
+			out.Values[i] = ec._Game_genre(ctx, field, obj)
+		case "difficulty":
+			out.Values[i] = ec._Game_difficulty(ctx, field, obj)
 		case "accentColor":
 			out.Values[i] = ec._Game_accentColor(ctx, field, obj)
 		case "playerActivity":
@@ -23853,6 +24380,8 @@ func (ec *executionContext) _GameMode(ctx context.Context, sel ast.SelectionSet,
 			if out.Values[i] == graphql.Null {
 				atomic.AddUint32(&out.Invalids, 1)
 			}
+		case "socialMode":
+			out.Values[i] = ec._GameMode_socialMode(ctx, field, obj)
 		case "seats":
 			field := field
 
@@ -25861,6 +26390,72 @@ func (ec *executionContext) _Query(ctx context.Context, sel ast.SelectionSet) gr
 					}
 				}()
 				res = ec._Query_catalogTagTaxonomy(ctx, field)
+				if res == graphql.Null {
+					atomic.AddUint32(&fs.Invalids, 1)
+				}
+				return res
+			}
+
+			rrm := func(ctx context.Context) graphql.Marshaler {
+				return ec.OperationContext.RootResolverMiddleware(ctx,
+					func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
+			}
+
+			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return rrm(innerCtx) })
+		case "genreTaxonomy":
+			field := field
+
+			innerFunc := func(ctx context.Context, fs *graphql.FieldSet) (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Query_genreTaxonomy(ctx, field)
+				if res == graphql.Null {
+					atomic.AddUint32(&fs.Invalids, 1)
+				}
+				return res
+			}
+
+			rrm := func(ctx context.Context) graphql.Marshaler {
+				return ec.OperationContext.RootResolverMiddleware(ctx,
+					func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
+			}
+
+			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return rrm(innerCtx) })
+		case "difficultyTaxonomy":
+			field := field
+
+			innerFunc := func(ctx context.Context, fs *graphql.FieldSet) (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Query_difficultyTaxonomy(ctx, field)
+				if res == graphql.Null {
+					atomic.AddUint32(&fs.Invalids, 1)
+				}
+				return res
+			}
+
+			rrm := func(ctx context.Context) graphql.Marshaler {
+				return ec.OperationContext.RootResolverMiddleware(ctx,
+					func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
+			}
+
+			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return rrm(innerCtx) })
+		case "socialModeTaxonomy":
+			field := field
+
+			innerFunc := func(ctx context.Context, fs *graphql.FieldSet) (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Query_socialModeTaxonomy(ctx, field)
 				if res == graphql.Null {
 					atomic.AddUint32(&fs.Invalids, 1)
 				}
@@ -29020,6 +29615,60 @@ func (ec *executionContext) marshalNBoolean2bool(ctx context.Context, sel ast.Se
 	return res
 }
 
+func (ec *executionContext) marshalNCatalogAxisOption2ᚕᚖgithubᚗcomᚋscruffyprodigyᚋjoinquestᚋgraphᚋmodelᚐCatalogAxisOptionᚄ(ctx context.Context, sel ast.SelectionSet, v []*model.CatalogAxisOption) graphql.Marshaler {
+	ret := make(graphql.Array, len(v))
+	var wg sync.WaitGroup
+	isLen1 := len(v) == 1
+	if !isLen1 {
+		wg.Add(len(v))
+	}
+	for i := range v {
+		i := i
+		fc := &graphql.FieldContext{
+			Index:  &i,
+			Result: &v[i],
+		}
+		ctx := graphql.WithFieldContext(ctx, fc)
+		f := func(i int) {
+			defer func() {
+				if r := recover(); r != nil {
+					ec.Error(ctx, ec.Recover(ctx, r))
+					ret = nil
+				}
+			}()
+			if !isLen1 {
+				defer wg.Done()
+			}
+			ret[i] = ec.marshalNCatalogAxisOption2ᚖgithubᚗcomᚋscruffyprodigyᚋjoinquestᚋgraphᚋmodelᚐCatalogAxisOption(ctx, sel, v[i])
+		}
+		if isLen1 {
+			f(i)
+		} else {
+			go f(i)
+		}
+
+	}
+	wg.Wait()
+
+	for _, e := range ret {
+		if e == graphql.Null {
+			return graphql.Null
+		}
+	}
+
+	return ret
+}
+
+func (ec *executionContext) marshalNCatalogAxisOption2ᚖgithubᚗcomᚋscruffyprodigyᚋjoinquestᚋgraphᚋmodelᚐCatalogAxisOption(ctx context.Context, sel ast.SelectionSet, v *model.CatalogAxisOption) graphql.Marshaler {
+	if v == nil {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			ec.Errorf(ctx, "the requested element is null which the schema does not allow")
+		}
+		return graphql.Null
+	}
+	return ec._CatalogAxisOption(ctx, sel, v)
+}
+
 func (ec *executionContext) marshalNCatalogTagOption2ᚕᚖgithubᚗcomᚋscruffyprodigyᚋjoinquestᚋgraphᚋmodelᚐCatalogTagOptionᚄ(ctx context.Context, sel ast.SelectionSet, v []*model.CatalogTagOption) graphql.Marshaler {
 	ret := make(graphql.Array, len(v))
 	var wg sync.WaitGroup
@@ -31872,42 +32521,6 @@ func (ec *executionContext) marshalOSpiritAnimalTotem2ᚕᚖgithubᚗcomᚋscruf
 
 	}
 	wg.Wait()
-
-	for _, e := range ret {
-		if e == graphql.Null {
-			return graphql.Null
-		}
-	}
-
-	return ret
-}
-
-func (ec *executionContext) unmarshalOString2ᚕstringᚄ(ctx context.Context, v any) ([]string, error) {
-	if v == nil {
-		return nil, nil
-	}
-	var vSlice []any
-	vSlice = graphql.CoerceList(v)
-	var err error
-	res := make([]string, len(vSlice))
-	for i := range vSlice {
-		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithIndex(i))
-		res[i], err = ec.unmarshalNString2string(ctx, vSlice[i])
-		if err != nil {
-			return nil, err
-		}
-	}
-	return res, nil
-}
-
-func (ec *executionContext) marshalOString2ᚕstringᚄ(ctx context.Context, sel ast.SelectionSet, v []string) graphql.Marshaler {
-	if v == nil {
-		return graphql.Null
-	}
-	ret := make(graphql.Array, len(v))
-	for i := range v {
-		ret[i] = ec.marshalNString2string(ctx, sel, v[i])
-	}
 
 	for _, e := range ret {
 		if e == graphql.Null {

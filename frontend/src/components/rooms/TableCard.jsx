@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useAuth } from '../auth/AuthProvider'
-import { gameIconUrl, gameTagChips } from '../../lib/gameCard'
+import { gameAxisChips, gameIconUrl } from '../../lib/gameCard'
 import { accentColorFor } from '../../lib/gameAccent'
 import {
   DISCARD,
@@ -188,7 +188,7 @@ export default function TableCard({ table, busy, onSit, onLeave, onStart, onLook
   const gapsLine = formatFormingGapsFromLobbyLine(enriched.formingGaps)
   const game = enriched.game
   const accent = accentColorFor(game?.slug || game?.id || 'table', game?.accentColor)
-  const catalogTags = gameTagChips(game?.tags)
+  const catalogTags = gameAxisChips(game, enriched.mode)
   const catalogBlurb = game?.shortDescription?.trim() || ''
   let catalogIcon = null
   if (game?.iconUrl?.trim()) {
@@ -235,7 +235,7 @@ export default function TableCard({ table, busy, onSit, onLeave, onStart, onLook
           </h3>
           {catalogBlurb ? <p className="text-sm text-muted-foreground">{catalogBlurb}</p> : null}
           {catalogTags.length > 0 ? (
-            <ul className="flex flex-wrap gap-1" aria-label="Game tags">
+            <ul className="flex flex-wrap gap-1" aria-label="Game genre, format and difficulty">
               {catalogTags.map((tag) => (
                 <li key={tag}>
                   <Badge variant="secondary">{tag}</Badge>
