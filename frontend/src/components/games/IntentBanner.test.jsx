@@ -1,5 +1,4 @@
 import { render, screen } from '@testing-library/react'
-import userEvent from '@testing-library/user-event'
 import { describe, it, expect, vi } from 'vitest'
 import IntentBanner from './IntentBanner'
 import { LEAVE_GAME_FAILED } from '../../lib/playerCopy'
@@ -30,22 +29,16 @@ describe('IntentBanner', () => {
     expect(screen.getByRole('alert')).toHaveTextContent(LEAVE_GAME_FAILED)
   })
 
-  it('shows a leave failure alongside the waiting intent', () => {
-    render(
+  it('renders nothing for a queued intent — the waiting page owns that state', () => {
+    const { container } = render(
       <IntentBanner
-        activeIntent={{
-          queueId: 'q1',
-          gameName: 'Demo Game',
-          status: 'WAITING',
-          queuedCount: 2,
-        }}
+        activeIntent={{ queueId: 'q1', gameName: 'Demo Game', status: 'WAITING', queuedCount: 3 }}
         activeTableSeat={null}
         busy={false}
-        leaveError={LEAVE_GAME_FAILED}
         onLeave={vi.fn()}
       />,
     )
-    expect(screen.getByRole('alert')).toHaveTextContent(LEAVE_GAME_FAILED)
+    expect(container).toBeEmptyDOMElement()
   })
 
   it('shows no alert when leaving has not failed', () => {
@@ -63,70 +56,6 @@ describe('IntentBanner', () => {
       />,
     )
     expect(screen.queryByRole('alert')).toBeNull()
-  })
-
-  it('shows waiting intent with stop looking', () => {
-    render(
-      <IntentBanner
-        activeIntent={{
-          queueId: 'q1',
-          gameName: 'Demo Game',
-          status: 'WAITING',
-          queuedCount: 3,
-        }}
-        activeTableSeat={null}
-        busy={false}
-        onLeave={vi.fn()}
-      />,
-    )
-    expect(screen.getByText(/Looking for a group in Demo Game/)).toBeInTheDocument()
-    expect(screen.getByText('We will notify you here when your group is ready.')).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: 'Stop looking' })).toBeInTheDocument()
-  })
-
-  it('shows paused live updates hint while waiting without websocket', () => {
-    render(
-      <IntentBanner
-        activeIntent={{
-          queueId: 'q1',
-          gameName: 'Demo Game',
-          status: 'WAITING',
-          queuedCount: 3,
-        }}
-        activeTableSeat={null}
-        busy={false}
-        liveUpdatesConnected={false}
-        onLeave={vi.fn()}
-      />,
-    )
-    expect(screen.getByText('Live updates paused — refreshing every few seconds.')).toBeInTheDocument()
-  })
-
-  it('shows which cohort the player joined in composition games', () => {
-    render(
-      <IntentBanner
-        activeIntent={{
-          queueId: 'q1',
-          gameName: 'Word Hunt',
-          status: 'WAITING',
-          queuedCount: 2,
-          queuePath: 'ClueGiver',
-          queuePathDisplayName: 'Clue Giver',
-          formingGaps: [
-            { queuePath: 'ClueGiver', displayName: 'Clue Giver', assigned: 1, needed: 1 },
-            { queuePath: 'Guesser', displayName: 'Guesser', assigned: 0, needed: 4 },
-          ],
-        }}
-        activeTableSeat={null}
-        busy={false}
-        onLeave={vi.fn()}
-      />,
-    )
-    expect(
-      screen.getByText(
-        'Looking for a group in Word Hunt as Clue Giver · 2 players looking · Need 1 Clue Giver, 4 Guesser',
-      ),
-    ).toBeInTheDocument()
   })
 
   it('shows playing intent with launch link and leave game', () => {
@@ -149,26 +78,6 @@ describe('IntentBanner', () => {
       'http://game.example/play',
     )
     expect(screen.getByRole('button', { name: 'Leave game' })).toBeInTheDocument()
-  })
-
-  it('calls onLeave from the waiting intent action', async () => {
-    const onLeave = vi.fn()
-    const user = userEvent.setup()
-    render(
-      <IntentBanner
-        activeIntent={{
-          queueId: 'q1',
-          gameName: 'Demo Game',
-          status: 'WAITING',
-          queuedCount: 1,
-        }}
-        activeTableSeat={null}
-        busy={false}
-        onLeave={onLeave}
-      />,
-    )
-    await user.click(screen.getByRole('button', { name: 'Stop looking' }))
-    expect(onLeave).toHaveBeenCalledTimes(1)
   })
 
   it('shows table seat intent pointing to room nav', () => {

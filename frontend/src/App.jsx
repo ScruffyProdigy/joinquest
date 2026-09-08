@@ -8,6 +8,8 @@ import { isStylePreviewEnabled } from './lib/stylePreview'
 import IntentBanner from './components/games/IntentBanner'
 import GameLobby from './components/games/GameLobby'
 import GameDetailPage from './components/games/GameDetailPage'
+import WaitingPage from './components/games/WaitingPage'
+import { useWaitingRedirect } from './components/games/useWaitingRedirect'
 import { ActiveRoomProvider, useActiveRoom } from './components/rooms/ActiveRoomProvider'
 import AppDock from './components/rooms/AppDock'
 import RoomPanel from './components/rooms/RoomPanel'
@@ -19,6 +21,7 @@ import { parseRoomInviteCode } from './lib/rooms'
 import { parseGroupRoute } from './lib/group'
 import GroupPage from './components/group/GroupPage'
 import { parseGameSlug } from './lib/games'
+import { navigateToWaiting, parseWaitingRoute } from './lib/waiting'
 import { MOBILE_ROOM_QUERY, useMediaQuery } from './lib/useMediaQuery'
 import { usePathname } from './lib/usePathname'
 import { restoreCatalogScrollIfPending } from './lib/catalogNavigation'
@@ -36,9 +39,10 @@ import { useEffect } from 'react'
 
 function CatalogPage() {
   const { user, loading: authLoading } = useAuth()
-  const { activeIntent, activeTableSeat, busy, queueWsConnected, leaveError, handleLeave } =
-    useActiveIntent()
-  const liveUpdatesConnected = !activeIntent?.queueId || activeIntent.status !== 'WAITING' || queueWsConnected
+  const { activeIntent, activeTableSeat, busy, leaveError, handleLeave } = useActiveIntent()
+
+  // Queued players belong on the waiting page, not on a banner above the catalog.
+  useWaitingRedirect(activeIntent)
 
   useEffect(() => {
     restoreCatalogScrollIfPending()
@@ -51,7 +55,6 @@ function CatalogPage() {
           activeIntent={activeIntent}
           activeTableSeat={activeTableSeat}
           busy={busy}
-          liveUpdatesConnected={liveUpdatesConnected}
           leaveError={leaveError}
           onLeave={handleLeave}
         />
@@ -69,9 +72,19 @@ function CatalogPage() {
 
 function GameDetailShell({ slug }) {
   const { user, loading: authLoading } = useAuth()
-  const { activeIntent, activeTableSeat, busy, queueWsConnected, leaveError, refresh, notifyQueueJoined, handleLeave } =
+  const { activeIntent, activeTableSeat, busy, leaveError, refresh, notifyQueueJoined, handleLeave } =
     useActiveIntent()
-  const liveUpdatesConnected = !activeIntent?.queueId || activeIntent.status !== 'WAITING' || queueWsConnected
+
+  useWaitingRedirect(activeIntent)
+
+  // Joining a queue is the one entry that pushes: Back off the waiting page should
+  // return here. Every other route onto it replaces, via useWaitingRedirect.
+  function handleQueueJoined(queueId, result, meta) {
+    notifyQueueJoined(queueId, result, meta)
+    if (result?.queued) {
+      navigateToWaiting()
+    }
+  }
 
   return (
     <>
@@ -80,7 +93,6 @@ function GameDetailShell({ slug }) {
           activeIntent={activeIntent}
           activeTableSeat={activeTableSeat}
           busy={busy}
-          liveUpdatesConnected={liveUpdatesConnected}
           leaveError={leaveError}
           onLeave={handleLeave}
         />
@@ -90,7 +102,7 @@ function GameDetailShell({ slug }) {
         activeIntent={activeIntent}
         activeTableSeat={activeTableSeat}
         onQueueChange={refresh}
-        onQueueJoined={notifyQueueJoined}
+        onQueueJoined={handleQueueJoined}
         onTableChange={refresh}
       />
     </>
@@ -105,6 +117,7 @@ function MainLayout() {
   const { room, roomOpen, dismissRoom, openRoom, unreadCount, hasRoomMembership } = useActiveRoom()
   const isMobile = useMediaQuery(MOBILE_ROOM_QUERY)
   const onGroup = parseGroupRoute(pathname)
+  const onWaiting = parseWaitingRoute(pathname)
   const inRoomContext = Boolean(room || inviteCode || hasRoomMembership)
   // Desktop keeps the room panel visible whenever the user belongs to a room; mobile toggles via dock/sheet.
   // The group page is the exception: it is a presentation over the same room, so the
@@ -127,7 +140,15 @@ function MainLayout() {
     <>
       <div className={`app-layout ${showDesktopRoom ? 'app-layout--split' : ''}`}>
         <div className="app-layout__catalog">
-          {onGroup ? <GroupPage /> : gameSlug ? <GameDetailShell slug={gameSlug} /> : <CatalogPage />}
+          {onGroup ? (
+            <GroupPage />
+          ) : onWaiting ? (
+            <WaitingPage />
+          ) : gameSlug ? (
+            <GameDetailShell slug={gameSlug} />
+          ) : (
+            <CatalogPage />
+          )}
         </div>
         {showDesktopRoom ? (
           <aside className="app-layout__room" aria-label="Room chat">
@@ -197,6 +218,7 @@ function App() {
   const isMainRoute =
     pathname === '/' ||
     parseGroupRoute(pathname) ||
+    parseWaitingRoute(pathname) ||
     Boolean(parseRoomInviteCode(pathname)) ||
     Boolean(parseGameSlug(pathname))
 
