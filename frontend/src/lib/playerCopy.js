@@ -180,6 +180,20 @@ export function bannerIntentLaunchPendingHint() {
   return 'Preparing your launch link…'
 }
 
+export const FINDING_PLAYERS = 'Finding players…'
+
+/** e.g. "Word Hunt · Arena · Clue Giver · Hard mode" */
+export function waitingPageSubline(gameName, modeName, roleLabel, selectedOptions) {
+  const parts = [gameName, modeName, roleLabel].map((part) => part?.trim()).filter(Boolean)
+  return [...parts, ...selectedOptionLabels(selectedOptions)].join(' · ')
+}
+
+// Leaving gives up the player's place, so it is confirmed first.
+export const LEAVE_QUEUE_TITLE = 'Leave the queue?'
+export const LEAVE_QUEUE_BODY = "You'll lose your spot and have to start over."
+export const LEAVE_QUEUE_CONFIRM = 'Leave queue'
+export const STAY_IN_QUEUE = 'Stay in queue'
+
 export function bannerIntentWaitingHint() {
   return 'We will notify you here when your group is ready.'
 }

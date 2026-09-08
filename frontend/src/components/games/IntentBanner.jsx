@@ -2,20 +2,15 @@ import {
   LAUNCH_GAME,
   LEAVE_GAME,
   LEAVE_TABLE_SEAT,
-  STOP_LOOKING,
   bannerIntentPlayingHint,
   bannerIntentLaunchPendingHint,
-  bannerIntentWaitingHint,
-  bannerLiveUpdatesPausedHint,
   bannerTableBackfillHint,
   bannerTableSeatHint,
   bannerTableSeatLine,
-  bannerWaitingLine,
 } from '../../lib/playerCopy'
 import {
   hasFormingTableIntent,
   hasReadyToPlayIntent,
-  hasWaitingIntent,
   playingIntentTitle,
   resolveIntentLaunchUrl,
 } from '../../lib/intent'
@@ -32,41 +27,17 @@ function LeaveError({ message }) {
   )
 }
 
+/**
+ * Ready-to-play and forming-table intents. The queued state left this banner for a
+ * page of its own in JQ-197; the ready-to-play branch is JQ-136's to move next.
+ */
 export default function IntentBanner({
   activeIntent,
   activeTableSeat,
   busy,
-  liveUpdatesConnected = true,
   leaveError = null,
   onLeave,
 }) {
-  if (hasWaitingIntent(activeIntent)) {
-    return (
-      <aside className="intent-banner" role="region" aria-live="polite" aria-label="Your intent">
-        <div className="intent-banner__copy">
-          <p className="intent-banner__title">
-            {bannerWaitingLine(
-              activeIntent.gameName,
-              activeIntent.queuedCount,
-              activeIntent.queuePathDisplayName,
-              activeIntent.formingGaps,
-              activeIntent.selectedOptions,
-            )}
-          </p>
-          <p className="intent-banner__hint">
-            {liveUpdatesConnected ? bannerIntentWaitingHint() : bannerLiveUpdatesPausedHint()}
-          </p>
-          <LeaveError message={leaveError} />
-        </div>
-        <div className="intent-banner__actions">
-          <Button type="button" variant="default" onClick={onLeave} disabled={busy}>
-            {busy ? '…' : STOP_LOOKING}
-          </Button>
-        </div>
-      </aside>
-    )
-  }
-
   if (hasReadyToPlayIntent(activeIntent, activeTableSeat)) {
     const launchUrl = resolveIntentLaunchUrl(activeIntent, activeTableSeat)
     const title = playingIntentTitle(activeIntent, activeTableSeat)

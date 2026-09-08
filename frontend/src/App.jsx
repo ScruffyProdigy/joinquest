@@ -8,6 +8,7 @@ import { isStylePreviewEnabled } from './lib/stylePreview'
 import IntentBanner from './components/games/IntentBanner'
 import GameLobby from './components/games/GameLobby'
 import GameDetailPage from './components/games/GameDetailPage'
+import WaitingPage from './components/games/WaitingPage'
 import { ActiveRoomProvider } from './components/rooms/ActiveRoomProvider'
 import { AuthProvider, useAuth } from './components/auth/AuthProvider'
 import { useActiveIntent } from './components/games/useActiveIntent'
@@ -16,6 +17,7 @@ import { parseRoomInviteCode } from './lib/rooms'
 import { parseGroupRoute } from './lib/group'
 import GroupPage from './components/group/GroupPage'
 import { parseGameSlug } from './lib/games'
+import { navigateToWaiting, parseWaitingRoute } from './lib/waiting'
 import { usePathname } from './lib/usePathname'
 import { restoreCatalogScrollIfPending } from './lib/catalogNavigation'
 import { parseDeveloperRoute } from './lib/developers'
@@ -31,11 +33,9 @@ import PrivacyPage from './components/legal/PrivacyPage'
 import { useEffect } from 'react'
 import { Link } from './components/ui/link'
 
-function CatalogPage() {
+function CatalogPage({ intent }) {
   const { user, loading: authLoading } = useAuth()
-  const { activeIntent, activeTableSeat, busy, queueWsConnected, leaveError, handleLeave } =
-    useActiveIntent()
-  const liveUpdatesConnected = !activeIntent?.queueId || activeIntent.status !== 'WAITING' || queueWsConnected
+  const { activeIntent, activeTableSeat, busy, leaveError, handleLeave } = intent
 
   useEffect(() => {
     restoreCatalogScrollIfPending()
@@ -48,7 +48,6 @@ function CatalogPage() {
           activeIntent={activeIntent}
           activeTableSeat={activeTableSeat}
           busy={busy}
-          liveUpdatesConnected={liveUpdatesConnected}
           leaveError={leaveError}
           onLeave={handleLeave}
         />
@@ -64,11 +63,17 @@ function CatalogPage() {
   )
 }
 
-function GameDetailShell({ slug }) {
+function GameDetailShell({ slug, intent }) {
   const { user, loading: authLoading } = useAuth()
-  const { activeIntent, activeTableSeat, busy, queueWsConnected, leaveError, refresh, notifyQueueJoined, handleLeave } =
-    useActiveIntent()
-  const liveUpdatesConnected = !activeIntent?.queueId || activeIntent.status !== 'WAITING' || queueWsConnected
+  const { activeIntent, activeTableSeat, busy, leaveError, refresh, notifyQueueJoined, handleLeave } = intent
+
+  // Joining a queue is the only route onto the waiting page.
+  function handleQueueJoined(queueId, result, meta) {
+    notifyQueueJoined(queueId, result, meta)
+    if (result?.queued) {
+      navigateToWaiting()
+    }
+  }
 
   return (
     <>
@@ -77,7 +82,6 @@ function GameDetailShell({ slug }) {
           activeIntent={activeIntent}
           activeTableSeat={activeTableSeat}
           busy={busy}
-          liveUpdatesConnected={liveUpdatesConnected}
           leaveError={leaveError}
           onLeave={handleLeave}
         />
@@ -87,7 +91,7 @@ function GameDetailShell({ slug }) {
         activeIntent={activeIntent}
         activeTableSeat={activeTableSeat}
         onQueueChange={refresh}
-        onQueueJoined={notifyQueueJoined}
+        onQueueJoined={handleQueueJoined}
         onTableChange={refresh}
       />
     </>
@@ -103,6 +107,10 @@ function MainLayout() {
   const pathname = usePathname()
   const gameSlug = parseGameSlug(pathname)
   const onGroup = parseGroupRoute(pathname)
+  const onWaiting = parseWaitingRoute(pathname)
+  // One instance for the whole shell. It has to survive the navigation from a game
+  // page to /waiting, which carries the optimistic join state and its grace window.
+  const intent = useActiveIntent()
 
   useEffect(() => {
     const root = document.getElementById('root')
@@ -112,7 +120,15 @@ function MainLayout() {
     }
   }, [gameSlug])
 
-  return onGroup ? <GroupPage /> : gameSlug ? <GameDetailShell slug={gameSlug} /> : <CatalogPage />
+  return onGroup ? (
+    <GroupPage />
+  ) : onWaiting ? (
+    <WaitingPage intent={intent} />
+  ) : gameSlug ? (
+    <GameDetailShell slug={gameSlug} intent={intent} />
+  ) : (
+    <CatalogPage intent={intent} />
+  )
 }
 
 function DeveloperShell() {
@@ -158,6 +174,7 @@ function App() {
   const isMainRoute =
     pathname === '/' ||
     parseGroupRoute(pathname) ||
+    parseWaitingRoute(pathname) ||
     Boolean(parseRoomInviteCode(pathname)) ||
     Boolean(parseGameSlug(pathname))
 

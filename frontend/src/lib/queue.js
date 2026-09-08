@@ -1,5 +1,5 @@
 import { createClient } from 'graphql-ws'
-import { getGraphQLWsUrl } from './env'
+import { getGraphQLUrl, getGraphQLWsUrl } from './env'
 import { graphqlRequest } from './graphql'
 import { isLobbyDebugEnabled, lobbyDebug } from './lobbyDebug'
 
@@ -193,6 +193,28 @@ export async function joinQueue(queueId, queuePath, options) {
 export async function fetchMyQueueStatus(queueId) {
   const data = await graphqlRequest(MY_QUEUE_STATUS_QUERY, { queueId })
   return data.myQueueStatus
+}
+
+/**
+ * Leave the queue while the document is being torn down (refresh, tab close).
+ * keepalive, not sendBeacon: the endpoint may be cross-origin and sendBeacon cannot
+ * preflight a JSON body. Best effort — the browser may still drop it.
+ */
+export function leaveQueueOnExit(queueId) {
+  if (!queueId) {
+    return
+  }
+  try {
+    void fetch(getGraphQLUrl(), {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
+      keepalive: true,
+      body: JSON.stringify({ query: LEAVE_QUEUE_MUTATION, variables: { queueId } }),
+    }).catch(() => {})
+  } catch {
+    // Nobody left to tell.
+  }
 }
 
 export async function leaveQueue(queueId) {
