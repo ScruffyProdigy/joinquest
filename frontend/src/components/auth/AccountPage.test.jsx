@@ -1,7 +1,7 @@
-import { render, screen } from '@testing-library/react'
-import { describe, it, expect, beforeEach } from 'vitest'
+import { act, render, screen } from '@testing-library/react'
+import { describe, it, expect, beforeEach, vi } from 'vitest'
 import AccountPage from './AccountPage'
-import { AuthProvider } from './AuthProvider'
+import { AuthProvider, useAuth } from './AuthProvider'
 import { mockAuthenticatedSession } from '../../test/setup'
 
 function countQueries(name) {
@@ -44,5 +44,53 @@ describe('AccountPage', () => {
 
     expect(countQueries('myAccount')).toBe(1)
     expect(countQueries('subscriptionAuth')).toBe(1)
+  })
+
+  // JQ-205: the logout that lands mid-load must win. loadAccount used to feed
+  // its late myAccount response straight back into the session, resurrecting
+  // the user who had just signed out.
+  it('ignores a myAccount response that resolves after the session is cleared', async () => {
+    mockAuthenticatedSession()
+    const respond = global.fetch
+    let releaseAccount
+    const accountGate = new Promise((resolve) => {
+      releaseAccount = resolve
+    })
+    global.fetch = vi.fn(async (url, init) => {
+      const query = JSON.parse(init?.body ?? '{}').query ?? ''
+      if (query.includes('myAccount')) {
+        await accountGate
+      }
+      return respond(url, init)
+    })
+
+    let clearSession
+    function SessionProbe() {
+      ;({ clearSession } = useAuth())
+      return null
+    }
+
+    render(
+      <AuthProvider>
+        <SessionProbe />
+        <AccountPage />
+      </AuthProvider>,
+    )
+
+    // The page is still waiting on myAccount — exactly the window the race needs.
+    await screen.findByText('Loading account…')
+
+    act(() => {
+      clearSession()
+    })
+    await screen.findByText('Sign in to manage your account.')
+
+    await act(async () => {
+      releaseAccount()
+      await new Promise((resolve) => setTimeout(resolve, 50))
+    })
+
+    expect(screen.getByText('Sign in to manage your account.')).toBeInTheDocument()
+    expect(screen.queryByText('player@example.com')).not.toBeInTheDocument()
   })
 })
