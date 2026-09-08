@@ -9,7 +9,7 @@ import { startMockGameServer, stopMockGameServer } from './helpers/mockGame.js'
 import {
   expectMatchedBanner,
   expectNoIntentBanner,
-  expectWaitingBanner,
+  expectWaitingPage,
   joinDemoGameQueue,
   readLaunchMatchId,
   returnFromMatch,
@@ -64,7 +64,7 @@ test.describe('Game loop', () => {
       await identifyPlayer(pageB, emailB, 'Loop B')
 
       await joinDemoGameQueue(pageA)
-      await expectWaitingBanner(pageA)
+      await expectWaitingPage(pageA)
 
       await joinDemoGameQueue(pageB)
       await expectMatchedBanner(pageA)
@@ -80,7 +80,7 @@ test.describe('Game loop', () => {
       await expectNoIntentBanner(pageB)
 
       await joinDemoGameQueue(pageA)
-      await expectWaitingBanner(pageA)
+      await expectWaitingPage(pageA)
       await joinDemoGameQueue(pageB)
       await expectMatchedBanner(pageA)
       await expectMatchedBanner(pageB)
