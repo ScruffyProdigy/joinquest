@@ -1,13 +1,17 @@
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { isSoloMode, joinGroupOptionsForMode, modePlayerRangeLabel } from '../../lib/games'
 import { accentColorFor } from '../../lib/gameAccent'
 import { hasPlayingIntent, hasWaitingIntent } from '../../lib/intent'
-import { CREATE_PRIVATE_GAME } from '../../lib/playerCopy'
+import { PLAY_WITH_FRIENDS } from '../../lib/playerCopy'
 import { createPrivateTable } from '../../lib/tables'
 import { useActiveRoom } from '../rooms/ActiveRoomProvider'
 import GameQueueActions from './GameQueueActions'
 import ModeRequirement from './ModeRequirement'
 import { useGameQueue } from './useGameQueue'
+import { navigateTo } from '../../lib/usePathname'
+import { isIdentityRequiredError } from '../../lib/graphql'
+import { onAuthComplete } from '../../lib/authBroadcast'
+import { rememberGroupIntent, takeGroupIntentFor } from '../../lib/pendingGroupIntent'
 
 function ModeRow({
   game,
@@ -20,7 +24,7 @@ function ModeRow({
   onNavigateToMode,
   prominent = false,
 }) {
-  const { refresh: refreshRoom, openRoom } = useActiveRoom()
+  const { refresh: refreshRoom } = useActiveRoom()
   const defaultQueue = mode.queues?.find((q) => q.status === 'active') ?? null
   const playerRangeLabel = modePlayerRangeLabel(mode)
   const accent = prominent ? accentColorFor(game.slug, game.accentColor) : null
@@ -70,6 +74,44 @@ function ModeRow({
     await onQueueChange?.()
   }
 
+  async function startGroup() {
+    setTableBusy(true)
+    setTableError('')
+    try {
+      await createPrivateTable(game.id, mode.id)
+      await refreshRoom()
+      await onTableChange?.()
+      // The room is implicit: the player asked to play with friends, not to make a
+      // room, so they land straight on their group (JQ-132).
+      navigateTo('/group')
+    } catch (err) {
+      // A visitor with no name and avatar is turned away by the backend, and the
+      // GraphQL layer already raised the identity picker. That is not an error to
+      // shout at them — hold the intent so picking a name continues into the group
+      // rather than dropping them back on the catalog (JQ-131).
+      if (isIdentityRequiredError(err.message)) {
+        rememberGroupIntent(game.id, mode.id)
+        return
+      }
+      setTableError(err.message || 'Could not create private game.')
+    } finally {
+      setTableBusy(false)
+    }
+  }
+
+  const startGroupRef = useRef(startGroup)
+  startGroupRef.current = startGroup
+
+  useEffect(
+    () =>
+      onAuthComplete(() => {
+        if (takeGroupIntentFor(game.id, mode.id)) {
+          void startGroupRef.current()
+        }
+      }),
+    [game.id, mode.id],
+  )
+
   async function handleCreatePrivate() {
     if (inActiveGame) {
       setTableError('Launch or finish your current game before creating a private game.')
@@ -83,18 +125,7 @@ function ModeRow({
       setTableError('Stop looking for a group before creating a private game.')
       return
     }
-    setTableBusy(true)
-    setTableError('')
-    try {
-      await createPrivateTable(game.id, mode.id)
-      await refreshRoom()
-      openRoom()
-      await onTableChange?.()
-    } catch (err) {
-      setTableError(err.message || 'Could not create private game.')
-    } finally {
-      setTableBusy(false)
-    }
+    await startGroup()
   }
 
   const blockedByMatch =
@@ -198,7 +229,7 @@ function ModeRow({
                 disabled={tableBusy || blockedByMatch}
                 onClick={handleCreatePrivate}
               >
-                {tableBusy ? '…' : CREATE_PRIVATE_GAME}
+                {tableBusy ? '…' : PLAY_WITH_FRIENDS}
               </button>
             )}
           </>

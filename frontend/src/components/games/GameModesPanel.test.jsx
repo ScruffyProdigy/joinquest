@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest'
-import { render, screen } from '@testing-library/react'
+import { act, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import GameModesPanel from './GameModesPanel'
 
@@ -12,6 +12,12 @@ vi.mock('../rooms/ActiveRoomProvider', () => ({
 
 vi.mock('../../lib/tables', () => ({
   createPrivateTable: vi.fn(),
+}))
+
+const navigateTo = vi.fn()
+vi.mock('../../lib/usePathname', () => ({
+  navigateTo: (...args) => navigateTo(...args),
+  usePathname: () => '/games/legendary-quest',
 }))
 
 vi.mock('../../lib/queue', () => ({
@@ -228,5 +234,93 @@ describe('GameModesPanel prominent mode-card badges', () => {
       />,
     )
     expect(screen.queryByLabelText('Mode details')).not.toBeInTheDocument()
+  })
+})
+
+describe('GameModesPanel friends action', () => {
+  function friendsGame() {
+    return {
+      id: 'game-1',
+      slug: 'legendary-quest',
+      modes: [
+        {
+          id: 'mode-1',
+          modeKey: 'legendary',
+          displayName: 'Legendary',
+          status: 'active',
+          queues: [],
+          seats: [],
+          queuePaths: [],
+          eligibility: { accessible: true },
+        },
+      ],
+    }
+  }
+
+  it('offers the friends action in the prototype wording', () => {
+    render(<GameModesPanel game={friendsGame()} />)
+
+    expect(screen.getByRole('button', { name: 'Play with friends' })).toBeInTheDocument()
+  })
+
+  it('takes the player to their group instead of opening the room panel', async () => {
+    const user = userEvent.setup()
+    const { createPrivateTable } = await import('../../lib/tables')
+    createPrivateTable.mockResolvedValue({ id: 'table-1' })
+    navigateTo.mockClear()
+
+    render(<GameModesPanel game={friendsGame()} />)
+    await user.click(screen.getByRole('button', { name: 'Play with friends' }))
+
+    expect(createPrivateTable).toHaveBeenCalledWith('game-1', 'mode-1')
+    expect(navigateTo).toHaveBeenCalledWith('/group')
+  })
+})
+
+describe('GameModesPanel friends action for a visitor with no identity', () => {
+  function friendsGame() {
+    return {
+      id: 'game-1',
+      slug: 'legendary-quest',
+      modes: [
+        {
+          id: 'mode-1',
+          modeKey: 'legendary',
+          displayName: 'Legendary',
+          status: 'active',
+          queues: [],
+          seats: [],
+          queuePaths: [],
+          eligibility: { accessible: true },
+        },
+      ],
+    }
+  }
+
+  it('continues into the group once the visitor picks an identity', async () => {
+    const user = userEvent.setup()
+    const { createPrivateTable } = await import('../../lib/tables')
+    const { notifyAuthComplete } = await import('../../lib/authBroadcast')
+    window.sessionStorage.clear()
+    navigateTo.mockClear()
+    createPrivateTable.mockReset()
+    // The backend turns away a visitor with no name or avatar; the shell raises the
+    // identity picker off the same rejection.
+    createPrivateTable.mockRejectedValueOnce(new Error('identity required'))
+
+    render(<GameModesPanel game={friendsGame()} />)
+    await user.click(screen.getByRole('button', { name: 'Play with friends' }))
+
+    // Held, not lost, and no error shouted at someone who did nothing wrong.
+    expect(navigateTo).not.toHaveBeenCalled()
+    expect(screen.queryByText(/identity required/i)).not.toBeInTheDocument()
+
+    createPrivateTable.mockResolvedValueOnce({ id: 'table-1' })
+    await act(async () => {
+      notifyAuthComplete()
+    })
+
+    await waitFor(() => expect(navigateTo).toHaveBeenCalledWith('/group'))
+    expect(createPrivateTable).toHaveBeenCalledTimes(2)
   })
 })

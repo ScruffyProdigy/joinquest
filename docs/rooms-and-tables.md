@@ -82,7 +82,35 @@ Room (invite code, chat)
 Per **mode** row under each game:
 
 - **Look for group** — existing queue join (unchanged).
-- **Create private game** — `createPrivateTable(gameId, modeId)` creates a room if needed, sweeps stale empty tables, adds a forming table.
+- **Play with friends** — `createPrivateTable(gameId, modeId)` creates a room if needed, sweeps stale empty tables, adds a forming table, then navigates to `/group`. The room is never presented as a step of its own: the player asked to play with friends, not to make a room.
+  - A visitor with no name and avatar is rejected by the backend with `identity required`, which raises the identity picker. The intent is held in `sessionStorage` keyed by game + mode (`lib/pendingGroupIntent.js`) and resumed on `onAuthComplete`, so picking a name continues into the group instead of dropping them back on the catalog.
+
+### Group screen (`/group`)
+
+A **presentation over one table in a room** — not a second data model. It renders entirely
+from `Table.seatSlots`, `Table.formingGaps`, `Table.king` and `Room.members`, and adds no
+GraphQL operations of its own.
+
+- **Which table:** the one the player is seated at, else the newest forming table in their
+  room (`selectGroupTable`). A room holding several tables keeps the room surfaces instead.
+- **Sections:** accent header with live status (`Still need: <roles>` → `N of M seats · ready
+  to start`), **Invite friends** (QR + share link, reusing `RoomShareToolbar`; the raw invite
+  code is hidden here), **Players** (seat rows with Claim/Leave), **Picking a seat**
+  (`Room.members` minus the seated players), and a sticky bottom control.
+- **Bottom control:** `Claim a seat to join` when unseated; `Start game` for the king once
+  `canStart`; otherwise `Waiting for <name> to start`. The king gate is production's, but the
+  screen never uses the word "king" — it names the person.
+- **Leaving is navigating away.** Presence on the page is the seat: a deliberate in-app
+  navigation calls `leaveTable`, and the last seated player out also calls `discardTable`
+  (`leaveTable` only deletes the seat, so the emptied table would otherwise linger). There is
+  deliberately **no `beforeunload` handler** — a reload, a closed tab or a dropped connection
+  keep the seat.
+- **Share links:** `/room/:CODE` joins the room, then lands on `/group` when the room holds
+  exactly one forming table. Arrivals land **unseated**, in *Picking a seat*, and claim their
+  own seat rather than being placed in a role they did not choose.
+- **What is hidden, not removed:** chat, the invite code, the king role and multiple tables
+  per room all remain in the schema, resolvers and the room surfaces. `/group` suppresses the
+  desktop room panel and the mobile dock so the room does not show through beside it.
 
 ### Table UI (room panel)
 
@@ -184,4 +212,5 @@ Catalog sync rejects `seatTemplate` when two queue paths share the same **`displ
 | Private game | No queue; binds game + mode only |
 | Table LFG | **Look for group** backfill (Phase B) |
 | Stale empty tables | Lazy sweep + manual Discard |
-| Catalog | Per-mode LFG + Create private game |
+| Catalog | Per-mode LFG + Play with friends |
+| Group screen | `/group` — one table, presented without the room |

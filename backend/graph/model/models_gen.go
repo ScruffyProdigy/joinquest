@@ -506,6 +506,10 @@ type Table struct {
 	Game      *Game     `json:"game"`
 	Mode      *GameMode `json:"mode"`
 	CreatedAt time.Time `json:"createdAt"`
+	// forming, started or discarded. Occupancy cannot distinguish a table that emptied
+	// because it started from one nobody has sat at yet, and a private table is created
+	// with no seats, so clients need the lifecycle itself (JQ-132).
+	Status string `json:"status"`
 	// No email: a table admits strangers via Look for group and the catalog queue.
 	King                *PublicPlayer              `json:"king,omitempty"`
 	Seats               []*TableSeat               `json:"seats"`

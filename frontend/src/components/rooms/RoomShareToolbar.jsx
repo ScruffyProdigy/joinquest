@@ -14,7 +14,7 @@ function IconSms(props) {
   )
 }
 
-export default function RoomShareToolbar({ joinUrl, inviteCode }) {
+export default function RoomShareToolbar({ joinUrl, inviteCode, showCode = true }) {
   const [qrOpen, setQrOpen] = useState(false)
   const [qrDataUrl, setQrDataUrl] = useState('')
   const [copyStatus, setCopyStatus] = useState('')
@@ -72,9 +72,11 @@ export default function RoomShareToolbar({ joinUrl, inviteCode }) {
   return (
     <Card className="gap-3 py-4">
       <CardContent className="flex flex-col gap-3 px-4">
-        <p className="text-sm text-muted-foreground">
-          Room code: <strong className="font-mono-display text-foreground">{inviteCode}</strong>
-        </p>
+        {showCode ? (
+          <p className="text-sm text-muted-foreground">
+            Room code: <strong className="font-mono-display text-foreground">{inviteCode}</strong>
+          </p>
+        ) : null}
         <div className="flex flex-wrap gap-2" role="group" aria-label="Share room">
           <Button type="button" variant="secondary" size="sm" onClick={copyLink}>
             <IconCopy aria-hidden="true" />

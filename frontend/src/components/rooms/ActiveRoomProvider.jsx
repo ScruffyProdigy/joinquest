@@ -10,6 +10,7 @@ import {
 } from '../../lib/rooms'
 import { prefetchSubscriptionAuth } from '../../lib/queue'
 import { readRoomInviteHint, readRoomMemberHint, writeRoomDockHint } from '../../lib/roomDockHint'
+import { groupLandingPath } from '../../lib/group'
 import { onTabVisible } from '../../lib/tabVisibility'
 import { fetchMyTableSeat, mergeTableRecord, TABLE_UPDATED_EVENT, tableShouldLeaveRoomList } from '../../lib/tables'
 
@@ -228,7 +229,10 @@ export function ActiveRoomProvider({ children, pendingInviteCode = null }) {
         applyRoom(full, full.messages || [])
         if (openPanel) {
           setRoomOpen(true)
-          navigateTo(`/room/${full.inviteCode}`, { replace: true })
+          // A share link to a room with a single forming table is a group invite:
+          // land on the group, not the room panel (JQ-132). Everything else keeps
+          // the room surfaces exactly as they were.
+          navigateTo(groupLandingPath(full) ?? `/room/${full.inviteCode}`, { replace: true })
         }
         return full
       } catch (err) {

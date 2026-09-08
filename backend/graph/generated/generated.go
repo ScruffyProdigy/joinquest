@@ -560,6 +560,7 @@ type ComplexityRoot struct {
 		RegroupRoster       func(childComplexity int) int
 		SeatSlots           func(childComplexity int) int
 		Seats               func(childComplexity int) int
+		Status              func(childComplexity int) int
 	}
 
 	TableLookForGroupOption struct {
@@ -3288,6 +3289,12 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.Table.Seats(childComplexity), true
+	case "Table.status":
+		if e.complexity.Table.Status == nil {
+			break
+		}
+
+		return e.complexity.Table.Status(childComplexity), true
 
 	case "TableLookForGroupOption.enabled":
 		if e.complexity.TableLookForGroupOption.Enabled == nil {
@@ -4357,6 +4364,12 @@ type Table {
   game: Game!
   mode: GameMode!
   createdAt: Time!
+  """
+  forming, started or discarded. Occupancy cannot distinguish a table that emptied
+  because it started from one nobody has sat at yet, and a private table is created
+  with no seats, so clients need the lifecycle itself (JQ-132).
+  """
+  status: String!
   """No email: a table admits strangers via Look for group and the catalog queue."""
   king: PublicPlayer
   seats: [TableSeat!]!
@@ -11894,6 +11907,8 @@ func (ec *executionContext) fieldContext_Mutation_createPrivateTable(ctx context
 				return ec.fieldContext_Table_mode(ctx, field)
 			case "createdAt":
 				return ec.fieldContext_Table_createdAt(ctx, field)
+			case "status":
+				return ec.fieldContext_Table_status(ctx, field)
 			case "king":
 				return ec.fieldContext_Table_king(ctx, field)
 			case "seats":
@@ -11963,6 +11978,8 @@ func (ec *executionContext) fieldContext_Mutation_createTable(ctx context.Contex
 				return ec.fieldContext_Table_mode(ctx, field)
 			case "createdAt":
 				return ec.fieldContext_Table_createdAt(ctx, field)
+			case "status":
+				return ec.fieldContext_Table_status(ctx, field)
 			case "king":
 				return ec.fieldContext_Table_king(ctx, field)
 			case "seats":
@@ -12032,6 +12049,8 @@ func (ec *executionContext) fieldContext_Mutation_sitAtTable(ctx context.Context
 				return ec.fieldContext_Table_mode(ctx, field)
 			case "createdAt":
 				return ec.fieldContext_Table_createdAt(ctx, field)
+			case "status":
+				return ec.fieldContext_Table_status(ctx, field)
 			case "king":
 				return ec.fieldContext_Table_king(ctx, field)
 			case "seats":
@@ -12737,6 +12756,8 @@ func (ec *executionContext) fieldContext_PlayAgainResult_table(_ context.Context
 				return ec.fieldContext_Table_mode(ctx, field)
 			case "createdAt":
 				return ec.fieldContext_Table_createdAt(ctx, field)
+			case "status":
+				return ec.fieldContext_Table_status(ctx, field)
 			case "king":
 				return ec.fieldContext_Table_king(ctx, field)
 			case "seats":
@@ -16106,6 +16127,8 @@ func (ec *executionContext) fieldContext_Room_tables(_ context.Context, field gr
 				return ec.fieldContext_Table_mode(ctx, field)
 			case "createdAt":
 				return ec.fieldContext_Table_createdAt(ctx, field)
+			case "status":
+				return ec.fieldContext_Table_status(ctx, field)
 			case "king":
 				return ec.fieldContext_Table_king(ctx, field)
 			case "seats":
@@ -18374,6 +18397,8 @@ func (ec *executionContext) fieldContext_Subscription_tableUpdated(ctx context.C
 				return ec.fieldContext_Table_mode(ctx, field)
 			case "createdAt":
 				return ec.fieldContext_Table_createdAt(ctx, field)
+			case "status":
+				return ec.fieldContext_Table_status(ctx, field)
 			case "king":
 				return ec.fieldContext_Table_king(ctx, field)
 			case "seats":
@@ -18803,6 +18828,35 @@ func (ec *executionContext) fieldContext_Table_createdAt(_ context.Context, fiel
 		IsResolver: false,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			return nil, errors.New("field of type Time does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Table_status(ctx context.Context, field graphql.CollectedField, obj *model.Table) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_Table_status,
+		func(ctx context.Context) (any, error) {
+			return obj.Status, nil
+		},
+		nil,
+		ec.marshalNString2string,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_Table_status(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Table",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
 		},
 	}
 	return fc, nil
@@ -26296,6 +26350,11 @@ func (ec *executionContext) _Table(ctx context.Context, sel ast.SelectionSet, ob
 			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
 		case "createdAt":
 			out.Values[i] = ec._Table_createdAt(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				atomic.AddUint32(&out.Invalids, 1)
+			}
+		case "status":
+			out.Values[i] = ec._Table_status(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
 				atomic.AddUint32(&out.Invalids, 1)
 			}

@@ -20,6 +20,7 @@ func toGraphQLTable(table *store.RoomTable) *model.Table {
 	return &model.Table{
 		ID:        table.ID.String(),
 		CreatedAt: table.CreatedAt,
+		Status:    table.Status,
 	}
 }
 
