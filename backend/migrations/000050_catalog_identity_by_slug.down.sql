@@ -1,0 +1,2 @@
+-- No-op: data fix only applies forward. Rolling back would restore the
+-- duplicate-card state JQ-203 removed.

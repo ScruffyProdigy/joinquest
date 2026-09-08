@@ -1,4 +1,4 @@
-import { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react'
+import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react'
 import { fetchCurrentUser } from '../../lib/auth'
 import { isTransientServerError } from '../../lib/graphql'
 import { clearSubscriptionAuthCache, prefetchSubscriptionAuth } from '../../lib/queue'
@@ -22,6 +22,25 @@ async function fetchCurrentUserWithRetries() {
   throw lastErr
 }
 
+// A re-fetch that returns the same account must not count as a new session.
+// The session user is a flat scalar record, so a shallow compare settles it;
+// anything nested would compare unequal and simply fall through to an update.
+function isSameSessionUser(a, b) {
+  if (a === b) {
+    return true
+  }
+  if (!a || !b) {
+    return false
+  }
+  const keys = new Set([...Object.keys(a), ...Object.keys(b)])
+  for (const key of keys) {
+    if (!Object.is(a[key], b[key])) {
+      return false
+    }
+  }
+  return true
+}
+
 const AuthContext = createContext(null)
 
 export function AuthProvider({ children }) {
@@ -29,16 +48,36 @@ export function AuthProvider({ children }) {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [sessionUnavailable, setSessionUnavailable] = useState(false)
+  // Mirrors `user` so the callbacks below can compare against it without taking
+  // it as a dependency — a callback whose identity changed with the user would
+  // re-trigger every effect keyed on it, which is the loop we are closing.
+  const userRef = useRef(null)
 
-  const acceptSessionUser = useCallback((signedInUser) => {
-    if (!signedInUser) {
+  const setSessionUser = useCallback((nextUser) => {
+    if (isSameSessionUser(userRef.current, nextUser)) {
       return
     }
-    clearSubscriptionAuthCache()
-    setUser(signedInUser)
-    setError('')
-    void prefetchSubscriptionAuth().catch(() => {})
+    userRef.current = nextUser
+    setUser(nextUser)
   }, [])
+
+  const acceptSessionUser = useCallback(
+    (signedInUser) => {
+      if (!signedInUser) {
+        return
+      }
+      // Same account, freshly parsed: re-seating it would drop the subscription
+      // socket and hand every `user`-keyed effect a new object to react to.
+      if (isSameSessionUser(userRef.current, signedInUser)) {
+        return
+      }
+      clearSubscriptionAuthCache()
+      setSessionUser(signedInUser)
+      setError('')
+      void prefetchSubscriptionAuth().catch(() => {})
+    },
+    [setSessionUser],
+  )
 
   const refreshSession = useCallback(async (options = {}) => {
     const { silent = false } = options
@@ -51,10 +90,10 @@ export function AuthProvider({ children }) {
     try {
       const currentUser = await fetchCurrentUserWithRetries()
       if (currentUser) {
-        setUser(currentUser)
+        setSessionUser(currentUser)
         void prefetchSubscriptionAuth().catch(() => {})
       } else if (!silent) {
-        setUser(null)
+        setSessionUser(null)
       }
     } catch (err) {
       if (!silent) {
@@ -64,7 +103,7 @@ export function AuthProvider({ children }) {
           setError('Server briefly unavailable — your session may still be active. Try again in a moment.')
         } else {
           setError(message)
-          setUser(null)
+          setSessionUser(null)
         }
       }
     } finally {
@@ -72,14 +111,14 @@ export function AuthProvider({ children }) {
         setLoading(false)
       }
     }
-  }, [])
+  }, [setSessionUser])
 
   const clearSession = useCallback(() => {
     clearSubscriptionAuthCache()
-    setUser(null)
+    setSessionUser(null)
     setError('')
     setSessionUnavailable(false)
-  }, [])
+  }, [setSessionUser])
 
   useEffect(() => {
     refreshSession()
@@ -101,6 +140,9 @@ export function AuthProvider({ children }) {
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>
 }
 
+// The hook lives next to the provider on purpose — it is useless without it.
+// That costs this file fast refresh, which is a fair trade for one module.
+// eslint-disable-next-line react-refresh/only-export-components
 export function useAuth() {
   const context = useContext(AuthContext)
   if (!context) {

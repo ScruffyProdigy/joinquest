@@ -6,17 +6,20 @@ import {
   RESULTS_YOUR_RESULT_SO_FAR,
 } from '../../../src/lib/playerCopy.js'
 
-const RPS_GAME_NAME = 'Rock Paper Scissors Lizard Robot'
+// Seed row ...0001 (JQ-203). It is the only seeded card with a mode queue
+// outside production, so E2E matchmaking runs through it; its handoff URL is
+// repointed at the local demo game server by helpers/db.js.
+const DEMO_GAME_NAME = 'Word Hunt'
 
-function rpsGameCardLink(page) {
+function demoGameCardLink(page) {
   return page.getByRole('link').filter({
-    has: page.getByRole('heading', { name: RPS_GAME_NAME }),
+    has: page.getByRole('heading', { name: DEMO_GAME_NAME }),
   })
 }
 
-export async function joinRockPaperQueue(page) {
-  await rpsGameCardLink(page).click()
-  await expect(page.getByRole('heading', { name: RPS_GAME_NAME, level: 1 })).toBeVisible()
+export async function joinDemoGameQueue(page) {
+  await demoGameCardLink(page).click()
+  await expect(page.getByRole('heading', { name: DEMO_GAME_NAME, level: 1 })).toBeVisible()
   await page.getByRole('button', { name: 'Look for group' }).click()
 }
 

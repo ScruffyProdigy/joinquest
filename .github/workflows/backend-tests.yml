@@ -10,6 +10,8 @@ on:
       - 'scripts/lib/db-runtime.sh'
       - 'scripts/ensure-test-database.sh'
       - 'scripts/check-concurrent-test-isolation.sh'
+      - 'scripts/check-catalog-identity.mjs'
+      - 'k8s/jobs/patch-game-handoff-urls.yaml'
       - '.github/workflows/backend-tests.yml'
   pull_request:
     branches: [ main, develop ]
@@ -20,6 +22,8 @@ on:
       - 'scripts/lib/db-runtime.sh'
       - 'scripts/ensure-test-database.sh'
       - 'scripts/check-concurrent-test-isolation.sh'
+      - 'scripts/check-catalog-identity.mjs'
+      - 'k8s/jobs/patch-game-handoff-urls.yaml'
       - '.github/workflows/backend-tests.yml'
 
 env:
@@ -61,6 +65,11 @@ jobs:
     # notably that nobody re-pins the host ports back to 5432/6379 (JQ-128).
     - name: Check concurrent test isolation
       run: ./scripts/check-concurrent-test-isolation.sh
+
+    # Guards the single writer for catalog identity, and that every card's
+    # handoff URL belongs to the game it advertises (JQ-203).
+    - name: Check catalog identity
+      run: node scripts/check-catalog-identity.mjs
 
   test:
     runs-on: ubuntu-latest

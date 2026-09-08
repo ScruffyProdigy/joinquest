@@ -73,11 +73,15 @@ func TestGamesGraphQLListsCatalogGames(t *testing.T) {
 	for _, game := range resp.Games {
 		names[game.Name] = true
 	}
-	if !names["Rock Paper Scissors Lizard Robot"] {
-		t.Fatalf("expected RPS catalog game in results, got %+v", resp.Games)
+	// Seed row ...0001 is Word Hunt (JQ-203); before that fix it wore RPSLR's
+	// name, so both catalog cards read "Rock Paper Scissors Lizard Robot". The
+	// RPSLR row is asserted by id below rather than here, because this listing is
+	// paginated and integration fixtures crowd the first page.
+	if !names["Word Hunt"] {
+		t.Fatalf("expected Word Hunt catalog game in results, got %+v", resp.Games)
 	}
 	if names["Party Lobby"] {
-		t.Fatal("expected inactive Party Lobby to be excluded")
+		t.Fatal("expected retired Party Lobby name to be gone")
 	}
 }
 
@@ -105,8 +109,39 @@ func TestGameGraphQLReturnsDemoGameByID(t *testing.T) {
 		t.Fatalf("game query failed: %v", err)
 	}
 
-	if resp.Game.Name != "Rock Paper Scissors Lizard Robot" {
-		t.Fatalf("expected Rock Paper Scissors Lizard Robot, got %q", resp.Game.Name)
+	if resp.Game.Name != "Word Hunt" {
+		t.Fatalf("expected Word Hunt, got %q", resp.Game.Name)
+	}
+}
+
+// JQ-203: the two seed rows must answer with their own names. Both used to
+// return "Rock Paper Scissors Lizard Robot".
+func TestGameGraphQLSeedRowsHaveDistinctNames(t *testing.T) {
+	c, _ := newGamesGraphQLTestClient(t)
+
+	want := map[string]string{
+		"a1000000-0000-4000-8000-000000000001": "Word Hunt",
+		"a1000000-0000-4000-8000-000000000002": "Rock Paper Scissors Lizard Robot",
+	}
+
+	for id, name := range want {
+		var resp struct {
+			Game struct {
+				Name string
+				Slug string
+			} `json:"game"`
+		}
+		if err := c.Post(`query Game($id: ID!) {
+			game(id: $id) {
+				name
+				slug
+			}
+		}`, &resp, client.Var("id", id)); err != nil {
+			t.Fatalf("game query for %s failed: %v", id, err)
+		}
+		if resp.Game.Name != name {
+			t.Errorf("game %s: name = %q, want %q", id, resp.Game.Name, name)
+		}
 	}
 }
 

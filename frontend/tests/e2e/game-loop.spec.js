@@ -10,7 +10,7 @@ import {
   expectMatchedBanner,
   expectNoIntentBanner,
   expectWaitingBanner,
-  joinRockPaperQueue,
+  joinDemoGameQueue,
   readLaunchMatchId,
   returnFromMatch,
 } from './helpers/queue.js'
@@ -63,10 +63,10 @@ test.describe('Game loop', () => {
       await signInWithEmailCode(pageB, emailB)
       await identifyPlayer(pageB, emailB, 'Loop B')
 
-      await joinRockPaperQueue(pageA)
+      await joinDemoGameQueue(pageA)
       await expectWaitingBanner(pageA)
 
-      await joinRockPaperQueue(pageB)
+      await joinDemoGameQueue(pageB)
       await expectMatchedBanner(pageA)
       await expectMatchedBanner(pageB)
 
@@ -79,9 +79,9 @@ test.describe('Game loop', () => {
       await returnFromMatch(pageB, firstMatchId)
       await expectNoIntentBanner(pageB)
 
-      await joinRockPaperQueue(pageA)
+      await joinDemoGameQueue(pageA)
       await expectWaitingBanner(pageA)
-      await joinRockPaperQueue(pageB)
+      await joinDemoGameQueue(pageB)
       await expectMatchedBanner(pageA)
       await expectMatchedBanner(pageB)
 

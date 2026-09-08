@@ -1,4 +1,11 @@
 # One-shot: keep catalog handoff URLs and demo game modes aligned with production.
+#
+# This job owns ONLY what its name promises -- environment-specific handoff URLs
+# and the mode/seat/queue rows. Catalog identity (slug, name, description, art,
+# tags) belongs to migration 000050_catalog_identity_by_slug and must not be
+# written here: this job runs after migrations on every deploy, so anything it
+# sets silently overrides them. That is exactly how JQ-203 shipped two Rock
+# Paper Scissors cards to production.
 apiVersion: batch/v1
 kind: Job
 metadata:
@@ -23,21 +30,14 @@ spec:
             - -ec
             - |
               psql "$DATABASE_URL" -v ON_ERROR_STOP=1 <<'SQL'
+              -- Word Hunt (seed id ...0001, slug word-hunt).
               UPDATE games
-              SET slug = 'word-hunt',
-                  api_base_url = 'https://word-hunt-arena.win'
+              SET api_base_url = 'https://word-hunt-arena.win'
               WHERE id = 'a1000000-0000-4000-8000-000000000001';
 
+              -- Rock Paper Scissors Lizard Robot (seed id ...0002).
               UPDATE games
-              SET name = 'Rock Paper Scissors Lizard Robot',
-                  slug = 'rock-paper-scissors-lizard-robot',
-                  description = 'Best-of duel with move cooldown. Single-bucket queue demo.',
-                  api_base_url = 'https://rpsls-duel.win',
-                  status = 'active',
-                  category = 'catalog',
-                  manifest_hash = COALESCE(manifest_hash, 'seed-rps-duel-v1'),
-                  manifest_synced_at = COALESCE(manifest_synced_at, NOW()),
-                  game_version = COALESCE(game_version, '1.0.0')
+              SET api_base_url = 'https://rpsls-duel.win'
               WHERE id = 'a1000000-0000-4000-8000-000000000002';
 
               INSERT INTO game_modes (id, game_id, mode_key, display_name, min_players, max_players, seat_template, status)

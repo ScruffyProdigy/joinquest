@@ -100,6 +100,24 @@ function createFetchMock(handlers) {
       data = { logout: true }
     } else if (query.includes('subscriptionAuth')) {
       data = { subscriptionAuth: handlers.subscriptionAuth ?? 'Bearer test-token' }
+    } else if (query.includes('myAccount')) {
+      data = {
+        myAccount: handlers.myAccount ?? {
+          signInMethodCount: 1,
+          emails: handlers.me?.email
+            ? [
+                {
+                  id: 'email-1',
+                  email: handlers.me.email,
+                  isPrimary: true,
+                  verifiedAt: '2026-01-01T00:00:00Z',
+                },
+              ]
+            : [],
+          identities: [],
+          user: handlers.me ?? null,
+        },
+      }
     } else if (query.includes('myActiveIntent')) {
       data = { myActiveIntent: handlers.myActiveIntent ?? null }
     } else if (query.includes('myQueueStatus')) {
@@ -159,7 +177,10 @@ function createFetchMock(handlers) {
 
     return {
       ok: true,
-      json: async () => ({ data }),
+      // Clone the way a real response does. Handing out the same object every
+      // call papers over identity-churn bugs: JQ-200's render loop is invisible
+      // to a mock that keeps returning one `me` reference.
+      json: async () => ({ data: structuredClone(data) }),
     }
   })
 }
