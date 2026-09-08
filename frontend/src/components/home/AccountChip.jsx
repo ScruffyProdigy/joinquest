@@ -32,8 +32,8 @@ export default function AccountChip() {
 
   return (
     <Button variant="ghost" className="h-auto shrink-0 gap-2 rounded-full py-1 pr-3 pl-1" asChild>
-      {/* A raw <a> on purpose (JQ-72): it wraps the avatar and name, not text, so
-          link styling would have nothing to colour. */}
+      {/* Slot plumbing, not page markup (JQ-72): Button owns the styling and the
+          anchor supplies only the href, so this stays a real link. */}
       <a href="/account">
         <PlayerAvatar user={user} size="sm" />
         {/* Without a fallback the link would have no accessible name at all

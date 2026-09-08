@@ -11,6 +11,8 @@ import ModeRequirement from './ModeRequirement'
 import PreQueueOptionsSheet from './PreQueueOptionsSheet'
 import { useGameQueue } from './useGameQueue'
 import { navigateTo } from '../../lib/usePathname'
+import { Button } from '../ui/button'
+import { Link } from '../ui/link'
 
 function ModeRow({
   game,
@@ -210,9 +212,7 @@ function ModeRow({
       <div className="game-mode-row__actions">
         {mode.eligibility?.accessible === false ? (
           <div className="game-mode-row__locked" role="status">
-            <button
-              type="button"
-              className="game-mode-row__locked-reason"
+            <Link
               disabled={!mode.eligibility.unlockModeKey}
               onClick={() => {
                 if (mode.eligibility.unlockModeKey) {
@@ -221,7 +221,7 @@ function ModeRow({
               }}
             >
               {mode.eligibility.reason}
-            </button>
+            </Link>
             {mode.eligibility.requirement ? (
               <p className="game-mode-row__locked-progress">
                 <ModeRequirement requirement={mode.eligibility.requirement} />
@@ -245,14 +245,15 @@ function ModeRow({
               solo={solo}
             />
             {solo ? null : (
-              <button
-                type="button"
-                className={`game-list-button game-list-button-secondary${prominent ? ' game-list-button--prominent' : ''}`}
+              <Button
+                variant="outline"
+                size={prominent ? 'lg' : 'default'}
+                className={prominent ? 'w-full' : undefined}
                 disabled={tableBusy || blockedByMatch}
                 onClick={handleCreatePrivate}
               >
                 {tableBusy ? '…' : PLAY_WITH_FRIENDS}
-              </button>
+              </Button>
             )}
             <PreQueueOptionsSheet
               open={pendingQueuePath !== null}

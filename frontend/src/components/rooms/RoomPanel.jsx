@@ -291,14 +291,14 @@ export default function RoomPanel({ compact = false }) {
               <div className="flex items-center justify-between">
                 <h3 className="text-sm font-semibold text-foreground">Chat</h3>
                 {unreadCount > 0 && !chatAtBottom ? (
-                  <button
-                    type="button"
-                    className="rounded-full bg-primary px-3 py-1 text-xs font-semibold text-primary-foreground"
+                  <Button
+                    size="sm"
+                    className="h-auto rounded-full px-3 py-1 text-xs font-semibold"
                     onClick={() => scrollChatToBottom()}
                     aria-label={`${unreadCount} unread messages — jump to latest`}
                   >
                     {unreadCount > 99 ? '99+' : unreadCount} new
-                  </button>
+                  </Button>
                 ) : null}
               </div>
               <div

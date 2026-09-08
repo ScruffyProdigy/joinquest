@@ -3,6 +3,7 @@ import { updatePlayerProfile } from '../../lib/avatars'
 import { generateGuestIdentities } from '../../lib/guestIdentity'
 import { AVATAR_PROMPT_ERROR, AVATAR_PROMPT_SCOPE_HINT, playingAsLine } from '../../lib/playerCopy'
 import { chosenDisplayName } from '../../lib/viewer'
+import { OptionButton } from '../ui/option-button'
 
 /**
  * The mirror of DisplayNamePrompt: a name on file and no face to go with it.
@@ -43,15 +44,14 @@ export default function AvatarPrompt({ user, onSaved, onBusyChange }) {
       <ul className="grid grid-cols-3 gap-3 sm:grid-cols-6" role="list">
         {identities.map((identity) => (
           <li key={identity.avatarKey}>
-            <button
-              type="button"
-              className="flex w-full flex-col items-center gap-1 rounded-2xl border border-border bg-muted/40 px-2 py-3 transition-colors hover:bg-muted disabled:opacity-60"
+            <OptionButton
+              variant="tile"
               disabled={Boolean(pendingKey)}
               aria-label={identity.label}
               onClick={() => void handlePick(identity)}
             >
               <img src={identity.imageUrl} alt="" className="size-10 shrink-0 rounded-full" />
-            </button>
+            </OptionButton>
           </li>
         ))}
       </ul>

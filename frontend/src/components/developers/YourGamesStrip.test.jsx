@@ -23,7 +23,9 @@ describe('YourGamesStrip', () => {
     render(<YourGamesStrip />)
 
     const section = await screen.findByRole('region', { name: 'Your games' })
-    expect(section).toContainElement(screen.getByRole('button', { name: /Spyfall/ }))
+    // A link, not a button (JQ-72): it navigates, so it carries a real href and
+    // opens in a new tab on middle-click.
+    expect(section).toContainElement(screen.getByRole('link', { name: /Spyfall/ }))
   })
 
   it('renders nothing when the player has no games', async () => {

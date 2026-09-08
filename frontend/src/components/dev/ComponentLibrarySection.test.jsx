@@ -16,7 +16,7 @@ describe('ComponentLibrarySection', () => {
   it('switches to the Composite patterns tab on click', async () => {
     render(<ComponentLibrarySection />)
 
-    await userEvent.click(screen.getByRole('button', { name: 'Composite patterns' }))
+    await userEvent.click(screen.getByRole('tab', { name: 'Composite patterns' }))
 
     expect(screen.getByText('Genre-accent catalog card')).toBeInTheDocument()
     expect(screen.queryByText('Button')).not.toBeInTheDocument()

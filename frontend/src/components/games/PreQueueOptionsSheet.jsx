@@ -6,6 +6,7 @@ import {
   optionsChosenCount,
 } from '../../lib/playerCopy'
 import ModeRequirement from './ModeRequirement'
+import { Button } from '../ui/button'
 
 /**
  * Picks per group, keyed by group key, as an ordered array of choice ids.
@@ -134,9 +135,9 @@ export default function PreQueueOptionsSheet({
             <p className="pre-queue-sheet__game">{gameName}</p>
             <h2 className="pre-queue-sheet__title">{modeName}</h2>
           </div>
-          <button type="button" className="pre-queue-sheet__close" onClick={onClose} aria-label="Close">
+          <Button variant="ghost" size="icon" onClick={onClose} aria-label="Close">
             ✕
-          </button>
+          </Button>
         </header>
 
         <div className="pre-queue-sheet__body">
@@ -172,14 +173,14 @@ export default function PreQueueOptionsSheet({
 
         <footer className="pre-queue-sheet__footer">
           <span className="pre-queue-sheet__summary">{optionsChosenCount(groups, picks)}</span>
-          <button
-            type="button"
-            className="game-list-button game-list-button--prominent"
+          <Button
+            size="lg"
+            className="w-full"
             disabled={!ready || busy}
             onClick={() => onConfirm(selectionsFromPicks(groups, picks))}
           >
             {busy ? LOOKING_FOR_GROUP : LOOK_FOR_GROUP}
-          </button>
+          </Button>
         </footer>
       </section>
     </div>

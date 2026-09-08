@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { fetchMyGames, developerDashboardPath, visibilityLabel } from '../../lib/developers'
 import { navigateTo } from '../../lib/usePathname'
+import { Link } from '../ui/link'
 
 export default function YourGamesStrip() {
   const [games, setGames] = useState([])
@@ -37,14 +38,17 @@ export default function YourGamesStrip() {
       <ul className="your-games-list">
         {games.map((game) => (
           <li key={game.id}>
-            <button
-              type="button"
+            <Link
               className="your-games-list__item"
-              onClick={() => navigateTo(developerDashboardPath(game.id))}
+              href={developerDashboardPath(game.id)}
+              onClick={(event) => {
+                event.preventDefault()
+                navigateTo(developerDashboardPath(game.id))
+              }}
             >
               <span className="your-games-list__name">{game.name}</span>
               <span className="your-games-list__meta">{visibilityLabel(game.visibility)}</span>
-            </button>
+            </Link>
           </li>
         ))}
       </ul>

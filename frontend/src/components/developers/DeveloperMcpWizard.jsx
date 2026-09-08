@@ -336,14 +336,14 @@ export default function DeveloperMcpWizard({ defaultExpanded = false, alwaysExpa
       <div className="developer-mcp__header">
         <h2 id="mcp-heading">Connect an AI assistant</h2>
         {!alwaysExpanded ? (
-          <button
-            type="button"
-            className="button-secondary developer-mcp__toggle"
+          <Button
+            variant="secondary"
+            className="developer-mcp__toggle"
             onClick={() => setExpanded((v) => !v)}
             aria-expanded={expanded}
           >
             {expanded ? 'Hide' : 'Show setup'}
-          </button>
+          </Button>
         ) : null}
       </div>
       {!(alwaysExpanded || expanded) ? (

@@ -20,6 +20,7 @@ import SpiritAnimalSlotGuide from './SpiritAnimalSlotGuide'
 import { useAuth } from '../auth/AuthProvider'
 import { Button } from '../ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '../ui/card'
+import { OptionButton } from '../ui/option-button'
 import { cn } from '../../lib/utils'
 
 const QUESTION_PANEL_CLOSE_MS = 700
@@ -550,15 +551,13 @@ export default function SpiritAnimalFlow({ onComplete, onCancel }) {
             <ul className="flex flex-col gap-2" role="list">
               {current.answers.map((answer) => (
                 <li key={answer.id}>
-                  <button
-                    type="button"
-                    className="flex w-full items-center gap-3 rounded-full border border-border bg-muted/40 px-4 py-2.5 text-left transition-colors hover:border-primary hover:bg-primary/10"
+                  <OptionButton
                     disabled={answersDisabled}
                     onClick={() => handlePickAnswer(answer.id)}
                   >
                     <span className="font-mono-display text-2xs text-muted-foreground">{answer.id}</span>
                     <span className="text-sm text-foreground">{answer.label}</span>
-                  </button>
+                  </OptionButton>
                 </li>
               ))}
             </ul>

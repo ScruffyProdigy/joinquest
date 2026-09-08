@@ -1,10 +1,10 @@
 import { useEffect, useState } from 'react'
 import { defaultDisplayNameInput, fetchStarterAvatars, updatePlayerProfile } from '../../lib/avatars'
-import { cn } from '../../lib/utils'
 import { hasChosenAvatar, needsIdentity } from '../../lib/viewer'
 import { useAuth } from '../auth/AuthProvider'
 import { Button } from '../ui/button'
 import { Input } from '../ui/input'
+import { OptionButton } from '../ui/option-button'
 import PlayerAvatar from './PlayerAvatar'
 
 export default function PlayerProfileEditor({ user, required = false, onSaved, onCancel, onBeginSpiritAnimal }) {
@@ -101,20 +101,15 @@ export default function PlayerProfileEditor({ user, required = false, onSaved, o
             const selected = option.key === selectedKey
             return (
               <li key={option.key}>
-                <button
-                  type="button"
-                  className={cn(
-                    'flex w-full items-center gap-3 rounded-full border border-border bg-muted/40 px-4 py-2.5 text-left transition-colors hover:bg-muted',
-                    selected && 'border-primary bg-primary/10',
-                  )}
+                <OptionButton
+                  selected={selected}
                   disabled={busy}
-                  aria-pressed={selected}
                   aria-label={`${option.name}${selected ? ' (selected)' : ''}`}
                   onClick={() => setSelectedKey(option.key)}
                 >
                   <img src={option.imageUrl} alt="" className="size-8 shrink-0 rounded-full object-cover" />
                   <span className="text-sm font-medium text-foreground">{option.name}</span>
-                </button>
+                </OptionButton>
               </li>
             )
           })}

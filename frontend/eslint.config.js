@@ -21,9 +21,11 @@ const NO_BARE_BUTTON = {
 }
 
 /**
- * Anchors kept on purpose, each with the reasoning at the call site. These wrap a
- * card or an avatar, or sit inside <Button asChild> -- already a brand component
- * via Radix Slot. Permanent, not debt.
+ * Anchors kept on purpose, held to the same bar as BUTTON_ALLOWED below: never
+ * anonymous markup in the middle of a page render. Each is either the entire body
+ * of a dedicated component (CatalogGameLink, DeveloperPromoCard), or Radix `Slot`
+ * plumbing inside <Button asChild>, where Button owns the styling and the anchor
+ * supplies only the href. The reasoning is repeated at each call site.
  */
 const ANCHOR_ALLOWED = [
   'src/components/games/CatalogGameLink.jsx',
@@ -33,36 +35,25 @@ const ANCHOR_ALLOWED = [
   'src/components/auth/UserSessionCard.jsx',
   'src/components/developers/DeveloperAuthGate.jsx',
   'src/components/games/IntentBanner.jsx',
+  'src/components/games/GameQueueActions.jsx',
 ]
 
 /**
- * Bare <button> that predates the rule. This list is debt, not licence: it exists
- * so the rule can land without a second migration riding along on JQ-72. Shrink it,
- * never add to it.
+ * Controls that are not Buttons: a tab reporting `aria-selected` inside a tablist,
+ * and card-shaped choices holding a heading and a paragraph. Each is a named
+ * component (TabButton, RouteCard, OptionCard, ClientTabs) rather than markup
+ * inline in a page, which is the bar for being here -- an anonymous <button> in
+ * the middle of a render is a missing component, not an exception.
  */
 const BUTTON_ALLOWED = [
   'src/components/games/PreQueueOptionsSheet.jsx',
-  'src/components/games/GameModesPanel.jsx',
   'src/components/developers/DeveloperMcpWizard.jsx',
   'src/components/developers/DeveloperLandingPage.jsx',
   'src/components/dev/ComponentLibrarySection.jsx',
-  'src/components/rooms/RoomPanel.jsx',
-  'src/components/developers/YourGamesStrip.jsx',
-  'src/components/avatars/SpiritAnimalFlow.jsx',
-  'src/components/avatars/PlayerProfileEditor.jsx',
-  'src/components/avatars/GuestIdentityPicker.jsx',
-  'src/components/avatars/AvatarPrompt.jsx',
 ]
 
-/**
- * link.jsx is the component that *provides* the anchor and the button, so it is the
- * one place both are correct. GameQueueActions has both a structural anchor and
- * pre-existing bare buttons.
- */
-const PRIMITIVE_OR_BOTH = [
-  'src/components/ui/link.jsx',
-  'src/components/games/GameQueueActions.jsx',
-]
+/** The primitives that *provide* the anchor and the button, so the one place both are correct. */
+const PRIMITIVES = ['src/components/ui/link.jsx', 'src/components/ui/option-button.jsx']
 
 export default [
   {
@@ -154,7 +145,7 @@ export default [
     rules: { 'no-restricted-syntax': ['error', NO_BARE_ANCHOR] },
   },
   {
-    files: PRIMITIVE_OR_BOTH,
+    files: PRIMITIVES,
     rules: { 'no-restricted-syntax': 'off' },
   },
 ]
