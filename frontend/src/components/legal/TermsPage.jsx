@@ -1,5 +1,6 @@
 import { APP_NAME } from '../../lib/brand'
 import LegalPage from './LegalPage'
+import { Link } from '../ui/link'
 
 export default function TermsPage() {
   return (
@@ -59,9 +60,9 @@ export default function TermsPage() {
       <h2>Contact</h2>
       <p>
         Questions about these terms? Email{' '}
-        <a className="auth-link" href="mailto:support@joinquest.cc">
+        <Link href="mailto:support@joinquest.cc">
           support@joinquest.cc
-        </a>
+        </Link>
         .
       </p>
     </LegalPage>

@@ -8,6 +8,7 @@ import GameModesPanel from './GameModesPanel'
 import GameShareButton from './GameShareButton'
 import AppFooter from '../legal/AppFooter'
 import { Button } from '../ui/button'
+import { Link } from '../ui/link'
 
 function GameDetailToolbar({ game, onBack = navigateBackToCatalog }) {
   return (
@@ -202,9 +203,9 @@ export default function GameDetailPage({
 
         {game.tutorialUrl ? (
           <p>
-            <a className="font-sans text-primary underline-offset-4 hover:underline" href={game.tutorialUrl} target="_blank" rel="noopener noreferrer">
+            <Link className="font-sans" href={game.tutorialUrl} target="_blank" rel="noopener noreferrer">
               Open tutorial
-            </a>
+            </Link>
           </p>
         ) : null}
 

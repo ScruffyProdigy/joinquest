@@ -1,4 +1,5 @@
 import { APP_NAME } from '../../lib/brand'
+import { Link } from '../ui/link'
 
 const REFERENCE_GAMES = [
   {
@@ -29,13 +30,13 @@ export default function ReferenceGamesPanel() {
             <h3 className="developer-reference-games__title">{game.name}</h3>
             <p className="panel-copy">{game.blurb}</p>
             <p className="developer-reference-games__links">
-              <a className="auth-link" href={game.live} target="_blank" rel="noreferrer">
+              <Link href={game.live} target="_blank" rel="noreferrer">
                 Play live
-              </a>
+              </Link>
               <span aria-hidden="true"> · </span>
-              <a className="auth-link" href={game.github} target="_blank" rel="noreferrer">
+              <Link href={game.github} target="_blank" rel="noreferrer">
                 View on GitHub
-              </a>
+              </Link>
             </p>
           </li>
         ))}

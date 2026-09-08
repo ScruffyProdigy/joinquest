@@ -170,6 +170,20 @@ describe('IdentityGate', () => {
     expect(screen.queryByRole('button', { name: 'Jump in' })).not.toBeInTheDocument()
   })
 
+  it('renders the sign-in action as an outlined pill, never as underlined text', async () => {
+    // JQ-72: the prototype has no underlined link anywhere. Its secondary action
+    // is a full-width outlined pill, and this overlay is where that was worst.
+    mockUnauthenticatedSession()
+    renderGate()
+    await waitForGate()
+
+    const signIn = screen.getByRole('button', { name: 'Log in or create account' })
+    expect(signIn).toHaveClass('border-primary')
+    expect(signIn).toHaveClass('rounded-[99px]')
+    expect(signIn).not.toHaveClass('underline')
+    expect(signIn).not.toHaveClass('hover:underline')
+  })
+
   it('cannot be dismissed without picking an avatar or signing in', async () => {
     // pointerEventsCheck is off because the open dialog blocks pointer events on
     // everything behind it — clicking the scrim is the only outside click available.

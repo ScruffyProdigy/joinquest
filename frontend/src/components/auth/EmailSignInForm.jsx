@@ -6,6 +6,7 @@ import { useAuth } from './AuthProvider'
 import useWaitForSignIn from './useWaitForSignIn'
 import { focusCodeInput } from './focusCodeInput'
 import { Button } from '../ui/button'
+import { Link } from '../ui/link'
 import { Input } from '../ui/input'
 import CodeInput from './CodeInput'
 
@@ -199,9 +200,9 @@ export default function EmailSignInForm() {
           </Button>
         </form>
 
-        <Button type="button" variant="link" className="self-start px-0" onClick={handleUseDifferentEmail} disabled={isSigningIn}>
+        <Link className="self-start" onClick={handleUseDifferentEmail} disabled={isSigningIn}>
           Use a different email
-        </Button>
+        </Link>
       </div>
     )
   }

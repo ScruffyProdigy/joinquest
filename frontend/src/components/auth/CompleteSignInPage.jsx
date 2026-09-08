@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { completeAuthLinkOnce } from '../../lib/auth'
 import { notifyAuthComplete } from '../../lib/authBroadcast'
 import { APP_NAME } from '../../lib/brand'
-import { Button } from '../ui/button'
+import { Link } from '../ui/link'
 import { Card, CardContent, CardHeader, CardTitle } from '../ui/card'
 
 function getTokenFromLocation() {
@@ -60,9 +60,9 @@ export default function CompleteSignInPage() {
         <CardContent className="flex flex-col gap-4">
           <p className={status === 'error' ? 'status-message status-message-error' : 'status-message'}>{message}</p>
           {status === 'error' ? (
-            <Button variant="link" className="self-start px-0" asChild>
-              <a href="/">Back to home</a>
-            </Button>
+            <Link className="self-start" href="/">
+              Back to home
+            </Link>
           ) : null}
         </CardContent>
       </Card>

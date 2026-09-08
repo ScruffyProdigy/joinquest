@@ -22,6 +22,7 @@ import {
 } from '../../lib/playerCopy'
 import { cn } from '../../lib/utils'
 import { Button } from '../ui/button'
+import { Link } from '../ui/link'
 import { Input } from '../ui/input'
 import { Card, CardContent, CardHeader, CardTitle } from '../ui/card'
 import { useAuth } from './AuthProvider'
@@ -306,9 +307,9 @@ export default function AccountPage() {
           </CardHeader>
           <CardContent className="flex flex-col gap-4">
             <p className="text-sm text-muted-foreground">Sign in to manage your account.</p>
-            <Button variant="link" className="self-start px-0" asChild>
-              <a href="/">Back to home</a>
-            </Button>
+            <Link className="self-start" href="/">
+              Back to home
+            </Link>
           </CardContent>
         </Card>
       </main>
@@ -342,9 +343,7 @@ export default function AccountPage() {
             <CardTitle as="h1" className="font-heading text-xl font-semibold">
               Account settings
             </CardTitle>
-            <Button variant="link" className="h-auto p-0" asChild>
-              <a href="/">Back to home</a>
-            </Button>
+            <Link href="/">Back to home</Link>
           </CardHeader>
 
           <CardContent className="flex flex-col gap-4">
@@ -372,24 +371,22 @@ export default function AccountPage() {
                       </div>
                       <div className="flex flex-wrap justify-end gap-3">
                         {!item.isPrimary ? (
-                          <Button
-                            variant="link"
-                            className="h-auto p-0 text-xs"
+                          <Link
+                            className="text-xs"
                             onClick={() => void handleSetPrimary(item.id)}
                             disabled={actionStatus === 'loading'}
                           >
                             Make primary
-                          </Button>
+                          </Link>
                         ) : null}
                         {canRemove ? (
-                          <Button
-                            variant="link"
-                            className="h-auto p-0 text-xs"
+                          <Link
+                            className="text-xs"
                             onClick={() => void handleRemoveEmail(item.id)}
                             disabled={actionStatus === 'loading'}
                           >
                             Remove
-                          </Button>
+                          </Link>
                         ) : null}
                       </div>
                     </li>
@@ -504,14 +501,13 @@ export default function AccountPage() {
                         ) : null}
                       </div>
                       {canRemove ? (
-                        <Button
-                          variant="link"
-                          className="h-auto p-0 text-xs"
+                        <Link
+                          className="text-xs"
                           onClick={() => void handleRemoveIdentity(item.id)}
                           disabled={actionStatus === 'loading'}
                         >
                           Remove
-                        </Button>
+                        </Link>
                       ) : null}
                     </li>
                   ))}

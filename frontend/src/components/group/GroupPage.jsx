@@ -14,6 +14,7 @@ import GroupInviteCard from './GroupInviteCard'
 import GroupSeatList from './GroupSeatList'
 import GroupSpectatorList from './GroupSpectatorList'
 import GroupStartBar from './GroupStartBar'
+import { Link } from '../ui/link'
 
 /**
  * One table in a room the player never had to think about (JQ-132). Chat, the invite
@@ -35,9 +36,9 @@ export default function GroupPage() {
         <p className="status-message" role="status">
           This group has ended.
         </p>
-        <a className="auth-link" href="/">
+        <Link className="self-start" href="/">
           Back to the catalog
-        </a>
+        </Link>
       </main>
     )
   }

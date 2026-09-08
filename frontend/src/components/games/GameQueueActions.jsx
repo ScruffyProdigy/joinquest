@@ -91,6 +91,8 @@ export default function GameQueueActions({
   if (queueState === 'matched' && joinUrl) {
     return (
       <div className="game-list-actions">
+        {/* A raw <a> on purpose (JQ-72): this is a button that navigates, styled by
+            game-list-button, not a link. */}
         <a className={buttonClass} href={joinUrl}>
           {LAUNCH_GAME}
         </a>

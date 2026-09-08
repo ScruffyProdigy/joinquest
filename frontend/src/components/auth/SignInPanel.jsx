@@ -8,7 +8,7 @@ import {
   SIGN_IN_DIVIDER_LABEL,
   SIGN_IN_HEADING,
 } from '../../lib/playerCopy'
-import { Button } from '../ui/button'
+import { Link } from '../ui/link'
 import { Card, CardContent, CardHeader } from '../ui/card'
 import { useAuth } from './AuthProvider'
 import EmailSignInForm from './EmailSignInForm'
@@ -78,9 +78,9 @@ export default function SignInPanel({ heading = SIGN_IN_HEADING, showGuestOption
 
         {showGuestOption ? (
           <div className="flex flex-col items-center gap-1 border-t border-border pt-4">
-            <Button type="button" variant="link" onClick={() => void handleJumpIn()} disabled={status === 'loading'}>
+            <Link variant="quiet" onClick={() => void handleJumpIn()} disabled={status === 'loading'}>
               {status === 'loading' ? 'Starting…' : JUMP_IN}
-            </Button>
+            </Link>
             <p className="text-2xs text-muted-foreground">{JUMP_IN_HINT}</p>
           </div>
         ) : null}

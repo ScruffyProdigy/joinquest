@@ -1,5 +1,6 @@
 import { APP_NAME } from '../../lib/brand'
 import LegalPage from './LegalPage'
+import { Link } from '../ui/link'
 
 export default function PrivacyPage() {
   return (
@@ -85,9 +86,9 @@ export default function PrivacyPage() {
       <h2>Contact</h2>
       <p>
         Privacy questions? Email{' '}
-        <a className="auth-link" href="mailto:support@joinquest.cc">
+        <Link href="mailto:support@joinquest.cc">
           support@joinquest.cc
-        </a>
+        </Link>
         .
       </p>
     </LegalPage>

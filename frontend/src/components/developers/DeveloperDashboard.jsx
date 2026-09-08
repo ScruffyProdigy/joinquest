@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { Button } from '../ui/button'
+import { Link } from '../ui/link'
 import { APP_NAME } from '../../lib/brand'
 import {
   canRequestPublicRelease,
@@ -256,9 +257,9 @@ export default function DeveloperDashboard({ gameId }) {
     return (
       <main className="app-shell developer-shell">
         <h1>Game not found</h1>
-        <a className="auth-link" href="/developers">
+        <Link className="self-start" href="/developers">
           Back to developers
-        </a>
+        </Link>
       </main>
     )
   }
@@ -267,13 +268,13 @@ export default function DeveloperDashboard({ gameId }) {
     <main className="app-shell developer-shell">
       <header className="app-header">
         <p className="developer-back">
-          <a className="auth-link" href="/developers">
+          <Link href="/developers">
             ← Developers
-          </a>
+          </Link>
           {' · '}
-          <a className="auth-link" href="/">
+          <Link href="/">
             {APP_NAME}
-          </a>
+          </Link>
         </p>
         <h1>{game.name}</h1>
         <p className="tagline">{visibilityLabel(game.visibility)}</p>

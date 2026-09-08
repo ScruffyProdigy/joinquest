@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { Button } from '../ui/button'
+import { Link } from '../ui/link'
 import AuthPanel from '../auth/AuthPanel'
 import { useAuth } from '../auth/AuthProvider'
 import { APP_NAME } from '../../lib/brand'
@@ -70,9 +70,9 @@ export default function DeveloperLandingPage() {
 
       <header className="app-header">
         <p className="developer-back">
-          <a className="auth-link" href="/">
+          <Link href="/">
             ← Back to {APP_NAME}
-          </a>
+          </Link>
         </p>
         <h1>Have an idea for a multiplayer game?</h1>
       </header>
@@ -128,9 +128,7 @@ export default function DeveloperLandingPage() {
       ) : (
         <>
           <p className="developer-route-back">
-            <Button type="button" variant="link" onClick={clearRoute}>
-              ← Choose a different path
-            </Button>
+            <Link onClick={clearRoute}>← Choose a different path</Link>
           </p>
 
           {route === 'ai' ? (

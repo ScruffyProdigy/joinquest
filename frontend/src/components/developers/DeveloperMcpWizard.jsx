@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Button } from '../ui/button'
+import { Link } from '../ui/link'
 import {
   buildClaudeMcpAddCommand,
   buildGeminiMcpAddCommand,
@@ -381,8 +382,7 @@ export default function DeveloperMcpWizard({ defaultExpanded = false, alwaysExpa
               </p>
               <ol className="developer-mcp__steps">
                 <li>
-                  <a
-                    className="auth-link"
+                  <Link
                     href={developerLandingHref('manual')}
                     onClick={(event) => {
                       event.preventDefault()
@@ -390,7 +390,7 @@ export default function DeveloperMcpWizard({ defaultExpanded = false, alwaysExpa
                     }}
                   >
                     Register in the browser
-                  </a>{' '}
+                  </Link>{' '}
                   — fill out the registration form on joinquest.cc.
                 </li>
                 <li>After registration, use your game dashboard to run checks and request release.</li>
@@ -531,18 +531,17 @@ export default function DeveloperMcpWizard({ defaultExpanded = false, alwaysExpa
                       </li>
                     </ul>
                     <p className="panel-copy">
-                      <a className="auth-link" href={CURSOR_PLUGIN_GITHUB} target="_blank" rel="noreferrer">
+                      <Link href={CURSOR_PLUGIN_GITHUB} target="_blank" rel="noreferrer">
                         View plugin source on GitHub
-                      </a>{' '}
+                      </Link>{' '}
                       ·{' '}
-                      <a
-                        className="auth-link"
+                      <Link
                         href={installPluginScriptGithub}
                         target="_blank"
                         rel="noreferrer"
                       >
                         Read the install script
-                      </a>
+                      </Link>
                     </p>
                     <details className="developer-mcp__details">
                       <summary>Alternative: curl install into your game repo</summary>
@@ -602,13 +601,13 @@ export default function DeveloperMcpWizard({ defaultExpanded = false, alwaysExpa
                       </li>
                     </ul>
                     <p className="panel-copy">
-                      <a className="auth-link" href={JOINQUEST_CLI_GITHUB} target="_blank" rel="noreferrer">
+                      <Link href={JOINQUEST_CLI_GITHUB} target="_blank" rel="noreferrer">
                         joinquest npm package
-                      </a>{' '}
+                      </Link>{' '}
                       on GitHub ·{' '}
-                      <a className="auth-link" href={INSTALL_SETUP_MANIFEST_GITHUB} target="_blank" rel="noreferrer">
+                      <Link href={INSTALL_SETUP_MANIFEST_GITHUB} target="_blank" rel="noreferrer">
                         setup overview
-                      </a>
+                      </Link>
                     </p>
                     <details className="developer-mcp__details">
                       <summary>Preview install (--dry-run)</summary>
