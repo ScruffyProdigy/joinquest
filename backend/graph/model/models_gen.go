@@ -38,6 +38,13 @@ type ActiveIntent struct {
 	FormingGaps []*QueuePathGap `json:"formingGaps"`
 }
 
+// One allowed value on a catalog axis (genre, difficulty, social mode).
+type CatalogAxisOption struct {
+	ID          string `json:"id"`
+	Label       string `json:"label"`
+	Description string `json:"description"`
+}
+
 type CatalogTagOption struct {
 	ID          string `json:"id"`
 	Label       string `json:"label"`
@@ -115,6 +122,12 @@ type Game struct {
 	TutorialURL      *string  `json:"tutorialUrl,omitempty"`
 	Screenshots      []string `json:"screenshots"`
 	Tags             []string `json:"tags"`
+	// What the game is about. One value from `genreTaxonomy`, or null when the
+	// developer has not chosen one. Drives the card's genre label and filter pills.
+	Genre *string `json:"genre,omitempty"`
+	// Developer-declared difficulty floor: how much a new player must know before
+	// their first round is any fun. One value from `difficultyTaxonomy`, or null.
+	Difficulty *string `json:"difficulty,omitempty"`
 	// Developer-chosen hex accent (#rrggbb). Null falls back to the slug-hashed palette color.
 	AccentColor *string `json:"accentColor,omitempty"`
 	// Live player counts for the catalog card. Served from a short-lived whole-catalog snapshot.
@@ -137,13 +150,19 @@ type GameIntegrationCheck struct {
 }
 
 type GameMode struct {
-	ID          string          `json:"id"`
-	ModeKey     string          `json:"modeKey"`
-	DisplayName string          `json:"displayName"`
-	MinPlayers  int             `json:"minPlayers"`
-	MaxPlayers  int             `json:"maxPlayers"`
-	Status      string          `json:"status"`
-	Seats       []*GameModeSeat `json:"seats"`
+	ID          string `json:"id"`
+	ModeKey     string `json:"modeKey"`
+	DisplayName string `json:"displayName"`
+	MinPlayers  int    `json:"minPlayers"`
+	MaxPlayers  int    `json:"maxPlayers"`
+	Status      string `json:"status"`
+	// How play is structured in this mode. One value from `socialModeTaxonomy`, or
+	// null when the game's manifest does not declare one.
+	//
+	// This sits on the mode, not the game, because a game's modes genuinely
+	// disagree: an Arena mode is free-for-all while the same game's Duel is 1v1.
+	SocialMode *string         `json:"socialMode,omitempty"`
+	Seats      []*GameModeSeat `json:"seats"`
 	// Join options with human labels and per-cohort fire sizes.
 	QueuePaths  []*GameModeQueuePath `json:"queuePaths"`
 	Queues      []*ModeQueue         `json:"queues"`
@@ -549,15 +568,18 @@ type TableSeatSlot struct {
 }
 
 type UpdateMyGameMetadataInput struct {
-	GameID           string   `json:"gameId"`
-	Name             *string  `json:"name,omitempty"`
-	ShortDescription *string  `json:"shortDescription,omitempty"`
-	LongDescription  *string  `json:"longDescription,omitempty"`
-	HowToPlay        *string  `json:"howToPlay,omitempty"`
-	Tags             []string `json:"tags,omitempty"`
-	ContactEmail     *string  `json:"contactEmail,omitempty"`
-	WebsiteURL       *string  `json:"websiteUrl,omitempty"`
-	CommunityURL     *string  `json:"communityUrl,omitempty"`
+	GameID           string  `json:"gameId"`
+	Name             *string `json:"name,omitempty"`
+	ShortDescription *string `json:"shortDescription,omitempty"`
+	LongDescription  *string `json:"longDescription,omitempty"`
+	HowToPlay        *string `json:"howToPlay,omitempty"`
+	// Game genre. One id from `genreTaxonomy`. Empty string clears it.
+	Genre *string `json:"genre,omitempty"`
+	// Difficulty floor. One id from `difficultyTaxonomy`. Empty string clears it.
+	Difficulty   *string `json:"difficulty,omitempty"`
+	ContactEmail *string `json:"contactEmail,omitempty"`
+	WebsiteURL   *string `json:"websiteUrl,omitempty"`
+	CommunityURL *string `json:"communityUrl,omitempty"`
 	// Hex catalog accent (#rrggbb or #rgb). Empty string resets to the default.
 	AccentColor *string `json:"accentColor,omitempty"`
 }

@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useAuth } from '../auth/AuthProvider'
 import { navigateBackToCatalog } from '../../lib/catalogNavigation'
-import { gameDetailDescription, gameHeroUrl, gameTagChips } from '../../lib/gameCard'
+import { gameAxisChips, gameDetailDescription, gameHeroUrl } from '../../lib/gameCard'
 import { fetchGameBySlug } from '../../lib/games'
 import { accentColorFor } from '../../lib/gameAccent'
 import GameModesPanel from './GameModesPanel'
@@ -134,7 +134,7 @@ export default function GameDetailPage({
     )
   }
 
-  const tags = gameTagChips(game.tags)
+  const tags = gameAxisChips(game)
   const description = gameDetailDescription(game)
   const screenshots = (game.screenshots ?? []).filter((url) => String(url).trim())
 

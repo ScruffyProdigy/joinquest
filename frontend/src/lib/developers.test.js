@@ -208,7 +208,7 @@ describe('canRequestPublicRelease', () => {
         visibility: 'PRIVATE_TESTING',
         shortDescription: 'Short',
         longDescription: 'Long',
-        tags: ['party'],
+        genre: 'deduction',
         integrationChecks: passChecks,
       }),
     ).toBe(true)
@@ -217,7 +217,7 @@ describe('canRequestPublicRelease', () => {
         visibility: 'PRIVATE_TESTING',
         shortDescription: 'Short',
         longDescription: '',
-        tags: ['party'],
+        genre: 'deduction',
         integrationChecks: passChecks,
       }),
     ).toBe(false)

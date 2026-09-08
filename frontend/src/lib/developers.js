@@ -8,7 +8,8 @@ const MY_GAME_FIELDS = `
   shortDescription
   longDescription
   howToPlay
-  tags
+  genre
+  difficulty
   accentColor
   apiBaseUrl
   visibility
@@ -27,6 +28,7 @@ const MY_GAME_FIELDS = `
     id
     modeKey
     displayName
+    socialMode
     status
     seats {
       seatKey
@@ -39,9 +41,14 @@ const MY_GAME_FIELDS = `
   }
 `
 
-const CATALOG_TAG_TAXONOMY_QUERY = `
-  query CatalogTagTaxonomy {
-    catalogTagTaxonomy {
+const CATALOG_AXIS_TAXONOMY_QUERY = `
+  query CatalogAxisTaxonomy {
+    genreTaxonomy {
+      id
+      label
+      description
+    }
+    difficultyTaxonomy {
       id
       label
       description
@@ -385,9 +392,16 @@ export async function fetchDeveloperIntegrationGuide() {
   return data.developerIntegrationGuide ?? ''
 }
 
-export async function fetchCatalogTagTaxonomy() {
-  const data = await graphqlRequest(CATALOG_TAG_TAXONOMY_QUERY)
-  return data.catalogTagTaxonomy ?? []
+/**
+ * The axis vocabularies a developer picks from. Social mode is absent on purpose:
+ * it is declared per mode in the game's own manifest, not edited here.
+ */
+export async function fetchCatalogAxisTaxonomy() {
+  const data = await graphqlRequest(CATALOG_AXIS_TAXONOMY_QUERY)
+  return {
+    genre: data.genreTaxonomy ?? [],
+    difficulty: data.difficultyTaxonomy ?? [],
+  }
 }
 
 export async function updateMyGameMetadata(input) {
@@ -421,8 +435,7 @@ export function integrationNextSteps(game) {
   const hasMetadata =
     Boolean(game.shortDescription?.trim()) &&
     Boolean(game.longDescription?.trim()) &&
-    Array.isArray(game.tags) &&
-    game.tags.length > 0
+    Boolean(game.genre?.trim())
   const canRelease = canRequestPublicRelease(game)
 
   const steps = [
@@ -451,7 +464,7 @@ export function integrationNextSteps(game) {
       label: 'Complete catalog listing',
       done: hasMetadata,
       hint: hasMetadata
-        ? 'Short description, long description, and tags are set.'
+        ? 'Short description, long description, and genre are set.'
         : 'Fill in catalog copy so players know what your game is about.',
     },
     {
@@ -664,11 +677,11 @@ export function canRequestPublicRelease(game) {
   }
   const hasShort = Boolean(game.shortDescription?.trim())
   const hasLong = Boolean(game.longDescription?.trim())
-  const hasTags = Array.isArray(game.tags) && game.tags.length > 0
+  const hasGenre = Boolean(game.genre?.trim())
   const requiredChecks = REQUIRED_INTEGRATION_CHECKS
   const checksById = new Map((game.integrationChecks ?? []).map((c) => [c.checkId, c.status]))
   const checksPass = requiredChecks.every((id) => checksById.get(id) === 'PASS')
-  return hasShort && hasLong && hasTags && checksPass
+  return hasShort && hasLong && hasGenre && checksPass
 }
 
 export function defaultModeForMyGame(game) {

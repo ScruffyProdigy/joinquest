@@ -200,7 +200,17 @@ func applyManifestTx(ctx context.Context, tx *sql.Tx, game *Game, manifest *game
 
 		minPlayers, maxPlayers := seattemplate.DerivedPlayerBoundsFromPaths(pathSpecs)
 
-		mode, err := upsertGameModeTx(ctx, tx, game.ID, modeKey, displayName, minPlayers, maxPlayers, modeDef.SeatTemplate)
+		// A manifest written before JQ-162 omits socialMode. Leave the column
+		// untouched in that case rather than blanking a value the migration
+		// backfilled, so a game that has not re-published keeps its social shape.
+		var socialMode *string
+		if declared := strings.TrimSpace(modeDef.SocialMode); declared != "" {
+			socialMode = &declared
+		} else if existing := existingByKey[modeKey]; existing != nil {
+			socialMode = existing.SocialMode
+		}
+
+		mode, err := upsertGameModeTx(ctx, tx, game.ID, modeKey, displayName, minPlayers, maxPlayers, socialMode, modeDef.SeatTemplate)
 		if err != nil {
 			return nil, false, err
 		}
@@ -306,7 +316,7 @@ func (s *Store) GetGameBySlug(ctx context.Context, slug string) (*Game, error) {
 
 func listGameModes(ctx context.Context, q sqlQueryRowContext, gameID uuid.UUID) ([]GameMode, error) {
 	rows, err := q.QueryContext(ctx, `
-		SELECT id, game_id, mode_key, display_name, min_players, max_players, status, created_at, updated_at
+		SELECT id, game_id, mode_key, display_name, min_players, max_players, social_mode, status, created_at, updated_at
 		FROM game_modes
 		WHERE game_id = $1
 		ORDER BY mode_key ASC
@@ -331,42 +341,51 @@ func scanGameModes(rows *sql.Rows) ([]GameMode, error) {
 	var modes []GameMode
 	for rows.Next() {
 		var mode GameMode
+		var socialMode sql.NullString
 		if err := rows.Scan(
 			&mode.ID, &mode.GameID, &mode.ModeKey, &mode.DisplayName,
-			&mode.MinPlayers, &mode.MaxPlayers, &mode.Status,
+			&mode.MinPlayers, &mode.MaxPlayers, &socialMode, &mode.Status,
 			&mode.CreatedAt, &mode.UpdatedAt,
 		); err != nil {
 			return nil, err
+		}
+		if socialMode.Valid {
+			mode.SocialMode = &socialMode.String
 		}
 		modes = append(modes, mode)
 	}
 	return modes, rows.Err()
 }
 
-func upsertGameModeTx(ctx context.Context, tx *sql.Tx, gameID uuid.UUID, modeKey, displayName string, minPlayers, maxPlayers int, seatTemplate json.RawMessage) (*GameMode, error) {
+func upsertGameModeTx(ctx context.Context, tx *sql.Tx, gameID uuid.UUID, modeKey, displayName string, minPlayers, maxPlayers int, socialMode *string, seatTemplate json.RawMessage) (*GameMode, error) {
 	row := tx.QueryRowContext(ctx, `
-		INSERT INTO game_modes (game_id, mode_key, display_name, min_players, max_players, seat_template, status)
-		VALUES ($1, $2, $3, $4, $5, $6, 'active')
+		INSERT INTO game_modes (game_id, mode_key, display_name, min_players, max_players, social_mode, seat_template, status)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, 'active')
 		ON CONFLICT (game_id, mode_key) DO UPDATE SET
 			display_name = EXCLUDED.display_name,
 			min_players = EXCLUDED.min_players,
 			max_players = EXCLUDED.max_players,
+			social_mode = EXCLUDED.social_mode,
 			seat_template = EXCLUDED.seat_template,
 			status = 'active',
 			updated_at = NOW()
-		RETURNING id, game_id, mode_key, display_name, min_players, max_players, seat_template, status, created_at, updated_at
-	`, gameID, modeKey, displayName, minPlayers, maxPlayers, seatTemplate)
+		RETURNING id, game_id, mode_key, display_name, min_players, max_players, social_mode, seat_template, status, created_at, updated_at
+	`, gameID, modeKey, displayName, minPlayers, maxPlayers, socialMode, seatTemplate)
 	return scanGameModeRow(row)
 }
 
 func scanGameModeRow(row *sql.Row) (*GameMode, error) {
 	var mode GameMode
+	var socialMode sql.NullString
 	if err := row.Scan(
 		&mode.ID, &mode.GameID, &mode.ModeKey, &mode.DisplayName,
-		&mode.MinPlayers, &mode.MaxPlayers, &mode.SeatTemplate, &mode.Status,
+		&mode.MinPlayers, &mode.MaxPlayers, &socialMode, &mode.SeatTemplate, &mode.Status,
 		&mode.CreatedAt, &mode.UpdatedAt,
 	); err != nil {
 		return nil, err
+	}
+	if socialMode.Valid {
+		mode.SocialMode = &socialMode.String
 	}
 	return &mode, nil
 }

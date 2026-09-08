@@ -1,3 +1,4 @@
+import { gameDifficultyLabel, gameGenreLabel, modeSocialModeLabel } from './gameCard'
 import { graphqlRequest } from './graphql'
 
 const GAME_MODE_FIELDS = `
@@ -66,7 +67,8 @@ const GAME_CARD_FIELDS = `
   howToPlay
   tutorialUrl
   screenshots
-  tags
+  genre
+  difficulty
   accentColor
   playerActivity {
     playing
@@ -200,9 +202,22 @@ export async function fetchGameBySlug(slug, playerId = '') {
   return data.gameBySlug ?? null
 }
 
-/** Text a catalog search matches against: the game name plus its tags. */
+/**
+ * Text a catalog search matches against: the game name plus its axis labels.
+ *
+ * Ids as well as labels, so typing "co-op" finds a game whose chip reads "Co-op"
+ * and typing "words" finds one labelled "Words & Trivia".
+ */
 function gameSearchHaystack(game) {
-  const parts = [game?.name ?? '', ...(Array.isArray(game?.tags) ? game.tags : [])]
+  const modes = Array.isArray(game?.modes) ? game.modes : []
+  const parts = [
+    game?.name ?? '',
+    game?.genre ?? '',
+    gameGenreLabel(game) ?? '',
+    game?.difficulty ?? '',
+    gameDifficultyLabel(game) ?? '',
+    ...modes.flatMap((mode) => [mode?.socialMode ?? '', modeSocialModeLabel(mode) ?? '']),
+  ]
   return parts.join(' ').toLowerCase()
 }
 

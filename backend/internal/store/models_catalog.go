@@ -28,7 +28,10 @@ type Game struct {
 	HowToPlay        *string
 	TutorialURL      *string
 	Screenshots      []string
+	// Tags is the retired flat tag list (JQ-162). Read-only; nothing writes it.
 	Tags             []string
+	Genre            *string
+	Difficulty       *string
 	Slug             *string
 	APIBaseURL       *string
 	Status           string
@@ -69,6 +72,7 @@ type GameMode struct {
 	DisplayName  string
 	MinPlayers   int
 	MaxPlayers   int
+	SocialMode   *string
 	SeatTemplate json.RawMessage
 	Status       string
 	CreatedAt    time.Time

@@ -72,12 +72,17 @@ export function registerJoinQuestIntegrationTools(server, config) {
   server.registerTool(
     'joinquest_integration_get_catalog_tag_taxonomy',
     {
-      description: 'Returns valid catalog tag IDs and labels for updateMyGameMetadata.',
+      description:
+        'Returns the catalog axis vocabularies: genre and difficulty (set per game via update_game_metadata) and socialMode (declared per mode in the game-modes manifest). Replaces the retired flat tag list.',
       inputSchema: z.object({}),
     },
     async () => {
-      const data = await gql(QUERIES.catalogTagTaxonomy)
-      return textResult(data.catalogTagTaxonomy)
+      const data = await gql(QUERIES.catalogAxisTaxonomy)
+      return textResult({
+        genre: data.genreTaxonomy,
+        difficulty: data.difficultyTaxonomy,
+        socialMode: data.socialModeTaxonomy,
+      })
     },
   )
 
@@ -226,14 +231,15 @@ export function registerJoinQuestIntegrationTools(server, config) {
     'joinquest_integration_update_game_metadata',
     {
       description:
-        'Save catalog listing copy, display name, contact/links, and tags after developer approval. Use catalogTagTaxonomy IDs. Empty websiteUrl/communityUrl/accentColor clears those fields.',
+        'Save catalog listing copy, display name, contact/links, genre and difficulty after developer approval. Use IDs from get_catalog_tag_taxonomy. Social mode is per-mode and belongs in the game-modes manifest, not here. Empty websiteUrl/communityUrl/accentColor/genre/difficulty clears those fields.',
       inputSchema: z.object({
         gameId: z.string(),
         name: z.string().optional(),
         shortDescription: z.string().optional(),
         longDescription: z.string().optional(),
         howToPlay: z.string().optional(),
-        tags: z.array(z.string()).optional(),
+        genre: z.string().optional(),
+        difficulty: z.string().optional(),
         contactEmail: z.string().optional(),
         websiteUrl: z.string().optional(),
         communityUrl: z.string().optional(),
@@ -246,7 +252,8 @@ export function registerJoinQuestIntegrationTools(server, config) {
       shortDescription,
       longDescription,
       howToPlay,
-      tags,
+      genre,
+      difficulty,
       contactEmail,
       websiteUrl,
       communityUrl,
@@ -257,7 +264,8 @@ export function registerJoinQuestIntegrationTools(server, config) {
       if (shortDescription !== undefined) input.shortDescription = shortDescription
       if (longDescription !== undefined) input.longDescription = longDescription
       if (howToPlay !== undefined) input.howToPlay = howToPlay
-      if (tags !== undefined) input.tags = tags
+      if (genre !== undefined) input.genre = genre
+      if (difficulty !== undefined) input.difficulty = difficulty
       if (contactEmail !== undefined) input.contactEmail = contactEmail
       if (websiteUrl !== undefined) input.websiteUrl = websiteUrl
       if (communityUrl !== undefined) input.communityUrl = communityUrl
