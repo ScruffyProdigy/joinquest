@@ -260,15 +260,20 @@ SQL
     ;;
   reset-demo-handoff)
     # Dev database only (joinquest). Integration tests use their own per-run database.
+    #
+    # Seed row ...0001 is Word Hunt in the catalog (JQ-203), but it is the only
+    # seeded row with a mode queue outside production, so local matchmaking runs
+    # through it and hands off to whichever demo game server is running locally
+    # -- today that is demo-game-rps on :3001. Production handoff URLs are set by
+    # k8s/jobs/patch-game-handoff-urls.yaml, not here.
     require_docker
     wait_for_postgres
     docker compose exec -T postgres psql -U app -d joinquest <<'SQL'
 UPDATE games
-SET play_url = 'http://localhost:5174',
-    api_base_url = 'http://localhost:3001'
+SET api_base_url = 'http://localhost:3001'
 WHERE id = 'a1000000-0000-4000-8000-000000000001';
 SQL
-    echo "Restored demo quick-match handoff URLs (play :5174, API :3001)."
+    echo "Restored demo handoff API URL (:3001)."
     ;;
   url)
     database_url
