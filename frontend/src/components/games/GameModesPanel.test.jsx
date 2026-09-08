@@ -19,9 +19,15 @@ function identifiedUser() {
   return { id: 'user-1', isGuest: true, displayName: 'Ryan', avatarKey: 'sigil-canine' }
 }
 
+const refreshBeforeIdentity = vi.fn()
+const refreshAfterIdentity = vi.fn()
+
 vi.mock('../rooms/ActiveRoomProvider', () => ({
+  // The real provider rebuilds `refresh` whenever the session changes, and the
+  // session-less one clears the room instead of loading it. Handing back a
+  // different function per session is what makes a stale closure detectable.
   useActiveRoom: () => ({
-    refresh: vi.fn(),
+    refresh: authState.user ? refreshAfterIdentity : refreshBeforeIdentity,
     openRoom: vi.fn(),
   }),
 }))
@@ -312,6 +318,38 @@ describe('GameModesPanel friends action for a visitor with no identity', () => {
       ],
     }
   }
+
+  it('refreshes the room against the session the visitor just made, not the one they clicked with', async () => {
+    const user = userEvent.setup()
+    const { createPrivateTable } = await import('../../lib/tables')
+    navigateTo.mockClear()
+    createPrivateTable.mockReset()
+    createPrivateTable.mockResolvedValue({ id: 'table-1' })
+    refreshBeforeIdentity.mockClear()
+    refreshAfterIdentity.mockClear()
+    authState.user = null
+
+    const { rerender } = render(
+      <IdentityPromptProvider>
+        <GameModesPanel game={friendsGame()} />
+      </IdentityPromptProvider>,
+    )
+    await user.click(screen.getByRole('button', { name: 'Play with friends' }))
+
+    authState.user = identifiedUser()
+    rerender(
+      <IdentityPromptProvider>
+        <GameModesPanel game={friendsGame()} />
+      </IdentityPromptProvider>,
+    )
+
+    await waitFor(() => expect(navigateTo).toHaveBeenCalledWith('/group'))
+    // Replaying the closure captured at click time would refresh as a visitor
+    // with no session, which clears the room the create just made and leaves the
+    // group screen reporting itself ended.
+    expect(refreshAfterIdentity).toHaveBeenCalled()
+    expect(refreshBeforeIdentity).not.toHaveBeenCalled()
+  })
 
   it('continues into the group once the visitor picks an identity', async () => {
     const user = userEvent.setup()

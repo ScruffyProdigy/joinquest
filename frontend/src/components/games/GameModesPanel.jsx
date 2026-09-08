@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 import { isSoloMode, joinGroupOptionsForMode, modePlayerRangeLabel } from '../../lib/games'
 import { accentColorFor } from '../../lib/gameAccent'
 import { hasPlayingIntent, hasWaitingIntent } from '../../lib/intent'
@@ -78,6 +78,22 @@ function ModeRow({
     await onQueueChange?.()
   }
 
+  // requireIdentity replays the closure it was handed, and by then the session
+  // is not the one the visitor clicked with. refreshRoom is rebuilt whenever the
+  // session changes and clears the room when it holds no user, so a replay of
+  // the *captured* one wipes the room it just created and the group screen
+  // reports itself ended. Going through a ref means the replay runs against the
+  // session the visitor now has.
+  const runStartGroupRef = useRef(null)
+  runStartGroupRef.current = async () => {
+    await createPrivateTable(game.id, mode.id)
+    await refreshRoom()
+    await onTableChange?.()
+    // The room is implicit: the player asked to play with friends, not to make a
+    // room, so they land straight on their group (JQ-132).
+    navigateTo('/group')
+  }
+
   async function startGroup() {
     setTableBusy(true)
     setTableError('')
@@ -85,14 +101,7 @@ function ModeRow({
       // A visitor with no name and avatar is asked for one first, and this whole
       // sequence then runs by itself — so one click on "play with friends" still
       // ends in the group rather than back on the catalog (JQ-131).
-      await requireIdentity(async () => {
-        await createPrivateTable(game.id, mode.id)
-        await refreshRoom()
-        await onTableChange?.()
-        // The room is implicit: the player asked to play with friends, not to make a
-        // room, so they land straight on their group (JQ-132).
-        navigateTo('/group')
-      })
+      await requireIdentity(() => runStartGroupRef.current())
     } catch (err) {
       setTableError(err.message || 'Could not create private game.')
     } finally {
