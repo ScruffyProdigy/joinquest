@@ -1,17 +1,15 @@
-import { useEffect, useRef, useState } from 'react'
+import { useRef, useState } from 'react'
 import { isSoloMode, joinGroupOptionsForMode, modePlayerRangeLabel } from '../../lib/games'
 import { accentColorFor } from '../../lib/gameAccent'
 import { hasPlayingIntent, hasWaitingIntent } from '../../lib/intent'
 import { PLAY_WITH_FRIENDS } from '../../lib/playerCopy'
 import { createPrivateTable } from '../../lib/tables'
+import { useIdentityPrompt } from '../avatars/IdentityPromptProvider'
 import { useActiveRoom } from '../rooms/ActiveRoomProvider'
 import GameQueueActions from './GameQueueActions'
 import ModeRequirement from './ModeRequirement'
 import { useGameQueue } from './useGameQueue'
 import { navigateTo } from '../../lib/usePathname'
-import { isIdentityRequiredError } from '../../lib/graphql'
-import { onAuthComplete } from '../../lib/authBroadcast'
-import { rememberGroupIntent, takeGroupIntentFor } from '../../lib/pendingGroupIntent'
 
 function ModeRow({
   game,
@@ -25,6 +23,7 @@ function ModeRow({
   prominent = false,
 }) {
   const { refresh: refreshRoom } = useActiveRoom()
+  const { requireIdentity } = useIdentityPrompt()
   const defaultQueue = mode.queues?.find((q) => q.status === 'active') ?? null
   const playerRangeLabel = modePlayerRangeLabel(mode)
   const accent = prominent ? accentColorFor(game.slug, game.accentColor) : null
@@ -58,15 +57,20 @@ function ModeRow({
             .map((path) => (typeof path === 'string' ? { queuePath: path, displayName: path } : path))
             .find((entry) => entry.queuePath === queuePath)?.displayName
         : null
-    const result = await queue.handleJoin(queuePath)
-    if (result) {
-      onQueueJoined?.(defaultQueue?.id, result, {
-        gameId: game.id,
-        gameName: game.name,
-        modeName: mode.displayName,
-        queuePathDisplayName: pathLabel ?? null,
-      })
-    }
+    // The queue and the path the player picked are the whole intent, and they
+    // are captured in this closure — so if the identity prompt goes up first,
+    // the same join runs by itself once a name and avatar are saved.
+    await requireIdentity(async () => {
+      const result = await queue.handleJoin(queuePath)
+      if (result) {
+        onQueueJoined?.(defaultQueue?.id, result, {
+          gameId: game.id,
+          gameName: game.name,
+          modeName: mode.displayName,
+          queuePathDisplayName: pathLabel ?? null,
+        })
+      }
+    })
   }
 
   async function handleLeave() {
@@ -74,43 +78,36 @@ function ModeRow({
     await onQueueChange?.()
   }
 
+  // requireIdentity replays the closure it was handed, and by then the session
+  // is not the one the visitor clicked with. refreshRoom is rebuilt whenever the
+  // session changes and clears the room when it holds no user, so a replay of
+  // the *captured* one wipes the room it just created and the group screen
+  // reports itself ended. Going through a ref means the replay runs against the
+  // session the visitor now has.
+  const runStartGroupRef = useRef(null)
+  runStartGroupRef.current = async () => {
+    await createPrivateTable(game.id, mode.id)
+    await refreshRoom()
+    await onTableChange?.()
+    // The room is implicit: the player asked to play with friends, not to make a
+    // room, so they land straight on their group (JQ-132).
+    navigateTo('/group')
+  }
+
   async function startGroup() {
     setTableBusy(true)
     setTableError('')
     try {
-      await createPrivateTable(game.id, mode.id)
-      await refreshRoom()
-      await onTableChange?.()
-      // The room is implicit: the player asked to play with friends, not to make a
-      // room, so they land straight on their group (JQ-132).
-      navigateTo('/group')
+      // A visitor with no name and avatar is asked for one first, and this whole
+      // sequence then runs by itself — so one click on "play with friends" still
+      // ends in the group rather than back on the catalog (JQ-131).
+      await requireIdentity(() => runStartGroupRef.current())
     } catch (err) {
-      // A visitor with no name and avatar is turned away by the backend, and the
-      // GraphQL layer already raised the identity picker. That is not an error to
-      // shout at them — hold the intent so picking a name continues into the group
-      // rather than dropping them back on the catalog (JQ-131).
-      if (isIdentityRequiredError(err.message)) {
-        rememberGroupIntent(game.id, mode.id)
-        return
-      }
       setTableError(err.message || 'Could not create private game.')
     } finally {
       setTableBusy(false)
     }
   }
-
-  const startGroupRef = useRef(startGroup)
-  startGroupRef.current = startGroup
-
-  useEffect(
-    () =>
-      onAuthComplete(() => {
-        if (takeGroupIntentFor(game.id, mode.id)) {
-          void startGroupRef.current()
-        }
-      }),
-    [game.id, mode.id],
-  )
 
   async function handleCreatePrivate() {
     if (inActiveGame) {

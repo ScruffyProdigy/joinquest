@@ -18,6 +18,7 @@ import {
   visibilityLabel,
 } from '../../lib/developers'
 import { createPrivateTable } from '../../lib/tables'
+import { useIdentityPrompt } from '../avatars/IdentityPromptProvider'
 import { useActiveRoom } from '../rooms/ActiveRoomProvider'
 import DeveloperCatalogMetadata from './DeveloperCatalogMetadata'
 import DeveloperMcpWizard from './DeveloperMcpWizard'
@@ -65,6 +66,7 @@ function CredentialField({ label, value }) {
 
 export default function DeveloperDashboard({ gameId }) {
   const { refresh: refreshRoom, openRoom } = useActiveRoom()
+  const { requireIdentity } = useIdentityPrompt()
   const [game, setGame] = useState(null)
   const [credentials, setCredentials] = useState(null)
   const [guide, setGuide] = useState('')
@@ -226,9 +228,13 @@ export default function DeveloperDashboard({ gameId }) {
     setActionError('')
     setActionInfo('')
     try {
-      await createPrivateTable(game.id, defaultMode.id)
-      await refreshRoom()
-      openRoom()
+      // A developer sitting down at their own test table is still a play
+      // entry, so it goes through the same prompt as any other join.
+      await requireIdentity(async () => {
+        await createPrivateTable(game.id, defaultMode.id)
+        await refreshRoom()
+        openRoom()
+      })
     } catch (err) {
       setActionError(err.message || 'Could not create test table.')
     } finally {

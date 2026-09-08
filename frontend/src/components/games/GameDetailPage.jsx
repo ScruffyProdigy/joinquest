@@ -1,5 +1,4 @@
 import { useEffect, useState } from 'react'
-import SignInPanel from '../auth/SignInPanel'
 import { useAuth } from '../auth/AuthProvider'
 import { navigateBackToCatalog } from '../../lib/catalogNavigation'
 import { gameDetailDescription, gameHeroUrl, gameTagChips } from '../../lib/gameCard'
@@ -24,7 +23,6 @@ function GameDetailToolbar({ game, onBack = navigateBackToCatalog }) {
 function GameDetailPlaySection({
   game,
   authLoading,
-  user,
   activeIntent,
   activeTableSeat,
   onQueueChange,
@@ -41,28 +39,22 @@ function GameDetailPlaySection({
     )
   }
 
-  if (user) {
-    return (
-      <section className="game-detail__play">
-        <GameModesPanel
-          game={game}
-          activeIntent={activeIntent}
-          activeTableSeat={activeTableSeat}
-          onQueueChange={onQueueChange}
-          onQueueJoined={onQueueJoined}
-          onTableChange={onTableChange}
-          heading={null}
-          variant="prominent"
-        />
-      </section>
-    )
-  }
-
+  // A visitor with no session sees the same play options as anyone else. The
+  // name and avatar are collected when they act on one of them, and signing in
+  // instead is offered inside that prompt — so the page stays a game page
+  // rather than a sign-in wall.
   return (
-    <section className="game-detail__play game-detail__sign-in">
-      <h2 className="font-heading text-lg font-semibold">Ready to play?</h2>
-      <p className="panel-copy">Sign in to look for a group or create a private table.</p>
-      <SignInPanel />
+    <section className="game-detail__play">
+      <GameModesPanel
+        game={game}
+        activeIntent={activeIntent}
+        activeTableSeat={activeTableSeat}
+        onQueueChange={onQueueChange}
+        onQueueJoined={onQueueJoined}
+        onTableChange={onTableChange}
+        heading={null}
+        variant="prominent"
+      />
     </section>
   )
 }
@@ -188,7 +180,6 @@ export default function GameDetailPage({
         <GameDetailPlaySection
           game={game}
           authLoading={authLoading}
-          user={user}
           activeIntent={activeIntent}
           activeTableSeat={activeTableSeat}
           onQueueChange={onQueueChange}

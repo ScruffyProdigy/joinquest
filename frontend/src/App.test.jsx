@@ -58,7 +58,9 @@ describe('App Component', () => {
     expect(screen.queryByText('Welcome back')).not.toBeInTheDocument()
     expect(screen.queryByRole('button', { name: 'Log out' })).not.toBeInTheDocument()
     expect(await screen.findByRole('heading', { level: 1, name: 'Find a game' })).toBeInTheDocument()
-    expect(screen.getByRole('link', { name: /get started for developers/i })).toBeInTheDocument()
+    // The promo card sits inside the catalog list, so it only exists once the
+    // games fetch resolves — the heading above it is static and arrives first.
+    expect(await screen.findByRole('link', { name: /get started for developers/i })).toBeInTheDocument()
     expect(screen.queryByRole('button', { name: 'Create room' })).not.toBeInTheDocument()
     expect(await screen.findByRole('heading', { name: 'Rock Paper Scissors Lizard Robot' })).toBeInTheDocument()
   })

@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
+import { isIdentityRequiredError } from '../../lib/graphql'
 import {
   fetchMyQueueStatus,
   joinQueue,
@@ -273,6 +274,12 @@ export function useGameQueue(queueId, { skipSubscription = false } = {}) {
       })
       return result
     } catch (err) {
+      // A missing name or avatar is answered by the identity prompt, which then
+      // replays this join. Printing it here would be the bare error the prompt
+      // exists to replace, so it goes back to the caller untouched.
+      if (isIdentityRequiredError(err?.message)) {
+        throw err
+      }
       setError(err.message || 'Could not start looking for a group')
       return null
     } finally {

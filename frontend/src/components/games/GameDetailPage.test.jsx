@@ -11,8 +11,10 @@ vi.mock('../../lib/games', async (importOriginal) => {
   }
 })
 
+const authState = { user: { id: 'user-1' }, loading: false, refreshSession: async () => {} }
+
 vi.mock('../auth/AuthProvider', () => ({
-  useAuth: () => ({ user: { id: 'user-1' }, loading: false }),
+  useAuth: () => authState,
 }))
 
 vi.mock('../rooms/ActiveRoomProvider', () => ({
@@ -61,6 +63,20 @@ const detailGame = {
 describe('GameDetailPage', () => {
   beforeEach(() => {
     vi.mocked(games.fetchGameBySlug).mockReset()
+    authState.user = { id: 'user-1' }
+    authState.loading = false
+  })
+
+  it('offers the play options to a visitor with no session', async () => {
+    authState.user = null
+    vi.mocked(games.fetchGameBySlug).mockResolvedValue(detailGame)
+
+    render(<GameDetailPage slug="word-hunt" />)
+
+    // Browsing stays open, and the name and avatar are asked for when the
+    // visitor acts on one of these rather than on the way in.
+    expect(await screen.findByRole('button', { name: 'Look for group' })).toBeInTheDocument()
+    expect(screen.queryByRole('heading', { name: 'Ready to play?' })).not.toBeInTheDocument()
   })
 
   it('renders game detail content', async () => {
