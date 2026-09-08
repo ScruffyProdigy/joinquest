@@ -36,6 +36,7 @@ const ANCHOR_ALLOWED = [
   'src/components/developers/DeveloperAuthGate.jsx',
   'src/components/games/IntentBanner.jsx',
   'src/components/games/GameQueueActions.jsx',
+  'src/components/games/LaunchStep.jsx',
 ]
 
 /**
