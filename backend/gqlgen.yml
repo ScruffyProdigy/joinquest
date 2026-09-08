@@ -35,6 +35,10 @@ models:
         resolver: true
       eligibility:
         resolver: true
+      preQueueGroups:
+        resolver: true
+      queueOptions:
+        resolver: true
   ModeQueue:
     fields:
       waitingCount:

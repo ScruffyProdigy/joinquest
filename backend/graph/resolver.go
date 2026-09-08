@@ -35,6 +35,9 @@ type Resolver struct {
 	GameProvisioner gameclient.MatchProvisioner
 	// EligibilityCache resolves GameMode.eligibility; nil uses a default 5s in-memory cache.
 	EligibilityCache *gameclient.EligibilityCache
+	// QueueOptionsCache resolves GameMode.queueOptions and re-checks a join
+	// against the roster the player was shown; nil uses a default 5s cache.
+	QueueOptionsCache *gameclient.QueueOptionsCache
 	// LiveCountsCache serves Game.playerActivity; nil queries the store on every field read.
 	LiveCountsCache *catalogstats.Cache
 	// Emitter carries operational signals that have no GraphQL surface — conditions a
@@ -54,11 +57,12 @@ func (r *Resolver) signals() observe.Emitter {
 // NewResolver creates a resolver backed by the store and auth service.
 func NewResolver(st *store.Store, authService *auth.Service, broker pubsub.Broker) *Resolver {
 	return &Resolver{
-		Store:            st,
-		Auth:             authService,
-		PubSub:           broker,
-		EligibilityCache: gameclient.NewEligibilityCache(gameclient.NewClient(), 5*time.Second),
-		LiveCountsCache:  catalogstats.NewCache(liveCountsSource(st), 5*time.Second),
+		Store:             st,
+		Auth:              authService,
+		PubSub:            broker,
+		EligibilityCache:  gameclient.NewEligibilityCache(gameclient.NewClient(), 5*time.Second),
+		QueueOptionsCache: gameclient.NewQueueOptionsCache(gameclient.NewClient(), 5*time.Second),
+		LiveCountsCache:   catalogstats.NewCache(liveCountsSource(st), 5*time.Second),
 	}
 }
 

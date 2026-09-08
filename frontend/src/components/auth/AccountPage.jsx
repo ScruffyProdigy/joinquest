@@ -50,7 +50,7 @@ function providerLabel(provider) {
 }
 
 export default function AccountPage() {
-  const { user, acceptSessionUser, refreshSession } = useAuth()
+  const { user, acceptSessionUser, refreshSession, getSessionGeneration } = useAuth()
   const [account, setAccount] = useState(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
@@ -67,25 +67,37 @@ export default function AccountPage() {
   const codeInputRef = useRef(null)
 
   const loadAccount = useCallback(async () => {
+    // Logging out mid-flight makes this response worthless: it describes a
+    // session that is already gone, and applying it puts the signed-out user
+    // back on the page (JQ-205).
+    const sessionGeneration = getSessionGeneration()
     setLoading(true)
     setError('')
     try {
       const next = await fetchMyAccount()
+      if (sessionGeneration !== getSessionGeneration()) {
+        return
+      }
       setAccount(next)
       if (next?.user) {
-        acceptSessionUser(next.user)
+        acceptSessionUser(next.user, { sessionGeneration })
       }
     } catch (err) {
+      if (sessionGeneration !== getSessionGeneration()) {
+        return
+      }
       setError(err.message || 'Could not load account settings')
     } finally {
       setLoading(false)
     }
-  }, [acceptSessionUser])
+  }, [acceptSessionUser, getSessionGeneration])
 
   useEffect(() => {
     if (user) {
       void loadAccount()
     } else {
+      // Nothing below the session card should outlive the session it described.
+      setAccount(null)
       setLoading(false)
     }
   }, [user, loadAccount])

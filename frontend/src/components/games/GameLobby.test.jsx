@@ -97,7 +97,7 @@ describe('GameLobby', () => {
           name: 'Spyfall',
           iconUrl: '/games/spyfall-icon.png',
           heroUrl: '/games/spyfall-hero.jpg',
-          tags: ['Social', 'Deduction'],
+          genre: 'deduction',
           createdAt: '2026-01-01T00:00:00Z',
           modes: [],
         },
@@ -107,7 +107,7 @@ describe('GameLobby', () => {
           name: 'Word Ladder',
           iconUrl: '/games/word-ladder-icon.png',
           heroUrl: '/games/word-ladder-hero.jpg',
-          tags: ['Word', 'Strategy'],
+          genre: 'words-trivia',
           createdAt: '2026-01-02T00:00:00Z',
           modes: [],
         },
@@ -148,7 +148,7 @@ describe('GameLobby', () => {
       expect(screen.getByRole('heading', { name: 'Word Ladder' })).toBeInTheDocument()
     })
 
-    it('matches on tags as well as titles', async () => {
+    it('matches on axis labels as well as titles', async () => {
       mockAuthenticatedSession()
       mockTwoGames()
       renderGameLobby()
@@ -196,7 +196,6 @@ describe('GameLobby', () => {
           name: `Game ${i + 1}`,
           iconUrl: `/games/game-${i + 1}-icon.png`,
           heroUrl: `/games/game-${i + 1}-hero.jpg`,
-          tags: [],
           createdAt: '2026-01-01T00:00:00Z',
           modes: [],
         })),

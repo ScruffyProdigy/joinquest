@@ -10,7 +10,7 @@ import (
 	"github.com/scruffyprodigy/joinquest/internal/store"
 )
 
-func (r *mutationResolver) joinQueueInternal(ctx context.Context, modeQueueID uuid.UUID, queuePath string, partyInput *model.PartyNodeInput) (*model.JoinResult, error) {
+func (r *mutationResolver) joinQueueInternal(ctx context.Context, modeQueueID uuid.UUID, queuePath string, optionsInput []*model.QueueOptionSelectionInput, partyInput *model.PartyNodeInput) (*model.JoinResult, error) {
 	st, err := r.requireStore()
 	if err != nil {
 		return nil, err
@@ -26,7 +26,19 @@ func (r *mutationResolver) joinQueueInternal(ctx context.Context, modeQueueID uu
 		return nil, err
 	}
 
-	result, err := st.JoinModeQueue(ctx, modeQueueID, userID, queuePath, party)
+	game, mode, err := r.modeForQueue(ctx, modeQueueID)
+	if err != nil {
+		if errors.Is(err, store.ErrNotFound) {
+			return nil, fmt.Errorf("queue not found")
+		}
+		return nil, err
+	}
+	options, err := r.resolveSelections(ctx, game, mode, userID.String(), optionsInput)
+	if err != nil {
+		return nil, err
+	}
+
+	result, err := st.JoinModeQueueWithOptions(ctx, modeQueueID, userID, queuePath, options, party)
 	if err != nil {
 		if errors.Is(err, store.ErrAlreadyMatched) {
 			return nil, fmt.Errorf("you already have an active match; finish or leave your current queue first")

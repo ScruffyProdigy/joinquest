@@ -20,7 +20,7 @@ import (
 )
 
 // JoinQueue is the resolver for the joinQueue field.
-func (r *mutationResolver) JoinQueue(ctx context.Context, queueID string, queuePath *string, party *model.PartyNodeInput) (*model.JoinResult, error) {
+func (r *mutationResolver) JoinQueue(ctx context.Context, queueID string, queuePath *string, options []*model.QueueOptionSelectionInput, party *model.PartyNodeInput) (*model.JoinResult, error) {
 	modeQueueID, err := parseUUID(queueID, "queue id")
 	if err != nil {
 		return nil, err
@@ -29,7 +29,7 @@ func (r *mutationResolver) JoinQueue(ctx context.Context, queueID string, queueP
 	if queuePath != nil {
 		path = strings.TrimSpace(*queuePath)
 	}
-	return r.joinQueueInternal(ctx, modeQueueID, path, party)
+	return r.joinQueueInternal(ctx, modeQueueID, path, options, party)
 }
 
 // LeaveQueue is the resolver for the leaveQueue field.
@@ -427,6 +427,11 @@ func (r *queryResolver) MyActiveIntent(ctx context.Context) (*model.ActiveIntent
 			if mode, mErr := st.GetGameModeByID(ctx, modeQueue.ModeID); mErr == nil {
 				resp.QueuePathDisplayName = queuePathDisplayName(mode.SeatTemplate, active.QueuePath)
 			}
+		}
+		// Labels were stamped at join time, so the banner still names the picks
+		// even if the game has gone quiet since.
+		if entry, eErr := st.GetWaitingModeQueueEntry(ctx, active.ModeQueueID, userID); eErr == nil {
+			resp.SelectedOptions = toGraphQLSelections(entry.QueueOptions)
 		}
 		return resp, nil
 	}

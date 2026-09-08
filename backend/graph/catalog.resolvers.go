@@ -150,6 +150,73 @@ func (r *gameModeResolver) Eligibility(ctx context.Context, obj *model.GameMode,
 	return toGraphQLModeEligibility(elig), nil
 }
 
+// PreQueueGroups is the resolver for the preQueueGroups field.
+func (r *gameModeResolver) PreQueueGroups(ctx context.Context, obj *model.GameMode) ([]*model.PreQueueGroup, error) {
+	st, err := r.requireStore()
+	if err != nil {
+		return nil, err
+	}
+	modeID, err := parseUUID(obj.ID, "mode id")
+	if err != nil {
+		return nil, err
+	}
+	mode, err := st.GetGameModeByID(ctx, modeID)
+	if err != nil {
+		return nil, err
+	}
+	return toGraphQLPreQueueGroups(declaredGroups(mode)), nil
+}
+
+// QueueOptions is the resolver for the queueOptions field.
+func (r *gameModeResolver) QueueOptions(ctx context.Context, obj *model.GameMode, playerID string) (*model.QueueOptions, error) {
+	st, err := r.requireStore()
+	if err != nil {
+		return nil, err
+	}
+
+	authUserID, err := requireAuthUserID(ctx)
+	if err != nil {
+		// No session means no player to fetch a roster for. Null, not an error:
+		// a signed-out browse of the catalog still renders.
+		return nil, nil
+	}
+	requestedID, err := parseUUID(playerID, "player id")
+	if err != nil {
+		return nil, nil
+	}
+	if requestedID != authUserID {
+		// A well-formed but mismatched id would leak another player's unlocks.
+		return nil, fmt.Errorf("cannot query queue options for another player")
+	}
+
+	modeID, err := parseUUID(obj.ID, "mode id")
+	if err != nil {
+		return nil, err
+	}
+	mode, err := st.GetGameModeByID(ctx, modeID)
+	if err != nil {
+		return nil, err
+	}
+	groups := declaredGroups(mode)
+	if len(groups) == 0 {
+		// Null rather than an empty roster: this mode has no pre-queue step at
+		// all, which is different from having one we could not load.
+		return nil, nil
+	}
+	game, err := st.GetGameByID(ctx, mode.GameID)
+	if err != nil {
+		return nil, err
+	}
+
+	roster, err := r.playerRoster(ctx, game, mode, groups, playerID)
+	if err != nil {
+		// Deliberately not fail-open. There is no roster to guess at, so the
+		// picker shows an error and this mode alone stops accepting joins.
+		return unavailableQueueOptions("This game can't tell us your options right now. Try again in a moment."), nil
+	}
+	return toGraphQLQueueOptions(roster), nil
+}
+
 // WaitingCount is the resolver for the waitingCount field.
 func (r *modeQueueResolver) WaitingCount(ctx context.Context, obj *model.ModeQueue) (int, error) {
 	st, err := r.requireStore()

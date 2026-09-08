@@ -2,14 +2,16 @@ import { describe, it, expect } from 'vitest'
 import {
   gameCatalogHeroUrl,
   gameDetailDescription,
-  gameGenreModeLabel,
+  gameAxisChips,
+  gameDifficultyLabel,
+  gameGenreLabel,
   gameLiveActivityLabel,
   gameHeroUrl,
   gameIconUrl,
   gamePagePath,
   gamePageShareUrl,
   gamePlayerRangeLabel,
-  gameTagChips,
+  modeSocialModeLabel,
   gameCardMeta,
   gameDurationLabel,
   gameTitleArtStyle,
@@ -76,21 +78,37 @@ describe('gameCard', () => {
     expect(gameDetailDescription({ shortDescription: 'Short copy.' })).toBe('Short copy.')
   })
 
-  it('gameTagChips caps at three tags', () => {
-    expect(gameTagChips(['a', 'b', 'c', 'd'])).toEqual(['a', 'b', 'c'])
+  it('gameGenreLabel renders the genre axis label', () => {
+    expect(gameGenreLabel({ genre: 'words-trivia' })).toBe('Words & Trivia')
   })
 
-  it('gameGenreModeLabel joins the first two tags', () => {
-    expect(gameGenreModeLabel(['Trivia', 'Party', 'extra'])).toBe('Trivia · Party')
+  it('gameGenreLabel returns null for an unset or retired genre', () => {
+    expect(gameGenreLabel({})).toBeNull()
+    expect(gameGenreLabel(undefined)).toBeNull()
+    // `words` was a tag id, never a genre id; it must not render as a slug.
+    expect(gameGenreLabel({ genre: 'words' })).toBeNull()
   })
 
-  it('gameGenreModeLabel uses a single tag alone', () => {
-    expect(gameGenreModeLabel(['Trivia'])).toBe('Trivia')
+  it('gameDifficultyLabel renders the difficulty axis label', () => {
+    expect(gameDifficultyLabel({ difficulty: 'casual' })).toBe('Casual')
+    expect(gameDifficultyLabel({})).toBeNull()
   })
 
-  it('gameGenreModeLabel returns null with no tags', () => {
-    expect(gameGenreModeLabel([])).toBeNull()
-    expect(gameGenreModeLabel(undefined)).toBeNull()
+  it('modeSocialModeLabel renders the mode-level social shape', () => {
+    expect(modeSocialModeLabel({ socialMode: '1v1' })).toBe('1v1')
+    expect(modeSocialModeLabel({ socialMode: 'free-for-all' })).toBe('Free-for-all')
+    expect(modeSocialModeLabel({})).toBeNull()
+  })
+
+  it('gameAxisChips orders genre, social mode, then difficulty', () => {
+    expect(
+      gameAxisChips({ genre: 'words-trivia', difficulty: 'casual' }, { socialMode: '1v1' }),
+    ).toEqual(['Words & Trivia', '1v1', 'Casual'])
+  })
+
+  it('gameAxisChips drops axes the game has not declared', () => {
+    expect(gameAxisChips({ genre: 'puzzle' })).toEqual(['Puzzle'])
+    expect(gameAxisChips({})).toEqual([])
   })
 
   it('gamePlayerRangeLabel ranges across active modes', () => {
@@ -138,18 +156,17 @@ describe('gameCard', () => {
 
   it('gameCardMeta orders genre, then players, then duration', () => {
     const meta = gameCardMeta({
-      tags: ['Trivia', 'Party'],
+      genre: 'words-trivia',
       modes: [{ status: 'active', minPlayers: 2, maxPlayers: 8 }],
       durationMinutes: 12,
     })
 
     expect(meta.map((pill) => pill.key)).toEqual(['genre', 'players', 'duration'])
-    expect(meta.map((pill) => pill.label)).toEqual(['Trivia · Party', '2–8', '12 min'])
+    expect(meta.map((pill) => pill.label)).toEqual(['Words & Trivia', '2–8', '12 min'])
   })
 
   it('gameCardMeta drops absent facts instead of leaving empty slots', () => {
     const meta = gameCardMeta({
-      tags: [],
       modes: [{ status: 'active', minPlayers: 2, maxPlayers: 8 }],
     })
 

@@ -78,6 +78,7 @@ export default function WaitingPage({ intent }) {
     activeIntent.gameName,
     activeIntent.modeName,
     activeIntent.queuePathDisplayName,
+    activeIntent.selectedOptions,
   )
   const needLine = formatFormingGapsNeedLine(activeIntent.formingGaps)
 

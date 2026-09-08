@@ -75,6 +75,21 @@ describe('WaitingPage', () => {
     expect(screen.getByText('Need 1 Clue Giver, 4 Guesser')).toBeInTheDocument()
   })
 
+  it('carries the pre-queue picks into the subline', () => {
+    setIntentState({
+      activeIntent: {
+        ...waitingIntent,
+        queuePathDisplayName: 'Clue Giver',
+        selectedOptions: [{ labels: ['Hard mode'] }, { labels: ['No timer'] }],
+      },
+    })
+    render(<WaitingPage intent={intentState} />)
+
+    expect(
+      screen.getByText('Word Hunt · Arena · Clue Giver · Hard mode · No timer'),
+    ).toBeInTheDocument()
+  })
+
   it('says live updates are paused when the queue socket is down', () => {
     setIntentState({ activeIntent: waitingIntent, queueWsConnected: false })
     render(<WaitingPage intent={intentState} />)

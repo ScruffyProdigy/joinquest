@@ -3,6 +3,8 @@ type TableSeat {
   """No email: a table admits strangers via Look for group and the catalog queue."""
   user: PublicPlayer!
   seatedAt: Time!
+  """What this player picked as they claimed the seat, for the table to see."""
+  selectedOptions: [QueueOptionSelection!]!
 }
 
 type TableSeatSlot {
@@ -91,7 +93,12 @@ extend type Query {
 extend type Mutation {
   createPrivateTable(gameId: ID!, modeId: ID!): Table!
   createTable(roomId: ID!, gameId: ID!, modeId: ID!): Table!
-  sitAtTable(tableId: ID!, seatKey: String!): Table!
+  """
+  Claim a seat. A mode with pre-queue options requires them here: each player
+  answers the picker for themselves as they sit down, because nobody may choose
+  another player's champion, kit or deck.
+  """
+  sitAtTable(tableId: ID!, seatKey: String!, options: [QueueOptionSelectionInput!]): Table!
   leaveTable(tableId: ID!): Boolean!
   discardTable(tableId: ID!): Boolean!
   startTable(tableId: ID!): JoinResult!

@@ -234,16 +234,17 @@ describe('TableCard', () => {
     expect(screen.getAllByRole('button', { name: 'Sit' })).toHaveLength(1)
   })
 
-  it('shows catalog icon, blurb, and tags to help unfamiliar players', () => {
+  it('shows catalog icon, blurb, and axis chips to help unfamiliar players', () => {
     const table = {
       id: 'table-1',
       game: {
         name: 'Word Hunt',
         iconUrl: '/games/word-hunt-icon.png',
         shortDescription: 'Everyone competes on a shared word grid.',
-        tags: ['party', 'competitive', 'words'],
+        genre: 'words-trivia',
+        difficulty: 'casual',
       },
-      mode: { displayName: 'Party' },
+      mode: { displayName: 'Party', socialMode: 'free-for-all' },
       seats: [],
       seatSlots: [],
       lookForGroupOptions: [],
@@ -255,7 +256,10 @@ describe('TableCard', () => {
 
     expect(container.querySelector('img[src="/games/word-hunt-icon.png?v=1"]')).toBeInTheDocument()
     expect(screen.getByText('Everyone competes on a shared word grid.')).toBeInTheDocument()
-    expect(screen.getByText('competitive')).toBeInTheDocument()
+    // Genre from the game, social shape from this table's mode, difficulty from the game.
+    expect(screen.getByText('Words & Trivia')).toBeInTheDocument()
+    expect(screen.getByText('Free-for-all')).toBeInTheDocument()
+    expect(screen.getByText('Casual')).toBeInTheDocument()
   })
 
   it('shows forming gaps when the table still needs lobby players', () => {

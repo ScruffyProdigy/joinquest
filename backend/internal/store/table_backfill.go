@@ -70,7 +70,9 @@ func (s *Store) StartTableBackfill(ctx context.Context, tableID, kingUserID, mod
 	for i, seat := range seated {
 		pinned[i] = partytree.PinnedSeat{UserID: seat.UserID.String(), SeatKey: seat.SeatKey}
 		path := seatRoles[seat.SeatKey]
-		members[i] = JoinPartyMemberInput{UserID: seat.UserID, QueuePath: path}
+		// Each seated player's own picks ride into the queue with them, so a
+		// table that backfills does not lose what everyone already chose.
+		members[i] = JoinPartyMemberInput{UserID: seat.UserID, QueuePath: path, QueueOptions: seat.QueueOptions}
 	}
 	tree := partytree.BuildFromPinnedSeats(pinned, seatRoles)
 	tree.TableID = tableID.String()
@@ -81,7 +83,7 @@ func (s *Store) StartTableBackfill(ctx context.Context, tableID, kingUserID, mod
 	}
 
 	for _, member := range members {
-		if _, err := enqueueModeQueueTx(ctx, tx, game.ID, modeQueue.ID, member.UserID, member.QueuePath, &party.ID); err != nil {
+		if _, err := enqueueModeQueueTx(ctx, tx, game.ID, modeQueue.ID, member.UserID, member.QueuePath, member.QueueOptions, &party.ID); err != nil {
 			return nil, err
 		}
 	}

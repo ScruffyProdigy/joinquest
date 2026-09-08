@@ -1,7 +1,3 @@
-:root {
-  --app-dock-height: calc(4rem + env(safe-area-inset-bottom, 0px));
-}
-
 #root.app-root--game-detail {
   max-width: min(960px, 100%);
   padding-left: 0;
@@ -19,37 +15,6 @@
   max-width: 720px;
   margin: 0 auto;
   padding: 2rem 1.5rem;
-}
-
-#root.app-root--split {
-  max-width: min(1120px, 100%);
-}
-
-#root.app-root--dock {
-  padding-bottom: calc(var(--app-dock-height) + 1rem);
-}
-
-.app-layout {
-  display: block;
-}
-
-.app-layout--split {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(18rem, 22rem);
-  gap: 1rem;
-  align-items: start;
-}
-
-.app-layout__catalog {
-  min-width: 0;
-}
-
-.app-layout__room {
-  position: sticky;
-  top: 1rem;
-  max-height: calc(100vh - 2rem);
-  overflow: auto;
-  background: var(--background);
 }
 
 .app-shell--catalog {
@@ -525,65 +490,6 @@
   gap: 0.5rem;
 }
 
-.app-dock {
-  position: fixed;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  z-index: 50;
-  display: flex;
-  justify-content: center;
-  gap: 0;
-  max-width: 720px;
-  margin: 0 auto;
-  padding: 0.35rem 1rem calc(0.35rem + env(safe-area-inset-bottom, 0px));
-  border-top: 1px solid var(--border);
-  background: var(--card);
-  opacity: 1;
-}
-
-.app-dock__tab {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 0.2rem;
-  padding: 0.45rem 0.5rem;
-  border: none;
-  border-radius: 10px;
-  background: transparent;
-  color: var(--muted-foreground);
-  cursor: pointer;
-  font: inherit;
-  font-size: 0.75rem;
-}
-
-.app-dock__tab--active {
-  color: var(--accent-foreground);
-  background: var(--accent);
-}
-
-.app-dock__icon-wrap {
-  position: relative;
-  display: inline-flex;
-}
-
-.app-dock__badge {
-  position: absolute;
-  top: -0.35rem;
-  right: -0.55rem;
-  min-width: 1.1rem;
-  height: 1.1rem;
-  padding: 0 0.25rem;
-  border-radius: 999px;
-  background: var(--destructive);
-  color: #fff;
-  font-size: 0.65rem;
-  font-weight: 700;
-  line-height: 1.1rem;
-  text-align: center;
-}
-
 @media (prefers-color-scheme: light) {
   .waiting-page__card {
     border-color: rgba(100, 108, 255, 0.35);
@@ -672,23 +578,6 @@
 
   .queue-status-line {
     color: #666;
-  }
-
-  .app-dock {
-    border-top-color: rgba(0, 0, 0, 0.08);
-    background: #ffffff;
-  }
-
-  .app-layout__room {
-    background: #ffffff;
-  }
-
-  .app-dock__tab {
-    color: #666;
-  }
-
-  .app-dock__tab--active {
-    color: #5558aa;
   }
 
 }
@@ -1507,4 +1396,171 @@
   .developer-reference-games__item {
     border-top-color: rgba(0, 0, 0, 0.08);
   }
+}
+
+/* --- Pre-queue options picker (JQ-163) --------------------------------- */
+
+/* A sheet rather than a route: the mode is already chosen behind it, and on a
+   phone the picker wants the whole viewport without losing that context. */
+.pre-queue-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 60;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.55);
+}
+
+.pre-queue-sheet {
+  display: flex;
+  flex-direction: column;
+  width: min(34rem, 100%);
+  max-height: 82vh;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: 16px 16px 0 0;
+  background: #14161c;
+  box-shadow: 0 -8px 32px rgba(0, 0, 0, 0.45);
+}
+
+@media (min-width: 640px) {
+  .pre-queue-backdrop {
+    align-items: center;
+  }
+
+  .pre-queue-sheet {
+    border-radius: 16px;
+  }
+}
+
+.pre-queue-sheet__header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding: 0.9rem 1rem 0.6rem;
+  flex-shrink: 0;
+}
+
+.pre-queue-sheet__game {
+  margin: 0;
+  font-size: 0.75rem;
+  opacity: 0.65;
+}
+
+.pre-queue-sheet__title {
+  margin: 0.1rem 0 0;
+  font-size: 1.05rem;
+}
+
+.pre-queue-sheet__close {
+  border: 0;
+  background: none;
+  color: inherit;
+  font-size: 1rem;
+  cursor: pointer;
+  opacity: 0.7;
+  padding: 0.2rem 0.35rem;
+}
+
+.pre-queue-sheet__body {
+  overflow-y: auto;
+  padding: 0 1rem 0.75rem;
+}
+
+.pre-queue-sheet__unavailable,
+.pre-queue-sheet__error {
+  margin: 0.5rem 0;
+  font-size: 0.85rem;
+  color: #ffb4a8;
+}
+
+.pre-queue-group__head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.5rem;
+  margin: 0.85rem 0 0.5rem;
+}
+
+.pre-queue-group__label {
+  margin: 0;
+  font-size: 0.9rem;
+}
+
+.pre-queue-group__count {
+  font-size: 0.78rem;
+  opacity: 0.65;
+  font-variant-numeric: tabular-nums;
+}
+
+.pre-queue-group__grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.5rem;
+}
+
+.pre-queue-option {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+  padding: 0.6rem 0.5rem;
+  border: 2px solid rgba(255, 255, 255, 0.14);
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.03);
+  color: inherit;
+  text-align: center;
+  cursor: pointer;
+}
+
+.pre-queue-option--selected {
+  border-color: currentColor;
+  background: rgba(255, 255, 255, 0.09);
+}
+
+/* A locked option stays visible and legible enough to read its requirement —
+   dimming it away would hide the thing the player is working toward. */
+.pre-queue-option--locked {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.pre-queue-option__lock {
+  position: absolute;
+  top: 0.3rem;
+  right: 0.35rem;
+  font-size: 0.62rem;
+}
+
+.pre-queue-option__name {
+  font-size: 0.78rem;
+  font-weight: 700;
+}
+
+.pre-queue-option__description,
+.pre-queue-option__requirement {
+  font-size: 0.66rem;
+  opacity: 0.7;
+  line-height: 1.25;
+}
+
+.pre-queue-sheet__footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding: 0.75rem 1rem 1rem;
+  border-top: 1px solid rgba(255, 255, 255, 0.12);
+  flex-shrink: 0;
+}
+
+.pre-queue-sheet__summary {
+  font-size: 0.8rem;
+  opacity: 0.7;
+}
+
+.pre-queue-sheet__footer .game-list-button:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
 }

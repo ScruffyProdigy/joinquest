@@ -111,7 +111,9 @@ func (s *Store) ClaimRegroupTable(ctx context.Context, sessionID, userID uuid.UU
 		return nil, nil, err
 	}
 	if seatKey != "" {
-		if _, err := s.sitAtTableTx(ctx, tx, table.ID, userID, seatKey); err != nil {
+		// A regroup seats the player where they already were; they re-open the
+		// picker themselves before the table starts.
+		if _, err := s.sitAtTableTx(ctx, tx, table.ID, userID, seatKey, nil); err != nil {
 			return nil, nil, err
 		}
 	}

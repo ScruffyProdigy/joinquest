@@ -130,8 +130,8 @@ describe('modePlayerRangeLabel', () => {
 
 describe('filterGamesBySearch', () => {
   const games = [
-    { id: '1', name: 'Spyfall', tags: ['Social', 'Deduction'] },
-    { id: '2', name: 'Word Ladder', tags: ['Word', 'Strategy'] },
+    { id: '1', name: 'Spyfall', genre: 'deduction', modes: [{ socialMode: 'hidden-roles' }] },
+    { id: '2', name: 'Word Ladder', genre: 'words-trivia', difficulty: 'casual' },
     { id: '3', name: 'Rock Paper Scissors Lizard Robot' },
   ]
 
@@ -149,12 +149,15 @@ describe('filterGamesBySearch', () => {
     expect(filterGamesBySearch(games, 'lad').map((g) => g.id)).toEqual(['2'])
   })
 
-  it('matches tags as well as titles', () => {
+  it('matches axis labels as well as titles', () => {
     expect(filterGamesBySearch(games, 'deduction').map((g) => g.id)).toEqual(['1'])
+    // "Hidden roles" is a mode's social shape, not the game's genre.
+    expect(filterGamesBySearch(games, 'hidden').map((g) => g.id)).toEqual(['1'])
+    expect(filterGamesBySearch(games, 'casual').map((g) => g.id)).toEqual(['2'])
   })
 
   it('requires every term to match', () => {
-    expect(filterGamesBySearch(games, 'word strategy').map((g) => g.id)).toEqual(['2'])
+    expect(filterGamesBySearch(games, 'word trivia').map((g) => g.id)).toEqual(['2'])
     expect(filterGamesBySearch(games, 'word deduction')).toEqual([])
   })
 
@@ -162,7 +165,7 @@ describe('filterGamesBySearch', () => {
     expect(filterGamesBySearch(games, 'zzzzz')).toEqual([])
   })
 
-  it('tolerates games without tags and a missing list', () => {
+  it('tolerates games without axes and a missing list', () => {
     expect(filterGamesBySearch(games, 'lizard').map((g) => g.id)).toEqual(['3'])
     expect(filterGamesBySearch(undefined, 'lizard')).toEqual([])
   })

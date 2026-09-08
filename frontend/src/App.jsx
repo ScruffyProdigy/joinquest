@@ -9,10 +9,7 @@ import IntentBanner from './components/games/IntentBanner'
 import GameLobby from './components/games/GameLobby'
 import GameDetailPage from './components/games/GameDetailPage'
 import WaitingPage from './components/games/WaitingPage'
-import { ActiveRoomProvider, useActiveRoom } from './components/rooms/ActiveRoomProvider'
-import AppDock from './components/rooms/AppDock'
-import RoomPanel from './components/rooms/RoomPanel'
-import RoomSheet from './components/rooms/RoomSheet'
+import { ActiveRoomProvider } from './components/rooms/ActiveRoomProvider'
 import { AuthProvider, useAuth } from './components/auth/AuthProvider'
 import { useActiveIntent } from './components/games/useActiveIntent'
 import { APP_NAME } from './lib/brand'
@@ -21,7 +18,6 @@ import { parseGroupRoute } from './lib/group'
 import GroupPage from './components/group/GroupPage'
 import { parseGameSlug } from './lib/games'
 import { navigateToWaiting, parseWaitingRoute } from './lib/waiting'
-import { MOBILE_ROOM_QUERY, useMediaQuery } from './lib/useMediaQuery'
 import { usePathname } from './lib/usePathname'
 import { restoreCatalogScrollIfPending } from './lib/catalogNavigation'
 import { parseDeveloperRoute } from './lib/developers'
@@ -101,72 +97,36 @@ function GameDetailShell({ slug, intent }) {
   )
 }
 
+// The dock, the room sheet, and the desktop room panel are gone (JQ-206): the
+// Figma demo has no bottom nav and no room to dock to, and surfaces the demo
+// does not have come out of production's UI. The room itself is untouched —
+// ActiveRoomProvider still joins, subscribes and tracks membership, and the
+// group screen is the presentation over it.
 function MainLayout() {
   const pathname = usePathname()
-  const inviteCode = parseRoomInviteCode(pathname)
   const gameSlug = parseGameSlug(pathname)
-  const { user } = useAuth()
-  const { room, roomOpen, dismissRoom, openRoom, unreadCount, hasRoomMembership } = useActiveRoom()
-  const isMobile = useMediaQuery(MOBILE_ROOM_QUERY)
   const onGroup = parseGroupRoute(pathname)
   const onWaiting = parseWaitingRoute(pathname)
   // One instance for the whole shell. It has to survive the navigation from a game
   // page to /waiting, which carries the optimistic join state and its grace window.
   const intent = useActiveIntent()
-  const inRoomContext = Boolean(room || inviteCode || hasRoomMembership)
-  // Desktop keeps the room panel visible whenever the user belongs to a room; mobile toggles via dock/sheet.
-  // The group page is the exception: it is a presentation over the same room, so the
-  // room must not also show through beside it (JQ-132).
-  const showDesktopRoom = Boolean(room && user && !isMobile && !onGroup)
-  const showMobileSheet = Boolean(user && isMobile && roomOpen && !onGroup)
-  const showDock = Boolean(user && isMobile && inRoomContext && !onGroup)
 
   useEffect(() => {
     const root = document.getElementById('root')
-    root?.classList.toggle('app-root--split', showDesktopRoom)
-    root?.classList.toggle('app-root--dock', showDock)
     root?.classList.toggle('app-root--game-detail', Boolean(gameSlug))
     return () => {
-      root?.classList.remove('app-root--split', 'app-root--dock', 'app-root--game-detail')
+      root?.classList.remove('app-root--game-detail')
     }
-  }, [showDesktopRoom, showDock, gameSlug])
+  }, [gameSlug])
 
-  return (
-    <>
-      <div className={`app-layout ${showDesktopRoom ? 'app-layout--split' : ''}`}>
-        <div className="app-layout__catalog">
-          {onGroup ? (
-            <GroupPage />
-          ) : onWaiting ? (
-            <WaitingPage intent={intent} />
-          ) : gameSlug ? (
-            <GameDetailShell slug={gameSlug} intent={intent} />
-          ) : (
-            <CatalogPage intent={intent} />
-          )}
-        </div>
-        {showDesktopRoom ? (
-          <aside className="app-layout__room" aria-label="Room chat">
-            <RoomPanel compact />
-          </aside>
-        ) : null}
-      </div>
-
-      {showMobileSheet ? (
-        <RoomSheet open={roomOpen} onDismiss={dismissRoom}>
-          <RoomPanel compact />
-        </RoomSheet>
-      ) : null}
-
-      {showDock ? (
-        <AppDock
-          unreadCount={unreadCount}
-          roomOpen={roomOpen}
-          onOpenCatalog={dismissRoom}
-          onOpenRoom={openRoom}
-        />
-      ) : null}
-    </>
+  return onGroup ? (
+    <GroupPage />
+  ) : onWaiting ? (
+    <WaitingPage intent={intent} />
+  ) : gameSlug ? (
+    <GameDetailShell slug={gameSlug} intent={intent} />
+  ) : (
+    <CatalogPage intent={intent} />
   )
 }
 

@@ -31,19 +31,25 @@ Read their description and identify gaps. Ask follow-ups conversationally — on
 |-------|----------------|---------------------|
 | Player count | seatTemplate / game-modes | min/max, fixed or variable |
 | Structure | seatTemplate | duel, free-for-all, teams, or roles |
-| Social mode | tags + tone | competitive, cooperative, or party |
-| Session length | tags + copy | quick rounds vs longer sessions |
-| Vibe / audience | catalog voice | casual, brainy, chaotic, tactical, etc. |
+| Genre | `genre` | what the game is *about*: action, strategy, deduction, words, drawing, puzzle |
+| Social mode | `socialMode` per mode | free-for-all, 1v1, teams, hidden roles, or co-op — ask per mode, they often differ |
+| Difficulty | `difficulty` | how much a new player must know before their first round is fun |
+| Vibe / audience | catalog voice | brainy, chaotic, tactical, etc. — copy, not a field |
 | API URL | registration | public HTTPS hosting plan (not localhost) |
 
-### From answers → manifest + tags
+### From answers → manifest + axes
 
-| If the game is… | Start with | Example tags |
-|-----------------|------------|--------------|
-| 1v1 competitive | `{ "count": 2 }` duel mode | `competitive`, `1v1`, `quick` |
-| Team vs team | `Team: { count: 2, Seat: { count: N } }` | `competitive`, `party` |
-| Co-op in one group | `{ "count": N }` or single team template | `cooperative`, `party` |
-| Roles / composition | Role buckets in `seatTemplate` | `competitive` or `cooperative` + role-specific copy |
+| If the game is… | Start with | Mode `socialMode` |
+|-----------------|------------|-------------------|
+| Two players head-to-head | `{ "count": 2 }` duel mode | `1v1` |
+| Team vs team | `Team: { count: 2, Seat: { count: N } }` | `teams` |
+| Co-op in one group | `{ "count": N }` or single team template | `co-op` |
+| Everyone for themselves | `{ "count": N }` | `free-for-all` |
+| Secret allegiances | Role buckets in `seatTemplate` | `hidden-roles` |
+
+`socialMode` is per **mode**, not per game: a game with an Arena mode and a Duel
+mode declares `free-for-all` on one and `1v1` on the other. `genre` and
+`difficulty` are per **game** and are set with `updateMyGameMetadata`.
 
 See the [seat template cookbook](./seat-templates-and-matchmaking.md#cookbook) for JSON examples.
 
@@ -82,26 +88,61 @@ Lobby copy is **warm, plain, and player-first** — not enterprise, not hype.
 | `shortDescription` | Catalog card | 1–2 sentences, ~120 chars |
 | `longDescription` | Detail page | 2–4 short paragraphs; what it is, why it's fun |
 | `howToPlay` | Detail page | 3–6 bullet steps; first-time player |
-| `tags` | Catalog chips | 1–3 from [taxonomy](#catalog-tag-taxonomy); max 3 shown in UI |
+| `genre` | Catalog card label + browse filter | exactly one id from [genre](#catalog-axes) |
+| `difficulty` | Catalog chip | optional; one id from [difficulty](#catalog-axes) |
 
 ---
 
-## 2. Catalog tag taxonomy
+## 2. Catalog axes
 
-Use **only** these tag IDs (labels shown in UI):
+The catalog describes a game on three axes, each answering one question. They
+replaced the flat `tags` list, which mixed all three and so could not be relied
+on to say anything in particular.
+
+### `genre` — what the game is about (per game, exactly one)
 
 | ID | Label | Use when |
 |----|-------|----------|
-| `competitive` | Competitive | Winners/losers, rankings, direct opposition |
-| `cooperative` | Co-op | Players win or lose together |
-| `party` | Party | Social, groups, casual fun |
-| `1v1` | 1v1 | Exactly two players head-to-head |
-| `quick` | Quick | Sessions under ~10 minutes |
-| `words` | Words | Word/language puzzles |
-| `strategy` | Strategy | Planning, hidden info, tactics |
-| `casual` | Casual | Low pressure, easy to pick up |
+| `action` | Action | Reflexes, timing, real-time pressure |
+| `strategy` | Strategy | Planning, tactics, long-run decisions |
+| `deduction` | Deduction | Hidden information, reading other players |
+| `words-trivia` | Words & Trivia | Language, knowledge, recall |
+| `drawing-creative` | Drawing & Creative | Making something others judge |
+| `puzzle` | Puzzle | Solving a defined problem |
 
-Query `catalogTagTaxonomy` for the machine-readable list.
+One per game, because the card shows one label and a game claiming two claims
+neither. Pick the one a player would use to find you.
+
+### `difficulty` — the floor to enjoy it (per game, optional)
+
+| ID | Label | Use when |
+|----|-------|----------|
+| `casual` | Casual | Low pressure, playable without instructions |
+| `involved` | Involved | Takes a round or two before it clicks |
+| `demanding` | Demanding | Expects the rules known up front |
+
+### `socialMode` — how play is structured (per **mode**)
+
+| ID | Label | Use when |
+|----|-------|----------|
+| `free-for-all` | Free-for-all | Everyone plays for themselves |
+| `1v1` | 1v1 | Exactly two players head-to-head |
+| `teams` | Teams | Players win or lose as a side |
+| `hidden-roles` | Hidden roles | Players hold secret allegiances |
+| `co-op` | Co-op | Everyone wins or loses together |
+
+Declared on each mode in `GET /api/v1/game-modes`, not through
+`updateMyGameMetadata` — see [seat manifest](#4-seat-manifest-seattemplate) below.
+
+Query `genreTaxonomy`, `difficultyTaxonomy` and `socialModeTaxonomy` for the
+machine-readable lists, or call
+`joinquest_integration_get_catalog_tag_taxonomy`, which returns all three.
+
+> **Retired (JQ-162).** The `tags` field and its eight ids — `competitive`,
+> `cooperative`, `party`, `1v1`, `quick`, `words`, `strategy`, `casual` — are no
+> longer writable. Existing games were migrated automatically; nothing to
+> re-enter. `quick` has no replacement yet: per-mode duration arrives with
+> JQ-161.
 
 ---
 
@@ -120,6 +161,21 @@ Register at [/developers](/developers). Lobby syncs your manifest on connect.
 Each mode needs `minPlayers`, `maxPlayers`, and a `seatTemplate` Lobby expands into join buckets. Games receive a **final seat map** — you don't run matchmaking.
 
 Flat `seats[]` arrays are **rejected**. Use `count` or nested `Team` / role nodes.
+
+Each mode also carries an optional `socialMode` — its
+[social shape](#catalog-axes). It lives here rather than on the game because a
+game's modes disagree: the same game's Arena is `free-for-all` and its Duel is
+`1v1`. An unknown id is rejected at sync; omitting it leaves the mode's current
+value alone.
+
+```json
+{
+  "modes": [
+    { "key": "arena", "displayName": "Arena", "socialMode": "free-for-all", "seatTemplate": { "count": 8 } },
+    { "key": "duel", "displayName": "Duel", "socialMode": "1v1", "seatTemplate": { "count": 2 } }
+  ]
+}
+```
 
 Full reference: [seat-templates-and-matchmaking.md](./seat-templates-and-matchmaking.md).
 
@@ -325,3 +381,139 @@ query {
   }
 }
 ```
+
+---
+
+## 13. Pre-queue options (optional)
+
+Some modes ask the player to bring something before matchmaking — a champion, a
+loadout, a deck. JoinQuest can render that picker for you, so the choice is made
+in the lobby and handed to you with the match.
+
+**Role vs option.** These are different things and integrators conflate them:
+
+| | What it is | Who it affects | Where it is declared |
+|---|---|---|---|
+| **Role** (`queuePath`) | Which bucket the player queues in — Clue Giver, Attacker | Matchmaking: it decides who they are matched *with* | Derived from `seatTemplate` |
+| **Option** (`preQueue`) | What the player brings — a champion, a kit, a deck | Nothing in matchmaking; it is carried to your game | `preQueue` on the mode |
+
+A mode may have either, both, or neither. When it has both, the player picks the
+role first and then the options, because which options exist can depend on the
+mode.
+
+### Declare the groups in your manifest
+
+Add `preQueue` to a mode in `GET /api/v1/game-modes`:
+
+```json
+{
+  "key": "duel-helpers",
+  "displayName": "Helpers",
+  "seatTemplate": { "count": 2 },
+  "preQueue": {
+    "groups": [
+      { "key": "helpers", "kind": "Loadout", "label": "Choose your two helpers", "min": 2, "max": 2 }
+    ]
+  }
+}
+```
+
+| Field | Notes |
+|-------|-------|
+| `key` | Stable identifier for the group; it comes back to you on provision. |
+| `kind` | `Character`, `Loadout` or `Deck`. Presentation only — it lets the picker look right without JoinQuest knowing what your options mean. |
+| `label` | The player-facing prompt: "Choose your champion", "Bring a deck". |
+| `min` / `max` | How many picks this group takes. Defaults to `1` and `1`. `min: 0` makes the group optional. |
+
+More than one group is allowed — a mode can ask for a weapon *and* an armour set.
+The declaration only says *what to ask*; it never lists the choices.
+
+### Serve the roster per player
+
+The choices themselves come from you, per player, at request time:
+
+```
+GET {apiBaseUrl}/api/v1/players/{lobbyUserId}/queue-options?modeKey=duel-helpers
+```
+
+```json
+{
+  "groups": [
+    {
+      "key": "helpers",
+      "choices": [
+        { "id": "ferrus", "label": "Ferrus", "description": "Robot takes 1 mark", "locked": false },
+        {
+          "id": "rust", "label": "Rust", "locked": true,
+          "unlockModeKey": "casual",
+          "requirement": { "kind": "leaf", "label": "Casual wins", "current": 3, "target": 5 }
+        }
+      ]
+    }
+  ]
+}
+```
+
+A mode with one declared group may answer with a bare `{"choices": [...]}` and
+JoinQuest will adopt it into that group.
+
+Serving the roster live rather than listing it in the manifest is what lets the
+roster be genuinely per player: a card game can offer the decks this account
+actually built, including one made a minute ago.
+
+**A mode with no options must still answer.** Return `{"groups": []}` — a 404
+reads as a broken endpoint, not as "nothing to pick".
+
+### Locking
+
+`locked: true` keeps a choice on the board with its unlock condition showing,
+rather than hiding it, so the player can see what they are working toward.
+`requirement` is exactly the tree from
+[§12](#12-mode-level-eligibility-optional) — same `leaf`/`group` shapes, same
+`all`/`any` operators — so option progress renders the way mode progress does.
+
+Locks are yours to decide and need have nothing to do with money: matches
+played, a mode completed, an account level, a tutorial finished. **A locked
+choice is rejected server-side if a client sends it anyway**, so the lock is real
+and not just a disabled button.
+
+### This endpoint does not fail open
+
+Unlike mode-eligibility, JoinQuest will not guess. If a mode declares groups and
+this endpoint errors, times out or returns unreadable JSON, **that mode becomes
+unjoinable** until it answers, and the player is told why. There is no safe
+default: an empty guess would block a legitimate join, and a permissive one would
+hand out options you never offered.
+
+Modes without `preQueue` are untouched, and the endpoint is never called for them.
+
+### What you receive
+
+The picks arrive with the match, per seat, in the provision payload:
+
+```json
+{
+  "assignment": {
+    "seats": [
+      {
+        "seatKey": "p1",
+        "lobbyUserId": "…",
+        "options": [{ "groupKey": "helpers", "optionIds": ["ferrus", "tempered"] }]
+      }
+    ]
+  }
+}
+```
+
+`options` is omitted entirely for modes without a pre-queue step, so an existing
+game sees an unchanged payload.
+
+Every id in `optionIds` has been checked against the roster you served for that
+player — it exists, it was not locked, and the count is inside the `min`/`max`
+you declared.
+
+### Group play
+
+At a table, each player answers the picker as they claim their seat; nobody
+chooses for anybody else. The picks travel with each player whether the table
+starts on its own or backfills through the lobby.

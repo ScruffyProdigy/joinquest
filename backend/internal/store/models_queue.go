@@ -4,6 +4,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/scruffyprodigy/joinquest/internal/prequeue"
 )
 
 // UserQueueView is the current queue/match state for a user.
@@ -52,5 +53,7 @@ type QueueEntry struct {
 	QueuePath      *string
 	PartyID        *uuid.UUID
 	FormingMatchID *uuid.UUID
-	JoinedAt       time.Time
+	// QueueOptions is what this player picked before queueing, frozen at join.
+	QueueOptions []prequeue.Selection
+	JoinedAt     time.Time
 }

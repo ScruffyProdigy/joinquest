@@ -78,7 +78,14 @@ type ComplexityRoot struct {
 		QueuePathDisplayName func(childComplexity int) int
 		QueuedCount          func(childComplexity int) int
 		SeatDisplayName      func(childComplexity int) int
+		SelectedOptions      func(childComplexity int) int
 		Status               func(childComplexity int) int
+	}
+
+	CatalogAxisOption struct {
+		Description func(childComplexity int) int
+		ID          func(childComplexity int) int
+		Label       func(childComplexity int) int
 	}
 
 	CatalogTagOption struct {
@@ -135,7 +142,9 @@ type ComplexityRoot struct {
 		CommunityURL      func(childComplexity int) int
 		ContactEmail      func(childComplexity int) int
 		CreatedAt         func(childComplexity int) int
+		Difficulty        func(childComplexity int) int
 		GameVersion       func(childComplexity int) int
+		Genre             func(childComplexity int) int
 		HeroURL           func(childComplexity int) int
 		HowToPlay         func(childComplexity int) int
 		ID                func(childComplexity int) int
@@ -167,16 +176,19 @@ type ComplexityRoot struct {
 	}
 
 	GameMode struct {
-		DisplayName func(childComplexity int) int
-		Eligibility func(childComplexity int, playerID string) int
-		ID          func(childComplexity int) int
-		MaxPlayers  func(childComplexity int) int
-		MinPlayers  func(childComplexity int) int
-		ModeKey     func(childComplexity int) int
-		QueuePaths  func(childComplexity int) int
-		Queues      func(childComplexity int) int
-		Seats       func(childComplexity int) int
-		Status      func(childComplexity int) int
+		DisplayName    func(childComplexity int) int
+		Eligibility    func(childComplexity int, playerID string) int
+		ID             func(childComplexity int) int
+		MaxPlayers     func(childComplexity int) int
+		MinPlayers     func(childComplexity int) int
+		ModeKey        func(childComplexity int) int
+		PreQueueGroups func(childComplexity int) int
+		QueueOptions   func(childComplexity int, playerID string) int
+		QueuePaths     func(childComplexity int) int
+		Queues         func(childComplexity int) int
+		Seats          func(childComplexity int) int
+		SocialMode     func(childComplexity int) int
+		Status         func(childComplexity int) int
 	}
 
 	GameModeQueuePath struct {
@@ -268,7 +280,7 @@ type ComplexityRoot struct {
 		DeclinePlayAgain             func(childComplexity int, matchID string) int
 		DiscardTable                 func(childComplexity int, tableID string) int
 		GrantGood                    func(childComplexity int, userID string, goodID string, quantity *int) int
-		JoinQueue                    func(childComplexity int, queueID string, queuePath *string, party *model.PartyNodeInput) int
+		JoinQueue                    func(childComplexity int, queueID string, queuePath *string, options []*model.QueueOptionSelectionInput, party *model.PartyNodeInput) int
 		JoinRoom                     func(childComplexity int, inviteCode string) int
 		LeaveActiveGame              func(childComplexity int) int
 		LeaveQueue                   func(childComplexity int, queueID string) int
@@ -295,7 +307,7 @@ type ComplexityRoot struct {
 		SelectSpiritAnimalTotem      func(childComplexity int, totemName string) int
 		SendRoomMessage              func(childComplexity int, roomID string, body string) int
 		SetPrimaryEmail              func(childComplexity int, emailID string) int
-		SitAtTable                   func(childComplexity int, tableID string, seatKey string) int
+		SitAtTable                   func(childComplexity int, tableID string, seatKey string, options []*model.QueueOptionSelectionInput) int
 		StartTable                   func(childComplexity int, tableID string) int
 		StartTableBackfill           func(childComplexity int, tableID string, queueID string) int
 		SubmitSpiritAnimalAnswers    func(childComplexity int, answers []string) int
@@ -331,6 +343,14 @@ type ComplexityRoot struct {
 		Table      func(childComplexity int) int
 	}
 
+	PreQueueGroup struct {
+		Key   func(childComplexity int) int
+		Kind  func(childComplexity int) int
+		Label func(childComplexity int) int
+		Max   func(childComplexity int) int
+		Min   func(childComplexity int) int
+	}
+
 	PublicPlayer struct {
 		AvatarSource func(childComplexity int) int
 		AvatarURL    func(childComplexity int) int
@@ -343,10 +363,12 @@ type ComplexityRoot struct {
 		DeveloperAgentPlaybook           func(childComplexity int) int
 		DeveloperDiscoveryPrompt         func(childComplexity int) int
 		DeveloperIntegrationGuide        func(childComplexity int) int
+		DifficultyTaxonomy               func(childComplexity int) int
 		EnabledOAuthProviders            func(childComplexity int) int
 		Game                             func(childComplexity int, id string) int
 		GameBySlug                       func(childComplexity int, slug string) int
 		Games                            func(childComplexity int, limit *int, offset *int) int
+		GenreTaxonomy                    func(childComplexity int) int
 		Goods                            func(childComplexity int, gameID *string) int
 		Healthz                          func(childComplexity int) int
 		MatchResult                      func(childComplexity int, matchID string) int
@@ -369,9 +391,36 @@ type ComplexityRoot struct {
 		ReturnDestination                func(childComplexity int, matchID *string) int
 		Room                             func(childComplexity int, inviteCode string) int
 		Session                          func(childComplexity int, id string) int
+		SocialModeTaxonomy               func(childComplexity int) int
 		StarterAvatars                   func(childComplexity int) int
 		SubscriptionAuth                 func(childComplexity int) int
 		Version                          func(childComplexity int) int
+	}
+
+	QueueOption struct {
+		Description   func(childComplexity int) int
+		ID            func(childComplexity int) int
+		Label         func(childComplexity int) int
+		Locked        func(childComplexity int) int
+		Requirement   func(childComplexity int) int
+		UnlockModeKey func(childComplexity int) int
+	}
+
+	QueueOptionGroup struct {
+		Choices func(childComplexity int) int
+		Key     func(childComplexity int) int
+	}
+
+	QueueOptionSelection struct {
+		GroupKey  func(childComplexity int) int
+		Labels    func(childComplexity int) int
+		OptionIds func(childComplexity int) int
+	}
+
+	QueueOptions struct {
+		Available         func(childComplexity int) int
+		Groups            func(childComplexity int) int
+		UnavailableReason func(childComplexity int) int
 	}
 
 	QueuePathGap struct {
@@ -571,9 +620,10 @@ type ComplexityRoot struct {
 	}
 
 	TableSeat struct {
-		SeatKey  func(childComplexity int) int
-		SeatedAt func(childComplexity int) int
-		User     func(childComplexity int) int
+		SeatKey         func(childComplexity int) int
+		SeatedAt        func(childComplexity int) int
+		SelectedOptions func(childComplexity int) int
+		User            func(childComplexity int) int
 	}
 
 	TableSeatSlot struct {
@@ -629,12 +679,14 @@ type GameModeResolver interface {
 	QueuePaths(ctx context.Context, obj *model.GameMode) ([]*model.GameModeQueuePath, error)
 	Queues(ctx context.Context, obj *model.GameMode) ([]*model.ModeQueue, error)
 	Eligibility(ctx context.Context, obj *model.GameMode, playerID string) (*model.ModeEligibility, error)
+	PreQueueGroups(ctx context.Context, obj *model.GameMode) ([]*model.PreQueueGroup, error)
+	QueueOptions(ctx context.Context, obj *model.GameMode, playerID string) (*model.QueueOptions, error)
 }
 type ModeQueueResolver interface {
 	WaitingCount(ctx context.Context, obj *model.ModeQueue) (int, error)
 }
 type MutationResolver interface {
-	JoinQueue(ctx context.Context, queueID string, queuePath *string, party *model.PartyNodeInput) (*model.JoinResult, error)
+	JoinQueue(ctx context.Context, queueID string, queuePath *string, options []*model.QueueOptionSelectionInput, party *model.PartyNodeInput) (*model.JoinResult, error)
 	LeaveQueue(ctx context.Context, queueID string) (bool, error)
 	LeaveActiveGame(ctx context.Context) (bool, error)
 	GrantGood(ctx context.Context, userID string, goodID string, quantity *int) (bool, error)
@@ -677,7 +729,7 @@ type MutationResolver interface {
 	SelectSpiritAnimalTotem(ctx context.Context, totemName string) (*model.User, error)
 	CreatePrivateTable(ctx context.Context, gameID string, modeID string) (*model.Table, error)
 	CreateTable(ctx context.Context, roomID string, gameID string, modeID string) (*model.Table, error)
-	SitAtTable(ctx context.Context, tableID string, seatKey string) (*model.Table, error)
+	SitAtTable(ctx context.Context, tableID string, seatKey string, options []*model.QueueOptionSelectionInput) (*model.Table, error)
 	LeaveTable(ctx context.Context, tableID string) (bool, error)
 	DiscardTable(ctx context.Context, tableID string) (bool, error)
 	StartTable(ctx context.Context, tableID string) (*model.JoinResult, error)
@@ -713,6 +765,9 @@ type QueryResolver interface {
 	DeveloperAgentPlaybook(ctx context.Context) (string, error)
 	DeveloperDiscoveryPrompt(ctx context.Context) (string, error)
 	CatalogTagTaxonomy(ctx context.Context) ([]*model.CatalogTagOption, error)
+	GenreTaxonomy(ctx context.Context) ([]*model.CatalogAxisOption, error)
+	DifficultyTaxonomy(ctx context.Context) ([]*model.CatalogAxisOption, error)
+	SocialModeTaxonomy(ctx context.Context) ([]*model.CatalogAxisOption, error)
 	PendingGameReviews(ctx context.Context) ([]*model.Game, error)
 	ReturnDestination(ctx context.Context, matchID *string) (*model.ReturnDestination, error)
 	MatchResult(ctx context.Context, matchID string) (*model.MatchResult, error)
@@ -876,12 +931,37 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.ActiveIntent.SeatDisplayName(childComplexity), true
+	case "ActiveIntent.selectedOptions":
+		if e.complexity.ActiveIntent.SelectedOptions == nil {
+			break
+		}
+
+		return e.complexity.ActiveIntent.SelectedOptions(childComplexity), true
 	case "ActiveIntent.status":
 		if e.complexity.ActiveIntent.Status == nil {
 			break
 		}
 
 		return e.complexity.ActiveIntent.Status(childComplexity), true
+
+	case "CatalogAxisOption.description":
+		if e.complexity.CatalogAxisOption.Description == nil {
+			break
+		}
+
+		return e.complexity.CatalogAxisOption.Description(childComplexity), true
+	case "CatalogAxisOption.id":
+		if e.complexity.CatalogAxisOption.ID == nil {
+			break
+		}
+
+		return e.complexity.CatalogAxisOption.ID(childComplexity), true
+	case "CatalogAxisOption.label":
+		if e.complexity.CatalogAxisOption.Label == nil {
+			break
+		}
+
+		return e.complexity.CatalogAxisOption.Label(childComplexity), true
 
 	case "CatalogTagOption.description":
 		if e.complexity.CatalogTagOption.Description == nil {
@@ -1087,12 +1167,24 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.Game.CreatedAt(childComplexity), true
+	case "Game.difficulty":
+		if e.complexity.Game.Difficulty == nil {
+			break
+		}
+
+		return e.complexity.Game.Difficulty(childComplexity), true
 	case "Game.gameVersion":
 		if e.complexity.Game.GameVersion == nil {
 			break
 		}
 
 		return e.complexity.Game.GameVersion(childComplexity), true
+	case "Game.genre":
+		if e.complexity.Game.Genre == nil {
+			break
+		}
+
+		return e.complexity.Game.Genre(childComplexity), true
 	case "Game.heroUrl":
 		if e.complexity.Game.HeroURL == nil {
 			break
@@ -1286,6 +1378,23 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.GameMode.ModeKey(childComplexity), true
+	case "GameMode.preQueueGroups":
+		if e.complexity.GameMode.PreQueueGroups == nil {
+			break
+		}
+
+		return e.complexity.GameMode.PreQueueGroups(childComplexity), true
+	case "GameMode.queueOptions":
+		if e.complexity.GameMode.QueueOptions == nil {
+			break
+		}
+
+		args, err := ec.field_GameMode_queueOptions_args(ctx, rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.complexity.GameMode.QueueOptions(childComplexity, args["playerId"].(string)), true
 	case "GameMode.queuePaths":
 		if e.complexity.GameMode.QueuePaths == nil {
 			break
@@ -1304,6 +1413,12 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.GameMode.Seats(childComplexity), true
+	case "GameMode.socialMode":
+		if e.complexity.GameMode.SocialMode == nil {
+			break
+		}
+
+		return e.complexity.GameMode.SocialMode(childComplexity), true
 	case "GameMode.status":
 		if e.complexity.GameMode.Status == nil {
 			break
@@ -1756,7 +1871,7 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 			return 0, false
 		}
 
-		return e.complexity.Mutation.JoinQueue(childComplexity, args["queueId"].(string), args["queuePath"].(*string), args["party"].(*model.PartyNodeInput)), true
+		return e.complexity.Mutation.JoinQueue(childComplexity, args["queueId"].(string), args["queuePath"].(*string), args["options"].([]*model.QueueOptionSelectionInput), args["party"].(*model.PartyNodeInput)), true
 	case "Mutation.joinRoom":
 		if e.complexity.Mutation.JoinRoom == nil {
 			break
@@ -2033,7 +2148,7 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 			return 0, false
 		}
 
-		return e.complexity.Mutation.SitAtTable(childComplexity, args["tableId"].(string), args["seatKey"].(string)), true
+		return e.complexity.Mutation.SitAtTable(childComplexity, args["tableId"].(string), args["seatKey"].(string), args["options"].([]*model.QueueOptionSelectionInput)), true
 	case "Mutation.startTable":
 		if e.complexity.Mutation.StartTable == nil {
 			break
@@ -2212,6 +2327,37 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 
 		return e.complexity.PlayAgainResult.Table(childComplexity), true
 
+	case "PreQueueGroup.key":
+		if e.complexity.PreQueueGroup.Key == nil {
+			break
+		}
+
+		return e.complexity.PreQueueGroup.Key(childComplexity), true
+	case "PreQueueGroup.kind":
+		if e.complexity.PreQueueGroup.Kind == nil {
+			break
+		}
+
+		return e.complexity.PreQueueGroup.Kind(childComplexity), true
+	case "PreQueueGroup.label":
+		if e.complexity.PreQueueGroup.Label == nil {
+			break
+		}
+
+		return e.complexity.PreQueueGroup.Label(childComplexity), true
+	case "PreQueueGroup.max":
+		if e.complexity.PreQueueGroup.Max == nil {
+			break
+		}
+
+		return e.complexity.PreQueueGroup.Max(childComplexity), true
+	case "PreQueueGroup.min":
+		if e.complexity.PreQueueGroup.Min == nil {
+			break
+		}
+
+		return e.complexity.PreQueueGroup.Min(childComplexity), true
+
 	case "PublicPlayer.avatarSource":
 		if e.complexity.PublicPlayer.AvatarSource == nil {
 			break
@@ -2261,6 +2407,12 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.Query.DeveloperIntegrationGuide(childComplexity), true
+	case "Query.difficultyTaxonomy":
+		if e.complexity.Query.DifficultyTaxonomy == nil {
+			break
+		}
+
+		return e.complexity.Query.DifficultyTaxonomy(childComplexity), true
 	case "Query.enabledOAuthProviders":
 		if e.complexity.Query.EnabledOAuthProviders == nil {
 			break
@@ -2300,6 +2452,12 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.Query.Games(childComplexity, args["limit"].(*int), args["offset"].(*int)), true
+	case "Query.genreTaxonomy":
+		if e.complexity.Query.GenreTaxonomy == nil {
+			break
+		}
+
+		return e.complexity.Query.GenreTaxonomy(childComplexity), true
 	case "Query.goods":
 		if e.complexity.Query.Goods == nil {
 			break
@@ -2487,6 +2645,12 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.Query.Session(childComplexity, args["id"].(string)), true
+	case "Query.socialModeTaxonomy":
+		if e.complexity.Query.SocialModeTaxonomy == nil {
+			break
+		}
+
+		return e.complexity.Query.SocialModeTaxonomy(childComplexity), true
 	case "Query.starterAvatars":
 		if e.complexity.Query.StarterAvatars == nil {
 			break
@@ -2505,6 +2669,94 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.Query.Version(childComplexity), true
+
+	case "QueueOption.description":
+		if e.complexity.QueueOption.Description == nil {
+			break
+		}
+
+		return e.complexity.QueueOption.Description(childComplexity), true
+	case "QueueOption.id":
+		if e.complexity.QueueOption.ID == nil {
+			break
+		}
+
+		return e.complexity.QueueOption.ID(childComplexity), true
+	case "QueueOption.label":
+		if e.complexity.QueueOption.Label == nil {
+			break
+		}
+
+		return e.complexity.QueueOption.Label(childComplexity), true
+	case "QueueOption.locked":
+		if e.complexity.QueueOption.Locked == nil {
+			break
+		}
+
+		return e.complexity.QueueOption.Locked(childComplexity), true
+	case "QueueOption.requirement":
+		if e.complexity.QueueOption.Requirement == nil {
+			break
+		}
+
+		return e.complexity.QueueOption.Requirement(childComplexity), true
+	case "QueueOption.unlockModeKey":
+		if e.complexity.QueueOption.UnlockModeKey == nil {
+			break
+		}
+
+		return e.complexity.QueueOption.UnlockModeKey(childComplexity), true
+
+	case "QueueOptionGroup.choices":
+		if e.complexity.QueueOptionGroup.Choices == nil {
+			break
+		}
+
+		return e.complexity.QueueOptionGroup.Choices(childComplexity), true
+	case "QueueOptionGroup.key":
+		if e.complexity.QueueOptionGroup.Key == nil {
+			break
+		}
+
+		return e.complexity.QueueOptionGroup.Key(childComplexity), true
+
+	case "QueueOptionSelection.groupKey":
+		if e.complexity.QueueOptionSelection.GroupKey == nil {
+			break
+		}
+
+		return e.complexity.QueueOptionSelection.GroupKey(childComplexity), true
+	case "QueueOptionSelection.labels":
+		if e.complexity.QueueOptionSelection.Labels == nil {
+			break
+		}
+
+		return e.complexity.QueueOptionSelection.Labels(childComplexity), true
+	case "QueueOptionSelection.optionIds":
+		if e.complexity.QueueOptionSelection.OptionIds == nil {
+			break
+		}
+
+		return e.complexity.QueueOptionSelection.OptionIds(childComplexity), true
+
+	case "QueueOptions.available":
+		if e.complexity.QueueOptions.Available == nil {
+			break
+		}
+
+		return e.complexity.QueueOptions.Available(childComplexity), true
+	case "QueueOptions.groups":
+		if e.complexity.QueueOptions.Groups == nil {
+			break
+		}
+
+		return e.complexity.QueueOptions.Groups(childComplexity), true
+	case "QueueOptions.unavailableReason":
+		if e.complexity.QueueOptions.UnavailableReason == nil {
+			break
+		}
+
+		return e.complexity.QueueOptions.UnavailableReason(childComplexity), true
 
 	case "QueuePathGap.assigned":
 		if e.complexity.QueuePathGap.Assigned == nil {
@@ -3333,6 +3585,12 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.TableSeat.SeatedAt(childComplexity), true
+	case "TableSeat.selectedOptions":
+		if e.complexity.TableSeat.SelectedOptions == nil {
+			break
+		}
+
+		return e.complexity.TableSeat.SelectedOptions(childComplexity), true
 	case "TableSeat.user":
 		if e.complexity.TableSeat.User == nil {
 			break
@@ -3499,6 +3757,7 @@ func (e *executableSchema) Exec(ctx context.Context) graphql.ResponseHandler {
 		ec.unmarshalInputConnectMyGameInput,
 		ec.unmarshalInputPartyMemberInput,
 		ec.unmarshalInputPartyNodeInput,
+		ec.unmarshalInputQueueOptionSelectionInput,
 		ec.unmarshalInputRegisterGameInput,
 		ec.unmarshalInputRegisterMyGameInput,
 		ec.unmarshalInputUpdateMyGameMetadataInput,
@@ -3743,11 +4002,91 @@ type GameMode {
   minPlayers: Int!
   maxPlayers: Int!
   status: String!
+  """
+  How play is structured in this mode. One value from ` + "`" + `socialModeTaxonomy` + "`" + `, or
+  null when the game's manifest does not declare one.
+
+  This sits on the mode, not the game, because a game's modes genuinely
+  disagree: an Arena mode is free-for-all while the same game's Duel is 1v1.
+  """
+  socialMode: String
   seats: [GameModeSeat!]!
   """Join options with human labels and per-cohort fire sizes."""
   queuePaths: [GameModeQueuePath!]!
   queues: [ModeQueue!]!
   eligibility(playerId: ID!): ModeEligibility
+  """
+  Option rosters this mode asks the player to pick from before queueing, from
+  the mode manifest. Empty for the modes that have no pre-queue step.
+  """
+  preQueueGroups: [PreQueueGroup!]!
+  """
+  This player's actual choices, live from the game. Null when the mode declares
+  no groups; unavailable (rather than empty) when the game cannot be reached.
+  """
+  queueOptions(playerId: ID!): QueueOptions
+}
+
+"""One roster a mode asks the player to pick from — a champion, a kit, a deck."""
+type PreQueueGroup {
+  key: String!
+  kind: PreQueueKind!
+  """The player-facing prompt, e.g. "Choose your two helpers"."""
+  label: String!
+  """How many choices this group takes. min 0 makes the group optional."""
+  min: Int!
+  max: Int!
+}
+
+enum PreQueueKind {
+  CHARACTER
+  LOADOUT
+  DECK
+}
+
+"""
+A player's roster for one mode.
+
+The roster comes only from the game, so there is no safe fallback when the game
+is unreachable: available is false and the mode cannot be joined until it
+answers. Guessing an empty roster would block a legitimate join; guessing a full
+one would hand out options the game never offered.
+"""
+type QueueOptions {
+  available: Boolean!
+  unavailableReason: String
+  groups: [QueueOptionGroup!]!
+}
+
+type QueueOptionGroup {
+  key: String!
+  choices: [QueueOption!]!
+}
+
+type QueueOption {
+  id: ID!
+  label: String!
+  description: String
+  locked: Boolean!
+  """
+  Why a locked choice is locked, and how far along the player is. Same shape as
+  mode eligibility, so unlock progress renders identically at both levels.
+  """
+  requirement: ModeRequirementNode
+  unlockModeKey: String
+}
+
+"""One group's picks, sent when joining a queue or claiming a table seat."""
+input QueueOptionSelectionInput {
+  groupKey: String!
+  optionIds: [ID!]!
+}
+
+"""A player's picks with the game's own labels, for display."""
+type QueueOptionSelection {
+  groupKey: String!
+  optionIds: [ID!]!
+  labels: [String!]!
 }
 
 type ModeEligibility {
@@ -3830,7 +4169,17 @@ extend type Game {
   howToPlay: String
   tutorialUrl: String
   screenshots: [String!]!
-  tags: [String!]!
+  tags: [String!]! @deprecated(reason: "Replaced by genre, difficulty and GameMode.socialMode (JQ-162). Read-only; removed one release after JQ-162.")
+  """
+  What the game is about. One value from ` + "`" + `genreTaxonomy` + "`" + `, or null when the
+  developer has not chosen one. Drives the card's genre label and filter pills.
+  """
+  genre: String
+  """
+  Developer-declared difficulty floor: how much a new player must know before
+  their first round is any fun. One value from ` + "`" + `difficultyTaxonomy` + "`" + `, or null.
+  """
+  difficulty: String
   """Developer-chosen hex accent (#rrggbb). Null falls back to the slug-hashed palette color."""
   accentColor: String
   """Live player counts for the catalog card. Served from a short-lived whole-catalog snapshot."""
@@ -3870,7 +4219,7 @@ type Subscription {
 
 type Mutation {
   # Games & sessions
-  joinQueue(queueId: ID!, queuePath: String, party: PartyNodeInput): JoinResult!
+  joinQueue(queueId: ID!, queuePath: String, options: [QueueOptionSelectionInput!], party: PartyNodeInput): JoinResult!
   leaveQueue(queueId: ID!): Boolean!
   """Abandon the current playing intent (matched queue or room table session)."""
   leaveActiveGame: Boolean!
@@ -3907,6 +4256,13 @@ type CatalogTagOption {
   description: String!
 }
 
+"""One allowed value on a catalog axis (genre, difficulty, social mode)."""
+type CatalogAxisOption {
+  id: String!
+  label: String!
+  description: String!
+}
+
 input RegisterMyGameInput {
   slug: String!
   name: String!
@@ -3931,7 +4287,10 @@ input UpdateMyGameMetadataInput {
   shortDescription: String
   longDescription: String
   howToPlay: String
-  tags: [String!]
+  """Game genre. One id from ` + "`" + `genreTaxonomy` + "`" + `. Empty string clears it."""
+  genre: String
+  """Difficulty floor. One id from ` + "`" + `difficultyTaxonomy` + "`" + `. Empty string clears it."""
+  difficulty: String
   contactEmail: String
   websiteUrl: String
   communityUrl: String
@@ -3993,7 +4352,13 @@ extend type Query {
   developerIntegrationGuide: String!
   developerAgentPlaybook: String!
   developerDiscoveryPrompt: String!
-  catalogTagTaxonomy: [CatalogTagOption!]!
+  catalogTagTaxonomy: [CatalogTagOption!]! @deprecated(reason: "The flat tag list was split into axes (JQ-162). Use genreTaxonomy, difficultyTaxonomy and socialModeTaxonomy.")
+  """Allowed game genres. Exactly one per game."""
+  genreTaxonomy: [CatalogAxisOption!]!
+  """Allowed difficulty floors. At most one per game."""
+  difficultyTaxonomy: [CatalogAxisOption!]!
+  """Allowed social modes. Declared per game mode in the game's manifest."""
+  socialModeTaxonomy: [CatalogAxisOption!]!
   pendingGameReviews: [Game!]!
 }
 
@@ -4065,6 +4430,11 @@ type ActiveIntent {
   joinUrl: String
   """Remaining role needs for the active forming match (catalog wait)."""
   formingGaps: [QueuePathGap!]!
+  """
+  What this player picked before queueing, labelled as the game named it at the
+  time, so the waiting banner can say "… as Clue Giver · Good Old Rock, Tempered".
+  """
+  selectedOptions: [QueueOptionSelection!]!
 }
 
 enum QueueStatus {
@@ -4341,6 +4711,8 @@ extend type Mutation {
   """No email: a table admits strangers via Look for group and the catalog queue."""
   user: PublicPlayer!
   seatedAt: Time!
+  """What this player picked as they claimed the seat, for the table to see."""
+  selectedOptions: [QueueOptionSelection!]!
 }
 
 type TableSeatSlot {
@@ -4429,7 +4801,12 @@ extend type Query {
 extend type Mutation {
   createPrivateTable(gameId: ID!, modeId: ID!): Table!
   createTable(roomId: ID!, gameId: ID!, modeId: ID!): Table!
-  sitAtTable(tableId: ID!, seatKey: String!): Table!
+  """
+  Claim a seat. A mode with pre-queue options requires them here: each player
+  answers the picker for themselves as they sit down, because nobody may choose
+  another player's champion, kit or deck.
+  """
+  sitAtTable(tableId: ID!, seatKey: String!, options: [QueueOptionSelectionInput!]): Table!
   leaveTable(tableId: ID!): Boolean!
   discardTable(tableId: ID!): Boolean!
   startTable(tableId: ID!): JoinResult!
@@ -4475,6 +4852,17 @@ var parsedSchema = gqlparser.MustLoadSchema(sources...)
 // region    ***************************** args.gotpl *****************************
 
 func (ec *executionContext) field_GameMode_eligibility_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
+	var err error
+	args := map[string]any{}
+	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "playerId", ec.unmarshalNID2string)
+	if err != nil {
+		return nil, err
+	}
+	args["playerId"] = arg0
+	return args, nil
+}
+
+func (ec *executionContext) field_GameMode_queueOptions_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
 	var err error
 	args := map[string]any{}
 	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "playerId", ec.unmarshalNID2string)
@@ -4686,11 +5074,16 @@ func (ec *executionContext) field_Mutation_joinQueue_args(ctx context.Context, r
 		return nil, err
 	}
 	args["queuePath"] = arg1
-	arg2, err := graphql.ProcessArgField(ctx, rawArgs, "party", ec.unmarshalOPartyNodeInput2ᚖgithubᚗcomᚋscruffyprodigyᚋjoinquestᚋgraphᚋmodelᚐPartyNodeInput)
+	arg2, err := graphql.ProcessArgField(ctx, rawArgs, "options", ec.unmarshalOQueueOptionSelectionInput2ᚕᚖgithubᚗcomᚋscruffyprodigyᚋjoinquestᚋgraphᚋmodelᚐQueueOptionSelectionInputᚄ)
 	if err != nil {
 		return nil, err
 	}
-	args["party"] = arg2
+	args["options"] = arg2
+	arg3, err := graphql.ProcessArgField(ctx, rawArgs, "party", ec.unmarshalOPartyNodeInput2ᚖgithubᚗcomᚋscruffyprodigyᚋjoinquestᚋgraphᚋmodelᚐPartyNodeInput)
+	if err != nil {
+		return nil, err
+	}
+	args["party"] = arg3
 	return args, nil
 }
 
@@ -5009,6 +5402,11 @@ func (ec *executionContext) field_Mutation_sitAtTable_args(ctx context.Context, 
 		return nil, err
 	}
 	args["seatKey"] = arg1
+	arg2, err := graphql.ProcessArgField(ctx, rawArgs, "options", ec.unmarshalOQueueOptionSelectionInput2ᚕᚖgithubᚗcomᚋscruffyprodigyᚋjoinquestᚋgraphᚋmodelᚐQueueOptionSelectionInputᚄ)
+	if err != nil {
+		return nil, err
+	}
+	args["options"] = arg2
 	return args, nil
 }
 
@@ -5870,6 +6268,130 @@ func (ec *executionContext) fieldContext_ActiveIntent_formingGaps(_ context.Cont
 	return fc, nil
 }
 
+func (ec *executionContext) _ActiveIntent_selectedOptions(ctx context.Context, field graphql.CollectedField, obj *model.ActiveIntent) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_ActiveIntent_selectedOptions,
+		func(ctx context.Context) (any, error) {
+			return obj.SelectedOptions, nil
+		},
+		nil,
+		ec.marshalNQueueOptionSelection2ᚕᚖgithubᚗcomᚋscruffyprodigyᚋjoinquestᚋgraphᚋmodelᚐQueueOptionSelectionᚄ,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_ActiveIntent_selectedOptions(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "ActiveIntent",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "groupKey":
+				return ec.fieldContext_QueueOptionSelection_groupKey(ctx, field)
+			case "optionIds":
+				return ec.fieldContext_QueueOptionSelection_optionIds(ctx, field)
+			case "labels":
+				return ec.fieldContext_QueueOptionSelection_labels(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type QueueOptionSelection", field.Name)
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _CatalogAxisOption_id(ctx context.Context, field graphql.CollectedField, obj *model.CatalogAxisOption) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_CatalogAxisOption_id,
+		func(ctx context.Context) (any, error) {
+			return obj.ID, nil
+		},
+		nil,
+		ec.marshalNString2string,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_CatalogAxisOption_id(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "CatalogAxisOption",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _CatalogAxisOption_label(ctx context.Context, field graphql.CollectedField, obj *model.CatalogAxisOption) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_CatalogAxisOption_label,
+		func(ctx context.Context) (any, error) {
+			return obj.Label, nil
+		},
+		nil,
+		ec.marshalNString2string,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_CatalogAxisOption_label(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "CatalogAxisOption",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _CatalogAxisOption_description(ctx context.Context, field graphql.CollectedField, obj *model.CatalogAxisOption) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_CatalogAxisOption_description,
+		func(ctx context.Context) (any, error) {
+			return obj.Description, nil
+		},
+		nil,
+		ec.marshalNString2string,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_CatalogAxisOption_description(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "CatalogAxisOption",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _CatalogTagOption_id(ctx context.Context, field graphql.CollectedField, obj *model.CatalogTagOption) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
@@ -6019,6 +6541,10 @@ func (ec *executionContext) fieldContext_ConnectMyGamePayload_game(_ context.Con
 				return ec.fieldContext_Game_screenshots(ctx, field)
 			case "tags":
 				return ec.fieldContext_Game_tags(ctx, field)
+			case "genre":
+				return ec.fieldContext_Game_genre(ctx, field)
+			case "difficulty":
+				return ec.fieldContext_Game_difficulty(ctx, field)
 			case "accentColor":
 				return ec.fieldContext_Game_accentColor(ctx, field)
 			case "playerActivity":
@@ -6524,6 +7050,10 @@ func (ec *executionContext) fieldContext_DigitalGood_game(_ context.Context, fie
 				return ec.fieldContext_Game_screenshots(ctx, field)
 			case "tags":
 				return ec.fieldContext_Game_tags(ctx, field)
+			case "genre":
+				return ec.fieldContext_Game_genre(ctx, field)
+			case "difficulty":
+				return ec.fieldContext_Game_difficulty(ctx, field)
 			case "accentColor":
 				return ec.fieldContext_Game_accentColor(ctx, field)
 			case "playerActivity":
@@ -7318,6 +7848,64 @@ func (ec *executionContext) fieldContext_Game_tags(_ context.Context, field grap
 	return fc, nil
 }
 
+func (ec *executionContext) _Game_genre(ctx context.Context, field graphql.CollectedField, obj *model.Game) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_Game_genre,
+		func(ctx context.Context) (any, error) {
+			return obj.Genre, nil
+		},
+		nil,
+		ec.marshalOString2ᚖstring,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_Game_genre(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Game",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Game_difficulty(ctx context.Context, field graphql.CollectedField, obj *model.Game) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_Game_difficulty,
+		func(ctx context.Context) (any, error) {
+			return obj.Difficulty, nil
+		},
+		nil,
+		ec.marshalOString2ᚖstring,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_Game_difficulty(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Game",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _Game_accentColor(ctx context.Context, field graphql.CollectedField, obj *model.Game) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
@@ -7418,6 +8006,8 @@ func (ec *executionContext) fieldContext_Game_modes(_ context.Context, field gra
 				return ec.fieldContext_GameMode_maxPlayers(ctx, field)
 			case "status":
 				return ec.fieldContext_GameMode_status(ctx, field)
+			case "socialMode":
+				return ec.fieldContext_GameMode_socialMode(ctx, field)
 			case "seats":
 				return ec.fieldContext_GameMode_seats(ctx, field)
 			case "queuePaths":
@@ -7426,6 +8016,10 @@ func (ec *executionContext) fieldContext_Game_modes(_ context.Context, field gra
 				return ec.fieldContext_GameMode_queues(ctx, field)
 			case "eligibility":
 				return ec.fieldContext_GameMode_eligibility(ctx, field)
+			case "preQueueGroups":
+				return ec.fieldContext_GameMode_preQueueGroups(ctx, field)
+			case "queueOptions":
+				return ec.fieldContext_GameMode_queueOptions(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type GameMode", field.Name)
 		},
@@ -7938,6 +8532,35 @@ func (ec *executionContext) fieldContext_GameMode_status(_ context.Context, fiel
 	return fc, nil
 }
 
+func (ec *executionContext) _GameMode_socialMode(ctx context.Context, field graphql.CollectedField, obj *model.GameMode) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_GameMode_socialMode,
+		func(ctx context.Context) (any, error) {
+			return obj.SocialMode, nil
+		},
+		nil,
+		ec.marshalOString2ᚖstring,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_GameMode_socialMode(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "GameMode",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _GameMode_seats(ctx context.Context, field graphql.CollectedField, obj *model.GameMode) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
@@ -8106,6 +8729,96 @@ func (ec *executionContext) fieldContext_GameMode_eligibility(ctx context.Contex
 	}()
 	ctx = graphql.WithFieldContext(ctx, fc)
 	if fc.Args, err = ec.field_GameMode_eligibility_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _GameMode_preQueueGroups(ctx context.Context, field graphql.CollectedField, obj *model.GameMode) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_GameMode_preQueueGroups,
+		func(ctx context.Context) (any, error) {
+			return ec.resolvers.GameMode().PreQueueGroups(ctx, obj)
+		},
+		nil,
+		ec.marshalNPreQueueGroup2ᚕᚖgithubᚗcomᚋscruffyprodigyᚋjoinquestᚋgraphᚋmodelᚐPreQueueGroupᚄ,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_GameMode_preQueueGroups(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "GameMode",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "key":
+				return ec.fieldContext_PreQueueGroup_key(ctx, field)
+			case "kind":
+				return ec.fieldContext_PreQueueGroup_kind(ctx, field)
+			case "label":
+				return ec.fieldContext_PreQueueGroup_label(ctx, field)
+			case "min":
+				return ec.fieldContext_PreQueueGroup_min(ctx, field)
+			case "max":
+				return ec.fieldContext_PreQueueGroup_max(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type PreQueueGroup", field.Name)
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _GameMode_queueOptions(ctx context.Context, field graphql.CollectedField, obj *model.GameMode) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_GameMode_queueOptions,
+		func(ctx context.Context) (any, error) {
+			fc := graphql.GetFieldContext(ctx)
+			return ec.resolvers.GameMode().QueueOptions(ctx, obj, fc.Args["playerId"].(string))
+		},
+		nil,
+		ec.marshalOQueueOptions2ᚖgithubᚗcomᚋscruffyprodigyᚋjoinquestᚋgraphᚋmodelᚐQueueOptions,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_GameMode_queueOptions(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "GameMode",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "available":
+				return ec.fieldContext_QueueOptions_available(ctx, field)
+			case "unavailableReason":
+				return ec.fieldContext_QueueOptions_unavailableReason(ctx, field)
+			case "groups":
+				return ec.fieldContext_QueueOptions_groups(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type QueueOptions", field.Name)
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_GameMode_queueOptions_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
 		ec.Error(ctx, err)
 		return fc, err
 	}
@@ -9054,6 +9767,10 @@ func (ec *executionContext) fieldContext_MatchResult_game(_ context.Context, fie
 				return ec.fieldContext_Game_screenshots(ctx, field)
 			case "tags":
 				return ec.fieldContext_Game_tags(ctx, field)
+			case "genre":
+				return ec.fieldContext_Game_genre(ctx, field)
+			case "difficulty":
+				return ec.fieldContext_Game_difficulty(ctx, field)
 			case "accentColor":
 				return ec.fieldContext_Game_accentColor(ctx, field)
 			case "playerActivity":
@@ -9115,6 +9832,8 @@ func (ec *executionContext) fieldContext_MatchResult_mode(_ context.Context, fie
 				return ec.fieldContext_GameMode_maxPlayers(ctx, field)
 			case "status":
 				return ec.fieldContext_GameMode_status(ctx, field)
+			case "socialMode":
+				return ec.fieldContext_GameMode_socialMode(ctx, field)
 			case "seats":
 				return ec.fieldContext_GameMode_seats(ctx, field)
 			case "queuePaths":
@@ -9123,6 +9842,10 @@ func (ec *executionContext) fieldContext_MatchResult_mode(_ context.Context, fie
 				return ec.fieldContext_GameMode_queues(ctx, field)
 			case "eligibility":
 				return ec.fieldContext_GameMode_eligibility(ctx, field)
+			case "preQueueGroups":
+				return ec.fieldContext_GameMode_preQueueGroups(ctx, field)
+			case "queueOptions":
+				return ec.fieldContext_GameMode_queueOptions(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type GameMode", field.Name)
 		},
@@ -9591,7 +10314,7 @@ func (ec *executionContext) _Mutation_joinQueue(ctx context.Context, field graph
 		ec.fieldContext_Mutation_joinQueue,
 		func(ctx context.Context) (any, error) {
 			fc := graphql.GetFieldContext(ctx)
-			return ec.resolvers.Mutation().JoinQueue(ctx, fc.Args["queueId"].(string), fc.Args["queuePath"].(*string), fc.Args["party"].(*model.PartyNodeInput))
+			return ec.resolvers.Mutation().JoinQueue(ctx, fc.Args["queueId"].(string), fc.Args["queuePath"].(*string), fc.Args["options"].([]*model.QueueOptionSelectionInput), fc.Args["party"].(*model.PartyNodeInput))
 		},
 		nil,
 		ec.marshalNJoinResult2ᚖgithubᚗcomᚋscruffyprodigyᚋjoinquestᚋgraphᚋmodelᚐJoinResult,
@@ -10586,6 +11309,10 @@ func (ec *executionContext) fieldContext_Mutation_refreshGameManifest(ctx contex
 				return ec.fieldContext_Game_screenshots(ctx, field)
 			case "tags":
 				return ec.fieldContext_Game_tags(ctx, field)
+			case "genre":
+				return ec.fieldContext_Game_genre(ctx, field)
+			case "difficulty":
+				return ec.fieldContext_Game_difficulty(ctx, field)
 			case "accentColor":
 				return ec.fieldContext_Game_accentColor(ctx, field)
 			case "playerActivity":
@@ -11026,6 +11753,10 @@ func (ec *executionContext) fieldContext_Mutation_updateMyGameMetadata(ctx conte
 				return ec.fieldContext_Game_screenshots(ctx, field)
 			case "tags":
 				return ec.fieldContext_Game_tags(ctx, field)
+			case "genre":
+				return ec.fieldContext_Game_genre(ctx, field)
+			case "difficulty":
+				return ec.fieldContext_Game_difficulty(ctx, field)
 			case "accentColor":
 				return ec.fieldContext_Game_accentColor(ctx, field)
 			case "playerActivity":
@@ -11125,6 +11856,10 @@ func (ec *executionContext) fieldContext_Mutation_requestPublicRelease(ctx conte
 				return ec.fieldContext_Game_screenshots(ctx, field)
 			case "tags":
 				return ec.fieldContext_Game_tags(ctx, field)
+			case "genre":
+				return ec.fieldContext_Game_genre(ctx, field)
+			case "difficulty":
+				return ec.fieldContext_Game_difficulty(ctx, field)
 			case "accentColor":
 				return ec.fieldContext_Game_accentColor(ctx, field)
 			case "playerActivity":
@@ -11224,6 +11959,10 @@ func (ec *executionContext) fieldContext_Mutation_reviewGameRelease(ctx context.
 				return ec.fieldContext_Game_screenshots(ctx, field)
 			case "tags":
 				return ec.fieldContext_Game_tags(ctx, field)
+			case "genre":
+				return ec.fieldContext_Game_genre(ctx, field)
+			case "difficulty":
+				return ec.fieldContext_Game_difficulty(ctx, field)
 			case "accentColor":
 				return ec.fieldContext_Game_accentColor(ctx, field)
 			case "playerActivity":
@@ -12024,7 +12763,7 @@ func (ec *executionContext) _Mutation_sitAtTable(ctx context.Context, field grap
 		ec.fieldContext_Mutation_sitAtTable,
 		func(ctx context.Context) (any, error) {
 			fc := graphql.GetFieldContext(ctx)
-			return ec.resolvers.Mutation().SitAtTable(ctx, fc.Args["tableId"].(string), fc.Args["seatKey"].(string))
+			return ec.resolvers.Mutation().SitAtTable(ctx, fc.Args["tableId"].(string), fc.Args["seatKey"].(string), fc.Args["options"].([]*model.QueueOptionSelectionInput))
 		},
 		nil,
 		ec.marshalNTable2ᚖgithubᚗcomᚋscruffyprodigyᚋjoinquestᚋgraphᚋmodelᚐTable,
@@ -12841,6 +13580,151 @@ func (ec *executionContext) fieldContext_PlayAgainResult_seated(_ context.Contex
 	return fc, nil
 }
 
+func (ec *executionContext) _PreQueueGroup_key(ctx context.Context, field graphql.CollectedField, obj *model.PreQueueGroup) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_PreQueueGroup_key,
+		func(ctx context.Context) (any, error) {
+			return obj.Key, nil
+		},
+		nil,
+		ec.marshalNString2string,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_PreQueueGroup_key(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "PreQueueGroup",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _PreQueueGroup_kind(ctx context.Context, field graphql.CollectedField, obj *model.PreQueueGroup) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_PreQueueGroup_kind,
+		func(ctx context.Context) (any, error) {
+			return obj.Kind, nil
+		},
+		nil,
+		ec.marshalNPreQueueKind2githubᚗcomᚋscruffyprodigyᚋjoinquestᚋgraphᚋmodelᚐPreQueueKind,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_PreQueueGroup_kind(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "PreQueueGroup",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type PreQueueKind does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _PreQueueGroup_label(ctx context.Context, field graphql.CollectedField, obj *model.PreQueueGroup) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_PreQueueGroup_label,
+		func(ctx context.Context) (any, error) {
+			return obj.Label, nil
+		},
+		nil,
+		ec.marshalNString2string,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_PreQueueGroup_label(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "PreQueueGroup",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _PreQueueGroup_min(ctx context.Context, field graphql.CollectedField, obj *model.PreQueueGroup) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_PreQueueGroup_min,
+		func(ctx context.Context) (any, error) {
+			return obj.Min, nil
+		},
+		nil,
+		ec.marshalNInt2int,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_PreQueueGroup_min(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "PreQueueGroup",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Int does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _PreQueueGroup_max(ctx context.Context, field graphql.CollectedField, obj *model.PreQueueGroup) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_PreQueueGroup_max,
+		func(ctx context.Context) (any, error) {
+			return obj.Max, nil
+		},
+		nil,
+		ec.marshalNInt2int,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_PreQueueGroup_max(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "PreQueueGroup",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Int does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _PublicPlayer_id(ctx context.Context, field graphql.CollectedField, obj *model.PublicPlayer) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
@@ -13078,6 +13962,10 @@ func (ec *executionContext) fieldContext_Query_games(ctx context.Context, field 
 				return ec.fieldContext_Game_screenshots(ctx, field)
 			case "tags":
 				return ec.fieldContext_Game_tags(ctx, field)
+			case "genre":
+				return ec.fieldContext_Game_genre(ctx, field)
+			case "difficulty":
+				return ec.fieldContext_Game_difficulty(ctx, field)
 			case "accentColor":
 				return ec.fieldContext_Game_accentColor(ctx, field)
 			case "playerActivity":
@@ -13177,6 +14065,10 @@ func (ec *executionContext) fieldContext_Query_game(ctx context.Context, field g
 				return ec.fieldContext_Game_screenshots(ctx, field)
 			case "tags":
 				return ec.fieldContext_Game_tags(ctx, field)
+			case "genre":
+				return ec.fieldContext_Game_genre(ctx, field)
+			case "difficulty":
+				return ec.fieldContext_Game_difficulty(ctx, field)
 			case "accentColor":
 				return ec.fieldContext_Game_accentColor(ctx, field)
 			case "playerActivity":
@@ -13276,6 +14168,10 @@ func (ec *executionContext) fieldContext_Query_gameBySlug(ctx context.Context, f
 				return ec.fieldContext_Game_screenshots(ctx, field)
 			case "tags":
 				return ec.fieldContext_Game_tags(ctx, field)
+			case "genre":
+				return ec.fieldContext_Game_genre(ctx, field)
+			case "difficulty":
+				return ec.fieldContext_Game_difficulty(ctx, field)
 			case "accentColor":
 				return ec.fieldContext_Game_accentColor(ctx, field)
 			case "playerActivity":
@@ -13568,6 +14464,8 @@ func (ec *executionContext) fieldContext_Query_myActiveIntent(_ context.Context,
 				return ec.fieldContext_ActiveIntent_joinUrl(ctx, field)
 			case "formingGaps":
 				return ec.fieldContext_ActiveIntent_formingGaps(ctx, field)
+			case "selectedOptions":
+				return ec.fieldContext_ActiveIntent_selectedOptions(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type ActiveIntent", field.Name)
 		},
@@ -13926,6 +14824,10 @@ func (ec *executionContext) fieldContext_Query_myGames(_ context.Context, field 
 				return ec.fieldContext_Game_screenshots(ctx, field)
 			case "tags":
 				return ec.fieldContext_Game_tags(ctx, field)
+			case "genre":
+				return ec.fieldContext_Game_genre(ctx, field)
+			case "difficulty":
+				return ec.fieldContext_Game_difficulty(ctx, field)
 			case "accentColor":
 				return ec.fieldContext_Game_accentColor(ctx, field)
 			case "playerActivity":
@@ -14014,6 +14916,10 @@ func (ec *executionContext) fieldContext_Query_myGame(ctx context.Context, field
 				return ec.fieldContext_Game_screenshots(ctx, field)
 			case "tags":
 				return ec.fieldContext_Game_tags(ctx, field)
+			case "genre":
+				return ec.fieldContext_Game_genre(ctx, field)
+			case "difficulty":
+				return ec.fieldContext_Game_difficulty(ctx, field)
 			case "accentColor":
 				return ec.fieldContext_Game_accentColor(ctx, field)
 			case "playerActivity":
@@ -14262,6 +15168,117 @@ func (ec *executionContext) fieldContext_Query_catalogTagTaxonomy(_ context.Cont
 	return fc, nil
 }
 
+func (ec *executionContext) _Query_genreTaxonomy(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_Query_genreTaxonomy,
+		func(ctx context.Context) (any, error) {
+			return ec.resolvers.Query().GenreTaxonomy(ctx)
+		},
+		nil,
+		ec.marshalNCatalogAxisOption2ᚕᚖgithubᚗcomᚋscruffyprodigyᚋjoinquestᚋgraphᚋmodelᚐCatalogAxisOptionᚄ,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_Query_genreTaxonomy(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Query",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "id":
+				return ec.fieldContext_CatalogAxisOption_id(ctx, field)
+			case "label":
+				return ec.fieldContext_CatalogAxisOption_label(ctx, field)
+			case "description":
+				return ec.fieldContext_CatalogAxisOption_description(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type CatalogAxisOption", field.Name)
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Query_difficultyTaxonomy(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_Query_difficultyTaxonomy,
+		func(ctx context.Context) (any, error) {
+			return ec.resolvers.Query().DifficultyTaxonomy(ctx)
+		},
+		nil,
+		ec.marshalNCatalogAxisOption2ᚕᚖgithubᚗcomᚋscruffyprodigyᚋjoinquestᚋgraphᚋmodelᚐCatalogAxisOptionᚄ,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_Query_difficultyTaxonomy(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Query",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "id":
+				return ec.fieldContext_CatalogAxisOption_id(ctx, field)
+			case "label":
+				return ec.fieldContext_CatalogAxisOption_label(ctx, field)
+			case "description":
+				return ec.fieldContext_CatalogAxisOption_description(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type CatalogAxisOption", field.Name)
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Query_socialModeTaxonomy(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_Query_socialModeTaxonomy,
+		func(ctx context.Context) (any, error) {
+			return ec.resolvers.Query().SocialModeTaxonomy(ctx)
+		},
+		nil,
+		ec.marshalNCatalogAxisOption2ᚕᚖgithubᚗcomᚋscruffyprodigyᚋjoinquestᚋgraphᚋmodelᚐCatalogAxisOptionᚄ,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_Query_socialModeTaxonomy(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Query",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "id":
+				return ec.fieldContext_CatalogAxisOption_id(ctx, field)
+			case "label":
+				return ec.fieldContext_CatalogAxisOption_label(ctx, field)
+			case "description":
+				return ec.fieldContext_CatalogAxisOption_description(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type CatalogAxisOption", field.Name)
+		},
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _Query_pendingGameReviews(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
@@ -14324,6 +15341,10 @@ func (ec *executionContext) fieldContext_Query_pendingGameReviews(_ context.Cont
 				return ec.fieldContext_Game_screenshots(ctx, field)
 			case "tags":
 				return ec.fieldContext_Game_tags(ctx, field)
+			case "genre":
+				return ec.fieldContext_Game_genre(ctx, field)
+			case "difficulty":
+				return ec.fieldContext_Game_difficulty(ctx, field)
 			case "accentColor":
 				return ec.fieldContext_Game_accentColor(ctx, field)
 			case "playerActivity":
@@ -14816,6 +15837,432 @@ func (ec *executionContext) fieldContext_Query___schema(_ context.Context, field
 	return fc, nil
 }
 
+func (ec *executionContext) _QueueOption_id(ctx context.Context, field graphql.CollectedField, obj *model.QueueOption) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_QueueOption_id,
+		func(ctx context.Context) (any, error) {
+			return obj.ID, nil
+		},
+		nil,
+		ec.marshalNID2string,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_QueueOption_id(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "QueueOption",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type ID does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _QueueOption_label(ctx context.Context, field graphql.CollectedField, obj *model.QueueOption) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_QueueOption_label,
+		func(ctx context.Context) (any, error) {
+			return obj.Label, nil
+		},
+		nil,
+		ec.marshalNString2string,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_QueueOption_label(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "QueueOption",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _QueueOption_description(ctx context.Context, field graphql.CollectedField, obj *model.QueueOption) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_QueueOption_description,
+		func(ctx context.Context) (any, error) {
+			return obj.Description, nil
+		},
+		nil,
+		ec.marshalOString2ᚖstring,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_QueueOption_description(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "QueueOption",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _QueueOption_locked(ctx context.Context, field graphql.CollectedField, obj *model.QueueOption) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_QueueOption_locked,
+		func(ctx context.Context) (any, error) {
+			return obj.Locked, nil
+		},
+		nil,
+		ec.marshalNBoolean2bool,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_QueueOption_locked(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "QueueOption",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Boolean does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _QueueOption_requirement(ctx context.Context, field graphql.CollectedField, obj *model.QueueOption) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_QueueOption_requirement,
+		func(ctx context.Context) (any, error) {
+			return obj.Requirement, nil
+		},
+		nil,
+		ec.marshalOModeRequirementNode2githubᚗcomᚋscruffyprodigyᚋjoinquestᚋgraphᚋmodelᚐModeRequirementNode,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_QueueOption_requirement(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "QueueOption",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("FieldContext.Child cannot be called on type INTERFACE")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _QueueOption_unlockModeKey(ctx context.Context, field graphql.CollectedField, obj *model.QueueOption) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_QueueOption_unlockModeKey,
+		func(ctx context.Context) (any, error) {
+			return obj.UnlockModeKey, nil
+		},
+		nil,
+		ec.marshalOString2ᚖstring,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_QueueOption_unlockModeKey(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "QueueOption",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _QueueOptionGroup_key(ctx context.Context, field graphql.CollectedField, obj *model.QueueOptionGroup) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_QueueOptionGroup_key,
+		func(ctx context.Context) (any, error) {
+			return obj.Key, nil
+		},
+		nil,
+		ec.marshalNString2string,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_QueueOptionGroup_key(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "QueueOptionGroup",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _QueueOptionGroup_choices(ctx context.Context, field graphql.CollectedField, obj *model.QueueOptionGroup) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_QueueOptionGroup_choices,
+		func(ctx context.Context) (any, error) {
+			return obj.Choices, nil
+		},
+		nil,
+		ec.marshalNQueueOption2ᚕᚖgithubᚗcomᚋscruffyprodigyᚋjoinquestᚋgraphᚋmodelᚐQueueOptionᚄ,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_QueueOptionGroup_choices(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "QueueOptionGroup",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "id":
+				return ec.fieldContext_QueueOption_id(ctx, field)
+			case "label":
+				return ec.fieldContext_QueueOption_label(ctx, field)
+			case "description":
+				return ec.fieldContext_QueueOption_description(ctx, field)
+			case "locked":
+				return ec.fieldContext_QueueOption_locked(ctx, field)
+			case "requirement":
+				return ec.fieldContext_QueueOption_requirement(ctx, field)
+			case "unlockModeKey":
+				return ec.fieldContext_QueueOption_unlockModeKey(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type QueueOption", field.Name)
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _QueueOptionSelection_groupKey(ctx context.Context, field graphql.CollectedField, obj *model.QueueOptionSelection) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_QueueOptionSelection_groupKey,
+		func(ctx context.Context) (any, error) {
+			return obj.GroupKey, nil
+		},
+		nil,
+		ec.marshalNString2string,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_QueueOptionSelection_groupKey(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "QueueOptionSelection",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _QueueOptionSelection_optionIds(ctx context.Context, field graphql.CollectedField, obj *model.QueueOptionSelection) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_QueueOptionSelection_optionIds,
+		func(ctx context.Context) (any, error) {
+			return obj.OptionIds, nil
+		},
+		nil,
+		ec.marshalNID2ᚕstringᚄ,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_QueueOptionSelection_optionIds(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "QueueOptionSelection",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type ID does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _QueueOptionSelection_labels(ctx context.Context, field graphql.CollectedField, obj *model.QueueOptionSelection) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_QueueOptionSelection_labels,
+		func(ctx context.Context) (any, error) {
+			return obj.Labels, nil
+		},
+		nil,
+		ec.marshalNString2ᚕstringᚄ,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_QueueOptionSelection_labels(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "QueueOptionSelection",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _QueueOptions_available(ctx context.Context, field graphql.CollectedField, obj *model.QueueOptions) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_QueueOptions_available,
+		func(ctx context.Context) (any, error) {
+			return obj.Available, nil
+		},
+		nil,
+		ec.marshalNBoolean2bool,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_QueueOptions_available(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "QueueOptions",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Boolean does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _QueueOptions_unavailableReason(ctx context.Context, field graphql.CollectedField, obj *model.QueueOptions) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_QueueOptions_unavailableReason,
+		func(ctx context.Context) (any, error) {
+			return obj.UnavailableReason, nil
+		},
+		nil,
+		ec.marshalOString2ᚖstring,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_QueueOptions_unavailableReason(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "QueueOptions",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _QueueOptions_groups(ctx context.Context, field graphql.CollectedField, obj *model.QueueOptions) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_QueueOptions_groups,
+		func(ctx context.Context) (any, error) {
+			return obj.Groups, nil
+		},
+		nil,
+		ec.marshalNQueueOptionGroup2ᚕᚖgithubᚗcomᚋscruffyprodigyᚋjoinquestᚋgraphᚋmodelᚐQueueOptionGroupᚄ,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_QueueOptions_groups(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "QueueOptions",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "key":
+				return ec.fieldContext_QueueOptionGroup_key(ctx, field)
+			case "choices":
+				return ec.fieldContext_QueueOptionGroup_choices(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type QueueOptionGroup", field.Name)
+		},
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _QueuePathGap_queuePath(ctx context.Context, field graphql.CollectedField, obj *model.QueuePathGap) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
@@ -15236,6 +16683,10 @@ func (ec *executionContext) fieldContext_RegisterGamePayload_game(_ context.Cont
 				return ec.fieldContext_Game_screenshots(ctx, field)
 			case "tags":
 				return ec.fieldContext_Game_tags(ctx, field)
+			case "genre":
+				return ec.fieldContext_Game_genre(ctx, field)
+			case "difficulty":
+				return ec.fieldContext_Game_difficulty(ctx, field)
 			case "accentColor":
 				return ec.fieldContext_Game_accentColor(ctx, field)
 			case "playerActivity":
@@ -15381,6 +16832,10 @@ func (ec *executionContext) fieldContext_RegisterMyGamePayload_game(_ context.Co
 				return ec.fieldContext_Game_screenshots(ctx, field)
 			case "tags":
 				return ec.fieldContext_Game_tags(ctx, field)
+			case "genre":
+				return ec.fieldContext_Game_genre(ctx, field)
+			case "difficulty":
+				return ec.fieldContext_Game_difficulty(ctx, field)
 			case "accentColor":
 				return ec.fieldContext_Game_accentColor(ctx, field)
 			case "playerActivity":
@@ -16385,6 +17840,10 @@ func (ec *executionContext) fieldContext_Session_game(_ context.Context, field g
 				return ec.fieldContext_Game_screenshots(ctx, field)
 			case "tags":
 				return ec.fieldContext_Game_tags(ctx, field)
+			case "genre":
+				return ec.fieldContext_Game_genre(ctx, field)
+			case "difficulty":
+				return ec.fieldContext_Game_difficulty(ctx, field)
 			case "accentColor":
 				return ec.fieldContext_Game_accentColor(ctx, field)
 			case "playerActivity":
@@ -18554,6 +20013,10 @@ func (ec *executionContext) fieldContext_SyncMyGameManifestPayload_game(_ contex
 				return ec.fieldContext_Game_screenshots(ctx, field)
 			case "tags":
 				return ec.fieldContext_Game_tags(ctx, field)
+			case "genre":
+				return ec.fieldContext_Game_genre(ctx, field)
+			case "difficulty":
+				return ec.fieldContext_Game_difficulty(ctx, field)
 			case "accentColor":
 				return ec.fieldContext_Game_accentColor(ctx, field)
 			case "playerActivity":
@@ -18728,6 +20191,10 @@ func (ec *executionContext) fieldContext_Table_game(_ context.Context, field gra
 				return ec.fieldContext_Game_screenshots(ctx, field)
 			case "tags":
 				return ec.fieldContext_Game_tags(ctx, field)
+			case "genre":
+				return ec.fieldContext_Game_genre(ctx, field)
+			case "difficulty":
+				return ec.fieldContext_Game_difficulty(ctx, field)
 			case "accentColor":
 				return ec.fieldContext_Game_accentColor(ctx, field)
 			case "playerActivity":
@@ -18789,6 +20256,8 @@ func (ec *executionContext) fieldContext_Table_mode(_ context.Context, field gra
 				return ec.fieldContext_GameMode_maxPlayers(ctx, field)
 			case "status":
 				return ec.fieldContext_GameMode_status(ctx, field)
+			case "socialMode":
+				return ec.fieldContext_GameMode_socialMode(ctx, field)
 			case "seats":
 				return ec.fieldContext_GameMode_seats(ctx, field)
 			case "queuePaths":
@@ -18797,6 +20266,10 @@ func (ec *executionContext) fieldContext_Table_mode(_ context.Context, field gra
 				return ec.fieldContext_GameMode_queues(ctx, field)
 			case "eligibility":
 				return ec.fieldContext_GameMode_eligibility(ctx, field)
+			case "preQueueGroups":
+				return ec.fieldContext_GameMode_preQueueGroups(ctx, field)
+			case "queueOptions":
+				return ec.fieldContext_GameMode_queueOptions(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type GameMode", field.Name)
 		},
@@ -18931,6 +20404,8 @@ func (ec *executionContext) fieldContext_Table_seats(_ context.Context, field gr
 				return ec.fieldContext_TableSeat_user(ctx, field)
 			case "seatedAt":
 				return ec.fieldContext_TableSeat_seatedAt(ctx, field)
+			case "selectedOptions":
+				return ec.fieldContext_TableSeat_selectedOptions(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type TableSeat", field.Name)
 		},
@@ -19389,6 +20864,43 @@ func (ec *executionContext) fieldContext_TableSeat_seatedAt(_ context.Context, f
 		IsResolver: false,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			return nil, errors.New("field of type Time does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _TableSeat_selectedOptions(ctx context.Context, field graphql.CollectedField, obj *model.TableSeat) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_TableSeat_selectedOptions,
+		func(ctx context.Context) (any, error) {
+			return obj.SelectedOptions, nil
+		},
+		nil,
+		ec.marshalNQueueOptionSelection2ᚕᚖgithubᚗcomᚋscruffyprodigyᚋjoinquestᚋgraphᚋmodelᚐQueueOptionSelectionᚄ,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_TableSeat_selectedOptions(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "TableSeat",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "groupKey":
+				return ec.fieldContext_QueueOptionSelection_groupKey(ctx, field)
+			case "optionIds":
+				return ec.fieldContext_QueueOptionSelection_optionIds(ctx, field)
+			case "labels":
+				return ec.fieldContext_QueueOptionSelection_labels(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type QueueOptionSelection", field.Name)
 		},
 	}
 	return fc, nil
@@ -21675,6 +23187,40 @@ func (ec *executionContext) unmarshalInputPartyNodeInput(ctx context.Context, ob
 	return it, nil
 }
 
+func (ec *executionContext) unmarshalInputQueueOptionSelectionInput(ctx context.Context, obj any) (model.QueueOptionSelectionInput, error) {
+	var it model.QueueOptionSelectionInput
+	asMap := map[string]any{}
+	for k, v := range obj.(map[string]any) {
+		asMap[k] = v
+	}
+
+	fieldsInOrder := [...]string{"groupKey", "optionIds"}
+	for _, k := range fieldsInOrder {
+		v, ok := asMap[k]
+		if !ok {
+			continue
+		}
+		switch k {
+		case "groupKey":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("groupKey"))
+			data, err := ec.unmarshalNString2string(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.GroupKey = data
+		case "optionIds":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("optionIds"))
+			data, err := ec.unmarshalNID2ᚕstringᚄ(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.OptionIds = data
+		}
+	}
+
+	return it, nil
+}
+
 func (ec *executionContext) unmarshalInputRegisterGameInput(ctx context.Context, obj any) (model.RegisterGameInput, error) {
 	var it model.RegisterGameInput
 	asMap := map[string]any{}
@@ -21813,7 +23359,7 @@ func (ec *executionContext) unmarshalInputUpdateMyGameMetadataInput(ctx context.
 		asMap[k] = v
 	}
 
-	fieldsInOrder := [...]string{"gameId", "name", "shortDescription", "longDescription", "howToPlay", "tags", "contactEmail", "websiteUrl", "communityUrl", "accentColor"}
+	fieldsInOrder := [...]string{"gameId", "name", "shortDescription", "longDescription", "howToPlay", "genre", "difficulty", "contactEmail", "websiteUrl", "communityUrl", "accentColor"}
 	for _, k := range fieldsInOrder {
 		v, ok := asMap[k]
 		if !ok {
@@ -21855,13 +23401,20 @@ func (ec *executionContext) unmarshalInputUpdateMyGameMetadataInput(ctx context.
 				return it, err
 			}
 			it.HowToPlay = data
-		case "tags":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("tags"))
-			data, err := ec.unmarshalOString2ᚕstringᚄ(ctx, v)
+		case "genre":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("genre"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
 			if err != nil {
 				return it, err
 			}
-			it.Tags = data
+			it.Genre = data
+		case "difficulty":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("difficulty"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Difficulty = data
 		case "contactEmail":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("contactEmail"))
 			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
@@ -22057,6 +23610,60 @@ func (ec *executionContext) _ActiveIntent(ctx context.Context, sel ast.Selection
 			}
 
 			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
+		case "selectedOptions":
+			out.Values[i] = ec._ActiveIntent_selectedOptions(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				atomic.AddUint32(&out.Invalids, 1)
+			}
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch(ctx)
+	if out.Invalids > 0 {
+		return graphql.Null
+	}
+
+	atomic.AddInt32(&ec.deferred, int32(len(deferred)))
+
+	for label, dfs := range deferred {
+		ec.processDeferredGroup(graphql.DeferredGroup{
+			Label:    label,
+			Path:     graphql.GetPath(ctx),
+			FieldSet: dfs,
+			Context:  ctx,
+		})
+	}
+
+	return out
+}
+
+var catalogAxisOptionImplementors = []string{"CatalogAxisOption"}
+
+func (ec *executionContext) _CatalogAxisOption(ctx context.Context, sel ast.SelectionSet, obj *model.CatalogAxisOption) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, catalogAxisOptionImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	deferred := make(map[string]*graphql.FieldSet)
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("CatalogAxisOption")
+		case "id":
+			out.Values[i] = ec._CatalogAxisOption_id(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "label":
+			out.Values[i] = ec._CatalogAxisOption_label(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "description":
+			out.Values[i] = ec._CatalogAxisOption_description(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}
@@ -22532,6 +24139,10 @@ func (ec *executionContext) _Game(ctx context.Context, sel ast.SelectionSet, obj
 			if out.Values[i] == graphql.Null {
 				atomic.AddUint32(&out.Invalids, 1)
 			}
+		case "genre":
+			out.Values[i] = ec._Game_genre(ctx, field, obj)
+		case "difficulty":
+			out.Values[i] = ec._Game_difficulty(ctx, field, obj)
 		case "accentColor":
 			out.Values[i] = ec._Game_accentColor(ctx, field, obj)
 		case "playerActivity":
@@ -22769,6 +24380,8 @@ func (ec *executionContext) _GameMode(ctx context.Context, sel ast.SelectionSet,
 			if out.Values[i] == graphql.Null {
 				atomic.AddUint32(&out.Invalids, 1)
 			}
+		case "socialMode":
+			out.Values[i] = ec._GameMode_socialMode(ctx, field, obj)
 		case "seats":
 			field := field
 
@@ -22887,6 +24500,75 @@ func (ec *executionContext) _GameMode(ctx context.Context, sel ast.SelectionSet,
 					}
 				}()
 				res = ec._GameMode_eligibility(ctx, field, obj)
+				return res
+			}
+
+			if field.Deferrable != nil {
+				dfs, ok := deferred[field.Deferrable.Label]
+				di := 0
+				if ok {
+					dfs.AddField(field)
+					di = len(dfs.Values) - 1
+				} else {
+					dfs = graphql.NewFieldSet([]graphql.CollectedField{field})
+					deferred[field.Deferrable.Label] = dfs
+				}
+				dfs.Concurrently(di, func(ctx context.Context) graphql.Marshaler {
+					return innerFunc(ctx, dfs)
+				})
+
+				// don't run the out.Concurrently() call below
+				out.Values[i] = graphql.Null
+				continue
+			}
+
+			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
+		case "preQueueGroups":
+			field := field
+
+			innerFunc := func(ctx context.Context, fs *graphql.FieldSet) (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._GameMode_preQueueGroups(ctx, field, obj)
+				if res == graphql.Null {
+					atomic.AddUint32(&fs.Invalids, 1)
+				}
+				return res
+			}
+
+			if field.Deferrable != nil {
+				dfs, ok := deferred[field.Deferrable.Label]
+				di := 0
+				if ok {
+					dfs.AddField(field)
+					di = len(dfs.Values) - 1
+				} else {
+					dfs = graphql.NewFieldSet([]graphql.CollectedField{field})
+					deferred[field.Deferrable.Label] = dfs
+				}
+				dfs.Concurrently(di, func(ctx context.Context) graphql.Marshaler {
+					return innerFunc(ctx, dfs)
+				})
+
+				// don't run the out.Concurrently() call below
+				out.Values[i] = graphql.Null
+				continue
+			}
+
+			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
+		case "queueOptions":
+			field := field
+
+			innerFunc := func(ctx context.Context, _ *graphql.FieldSet) (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._GameMode_queueOptions(ctx, field, obj)
 				return res
 			}
 
@@ -24077,6 +25759,65 @@ func (ec *executionContext) _PlayAgainResult(ctx context.Context, sel ast.Select
 	return out
 }
 
+var preQueueGroupImplementors = []string{"PreQueueGroup"}
+
+func (ec *executionContext) _PreQueueGroup(ctx context.Context, sel ast.SelectionSet, obj *model.PreQueueGroup) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, preQueueGroupImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	deferred := make(map[string]*graphql.FieldSet)
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("PreQueueGroup")
+		case "key":
+			out.Values[i] = ec._PreQueueGroup_key(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "kind":
+			out.Values[i] = ec._PreQueueGroup_kind(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "label":
+			out.Values[i] = ec._PreQueueGroup_label(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "min":
+			out.Values[i] = ec._PreQueueGroup_min(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "max":
+			out.Values[i] = ec._PreQueueGroup_max(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch(ctx)
+	if out.Invalids > 0 {
+		return graphql.Null
+	}
+
+	atomic.AddInt32(&ec.deferred, int32(len(deferred)))
+
+	for label, dfs := range deferred {
+		ec.processDeferredGroup(graphql.DeferredGroup{
+			Label:    label,
+			Path:     graphql.GetPath(ctx),
+			FieldSet: dfs,
+			Context:  ctx,
+		})
+	}
+
+	return out
+}
+
 var publicPlayerImplementors = []string{"PublicPlayer"}
 
 func (ec *executionContext) _PublicPlayer(ctx context.Context, sel ast.SelectionSet, obj *model.PublicPlayer) graphql.Marshaler {
@@ -24661,6 +26402,72 @@ func (ec *executionContext) _Query(ctx context.Context, sel ast.SelectionSet) gr
 			}
 
 			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return rrm(innerCtx) })
+		case "genreTaxonomy":
+			field := field
+
+			innerFunc := func(ctx context.Context, fs *graphql.FieldSet) (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Query_genreTaxonomy(ctx, field)
+				if res == graphql.Null {
+					atomic.AddUint32(&fs.Invalids, 1)
+				}
+				return res
+			}
+
+			rrm := func(ctx context.Context) graphql.Marshaler {
+				return ec.OperationContext.RootResolverMiddleware(ctx,
+					func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
+			}
+
+			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return rrm(innerCtx) })
+		case "difficultyTaxonomy":
+			field := field
+
+			innerFunc := func(ctx context.Context, fs *graphql.FieldSet) (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Query_difficultyTaxonomy(ctx, field)
+				if res == graphql.Null {
+					atomic.AddUint32(&fs.Invalids, 1)
+				}
+				return res
+			}
+
+			rrm := func(ctx context.Context) graphql.Marshaler {
+				return ec.OperationContext.RootResolverMiddleware(ctx,
+					func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
+			}
+
+			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return rrm(innerCtx) })
+		case "socialModeTaxonomy":
+			field := field
+
+			innerFunc := func(ctx context.Context, fs *graphql.FieldSet) (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Query_socialModeTaxonomy(ctx, field)
+				if res == graphql.Null {
+					atomic.AddUint32(&fs.Invalids, 1)
+				}
+				return res
+			}
+
+			rrm := func(ctx context.Context) graphql.Marshaler {
+				return ec.OperationContext.RootResolverMiddleware(ctx,
+					func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
+			}
+
+			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return rrm(innerCtx) })
 		case "pendingGameReviews":
 			field := field
 
@@ -24830,6 +26637,200 @@ func (ec *executionContext) _Query(ctx context.Context, sel ast.SelectionSet) gr
 			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
 				return ec._Query___schema(ctx, field)
 			})
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch(ctx)
+	if out.Invalids > 0 {
+		return graphql.Null
+	}
+
+	atomic.AddInt32(&ec.deferred, int32(len(deferred)))
+
+	for label, dfs := range deferred {
+		ec.processDeferredGroup(graphql.DeferredGroup{
+			Label:    label,
+			Path:     graphql.GetPath(ctx),
+			FieldSet: dfs,
+			Context:  ctx,
+		})
+	}
+
+	return out
+}
+
+var queueOptionImplementors = []string{"QueueOption"}
+
+func (ec *executionContext) _QueueOption(ctx context.Context, sel ast.SelectionSet, obj *model.QueueOption) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, queueOptionImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	deferred := make(map[string]*graphql.FieldSet)
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("QueueOption")
+		case "id":
+			out.Values[i] = ec._QueueOption_id(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "label":
+			out.Values[i] = ec._QueueOption_label(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "description":
+			out.Values[i] = ec._QueueOption_description(ctx, field, obj)
+		case "locked":
+			out.Values[i] = ec._QueueOption_locked(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "requirement":
+			out.Values[i] = ec._QueueOption_requirement(ctx, field, obj)
+		case "unlockModeKey":
+			out.Values[i] = ec._QueueOption_unlockModeKey(ctx, field, obj)
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch(ctx)
+	if out.Invalids > 0 {
+		return graphql.Null
+	}
+
+	atomic.AddInt32(&ec.deferred, int32(len(deferred)))
+
+	for label, dfs := range deferred {
+		ec.processDeferredGroup(graphql.DeferredGroup{
+			Label:    label,
+			Path:     graphql.GetPath(ctx),
+			FieldSet: dfs,
+			Context:  ctx,
+		})
+	}
+
+	return out
+}
+
+var queueOptionGroupImplementors = []string{"QueueOptionGroup"}
+
+func (ec *executionContext) _QueueOptionGroup(ctx context.Context, sel ast.SelectionSet, obj *model.QueueOptionGroup) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, queueOptionGroupImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	deferred := make(map[string]*graphql.FieldSet)
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("QueueOptionGroup")
+		case "key":
+			out.Values[i] = ec._QueueOptionGroup_key(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "choices":
+			out.Values[i] = ec._QueueOptionGroup_choices(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch(ctx)
+	if out.Invalids > 0 {
+		return graphql.Null
+	}
+
+	atomic.AddInt32(&ec.deferred, int32(len(deferred)))
+
+	for label, dfs := range deferred {
+		ec.processDeferredGroup(graphql.DeferredGroup{
+			Label:    label,
+			Path:     graphql.GetPath(ctx),
+			FieldSet: dfs,
+			Context:  ctx,
+		})
+	}
+
+	return out
+}
+
+var queueOptionSelectionImplementors = []string{"QueueOptionSelection"}
+
+func (ec *executionContext) _QueueOptionSelection(ctx context.Context, sel ast.SelectionSet, obj *model.QueueOptionSelection) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, queueOptionSelectionImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	deferred := make(map[string]*graphql.FieldSet)
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("QueueOptionSelection")
+		case "groupKey":
+			out.Values[i] = ec._QueueOptionSelection_groupKey(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "optionIds":
+			out.Values[i] = ec._QueueOptionSelection_optionIds(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "labels":
+			out.Values[i] = ec._QueueOptionSelection_labels(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch(ctx)
+	if out.Invalids > 0 {
+		return graphql.Null
+	}
+
+	atomic.AddInt32(&ec.deferred, int32(len(deferred)))
+
+	for label, dfs := range deferred {
+		ec.processDeferredGroup(graphql.DeferredGroup{
+			Label:    label,
+			Path:     graphql.GetPath(ctx),
+			FieldSet: dfs,
+			Context:  ctx,
+		})
+	}
+
+	return out
+}
+
+var queueOptionsImplementors = []string{"QueueOptions"}
+
+func (ec *executionContext) _QueueOptions(ctx context.Context, sel ast.SelectionSet, obj *model.QueueOptions) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, queueOptionsImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	deferred := make(map[string]*graphql.FieldSet)
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("QueueOptions")
+		case "available":
+			out.Values[i] = ec._QueueOptions_available(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "unavailableReason":
+			out.Values[i] = ec._QueueOptions_unavailableReason(ctx, field, obj)
+		case "groups":
+			out.Values[i] = ec._QueueOptions_groups(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}
@@ -26813,6 +28814,11 @@ func (ec *executionContext) _TableSeat(ctx context.Context, sel ast.SelectionSet
 			if out.Values[i] == graphql.Null {
 				atomic.AddUint32(&out.Invalids, 1)
 			}
+		case "selectedOptions":
+			out.Values[i] = ec._TableSeat_selectedOptions(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				atomic.AddUint32(&out.Invalids, 1)
+			}
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}
@@ -27607,6 +29613,60 @@ func (ec *executionContext) marshalNBoolean2bool(ctx context.Context, sel ast.Se
 		}
 	}
 	return res
+}
+
+func (ec *executionContext) marshalNCatalogAxisOption2ᚕᚖgithubᚗcomᚋscruffyprodigyᚋjoinquestᚋgraphᚋmodelᚐCatalogAxisOptionᚄ(ctx context.Context, sel ast.SelectionSet, v []*model.CatalogAxisOption) graphql.Marshaler {
+	ret := make(graphql.Array, len(v))
+	var wg sync.WaitGroup
+	isLen1 := len(v) == 1
+	if !isLen1 {
+		wg.Add(len(v))
+	}
+	for i := range v {
+		i := i
+		fc := &graphql.FieldContext{
+			Index:  &i,
+			Result: &v[i],
+		}
+		ctx := graphql.WithFieldContext(ctx, fc)
+		f := func(i int) {
+			defer func() {
+				if r := recover(); r != nil {
+					ec.Error(ctx, ec.Recover(ctx, r))
+					ret = nil
+				}
+			}()
+			if !isLen1 {
+				defer wg.Done()
+			}
+			ret[i] = ec.marshalNCatalogAxisOption2ᚖgithubᚗcomᚋscruffyprodigyᚋjoinquestᚋgraphᚋmodelᚐCatalogAxisOption(ctx, sel, v[i])
+		}
+		if isLen1 {
+			f(i)
+		} else {
+			go f(i)
+		}
+
+	}
+	wg.Wait()
+
+	for _, e := range ret {
+		if e == graphql.Null {
+			return graphql.Null
+		}
+	}
+
+	return ret
+}
+
+func (ec *executionContext) marshalNCatalogAxisOption2ᚖgithubᚗcomᚋscruffyprodigyᚋjoinquestᚋgraphᚋmodelᚐCatalogAxisOption(ctx context.Context, sel ast.SelectionSet, v *model.CatalogAxisOption) graphql.Marshaler {
+	if v == nil {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			ec.Errorf(ctx, "the requested element is null which the schema does not allow")
+		}
+		return graphql.Null
+	}
+	return ec._CatalogAxisOption(ctx, sel, v)
 }
 
 func (ec *executionContext) marshalNCatalogTagOption2ᚕᚖgithubᚗcomᚋscruffyprodigyᚋjoinquestᚋgraphᚋmodelᚐCatalogTagOptionᚄ(ctx context.Context, sel ast.SelectionSet, v []*model.CatalogTagOption) graphql.Marshaler {
@@ -28554,6 +30614,70 @@ func (ec *executionContext) marshalNPlayerFinishReason2githubᚗcomᚋscruffypro
 	return v
 }
 
+func (ec *executionContext) marshalNPreQueueGroup2ᚕᚖgithubᚗcomᚋscruffyprodigyᚋjoinquestᚋgraphᚋmodelᚐPreQueueGroupᚄ(ctx context.Context, sel ast.SelectionSet, v []*model.PreQueueGroup) graphql.Marshaler {
+	ret := make(graphql.Array, len(v))
+	var wg sync.WaitGroup
+	isLen1 := len(v) == 1
+	if !isLen1 {
+		wg.Add(len(v))
+	}
+	for i := range v {
+		i := i
+		fc := &graphql.FieldContext{
+			Index:  &i,
+			Result: &v[i],
+		}
+		ctx := graphql.WithFieldContext(ctx, fc)
+		f := func(i int) {
+			defer func() {
+				if r := recover(); r != nil {
+					ec.Error(ctx, ec.Recover(ctx, r))
+					ret = nil
+				}
+			}()
+			if !isLen1 {
+				defer wg.Done()
+			}
+			ret[i] = ec.marshalNPreQueueGroup2ᚖgithubᚗcomᚋscruffyprodigyᚋjoinquestᚋgraphᚋmodelᚐPreQueueGroup(ctx, sel, v[i])
+		}
+		if isLen1 {
+			f(i)
+		} else {
+			go f(i)
+		}
+
+	}
+	wg.Wait()
+
+	for _, e := range ret {
+		if e == graphql.Null {
+			return graphql.Null
+		}
+	}
+
+	return ret
+}
+
+func (ec *executionContext) marshalNPreQueueGroup2ᚖgithubᚗcomᚋscruffyprodigyᚋjoinquestᚋgraphᚋmodelᚐPreQueueGroup(ctx context.Context, sel ast.SelectionSet, v *model.PreQueueGroup) graphql.Marshaler {
+	if v == nil {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			ec.Errorf(ctx, "the requested element is null which the schema does not allow")
+		}
+		return graphql.Null
+	}
+	return ec._PreQueueGroup(ctx, sel, v)
+}
+
+func (ec *executionContext) unmarshalNPreQueueKind2githubᚗcomᚋscruffyprodigyᚋjoinquestᚋgraphᚋmodelᚐPreQueueKind(ctx context.Context, v any) (model.PreQueueKind, error) {
+	var res model.PreQueueKind
+	err := res.UnmarshalGQL(v)
+	return res, graphql.ErrorOnPath(ctx, err)
+}
+
+func (ec *executionContext) marshalNPreQueueKind2githubᚗcomᚋscruffyprodigyᚋjoinquestᚋgraphᚋmodelᚐPreQueueKind(ctx context.Context, sel ast.SelectionSet, v model.PreQueueKind) graphql.Marshaler {
+	return v
+}
+
 func (ec *executionContext) marshalNPublicPlayer2githubᚗcomᚋscruffyprodigyᚋjoinquestᚋgraphᚋmodelᚐPublicPlayer(ctx context.Context, sel ast.SelectionSet, v model.PublicPlayer) graphql.Marshaler {
 	return ec._PublicPlayer(ctx, sel, &v)
 }
@@ -28566,6 +30690,173 @@ func (ec *executionContext) marshalNPublicPlayer2ᚖgithubᚗcomᚋscruffyprodig
 		return graphql.Null
 	}
 	return ec._PublicPlayer(ctx, sel, v)
+}
+
+func (ec *executionContext) marshalNQueueOption2ᚕᚖgithubᚗcomᚋscruffyprodigyᚋjoinquestᚋgraphᚋmodelᚐQueueOptionᚄ(ctx context.Context, sel ast.SelectionSet, v []*model.QueueOption) graphql.Marshaler {
+	ret := make(graphql.Array, len(v))
+	var wg sync.WaitGroup
+	isLen1 := len(v) == 1
+	if !isLen1 {
+		wg.Add(len(v))
+	}
+	for i := range v {
+		i := i
+		fc := &graphql.FieldContext{
+			Index:  &i,
+			Result: &v[i],
+		}
+		ctx := graphql.WithFieldContext(ctx, fc)
+		f := func(i int) {
+			defer func() {
+				if r := recover(); r != nil {
+					ec.Error(ctx, ec.Recover(ctx, r))
+					ret = nil
+				}
+			}()
+			if !isLen1 {
+				defer wg.Done()
+			}
+			ret[i] = ec.marshalNQueueOption2ᚖgithubᚗcomᚋscruffyprodigyᚋjoinquestᚋgraphᚋmodelᚐQueueOption(ctx, sel, v[i])
+		}
+		if isLen1 {
+			f(i)
+		} else {
+			go f(i)
+		}
+
+	}
+	wg.Wait()
+
+	for _, e := range ret {
+		if e == graphql.Null {
+			return graphql.Null
+		}
+	}
+
+	return ret
+}
+
+func (ec *executionContext) marshalNQueueOption2ᚖgithubᚗcomᚋscruffyprodigyᚋjoinquestᚋgraphᚋmodelᚐQueueOption(ctx context.Context, sel ast.SelectionSet, v *model.QueueOption) graphql.Marshaler {
+	if v == nil {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			ec.Errorf(ctx, "the requested element is null which the schema does not allow")
+		}
+		return graphql.Null
+	}
+	return ec._QueueOption(ctx, sel, v)
+}
+
+func (ec *executionContext) marshalNQueueOptionGroup2ᚕᚖgithubᚗcomᚋscruffyprodigyᚋjoinquestᚋgraphᚋmodelᚐQueueOptionGroupᚄ(ctx context.Context, sel ast.SelectionSet, v []*model.QueueOptionGroup) graphql.Marshaler {
+	ret := make(graphql.Array, len(v))
+	var wg sync.WaitGroup
+	isLen1 := len(v) == 1
+	if !isLen1 {
+		wg.Add(len(v))
+	}
+	for i := range v {
+		i := i
+		fc := &graphql.FieldContext{
+			Index:  &i,
+			Result: &v[i],
+		}
+		ctx := graphql.WithFieldContext(ctx, fc)
+		f := func(i int) {
+			defer func() {
+				if r := recover(); r != nil {
+					ec.Error(ctx, ec.Recover(ctx, r))
+					ret = nil
+				}
+			}()
+			if !isLen1 {
+				defer wg.Done()
+			}
+			ret[i] = ec.marshalNQueueOptionGroup2ᚖgithubᚗcomᚋscruffyprodigyᚋjoinquestᚋgraphᚋmodelᚐQueueOptionGroup(ctx, sel, v[i])
+		}
+		if isLen1 {
+			f(i)
+		} else {
+			go f(i)
+		}
+
+	}
+	wg.Wait()
+
+	for _, e := range ret {
+		if e == graphql.Null {
+			return graphql.Null
+		}
+	}
+
+	return ret
+}
+
+func (ec *executionContext) marshalNQueueOptionGroup2ᚖgithubᚗcomᚋscruffyprodigyᚋjoinquestᚋgraphᚋmodelᚐQueueOptionGroup(ctx context.Context, sel ast.SelectionSet, v *model.QueueOptionGroup) graphql.Marshaler {
+	if v == nil {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			ec.Errorf(ctx, "the requested element is null which the schema does not allow")
+		}
+		return graphql.Null
+	}
+	return ec._QueueOptionGroup(ctx, sel, v)
+}
+
+func (ec *executionContext) marshalNQueueOptionSelection2ᚕᚖgithubᚗcomᚋscruffyprodigyᚋjoinquestᚋgraphᚋmodelᚐQueueOptionSelectionᚄ(ctx context.Context, sel ast.SelectionSet, v []*model.QueueOptionSelection) graphql.Marshaler {
+	ret := make(graphql.Array, len(v))
+	var wg sync.WaitGroup
+	isLen1 := len(v) == 1
+	if !isLen1 {
+		wg.Add(len(v))
+	}
+	for i := range v {
+		i := i
+		fc := &graphql.FieldContext{
+			Index:  &i,
+			Result: &v[i],
+		}
+		ctx := graphql.WithFieldContext(ctx, fc)
+		f := func(i int) {
+			defer func() {
+				if r := recover(); r != nil {
+					ec.Error(ctx, ec.Recover(ctx, r))
+					ret = nil
+				}
+			}()
+			if !isLen1 {
+				defer wg.Done()
+			}
+			ret[i] = ec.marshalNQueueOptionSelection2ᚖgithubᚗcomᚋscruffyprodigyᚋjoinquestᚋgraphᚋmodelᚐQueueOptionSelection(ctx, sel, v[i])
+		}
+		if isLen1 {
+			f(i)
+		} else {
+			go f(i)
+		}
+
+	}
+	wg.Wait()
+
+	for _, e := range ret {
+		if e == graphql.Null {
+			return graphql.Null
+		}
+	}
+
+	return ret
+}
+
+func (ec *executionContext) marshalNQueueOptionSelection2ᚖgithubᚗcomᚋscruffyprodigyᚋjoinquestᚋgraphᚋmodelᚐQueueOptionSelection(ctx context.Context, sel ast.SelectionSet, v *model.QueueOptionSelection) graphql.Marshaler {
+	if v == nil {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			ec.Errorf(ctx, "the requested element is null which the schema does not allow")
+		}
+		return graphql.Null
+	}
+	return ec._QueueOptionSelection(ctx, sel, v)
+}
+
+func (ec *executionContext) unmarshalNQueueOptionSelectionInput2ᚖgithubᚗcomᚋscruffyprodigyᚋjoinquestᚋgraphᚋmodelᚐQueueOptionSelectionInput(ctx context.Context, v any) (*model.QueueOptionSelectionInput, error) {
+	res, err := ec.unmarshalInputQueueOptionSelectionInput(ctx, v)
+	return &res, graphql.ErrorOnPath(ctx, err)
 }
 
 func (ec *executionContext) marshalNQueuePathGap2ᚕᚖgithubᚗcomᚋscruffyprodigyᚋjoinquestᚋgraphᚋmodelᚐQueuePathGapᚄ(ctx context.Context, sel ast.SelectionSet, v []*model.QueuePathGap) graphql.Marshaler {
@@ -30093,6 +32384,31 @@ func (ec *executionContext) marshalOPublicPlayer2ᚖgithubᚗcomᚋscruffyprodig
 	return ec._PublicPlayer(ctx, sel, v)
 }
 
+func (ec *executionContext) unmarshalOQueueOptionSelectionInput2ᚕᚖgithubᚗcomᚋscruffyprodigyᚋjoinquestᚋgraphᚋmodelᚐQueueOptionSelectionInputᚄ(ctx context.Context, v any) ([]*model.QueueOptionSelectionInput, error) {
+	if v == nil {
+		return nil, nil
+	}
+	var vSlice []any
+	vSlice = graphql.CoerceList(v)
+	var err error
+	res := make([]*model.QueueOptionSelectionInput, len(vSlice))
+	for i := range vSlice {
+		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithIndex(i))
+		res[i], err = ec.unmarshalNQueueOptionSelectionInput2ᚖgithubᚗcomᚋscruffyprodigyᚋjoinquestᚋgraphᚋmodelᚐQueueOptionSelectionInput(ctx, vSlice[i])
+		if err != nil {
+			return nil, err
+		}
+	}
+	return res, nil
+}
+
+func (ec *executionContext) marshalOQueueOptions2ᚖgithubᚗcomᚋscruffyprodigyᚋjoinquestᚋgraphᚋmodelᚐQueueOptions(ctx context.Context, sel ast.SelectionSet, v *model.QueueOptions) graphql.Marshaler {
+	if v == nil {
+		return graphql.Null
+	}
+	return ec._QueueOptions(ctx, sel, v)
+}
+
 func (ec *executionContext) marshalORoom2ᚖgithubᚗcomᚋscruffyprodigyᚋjoinquestᚋgraphᚋmodelᚐRoom(ctx context.Context, sel ast.SelectionSet, v *model.Room) graphql.Marshaler {
 	if v == nil {
 		return graphql.Null
@@ -30205,42 +32521,6 @@ func (ec *executionContext) marshalOSpiritAnimalTotem2ᚕᚖgithubᚗcomᚋscruf
 
 	}
 	wg.Wait()
-
-	for _, e := range ret {
-		if e == graphql.Null {
-			return graphql.Null
-		}
-	}
-
-	return ret
-}
-
-func (ec *executionContext) unmarshalOString2ᚕstringᚄ(ctx context.Context, v any) ([]string, error) {
-	if v == nil {
-		return nil, nil
-	}
-	var vSlice []any
-	vSlice = graphql.CoerceList(v)
-	var err error
-	res := make([]string, len(vSlice))
-	for i := range vSlice {
-		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithIndex(i))
-		res[i], err = ec.unmarshalNString2string(ctx, vSlice[i])
-		if err != nil {
-			return nil, err
-		}
-	}
-	return res, nil
-}
-
-func (ec *executionContext) marshalOString2ᚕstringᚄ(ctx context.Context, sel ast.SelectionSet, v []string) graphql.Marshaler {
-	if v == nil {
-		return graphql.Null
-	}
-	ret := make(graphql.Array, len(v))
-	for i := range v {
-		ret[i] = ec.marshalNString2string(ctx, sel, v[i])
-	}
 
 	for _, e := range ret {
 		if e == graphql.Null {

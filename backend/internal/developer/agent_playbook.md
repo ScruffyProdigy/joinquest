@@ -46,9 +46,10 @@ Read their description and identify gaps. You need enough to draft registration 
 |-------|----------------|---------------------|
 | Player count | seatTemplate / game-modes | min/max, fixed or variable |
 | Structure | seatTemplate | duel, free-for-all, teams, or roles |
-| Social mode | tags + tone | competitive, cooperative, or party |
-| Session length | tags + copy | quick rounds vs longer sessions |
-| Vibe / audience | catalog voice | casual, brainy, chaotic, tactical, etc. |
+| Genre | `genre` | action, strategy, deduction, words & trivia, drawing & creative, or puzzle |
+| Social mode | `socialMode` on each mode | free-for-all, 1v1, teams, hidden roles, or co-op — ask per mode, they often differ |
+| Difficulty | `difficulty` | how much a new player must know before their first round is fun |
+| Vibe / audience | catalog voice | brainy, chaotic, tactical, etc. — copy, not a field |
 | API URL | registration | public HTTPS hosting plan (not localhost) |
 
 **Draft (show to developer, do not save yet):**
@@ -58,7 +59,9 @@ Read their description and identify gaps. You need enough to draft registration 
 | `shortDescription` | ~120 chars, warm JoinQuest tone — what players *do*, not tech stack |
 | `longDescription` | 2–4 short paragraphs for the detail page |
 | `howToPlay` | 3–6 bullet steps for a first-time player |
-| `tags` | 1–3 IDs from `joinquest_integration_get_catalog_tag_taxonomy` |
+| `genre` | exactly one id from `joinquest_integration_get_catalog_tag_taxonomy` → `genre` |
+| `difficulty` | optional; one id from the same tool's `difficulty` list |
+| `socialMode` | one id per **mode**, declared in the game's `/api/v1/game-modes` — not in metadata |
 | `seatTemplate` plan | Point to integration guide §4 + seat-templates cookbook (duel, teams, roles) |
 
 **Voice:** Plain, player-first. “Find your group. Play together.” — not “enter matchmaking” or JWT jargon.
@@ -135,6 +138,24 @@ In Agent mode, ask the agent to call `joinquest_integration_list_my_games`. If a
 **Provision banlist:** `403` with `{ "error": "...", "bannedLobbyUserIds": ["..."] }`.
 
 **JWT:** Verify `iss`, `aud` (your API base URL), `matchId`, `seatKey`, `sub`. Publish JWKS at `{lobbyIssuer}/.well-known/jwks.json`.
+
+**Optional per-player endpoints:**
+
+| Endpoint | Purpose |
+|----------|---------|
+| `GET /api/v1/players/{lobbyUserId}/mode-eligibility` | Gate whole modes on progress. Fails open — a silent game means every mode is playable. Guide §12 |
+| `GET /api/v1/players/{lobbyUserId}/queue-options?modeKey=…` | Serve the champion/loadout/deck roster for a mode that declares `preQueue`. Guide §13 |
+
+**Role vs option — do not conflate them.** A **role** (`queuePath`, derived from `seatTemplate`)
+decides who the player is matched *with*. An **option** (`preQueue` on the mode) is what the player
+*brings* and changes nothing about matchmaking. A mode can have either, both, or neither; when it
+has both, the role is chosen first.
+
+Two things about `queue-options` catch people out:
+
+- It **does not fail open.** A mode declaring `preQueue` whose roster cannot be loaded becomes
+  unjoinable, deliberately — see guide §13.
+- A mode with nothing to pick must return `{"groups": []}`, not a 404.
 
 Use Phase 1 seatTemplate plan. Full details: integration guide §3–§8. Pick a **reference game** ([reference-games.md](./reference-games.md)) for API layout and client boot patterns — duel → [rpslr](https://github.com/ScruffyProdigy/rpslr); party/multi-seat → [wordhunt](https://github.com/ScruffyProdigy/wordhunt).
 
@@ -245,7 +266,8 @@ Common fixes:
   "shortDescription": "...",
   "longDescription": "...",
   "howToPlay": "...",
-  "tags": ["party", "quick"],
+  "genre": "words-trivia",
+  "difficulty": "casual",
   "contactEmail": "dev@example.com",
   "websiteUrl": "https://...",
   "communityUrl": "https://discord.gg/...",
@@ -253,7 +275,15 @@ Common fixes:
 }
 ```
 
-Empty `websiteUrl` / `communityUrl` / `accentColor` clears those optional fields. Slug is not editable.
+Empty `websiteUrl` / `communityUrl` / `accentColor` / `genre` / `difficulty` clears those optional fields. Slug is not editable.
+
+`socialMode` is deliberately absent here: it is a property of a mode, not of the
+game, so it is declared in `GET /api/v1/game-modes` alongside `seatTemplate`. A
+game whose Arena is free-for-all and whose Duel is 1v1 cannot say that with one
+game-level value.
+
+The flat `tags` field was retired in JQ-162 — writing it is no longer possible,
+and existing games were migrated onto the axes automatically.
 
 **Credentials:** If `webhookSecret` leaks, `joinquest_integration_rotate_webhook_secret` (human approval). `serviceToken` is derived from game id — not rotatable.
 
@@ -307,7 +337,7 @@ JoinQuest integration (Phases 3–5) proves the **wire contract**. Phase 9 is ev
 
 | If the game is… | Start with | Why |
 |-----------------|------------|-----|
-| 1v1, quick rounds, first integration | [rpslr](https://github.com/ScruffyProdigy/rpslr) | Minimal duel API + client + tests |
+| 1v1 duels, first integration | [rpslr](https://github.com/ScruffyProdigy/rpslr) | Minimal duel API + client + tests |
 | Party / multi-seat, richer UI | [wordhunt](https://github.com/ScruffyProdigy/wordhunt) | Path launch URLs, sync, party flow |
 
 Play live first when you can: [rpsls-duel.win](https://rpsls-duel.win), [word-hunt-arena.win](https://word-hunt-arena.win).

@@ -21,6 +21,11 @@ const MY_ACTIVE_INTENT_QUERY = `
         assigned
         needed
       }
+      selectedOptions {
+        groupKey
+        optionIds
+        labels
+      }
     }
   }
 `

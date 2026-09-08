@@ -380,11 +380,27 @@ func (r *mutationResolver) UpdateMyGameMetadata(ctx context.Context, input model
 		trimmed := strings.TrimSpace(*input.HowToPlay)
 		params.HowToPlay = &trimmed
 	}
-	if input.Tags != nil {
-		if err := developer.ValidateCatalogTags(input.Tags); err != nil {
+	if input.Genre != nil {
+		trimmed := strings.TrimSpace(*input.Genre)
+		if err := developer.ValidateGenre(trimmed); err != nil {
 			return nil, err
 		}
-		params.Tags = input.Tags
+		if trimmed == "" {
+			params.ClearGenre = true
+		} else {
+			params.Genre = &trimmed
+		}
+	}
+	if input.Difficulty != nil {
+		trimmed := strings.TrimSpace(*input.Difficulty)
+		if err := developer.ValidateDifficulty(trimmed); err != nil {
+			return nil, err
+		}
+		if trimmed == "" {
+			params.ClearDifficulty = true
+		} else {
+			params.Difficulty = &trimmed
+		}
 	}
 	if input.ContactEmail != nil {
 		trimmed := strings.TrimSpace(*input.ContactEmail)
@@ -581,9 +597,13 @@ func (r *queryResolver) DeveloperDiscoveryPrompt(ctx context.Context) (string, e
 }
 
 // CatalogTagTaxonomy is the resolver for the catalogTagTaxonomy field.
+//
+// Deprecated with the field itself (JQ-162). It still returns the retired flat
+// vocabulary so a dashboard build from before the split can label existing
+// games' tags through a rolling deploy; nothing writes tags any more.
 func (r *queryResolver) CatalogTagTaxonomy(ctx context.Context) ([]*model.CatalogTagOption, error) {
-	out := make([]*model.CatalogTagOption, len(developer.CatalogTagTaxonomy))
-	for i, tag := range developer.CatalogTagTaxonomy {
+	out := make([]*model.CatalogTagOption, len(developer.LegacyCatalogTagTaxonomy))
+	for i, tag := range developer.LegacyCatalogTagTaxonomy {
 		out[i] = &model.CatalogTagOption{
 			ID:          tag.ID,
 			Label:       tag.Label,
@@ -591,6 +611,21 @@ func (r *queryResolver) CatalogTagTaxonomy(ctx context.Context) ([]*model.Catalo
 		}
 	}
 	return out, nil
+}
+
+// GenreTaxonomy is the resolver for the genreTaxonomy field.
+func (r *queryResolver) GenreTaxonomy(ctx context.Context) ([]*model.CatalogAxisOption, error) {
+	return axisOptions(developer.GenreTaxonomy), nil
+}
+
+// DifficultyTaxonomy is the resolver for the difficultyTaxonomy field.
+func (r *queryResolver) DifficultyTaxonomy(ctx context.Context) ([]*model.CatalogAxisOption, error) {
+	return axisOptions(developer.DifficultyTaxonomy), nil
+}
+
+// SocialModeTaxonomy is the resolver for the socialModeTaxonomy field.
+func (r *queryResolver) SocialModeTaxonomy(ctx context.Context) ([]*model.CatalogAxisOption, error) {
+	return axisOptions(developer.SocialModeTaxonomy), nil
 }
 
 // PendingGameReviews is the resolver for the pendingGameReviews field.
