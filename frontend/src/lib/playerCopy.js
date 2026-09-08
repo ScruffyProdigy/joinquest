@@ -182,6 +182,16 @@ export function bannerIntentLaunchPendingHint() {
 
 export const FINDING_PLAYERS = 'Finding players…'
 
+// The launch moment (JQ-136): the match forming is an event, not a changed banner.
+export const MATCH_FOUND = "You're in!"
+export const READY_TO_LAUNCH = 'Ready to launch!'
+export const LAUNCH_AUTO_HINT = 'Taking you into the game — no need to click.'
+export const LAUNCH_HELD_HINT = 'Countdown paused while you were away. Launch when you are ready.'
+
+export function launchCountdownLine(seconds) {
+  return `Entering in ${Math.max(0, seconds ?? 0)}…`
+}
+
 /** e.g. "Word Hunt · Arena · Clue Giver · Hard mode" */
 export function waitingPageSubline(gameName, modeName, roleLabel, selectedOptions) {
   const parts = [gameName, modeName, roleLabel].map((part) => part?.trim()).filter(Boolean)

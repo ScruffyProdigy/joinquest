@@ -29,7 +29,9 @@ function LeaveError({ message }) {
 
 /**
  * Ready-to-play and forming-table intents. The queued state left this banner for a
- * page of its own in JQ-197; the ready-to-play branch is JQ-136's to move next.
+ * page of its own in JQ-197, and a match that forms while the player is on that page
+ * gets the launch step (JQ-136). This branch is what a player who is somewhere else
+ * in the lobby sees, and the manual way in for anyone the countdown did not carry.
  */
 export default function IntentBanner({
   activeIntent,

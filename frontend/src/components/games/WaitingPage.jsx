@@ -1,7 +1,8 @@
 import { useEffect, useRef, useState } from 'react'
 import { useAuth } from '../auth/AuthProvider'
+import LaunchStep from './LaunchStep'
 import { useLeaveQueueOnExit } from './useLeaveQueueOnExit'
-import { hasWaitingIntent } from '../../lib/intent'
+import { hasReadyToPlayIntent, hasWaitingIntent } from '../../lib/intent'
 import { navigateOutOfWaiting } from '../../lib/waiting'
 import {
   FINDING_PLAYERS,
@@ -47,22 +48,39 @@ function useIntentSettled(loading, authLoading, user) {
 /** The queued state: what the player is waiting for, how it is going, and the way out. */
 export default function WaitingPage({ intent }) {
   const { user, loading: authLoading } = useAuth()
-  const { activeIntent, loading, busy, queueWsConnected, leaveError, handleLeave } = intent
+  const { activeIntent, activeTableSeat, loading, busy, queueWsConnected, leaveError, handleLeave } =
+    intent
   const [confirmingLeave, setConfirmingLeave] = useState(false)
 
   const waiting = hasWaitingIntent(activeIntent)
+  // A formed match stays on this page: the launch moment is the point of it (JQ-136).
+  const readyToPlay = hasReadyToPlayIntent(activeIntent, activeTableSeat)
   const settled = useIntentSettled(loading, authLoading, user)
   const liveUpdatesConnected = !activeIntent?.queueId || !waiting || queueWsConnected
 
   useLeaveQueueOnExit(activeIntent)
 
-  // No queued intent means this route is a dead end — hand control back.
+  // No intent at all means this route is a dead end — hand control back.
   useEffect(() => {
-    if (waiting || !settled) {
+    if (waiting || readyToPlay || !settled) {
       return
     }
     navigateOutOfWaiting()
-  }, [waiting, settled])
+  }, [waiting, readyToPlay, settled])
+
+  if (readyToPlay) {
+    return (
+      <main className="app-shell waiting-page">
+        <LaunchStep
+          activeIntent={activeIntent}
+          activeTableSeat={activeTableSeat}
+          busy={busy}
+          leaveError={leaveError}
+          onLeave={handleLeave}
+        />
+      </main>
+    )
+  }
 
   if (!waiting) {
     return (
