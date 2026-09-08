@@ -449,6 +449,10 @@ export function ActiveRoomProvider({ children, pendingInviteCode = null }) {
   return <ActiveRoomContext.Provider value={value}>{children}</ActiveRoomContext.Provider>
 }
 
+// The accessor hook lives with its provider, the way useAuth and
+// useIdentityPrompt do. Splitting it out to satisfy fast refresh would move
+// every consumer's import for no gain at runtime.
+// eslint-disable-next-line react-refresh/only-export-components
 export function useActiveRoom() {
   const context = useContext(ActiveRoomContext)
   if (!context) {
