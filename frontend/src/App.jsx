@@ -36,9 +36,9 @@ import TermsPage from './components/legal/TermsPage'
 import PrivacyPage from './components/legal/PrivacyPage'
 import { useEffect } from 'react'
 
-function CatalogPage() {
+function CatalogPage({ intent }) {
   const { user, loading: authLoading } = useAuth()
-  const { activeIntent, activeTableSeat, busy, leaveError, handleLeave } = useActiveIntent()
+  const { activeIntent, activeTableSeat, busy, leaveError, handleLeave } = intent
 
   useEffect(() => {
     restoreCatalogScrollIfPending()
@@ -66,13 +66,11 @@ function CatalogPage() {
   )
 }
 
-function GameDetailShell({ slug }) {
+function GameDetailShell({ slug, intent }) {
   const { user, loading: authLoading } = useAuth()
-  const { activeIntent, activeTableSeat, busy, leaveError, refresh, notifyQueueJoined, handleLeave } =
-    useActiveIntent()
+  const { activeIntent, activeTableSeat, busy, leaveError, refresh, notifyQueueJoined, handleLeave } = intent
 
-  // Joining a queue is the only way onto the waiting page. Leaving it — Back, a link,
-  // a closed tab — gives up the queue, in useLeaveQueueOnExit.
+  // Joining a queue is the only route onto the waiting page.
   function handleQueueJoined(queueId, result, meta) {
     notifyQueueJoined(queueId, result, meta)
     if (result?.queued) {
@@ -112,6 +110,9 @@ function MainLayout() {
   const isMobile = useMediaQuery(MOBILE_ROOM_QUERY)
   const onGroup = parseGroupRoute(pathname)
   const onWaiting = parseWaitingRoute(pathname)
+  // One instance for the whole shell. It has to survive the navigation from a game
+  // page to /waiting, which carries the optimistic join state and its grace window.
+  const intent = useActiveIntent()
   const inRoomContext = Boolean(room || inviteCode || hasRoomMembership)
   // Desktop keeps the room panel visible whenever the user belongs to a room; mobile toggles via dock/sheet.
   // The group page is the exception: it is a presentation over the same room, so the
@@ -137,11 +138,11 @@ function MainLayout() {
           {onGroup ? (
             <GroupPage />
           ) : onWaiting ? (
-            <WaitingPage />
+            <WaitingPage intent={intent} />
           ) : gameSlug ? (
-            <GameDetailShell slug={gameSlug} />
+            <GameDetailShell slug={gameSlug} intent={intent} />
           ) : (
-            <CatalogPage />
+            <CatalogPage intent={intent} />
           )}
         </div>
         {showDesktopRoom ? (

@@ -170,7 +170,6 @@
   font-size: 1.05rem;
 }
 
-.waiting-page__role,
 .waiting-page__need,
 .waiting-page__hint {
   margin: 0.35rem 0 0;
@@ -593,7 +592,6 @@
 
   .waiting-page__subline,
   .waiting-page__confirm-body,
-  .waiting-page__role,
   .waiting-page__need,
   .waiting-page__hint {
     color: #5558aa;

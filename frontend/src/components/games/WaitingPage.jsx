@@ -1,6 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
 import { useAuth } from '../auth/AuthProvider'
-import { useActiveIntent } from './useActiveIntent'
 import { useLeaveQueueOnExit } from './useLeaveQueueOnExit'
 import { hasWaitingIntent } from '../../lib/intent'
 import { navigateOutOfWaiting } from '../../lib/waiting'
@@ -20,11 +19,8 @@ import {
 import { Button } from '../ui/button'
 import { Sheet, SheetContent, SheetTitle } from '../ui/sheet'
 
-/**
- * A refresh on /waiting starts with no intent in hand, so "no queued intent" only
- * becomes a fact once a fetch has actually completed. Redirecting before that
- * would bounce every reload straight off the page.
- */
+/** True once an intent fetch has actually completed, so a reload is not bounced off
+ * the page before the first result lands. */
 function useIntentSettled(loading, authLoading, user) {
   const [settled, setSettled] = useState(false)
   const sawLoading = useRef(false)
@@ -33,7 +29,7 @@ function useIntentSettled(loading, authLoading, user) {
     if (authLoading) {
       return
     }
-    // A signed-out visitor never triggers a fetch — there is nothing to wait for.
+    // A signed-out visitor never triggers a fetch.
     if (!user) {
       setSettled(true)
       return
@@ -48,18 +44,10 @@ function useIntentSettled(loading, authLoading, user) {
   return settled
 }
 
-/**
- * The queued state as a page of its own (JQ-197), following the Figma Make demo's
- * queue screen: heading, one subline naming the game and role, and the way out.
- *
- * The demo's percentage ring and its three threshold-lit steps are driven by a fake
- * timer with no queue behind it, so they do not port. Production has real signals the
- * demo lacks — how many are looking, which roles are still missing — and those take
- * the space the ring occupied. Wait-time estimates stay JQ-58's.
- */
-export default function WaitingPage() {
+/** The queued state: what the player is waiting for, how it is going, and the way out. */
+export default function WaitingPage({ intent }) {
   const { user, loading: authLoading } = useAuth()
-  const { activeIntent, loading, busy, queueWsConnected, leaveError, handleLeave } = useActiveIntent()
+  const { activeIntent, loading, busy, queueWsConnected, leaveError, handleLeave } = intent
   const [confirmingLeave, setConfirmingLeave] = useState(false)
 
   const waiting = hasWaitingIntent(activeIntent)
@@ -68,8 +56,7 @@ export default function WaitingPage() {
 
   useLeaveQueueOnExit(activeIntent)
 
-  // Once the queued intent is gone the route is a dead end: the player stopped
-  // looking, or a match formed. Both hand control back to where they came from.
+  // No queued intent means this route is a dead end — hand control back.
   useEffect(() => {
     if (waiting || !settled) {
       return
@@ -131,11 +118,8 @@ export default function WaitingPage() {
         </Button>
       </section>
 
-      {/*
-        Leaving costs the player their place, so the button asks first — the demo does
-        the same. Browser Back cannot be intercepted this way and leaves without asking;
-        useLeaveQueueOnExit still gives up the seat so the queue never holds a ghost.
-      */}
+      {/* Leaving costs the player their place, so the button asks first. Browser Back
+          cannot be intercepted this way and leaves without asking. */}
       <Sheet open={confirmingLeave} onOpenChange={setConfirmingLeave}>
         <SheetContent side="bottom" aria-label={LEAVE_QUEUE_TITLE}>
           <SheetTitle>{LEAVE_QUEUE_TITLE}</SheetTitle>

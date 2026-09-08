@@ -192,11 +192,8 @@ export async function fetchMyQueueStatus(queueId) {
 
 /**
  * Leave the queue while the document is being torn down (refresh, tab close).
- *
- * keepalive rather than sendBeacon: the GraphQL endpoint can be configured to another
- * origin, and sendBeacon cannot preflight an application/json body, so it would simply
- * fail there. Auth is a cookie, so credentials are all this needs. Best effort by
- * nature — the browser may still drop it, and nothing downstream can be told if it does.
+ * keepalive, not sendBeacon: the endpoint may be cross-origin and sendBeacon cannot
+ * preflight a JSON body. Best effort — the browser may still drop it.
  */
 export function leaveQueueOnExit(queueId) {
   if (!queueId) {
@@ -211,7 +208,7 @@ export function leaveQueueOnExit(queueId) {
       body: JSON.stringify({ query: LEAVE_QUEUE_MUTATION, variables: { queueId } }),
     }).catch(() => {})
   } catch {
-    // The player is leaving either way; there is nobody left to tell.
+    // Nobody left to tell.
   }
 }
 

@@ -1,4 +1,4 @@
-import { render, act } from '@testing-library/react'
+import { render, act, waitFor } from '@testing-library/react'
 import { describe, it, expect, beforeEach, vi } from 'vitest'
 import { useLeaveQueueOnExit } from './useLeaveQueueOnExit'
 import * as queue from '../../lib/queue'
@@ -58,15 +58,33 @@ describe('useLeaveQueueOnExit', () => {
     expect(queue.leaveQueue).not.toHaveBeenCalled()
   })
 
-  it('uses the unload-safe leave when the document goes away', () => {
+  it('uses the unload-safe leave when the document is torn down', () => {
     render(<Probe activeIntent={waitingIntent} />)
 
     act(() => {
-      window.dispatchEvent(new Event('pagehide'))
+      window.dispatchEvent(new PageTransitionEvent('pagehide', { persisted: false }))
     })
 
     expect(queue.leaveQueueOnExit).toHaveBeenCalledWith('q1')
     expect(queue.leaveQueue).not.toHaveBeenCalled()
+  })
+
+  it('stays in the queue when the page is only frozen into the back/forward cache', async () => {
+    render(<Probe activeIntent={waitingIntent} />)
+
+    act(() => {
+      window.dispatchEvent(new PageTransitionEvent('pagehide', { persisted: true }))
+    })
+
+    expect(queue.leaveQueueOnExit).not.toHaveBeenCalled()
+  })
+
+  it('puts the player back on the waiting page when the leave fails', async () => {
+    vi.mocked(queue.leaveQueue).mockRejectedValueOnce(new Error('offline'))
+    render(<Probe activeIntent={waitingIntent} />)
+
+    act(() => navigateTo('/games/word-hunt'))
+    await waitFor(() => expect(window.location.pathname).toBe('/waiting'))
   })
 
   it('survives a StrictMode remount without dropping the player', () => {

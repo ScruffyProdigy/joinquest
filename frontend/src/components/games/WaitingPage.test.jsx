@@ -11,10 +11,6 @@ vi.mock('../auth/AuthProvider', () => ({
   useAuth: () => authState,
 }))
 
-vi.mock('./useActiveIntent', () => ({
-  useActiveIntent: () => intentState,
-}))
-
 vi.mock('./useLeaveQueueOnExit', () => ({
   useLeaveQueueOnExit: vi.fn(),
 }))
@@ -51,7 +47,7 @@ describe('WaitingPage', () => {
 
   it('shows the queued game, how many are looking, and the way out', () => {
     setIntentState({ activeIntent: waitingIntent })
-    render(<WaitingPage />)
+    render(<WaitingPage intent={intentState} />)
 
     expect(screen.getByRole('heading', { name: 'Finding players…' })).toBeInTheDocument()
     expect(screen.getByText('Word Hunt · Arena')).toBeInTheDocument()
@@ -73,7 +69,7 @@ describe('WaitingPage', () => {
         ],
       },
     })
-    render(<WaitingPage />)
+    render(<WaitingPage intent={intentState} />)
 
     expect(screen.getByText('Word Hunt · Arena · Clue Giver')).toBeInTheDocument()
     expect(screen.getByText('Need 1 Clue Giver, 4 Guesser')).toBeInTheDocument()
@@ -81,14 +77,14 @@ describe('WaitingPage', () => {
 
   it('says live updates are paused when the queue socket is down', () => {
     setIntentState({ activeIntent: waitingIntent, queueWsConnected: false })
-    render(<WaitingPage />)
+    render(<WaitingPage intent={intentState} />)
 
     expect(screen.getByText('Live updates paused — refreshing every few seconds.')).toBeInTheDocument()
   })
 
   it('surfaces a leave failure without routing away', () => {
     setIntentState({ activeIntent: waitingIntent, leaveError: LEAVE_GAME_FAILED })
-    render(<WaitingPage />)
+    render(<WaitingPage intent={intentState} />)
 
     expect(screen.getByRole('alert')).toHaveTextContent(LEAVE_GAME_FAILED)
     expect(window.location.pathname).toBe('/waiting')
@@ -98,7 +94,7 @@ describe('WaitingPage', () => {
     const handleLeave = vi.fn()
     setIntentState({ activeIntent: waitingIntent, handleLeave })
     const user = userEvent.setup()
-    render(<WaitingPage />)
+    render(<WaitingPage intent={intentState} />)
 
     await user.click(screen.getByRole('button', { name: 'Stop looking' }))
     expect(handleLeave).not.toHaveBeenCalled()
@@ -115,7 +111,7 @@ describe('WaitingPage', () => {
     const handleLeave = vi.fn()
     setIntentState({ activeIntent: waitingIntent, handleLeave })
     const user = userEvent.setup()
-    render(<WaitingPage />)
+    render(<WaitingPage intent={intentState} />)
 
     await user.click(screen.getByRole('button', { name: 'Stop looking' }))
     await user.click(await screen.findByRole('button', { name: 'Stay in queue' }))
@@ -126,7 +122,7 @@ describe('WaitingPage', () => {
 
   it('waits for the first fetch rather than bouncing a reload straight off', () => {
     setIntentState({ loading: true })
-    render(<WaitingPage />)
+    render(<WaitingPage intent={intentState} />)
 
     expect(screen.getByRole('status')).toHaveTextContent('Checking your queue…')
     expect(window.location.pathname).toBe('/waiting')
@@ -135,12 +131,12 @@ describe('WaitingPage', () => {
   it('routes back to where the player came from once the queued intent is gone', async () => {
     sessionStorage.setItem('lobby.waitingReturnPath', '/games/word-hunt')
     setIntentState({ loading: true })
-    const { rerender } = render(<WaitingPage />)
+    const { rerender } = render(<WaitingPage intent={intentState} />)
     expect(window.location.pathname).toBe('/waiting')
 
     // The fetch lands and reports no queued intent: left the queue, or matched.
     setIntentState({ loading: false })
-    rerender(<WaitingPage />)
+    rerender(<WaitingPage intent={intentState} />)
 
     await waitFor(() => expect(window.location.pathname).toBe('/games/word-hunt'))
   })
@@ -148,7 +144,7 @@ describe('WaitingPage', () => {
   it('sends a signed-out visitor away without waiting on a fetch', async () => {
     authState.user = null
     setIntentState()
-    render(<WaitingPage />)
+    render(<WaitingPage intent={intentState} />)
 
     await waitFor(() => expect(window.location.pathname).toBe('/'))
   })

@@ -153,13 +153,12 @@ export function bannerIntentLaunchPendingHint() {
 
 export const FINDING_PLAYERS = 'Finding players…'
 
-/** "Word Hunt · Arena · Clue Giver" — the demo's subline under the heading. */
+/** e.g. "Word Hunt · Arena · Clue Giver" */
 export function waitingPageSubline(gameName, modeName, roleLabel) {
   return [gameName, modeName, roleLabel].map((part) => part?.trim()).filter(Boolean).join(' · ')
 }
 
-// Leaving is destructive — it gives up the player's place — so it is confirmed,
-// in the demo's words.
+// Leaving gives up the player's place, so it is confirmed first.
 export const LEAVE_QUEUE_TITLE = 'Leave the queue?'
 export const LEAVE_QUEUE_BODY = "You'll lose your spot and have to start over."
 export const LEAVE_QUEUE_CONFIRM = 'Leave queue'
