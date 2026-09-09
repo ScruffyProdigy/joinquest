@@ -33,8 +33,23 @@ export function groupStatusLine(table) {
   return `${seated} of ${total} seats`
 }
 
-/** Room members holding no seat on this table — the prototype's "Picking a seat". */
-export function playersPickingASeat(room, table) {
+/**
+ * Everyone still to decide, as `{ user, status }` — the prototype's "Picking a seat".
+ * Two populations in one list: room members who hold no seat (`here`), and the previous
+ * match's players who have not answered (`awaiting`) or have declined (`out`).
+ *
+ * A roster entry beats room membership, and that is the one deliberate departure from the
+ * prototype. There a returner flips `awaiting → in-lobby` when they *arrive*, because
+ * arrival is what a prototype can observe. Production cannot reuse that: a room-table
+ * group never leaves the room, so membership would read every one of them as here while
+ * none had answered. `Table.regroupRoster` already carries the real signal.
+ *
+ * The viewer is the exception — they are demonstrably back, so they are never awaiting.
+ *
+ * Nothing here keys on `seatKey`. A mode with no seat template still lists its pending
+ * players, and more pending players than seats drops none of them.
+ */
+export function playersPickingASeat(room, table, viewerId = null) {
   const seated = new Set()
   for (const seat of table?.seats ?? []) {
     if (seat.user?.id) {
@@ -46,7 +61,50 @@ export function playersPickingASeat(room, table) {
       seated.add(slot.user.id)
     }
   }
-  return (room?.members ?? []).filter((member) => member?.id && !seated.has(member.id))
+
+  const roster = new Map()
+  for (const entry of table?.regroupRoster ?? []) {
+    if (entry?.user?.id && !roster.has(entry.user.id)) {
+      roster.set(entry.user.id, entry.regroup)
+    }
+  }
+
+  const viewer = []
+  const here = []
+  const awaiting = []
+  const out = []
+  const listed = new Set()
+
+  function add(user) {
+    const id = user?.id
+    // A seated player is on the Players card already; a second row for them there and
+    // here reads as two people.
+    if (!id || seated.has(id) || listed.has(id)) {
+      return
+    }
+    listed.add(id)
+    if (id === viewerId) {
+      viewer.push({ user, status: 'here' })
+      return
+    }
+    const regroup = roster.get(id)
+    if (regroup === 'PENDING') {
+      awaiting.push({ user, status: 'awaiting' })
+    } else if (regroup === 'OUT') {
+      out.push({ user, status: 'out' })
+    } else {
+      here.push({ user, status: 'here' })
+    }
+  }
+
+  for (const member of room?.members ?? []) {
+    add(member)
+  }
+  for (const entry of table?.regroupRoster ?? []) {
+    add(entry?.user)
+  }
+
+  return [...viewer, ...here, ...awaiting, ...out]
 }
 
 /**

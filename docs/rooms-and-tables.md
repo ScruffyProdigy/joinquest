@@ -96,7 +96,15 @@ GraphQL operations of its own.
 - **Sections:** accent header with live status (`Still need: <roles>` → `N of M seats · ready
   to start`), **Invite friends** (QR + share link, reusing `RoomShareToolbar`; the raw invite
   code is hidden here), **Players** (seat rows with Claim/Leave), **Picking a seat**
-  (`Room.members` minus the seated players), and a sticky bottom control.
+  (everyone still to decide), and a sticky bottom control.
+- **Picking a seat:** one list holding two populations — room members who hold no seat, and
+  the previous match's players who have not answered (`Table.regroupRoster`, `PENDING`),
+  badged *Awaiting*. A roster entry beats room membership, because a room-table group never
+  leaves the room and so membership cannot stand in for "they are back"; the viewer is the
+  exception and is never shown as awaiting. Nothing keys on `seatKey`, so a mode with no
+  seat template still lists, and more pending players than seats drops none. A decline
+  watched happening flips the row to *Out* for three seconds before it goes. The card is
+  absent, not empty, when the viewer is the only person here.
 - **Bottom control:** `Claim a seat to join` when unseated; `Start game` for the king once
   `canStart`; otherwise `Waiting for <name> to start`. The king gate is production's, but the
   screen never uses the word "king" — it names the person.

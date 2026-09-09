@@ -47,6 +47,10 @@ describe('groupStatusLine', () => {
 })
 
 describe('playersPickingASeat', () => {
+  function entryIds(entries) {
+    return entries.map((entry) => entry.user.id)
+  }
+
   it('lists room members who hold no seat', () => {
     const room = { members: [{ id: 'u1' }, { id: 'u2' }, { id: 'u3' }] }
     const table = {
@@ -54,7 +58,117 @@ describe('playersPickingASeat', () => {
       seatSlots: [slot('p-1', 'Player · 1', { id: 'u2' }), slot('p-2', 'Player · 2')],
     }
 
-    expect(playersPickingASeat(room, table).map((m) => m.id)).toEqual(['u1', 'u3'])
+    expect(entryIds(playersPickingASeat(room, table))).toEqual(['u1', 'u3'])
+    expect(playersPickingASeat(room, table).map((entry) => entry.status)).toEqual(['here', 'here'])
+  })
+
+  it('leaves a seated player off the card even when their regroup answer is pending', () => {
+    const room = { members: [{ id: 'u1' }] }
+    const table = {
+      seatSlots: [slot('p-1', 'Player · 1', { id: 'u1' })],
+      regroupRoster: [{ user: { id: 'u1' }, role: 'p-1', regroup: 'PENDING' }],
+    }
+
+    expect(playersPickingASeat(room, table, 'u1')).toEqual([])
+  })
+
+  it('shows a pending previous-match player as awaiting', () => {
+    const room = { members: [{ id: 'u1' }] }
+    const table = {
+      seatSlots: [slot('p-1', 'Player · 1', { id: 'u1' }), slot('p-2', 'Player · 2')],
+      regroupRoster: [{ user: { id: 'u2' }, role: 'p-2', regroup: 'PENDING' }],
+    }
+
+    expect(playersPickingASeat(room, table, 'u1')).toEqual([
+      { user: { id: 'u2' }, status: 'awaiting' },
+    ])
+  })
+
+  it('keeps a pending room member awaiting rather than here', () => {
+    // A room-table group never leaves the room, so membership cannot stand in for
+    // "they are back" the way the prototype's arrival does. The regroup answer is the
+    // only thing that actually says whether they have decided.
+    const room = { members: [{ id: 'u1' }, { id: 'u2' }] }
+    const table = {
+      seatSlots: [slot('p-1', 'Player · 1', { id: 'u1' }), slot('p-2', 'Player · 2')],
+      regroupRoster: [{ user: { id: 'u2' }, role: 'p-2', regroup: 'PENDING' }],
+    }
+
+    expect(playersPickingASeat(room, table, 'u1')).toEqual([
+      { user: { id: 'u2' }, status: 'awaiting' },
+    ])
+  })
+
+  it('never shows the viewer as awaiting — they are demonstrably back', () => {
+    const room = { members: [{ id: 'u1' }, { id: 'u2' }] }
+    const table = {
+      seatSlots: [slot('p-1', 'Player · 1'), slot('p-2', 'Player · 2', { id: 'u2' })],
+      regroupRoster: [{ user: { id: 'u1' }, role: 'p-1', regroup: 'PENDING' }],
+    }
+
+    expect(playersPickingASeat(room, table, 'u1')).toEqual([{ user: { id: 'u1' }, status: 'here' }])
+  })
+
+  it('marks a declined previous-match player out', () => {
+    const room = { members: [] }
+    const table = {
+      seatSlots: [slot('p-1', 'Player · 1')],
+      regroupRoster: [{ user: { id: 'u2' }, role: 'p-1', regroup: 'OUT' }],
+    }
+
+    expect(playersPickingASeat(room, table, 'u1')).toEqual([{ user: { id: 'u2' }, status: 'out' }])
+  })
+
+  it('lists each player once when they are both a room member and on the roster', () => {
+    const room = { members: [{ id: 'u1' }, { id: 'u2' }] }
+    const table = {
+      seatSlots: [slot('p-1', 'Player · 1'), slot('p-2', 'Player · 2')],
+      regroupRoster: [{ user: { id: 'u2' }, role: 'p-2', regroup: 'PENDING' }],
+    }
+
+    expect(entryIds(playersPickingASeat(room, table, 'u1'))).toEqual(['u1', 'u2'])
+  })
+
+  it('lists pending players in a mode with no seat template', () => {
+    // FIFO: no seatSlots to pair against. Nothing here keys on seatKey, so the roster
+    // still lists.
+    const room = { members: [] }
+    const table = {
+      seatSlots: [],
+      regroupRoster: [
+        { user: { id: 'u2' }, role: null, regroup: 'PENDING' },
+        { user: { id: 'u3' }, role: null, regroup: 'PENDING' },
+      ],
+    }
+
+    expect(entryIds(playersPickingASeat(room, table, 'u1'))).toEqual(['u2', 'u3'])
+  })
+
+  it('drops nobody when there are more pending players than seats', () => {
+    const room = { members: [] }
+    const table = {
+      seatSlots: [slot('p-1', 'Player · 1'), slot('p-2', 'Player · 2')],
+      regroupRoster: [
+        { user: { id: 'u2' }, role: 'p-1', regroup: 'PENDING' },
+        { user: { id: 'u3' }, role: 'p-1', regroup: 'PENDING' },
+        { user: { id: 'u4' }, role: 'p-2', regroup: 'PENDING' },
+      ],
+    }
+
+    expect(entryIds(playersPickingASeat(room, table, 'u1'))).toEqual(['u2', 'u3', 'u4'])
+  })
+
+  it('orders the viewer, then members, then awaiting, then out', () => {
+    const room = { members: [{ id: 'u5' }, { id: 'u1' }] }
+    const table = {
+      seatSlots: [slot('p-1', 'Player · 1'), slot('p-2', 'Player · 2')],
+      regroupRoster: [
+        { user: { id: 'u4' }, role: 'p-2', regroup: 'OUT' },
+        { user: { id: 'u3' }, role: 'p-1', regroup: 'PENDING' },
+      ],
+    }
+
+    expect(entryIds(playersPickingASeat(room, table, 'u1'))).toEqual(['u1', 'u5', 'u3', 'u4'])
   })
 })
 
