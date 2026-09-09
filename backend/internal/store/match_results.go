@@ -203,7 +203,13 @@ func (s *Store) appendRatingInputForResultTx(ctx context.Context, tx *sql.Tx, se
 
 		selections, err := decodeQueueOptions(queueOptions)
 		if err != nil {
-			return err
+			// Unreachable today (queue_options is NOT NULL DEFAULT '[]' and
+			// every writer goes through encodeQueueOptions), but this is an
+			// unrateable-match condition like the others in this function,
+			// not a transaction failure: log and skip the rating input so
+			// the match result itself still commits.
+			log.Printf("rating: session %s participant %s queue_options failed to decode: %v; skipping rating input", sessionID, userID, err)
+			return nil
 		}
 		participants = append(participants, rating.Participant{
 			PlayerID:  userID.String(),

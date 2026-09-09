@@ -109,8 +109,16 @@ func appendRatingInput(ctx context.Context, exec sqlExecContext, in RatingInput)
 		ON CONFLICT (session_id) DO UPDATE SET
 			sides          = EXCLUDED.sides,
 			queue_options  = EXCLUDED.queue_options,
-			inputs_version = EXCLUDED.inputs_version,
-			rated_at       = EXCLUDED.rated_at
+			inputs_version = EXCLUDED.inputs_version
+			-- rated_at is deliberately NOT refreshed here. It orders replay
+			-- (see ListRatingInputs' ORDER BY rated_at ASC, session_id ASC).
+			-- A correction is a restatement of a match that already
+			-- happened, not a new event: bumping rated_at to the
+			-- correction's later report timestamp would move the match to a
+			-- new position in history, changing the relative replay order
+			-- of everything reported in between and potentially producing
+			-- different recomputed ratings. Keep the original rated_at so a
+			-- correction stays in its original chronological slot.
 	`, in.SessionID, in.GameID, in.ModeKey, sidesJSON, queueOptions, inputsVersion, in.RatedAt)
 	return err
 }

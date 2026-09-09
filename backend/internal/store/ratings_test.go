@@ -146,6 +146,17 @@ func TestAppendRatingInputCorrectionUpdatesSides(t *testing.T) {
 	if winnerKey != "player:"+userB.String() {
 		t.Fatalf("winner after correction = %q, want player:%s (correction must propagate, not be silently dropped)", winnerKey, userB)
 	}
+
+	// rated_at must NOT move to the correction's later report timestamp: it
+	// orders replay (ListRatingInputs' ORDER BY rated_at ASC, session_id
+	// ASC), and a correction is a restatement of a match that already
+	// happened, not a new event. Bumping it would shift this match's
+	// position relative to everything reported in between the original and
+	// corrected reports, changing replay order and potentially producing
+	// different recomputed ratings.
+	if !row.RatedAt.Equal(at) {
+		t.Fatalf("rated_at after correction = %v, want unchanged original %v (rated_at must not move on correction)", row.RatedAt, at)
+	}
 }
 
 func TestListRatingInputsIsTotallyOrdered(t *testing.T) {
