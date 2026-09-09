@@ -55,9 +55,10 @@ type RatingSideRow struct {
 }
 
 // RatingInput is one match's worth of input to the rating engine: who played,
-// how their sides placed, and when. It is appended once per session (see
-// AppendRatingInput) and replayed in order (see ListRatingInputs) to produce
-// the player_ratings and nonplayer_ratings caches.
+// how their sides placed, and when. There is at most one row per session (see
+// AppendRatingInput, which updates the row in place on a corrected report),
+// and rows are replayed in order (see ListRatingInputs) to produce the
+// player_ratings and nonplayer_ratings caches.
 type RatingInput struct {
 	SessionID     uuid.UUID
 	GameID        uuid.UUID
@@ -68,9 +69,13 @@ type RatingInput struct {
 	RatedAt       time.Time
 }
 
-// AppendRatingInput records a match's rating input. It is idempotent on
-// session_id: a game server that retries its result report must not cause the
-// same match to be rated twice.
+// AppendRatingInput records a match's rating input, keyed by session_id.
+// Retrying the same report is idempotent: the row ends up holding the same
+// values either way. But a *corrected* report — a game server that reports
+// different winners, or upgrades ABANDONED to COMPLETED — updates the
+// existing row rather than being silently dropped, so this log tracks the
+// latest reported result for a session, not the first one recorded. The
+// session_id primary key still guarantees at most one row per match.
 func (s *Store) AppendRatingInput(ctx context.Context, in RatingInput) error {
 	return appendRatingInput(ctx, s.db, in)
 }
@@ -101,7 +106,11 @@ func appendRatingInput(ctx context.Context, exec sqlExecContext, in RatingInput)
 	_, err = exec.ExecContext(ctx, `
 		INSERT INTO rating_match_inputs (session_id, game_id, mode_key, sides, queue_options, inputs_version, rated_at)
 		VALUES ($1, $2, $3, $4, $5, $6, $7)
-		ON CONFLICT (session_id) DO NOTHING
+		ON CONFLICT (session_id) DO UPDATE SET
+			sides          = EXCLUDED.sides,
+			queue_options  = EXCLUDED.queue_options,
+			inputs_version = EXCLUDED.inputs_version,
+			rated_at       = EXCLUDED.rated_at
 	`, in.SessionID, in.GameID, in.ModeKey, sidesJSON, queueOptions, inputsVersion, in.RatedAt)
 	return err
 }

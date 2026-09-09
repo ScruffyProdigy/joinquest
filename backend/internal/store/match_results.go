@@ -10,6 +10,7 @@ import (
 
 	"github.com/google/uuid"
 
+	"github.com/scruffyprodigy/joinquest/internal/prequeue"
 	"github.com/scruffyprodigy/joinquest/internal/rating"
 	"github.com/scruffyprodigy/joinquest/internal/seattemplate"
 )
@@ -161,9 +162,9 @@ func (s *Store) appendRatingInputForResultTx(ctx context.Context, tx *sql.Tx, se
 	shape := rating.ModeShape{SeatClasses: seatClasses, Cooperative: cooperative}
 
 	rows, err := tx.QueryContext(ctx, `
-		SELECT user_id, role, placement, is_winner
-		FROM game_session_participants
-		WHERE session_id = $1
+		SELECT p.user_id, p.role, p.placement, p.is_winner, p.queue_options
+		FROM game_session_participants p
+		WHERE p.session_id = $1
 	`, sessionID)
 	if err != nil {
 		return err
@@ -171,14 +172,37 @@ func (s *Store) appendRatingInputForResultTx(ctx context.Context, tx *sql.Tx, se
 	defer rows.Close()
 
 	var participants []rating.Participant
+	// queueOptionsByPlayer captures, per participant, exactly what they had
+	// stored in game_session_participants.queue_options at match time — the
+	// pre-queue picks that were locked in before matchmaking, as opposed to
+	// anything decided afterward. It rides into RatingInput.QueueOptions as a
+	// JSON object keyed by player id (the raw user id, not the "player:"
+	// prefixed form used in RatingEntrantRow.Key), with each value being that
+	// participant's stored selections array, unchanged from the column's own
+	// shape: [{"groupKey":"...","optionIds":[...]}, ...]. It is retained for
+	// backtesting, not read by the engine today — see migration 000055.
+	queueOptionsByPlayer := make(map[string]json.RawMessage)
 	for rows.Next() {
 		var (
-			userID    uuid.UUID
-			seatKey   string
-			placement *int
-			isWinner  bool
+			userID       uuid.UUID
+			role         sql.NullString
+			placement    *int
+			isWinner     bool
+			queueOptions []byte
 		)
-		if err := rows.Scan(&userID, &seatKey, &placement, &isWinner); err != nil {
+		if err := rows.Scan(&userID, &role, &placement, &isWinner, &queueOptions); err != nil {
+			return err
+		}
+		// role is nullable (migration 000001). NULL or empty means this
+		// participant has no seat key; leave SeatKey empty rather than
+		// inventing one — unlike session_participants.go's COALESCE to
+		// 'player', a literal seat key here would match no seat class and
+		// be worse than none. outcome.go already tolerates a seat key
+		// absent from ModeShape.SeatClasses.
+		seatKey := role.String
+
+		selections, err := decodeQueueOptions(queueOptions)
+		if err != nil {
 			return err
 		}
 		participants = append(participants, rating.Participant{
@@ -187,9 +211,20 @@ func (s *Store) appendRatingInputForResultTx(ctx context.Context, tx *sql.Tx, se
 			TeamKey:   affinityBySeat[seatKey],
 			Placement: placement,
 			IsWinner:  isWinner,
+			PreQueue:  preQueueByGroup(selections),
 		})
+
+		if len(queueOptions) == 0 {
+			queueOptions = []byte("[]")
+		}
+		queueOptionsByPlayer[userID.String()] = json.RawMessage(queueOptions)
 	}
 	if err := rows.Err(); err != nil {
+		return err
+	}
+
+	queueOptionsJSON, err := json.Marshal(queueOptionsByPlayer)
+	if err != nil {
 		return err
 	}
 
@@ -214,12 +249,28 @@ func (s *Store) appendRatingInputForResultTx(ctx context.Context, tx *sql.Tx, se
 	}
 
 	return s.AppendRatingInputTx(ctx, tx, RatingInput{
-		SessionID: sessionID,
-		GameID:    gameID,
-		ModeKey:   modeKey.String,
-		Sides:     ratingSides,
-		RatedAt:   at,
+		SessionID:    sessionID,
+		GameID:       gameID,
+		ModeKey:      modeKey.String,
+		Sides:        ratingSides,
+		QueueOptions: queueOptionsJSON,
+		RatedAt:      at,
 	})
+}
+
+// preQueueByGroup turns a participant's stored queue selections into the
+// groupKey -> optionIds map rating.Participant.PreQueue expects. Returns nil
+// for no selections so an empty PreQueue is indistinguishable from one that
+// was never set.
+func preQueueByGroup(selections []prequeue.Selection) map[string][]string {
+	if len(selections) == 0 {
+		return nil
+	}
+	out := make(map[string][]string, len(selections))
+	for _, sel := range selections {
+		out[sel.GroupKey] = sel.OptionIDs
+	}
+	return out
 }
 
 // cooperativeSuccess derives rating.MatchOutcome.CooperativeSuccess for a

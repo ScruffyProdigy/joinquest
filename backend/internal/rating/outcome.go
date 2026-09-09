@@ -238,9 +238,9 @@ func buildSide(shape ModeShape, asymmetric bool, participants []Participant, ran
 				entrantSet[seatKey] = Entrant{Key: seatKey}
 			}
 		}
-		for _, groupKey := range shape.RatedPreQueueGroups {
-			for _, optionID := range p.PreQueue[groupKey] {
-				key := "prequeue:" + groupKey + "/" + optionID
+		for _, pqGroupKey := range shape.RatedPreQueueGroups {
+			for _, optionID := range p.PreQueue[pqGroupKey] {
+				key := "prequeue:" + pqGroupKey + "/" + optionID
 				entrantSet[key] = Entrant{Key: key}
 			}
 		}

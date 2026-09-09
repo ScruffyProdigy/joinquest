@@ -84,6 +84,70 @@ func TestAppendRatingInputIsIdempotent(t *testing.T) {
 	}
 }
 
+// TestAppendRatingInputCorrectionUpdatesSides covers the DO UPDATE half of
+// the ON CONFLICT (session_id) clause: a game server correcting an earlier
+// report (different winner) must have that correction propagate into the
+// stored row, not be silently dropped the way DO NOTHING would drop it.
+func TestAppendRatingInputCorrectionUpdatesSides(t *testing.T) {
+	st := openTestStore(t)
+	cleaner := st.NewTestCleaner(t)
+	ctx := context.Background()
+
+	sessionID, userA, userB := seedMatchedSession(t, st, ctx, cleaner)
+	gameID, modeKey := gameAndModeForSession(t, st, ctx, sessionID)
+	at := time.Now().UTC().Truncate(time.Millisecond)
+
+	original := RatingInput{
+		SessionID: sessionID,
+		GameID:    gameID,
+		ModeKey:   modeKey,
+		RatedAt:   at,
+		Sides: []RatingSideRow{
+			{Rank: 0, Entrants: []RatingEntrantRow{{Key: "player:" + userA.String()}}},
+			{Rank: 1, Entrants: []RatingEntrantRow{{Key: "player:" + userB.String()}}},
+		},
+	}
+	if err := st.AppendRatingInput(ctx, original); err != nil {
+		t.Fatalf("AppendRatingInput (original): %v", err)
+	}
+
+	// The game server corrects its report: userB actually won.
+	corrected := original
+	corrected.RatedAt = at.Add(time.Minute)
+	corrected.Sides = []RatingSideRow{
+		{Rank: 0, Entrants: []RatingEntrantRow{{Key: "player:" + userB.String()}}},
+		{Rank: 1, Entrants: []RatingEntrantRow{{Key: "player:" + userA.String()}}},
+	}
+	if err := st.AppendRatingInput(ctx, corrected); err != nil {
+		t.Fatalf("AppendRatingInput (corrected): %v", err)
+	}
+
+	got, err := st.ListRatingInputs(ctx, gameID, modeKey)
+	if err != nil {
+		t.Fatalf("ListRatingInputs: %v", err)
+	}
+	matches := 0
+	for _, row := range got {
+		if row.SessionID == sessionID {
+			matches++
+		}
+	}
+	if matches != 1 {
+		t.Fatalf("rows for session %s = %d, want 1 (correction must update, not duplicate)", sessionID, matches)
+	}
+
+	row := findRatingInputBySession(t, got, sessionID)
+	var winnerKey string
+	for _, side := range row.Sides {
+		if side.Rank == 0 {
+			winnerKey = side.Entrants[0].Key
+		}
+	}
+	if winnerKey != "player:"+userB.String() {
+		t.Fatalf("winner after correction = %q, want player:%s (correction must propagate, not be silently dropped)", winnerKey, userB)
+	}
+}
+
 func TestListRatingInputsIsTotallyOrdered(t *testing.T) {
 	st := openTestStore(t)
 	cleaner := st.NewTestCleaner(t)
