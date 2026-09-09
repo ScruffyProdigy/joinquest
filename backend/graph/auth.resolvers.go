@@ -6,6 +6,7 @@ package graph
 
 import (
 	"context"
+	"log"
 
 	"github.com/scruffyprodigy/joinquest/graph/model"
 	"github.com/scruffyprodigy/joinquest/internal/auth"
@@ -68,6 +69,20 @@ func (r *mutationResolver) Logout(ctx context.Context) (bool, error) {
 	authService, err := r.requireAuth()
 	if err != nil {
 		return false, err
+	}
+
+	// Drop this account's push subscriptions before clearing the session. The
+	// browser install stays subscribed at the OS level, so leaving the rows
+	// behind would push the next signed-in player's match to the previous
+	// one's device (JQ-198). Best effort: a failure here must not leave the
+	// player unable to sign out.
+	if userID, idErr := requireAuthUserID(ctx); idErr == nil {
+		if st, storeErr := r.requireStore(); storeErr == nil {
+			if delErr := st.DeletePushSubscriptionsForUser(ctx, userID); delErr != nil {
+				log.Printf("push: failed to clear subscriptions on logout for %s: %v", userID, delErr)
+				r.signals().Count("push.logout_cleanup_failed", 1, nil)
+			}
+		}
 	}
 
 	authService.Logout(ctx)

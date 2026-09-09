@@ -368,6 +368,26 @@ type PublicPlayer struct {
 	AvatarSource *AvatarSource `json:"avatarSource,omitempty"`
 }
 
+// Whether this player can actually be reached by a notification while away from
+// the waiting page, and on what.
+//
+// Reachability is a property of stored push subscriptions, not of a permission
+// the browser once granted: a grant on a platform that cannot deliver, or a
+// subscription the push service has since expired, is not reachability. Staying
+// queued while away is gated on this, because a queue held open for a player who
+// will never be told is worse than one that lets them go.
+type PushCapability struct {
+	// True when at least one live subscription is stored for this player.
+	Reachable bool `json:"reachable"`
+	// How many browser installs are subscribed. A player may queue from a phone and
+	// a desktop at once; both ring.
+	SubscriptionCount int `json:"subscriptionCount"`
+	// The VAPID application server key the browser needs to subscribe. Null when
+	// push is not configured on this deployment, which is the signal to hide the
+	// affordance entirely rather than offer a control that cannot work.
+	PublicKey *string `json:"publicKey,omitempty"`
+}
+
 type Query struct {
 }
 
@@ -525,6 +545,15 @@ type RoomMessage struct {
 	Author    *User     `json:"author"`
 	Body      string    `json:"body"`
 	CreatedAt time.Time `json:"createdAt"`
+}
+
+type SavePushSubscriptionInput struct {
+	// The push service URL that identifies this browser install.
+	Endpoint string `json:"endpoint"`
+	// The subscription's ECDH public key, base64url.
+	P256dh string `json:"p256dh"`
+	// The subscription's auth secret, base64url.
+	Auth string `json:"auth"`
 }
 
 type Session struct {

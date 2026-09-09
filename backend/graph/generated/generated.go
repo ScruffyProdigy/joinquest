@@ -279,6 +279,7 @@ type ComplexityRoot struct {
 		CreateRoom                   func(childComplexity int) int
 		CreateTable                  func(childComplexity int, roomID string, gameID string, modeID string) int
 		DeclinePlayAgain             func(childComplexity int, matchID string) int
+		DeletePushSubscription       func(childComplexity int, endpoint string) int
 		DiscardTable                 func(childComplexity int, tableID string) int
 		GrantGood                    func(childComplexity int, userID string, goodID string, quantity *int) int
 		JoinQueue                    func(childComplexity int, queueID string, queuePath *string, options []*model.QueueOptionSelectionInput, party *model.PartyNodeInput) int
@@ -305,6 +306,7 @@ type ComplexityRoot struct {
 		RevokeGood                   func(childComplexity int, userID string, goodID string, quantity *int) int
 		RotateMyGameWebhookSecret    func(childComplexity int, gameID string) int
 		RunMyGameChecks              func(childComplexity int, gameID string) int
+		SavePushSubscription         func(childComplexity int, input model.SavePushSubscriptionInput) int
 		SelectSpiritAnimalTotem      func(childComplexity int, totemName string) int
 		SendRoomMessage              func(childComplexity int, roomID string, body string) int
 		SetPrimaryEmail              func(childComplexity int, emailID string) int
@@ -359,6 +361,12 @@ type ComplexityRoot struct {
 		ID           func(childComplexity int) int
 	}
 
+	PushCapability struct {
+		PublicKey         func(childComplexity int) int
+		Reachable         func(childComplexity int) int
+		SubscriptionCount func(childComplexity int) int
+	}
+
 	Query struct {
 		CatalogTagTaxonomy               func(childComplexity int) int
 		DeveloperAgentPlaybook           func(childComplexity int) int
@@ -389,6 +397,7 @@ type ComplexityRoot struct {
 		PendingGameReviews               func(childComplexity int) int
 		Player                           func(childComplexity int, id string) int
 		PreviewLinkEmail                 func(childComplexity int, email string) int
+		PushCapability                   func(childComplexity int) int
 		ReturnDestination                func(childComplexity int, matchID *string) int
 		Room                             func(childComplexity int, inviteCode string) int
 		Session                          func(childComplexity int, id string) int
@@ -727,6 +736,8 @@ type MutationResolver interface {
 	ReportMatchResult(ctx context.Context, matchID string, status model.MatchResultStatus, winnerLobbyUserIds []string, metadata map[string]any) (bool, error)
 	PlayAgain(ctx context.Context, matchID string) (*model.PlayAgainResult, error)
 	DeclinePlayAgain(ctx context.Context, matchID string) (*model.ReturnDestination, error)
+	SavePushSubscription(ctx context.Context, input model.SavePushSubscriptionInput) (*model.PushCapability, error)
+	DeletePushSubscription(ctx context.Context, endpoint string) (*model.PushCapability, error)
 	CreateRoom(ctx context.Context) (*model.Room, error)
 	JoinRoom(ctx context.Context, inviteCode string) (*model.Room, error)
 	LeaveRoom(ctx context.Context) (bool, error)
@@ -779,6 +790,7 @@ type QueryResolver interface {
 	PendingGameReviews(ctx context.Context) ([]*model.Game, error)
 	ReturnDestination(ctx context.Context, matchID *string) (*model.ReturnDestination, error)
 	MatchResult(ctx context.Context, matchID string) (*model.MatchResult, error)
+	PushCapability(ctx context.Context) (*model.PushCapability, error)
 	Room(ctx context.Context, inviteCode string) (*model.Room, error)
 	MyRoom(ctx context.Context) (*model.Room, error)
 	MySpiritAnimalReading(ctx context.Context) (*model.SpiritAnimalReading, error)
@@ -1853,6 +1865,17 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.Mutation.DeclinePlayAgain(childComplexity, args["matchId"].(string)), true
+	case "Mutation.deletePushSubscription":
+		if e.complexity.Mutation.DeletePushSubscription == nil {
+			break
+		}
+
+		args, err := ec.field_Mutation_deletePushSubscription_args(ctx, rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.complexity.Mutation.DeletePushSubscription(childComplexity, args["endpoint"].(string)), true
 	case "Mutation.discardTable":
 		if e.complexity.Mutation.DiscardTable == nil {
 			break
@@ -2119,6 +2142,17 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.Mutation.RunMyGameChecks(childComplexity, args["gameId"].(string)), true
+	case "Mutation.savePushSubscription":
+		if e.complexity.Mutation.SavePushSubscription == nil {
+			break
+		}
+
+		args, err := ec.field_Mutation_savePushSubscription_args(ctx, rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.complexity.Mutation.SavePushSubscription(childComplexity, args["input"].(model.SavePushSubscriptionInput)), true
 	case "Mutation.selectSpiritAnimalTotem":
 		if e.complexity.Mutation.SelectSpiritAnimalTotem == nil {
 			break
@@ -2397,6 +2431,25 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 
 		return e.complexity.PublicPlayer.ID(childComplexity), true
 
+	case "PushCapability.publicKey":
+		if e.complexity.PushCapability.PublicKey == nil {
+			break
+		}
+
+		return e.complexity.PushCapability.PublicKey(childComplexity), true
+	case "PushCapability.reachable":
+		if e.complexity.PushCapability.Reachable == nil {
+			break
+		}
+
+		return e.complexity.PushCapability.Reachable(childComplexity), true
+	case "PushCapability.subscriptionCount":
+		if e.complexity.PushCapability.SubscriptionCount == nil {
+			break
+		}
+
+		return e.complexity.PushCapability.SubscriptionCount(childComplexity), true
+
 	case "Query.catalogTagTaxonomy":
 		if e.complexity.Query.CatalogTagTaxonomy == nil {
 			break
@@ -2626,6 +2679,12 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.Query.PreviewLinkEmail(childComplexity, args["email"].(string)), true
+	case "Query.pushCapability":
+		if e.complexity.Query.PushCapability == nil {
+			break
+		}
+
+		return e.complexity.Query.PushCapability(childComplexity), true
 	case "Query.returnDestination":
 		if e.complexity.Query.ReturnDestination == nil {
 			break
@@ -3787,6 +3846,7 @@ func (e *executableSchema) Exec(ctx context.Context) graphql.ResponseHandler {
 		ec.unmarshalInputQueueOptionSelectionInput,
 		ec.unmarshalInputRegisterGameInput,
 		ec.unmarshalInputRegisterMyGameInput,
+		ec.unmarshalInputSavePushSubscriptionInput,
 		ec.unmarshalInputUpdateMyGameMetadataInput,
 	)
 	first := true
@@ -4655,6 +4715,64 @@ input PartyNodeInput {
   members: [PartyMemberInput!]
 }
 `, BuiltIn: false},
+	{Name: "../schema/push.graphqls", Input: `"""
+Whether this player can actually be reached by a notification while away from
+the waiting page, and on what.
+
+Reachability is a property of stored push subscriptions, not of a permission
+the browser once granted: a grant on a platform that cannot deliver, or a
+subscription the push service has since expired, is not reachability. Staying
+queued while away is gated on this, because a queue held open for a player who
+will never be told is worse than one that lets them go.
+"""
+type PushCapability {
+  """
+  True when at least one live subscription is stored for this player.
+  """
+  reachable: Boolean!
+  """
+  How many browser installs are subscribed. A player may queue from a phone and
+  a desktop at once; both ring.
+  """
+  subscriptionCount: Int!
+  """
+  The VAPID application server key the browser needs to subscribe. Null when
+  push is not configured on this deployment, which is the signal to hide the
+  affordance entirely rather than offer a control that cannot work.
+  """
+  publicKey: String
+}
+
+extend type Query {
+  """
+  This player's notification reachability. Available to any signed-in player,
+  including one who has not yet chosen an identity.
+  """
+  pushCapability: PushCapability!
+}
+
+extend type Mutation {
+  """
+  Register a browser install as reachable. Idempotent per endpoint: the same
+  browser re-subscribing updates its keys rather than adding a second row.
+  """
+  savePushSubscription(input: SavePushSubscriptionInput!): PushCapability!
+  """
+  Drop one browser install, by endpoint. Used when the player turns
+  notifications off, or when the browser reports the subscription has changed.
+  """
+  deletePushSubscription(endpoint: String!): PushCapability!
+}
+
+input SavePushSubscriptionInput {
+  """The push service URL that identifies this browser install."""
+  endpoint: String!
+  """The subscription's ECDH public key, base64url."""
+  p256dh: String!
+  """The subscription's auth secret, base64url."""
+  auth: String!
+}
+`, BuiltIn: false},
 	{Name: "../schema/rooms.graphqls", Input: `type Room {
   id: ID!
   inviteCode: String!
@@ -5104,6 +5222,17 @@ func (ec *executionContext) field_Mutation_declinePlayAgain_args(ctx context.Con
 	return args, nil
 }
 
+func (ec *executionContext) field_Mutation_deletePushSubscription_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
+	var err error
+	args := map[string]any{}
+	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "endpoint", ec.unmarshalNString2string)
+	if err != nil {
+		return nil, err
+	}
+	args["endpoint"] = arg0
+	return args, nil
+}
+
 func (ec *executionContext) field_Mutation_discardTable_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
 	var err error
 	args := map[string]any{}
@@ -5423,6 +5552,17 @@ func (ec *executionContext) field_Mutation_runMyGameChecks_args(ctx context.Cont
 		return nil, err
 	}
 	args["gameId"] = arg0
+	return args, nil
+}
+
+func (ec *executionContext) field_Mutation_savePushSubscription_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
+	var err error
+	args := map[string]any{}
+	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "input", ec.unmarshalNSavePushSubscriptionInput2githubᚗcomᚋscruffyprodigyᚋjoinquestᚋgraphᚋmodelᚐSavePushSubscriptionInput)
+	if err != nil {
+		return nil, err
+	}
+	args["input"] = arg0
 	return args, nil
 }
 
@@ -12291,6 +12431,104 @@ func (ec *executionContext) fieldContext_Mutation_declinePlayAgain(ctx context.C
 	return fc, nil
 }
 
+func (ec *executionContext) _Mutation_savePushSubscription(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_Mutation_savePushSubscription,
+		func(ctx context.Context) (any, error) {
+			fc := graphql.GetFieldContext(ctx)
+			return ec.resolvers.Mutation().SavePushSubscription(ctx, fc.Args["input"].(model.SavePushSubscriptionInput))
+		},
+		nil,
+		ec.marshalNPushCapability2ᚖgithubᚗcomᚋscruffyprodigyᚋjoinquestᚋgraphᚋmodelᚐPushCapability,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_Mutation_savePushSubscription(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Mutation",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "reachable":
+				return ec.fieldContext_PushCapability_reachable(ctx, field)
+			case "subscriptionCount":
+				return ec.fieldContext_PushCapability_subscriptionCount(ctx, field)
+			case "publicKey":
+				return ec.fieldContext_PushCapability_publicKey(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type PushCapability", field.Name)
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Mutation_savePushSubscription_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Mutation_deletePushSubscription(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_Mutation_deletePushSubscription,
+		func(ctx context.Context) (any, error) {
+			fc := graphql.GetFieldContext(ctx)
+			return ec.resolvers.Mutation().DeletePushSubscription(ctx, fc.Args["endpoint"].(string))
+		},
+		nil,
+		ec.marshalNPushCapability2ᚖgithubᚗcomᚋscruffyprodigyᚋjoinquestᚋgraphᚋmodelᚐPushCapability,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_Mutation_deletePushSubscription(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Mutation",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "reachable":
+				return ec.fieldContext_PushCapability_reachable(ctx, field)
+			case "subscriptionCount":
+				return ec.fieldContext_PushCapability_subscriptionCount(ctx, field)
+			case "publicKey":
+				return ec.fieldContext_PushCapability_publicKey(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type PushCapability", field.Name)
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Mutation_deletePushSubscription_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _Mutation_createRoom(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
@@ -13955,6 +14193,93 @@ func (ec *executionContext) fieldContext_PublicPlayer_avatarSource(_ context.Con
 	return fc, nil
 }
 
+func (ec *executionContext) _PushCapability_reachable(ctx context.Context, field graphql.CollectedField, obj *model.PushCapability) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_PushCapability_reachable,
+		func(ctx context.Context) (any, error) {
+			return obj.Reachable, nil
+		},
+		nil,
+		ec.marshalNBoolean2bool,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_PushCapability_reachable(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "PushCapability",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Boolean does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _PushCapability_subscriptionCount(ctx context.Context, field graphql.CollectedField, obj *model.PushCapability) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_PushCapability_subscriptionCount,
+		func(ctx context.Context) (any, error) {
+			return obj.SubscriptionCount, nil
+		},
+		nil,
+		ec.marshalNInt2int,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_PushCapability_subscriptionCount(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "PushCapability",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Int does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _PushCapability_publicKey(ctx context.Context, field graphql.CollectedField, obj *model.PushCapability) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_PushCapability_publicKey,
+		func(ctx context.Context) (any, error) {
+			return obj.PublicKey, nil
+		},
+		nil,
+		ec.marshalOString2ᚖstring,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_PushCapability_publicKey(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "PushCapability",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _Query_version(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
@@ -15588,6 +15913,43 @@ func (ec *executionContext) fieldContext_Query_matchResult(ctx context.Context, 
 	if fc.Args, err = ec.field_Query_matchResult_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
 		ec.Error(ctx, err)
 		return fc, err
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Query_pushCapability(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_Query_pushCapability,
+		func(ctx context.Context) (any, error) {
+			return ec.resolvers.Query().PushCapability(ctx)
+		},
+		nil,
+		ec.marshalNPushCapability2ᚖgithubᚗcomᚋscruffyprodigyᚋjoinquestᚋgraphᚋmodelᚐPushCapability,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_Query_pushCapability(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Query",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "reachable":
+				return ec.fieldContext_PushCapability_reachable(ctx, field)
+			case "subscriptionCount":
+				return ec.fieldContext_PushCapability_subscriptionCount(ctx, field)
+			case "publicKey":
+				return ec.fieldContext_PushCapability_publicKey(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type PushCapability", field.Name)
+		},
 	}
 	return fc, nil
 }
@@ -23526,6 +23888,47 @@ func (ec *executionContext) unmarshalInputRegisterMyGameInput(ctx context.Contex
 	return it, nil
 }
 
+func (ec *executionContext) unmarshalInputSavePushSubscriptionInput(ctx context.Context, obj any) (model.SavePushSubscriptionInput, error) {
+	var it model.SavePushSubscriptionInput
+	asMap := map[string]any{}
+	for k, v := range obj.(map[string]any) {
+		asMap[k] = v
+	}
+
+	fieldsInOrder := [...]string{"endpoint", "p256dh", "auth"}
+	for _, k := range fieldsInOrder {
+		v, ok := asMap[k]
+		if !ok {
+			continue
+		}
+		switch k {
+		case "endpoint":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("endpoint"))
+			data, err := ec.unmarshalNString2string(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Endpoint = data
+		case "p256dh":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("p256dh"))
+			data, err := ec.unmarshalNString2string(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.P256dh = data
+		case "auth":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("auth"))
+			data, err := ec.unmarshalNString2string(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Auth = data
+		}
+	}
+
+	return it, nil
+}
+
 func (ec *executionContext) unmarshalInputUpdateMyGameMetadataInput(ctx context.Context, obj any) (model.UpdateMyGameMetadataInput, error) {
 	var it model.UpdateMyGameMetadataInput
 	asMap := map[string]any{}
@@ -25621,6 +26024,20 @@ func (ec *executionContext) _Mutation(ctx context.Context, sel ast.SelectionSet)
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
+		case "savePushSubscription":
+			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
+				return ec._Mutation_savePushSubscription(ctx, field)
+			})
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "deletePushSubscription":
+			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
+				return ec._Mutation_deletePushSubscription(ctx, field)
+			})
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
 		case "createRoom":
 			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
 				return ec._Mutation_createRoom(ctx, field)
@@ -26081,6 +26498,52 @@ func (ec *executionContext) _PublicPlayer(ctx context.Context, sel ast.Selection
 			out.Values[i] = ec._PublicPlayer_avatarUrl(ctx, field, obj)
 		case "avatarSource":
 			out.Values[i] = ec._PublicPlayer_avatarSource(ctx, field, obj)
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch(ctx)
+	if out.Invalids > 0 {
+		return graphql.Null
+	}
+
+	atomic.AddInt32(&ec.deferred, int32(len(deferred)))
+
+	for label, dfs := range deferred {
+		ec.processDeferredGroup(graphql.DeferredGroup{
+			Label:    label,
+			Path:     graphql.GetPath(ctx),
+			FieldSet: dfs,
+			Context:  ctx,
+		})
+	}
+
+	return out
+}
+
+var pushCapabilityImplementors = []string{"PushCapability"}
+
+func (ec *executionContext) _PushCapability(ctx context.Context, sel ast.SelectionSet, obj *model.PushCapability) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, pushCapabilityImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	deferred := make(map[string]*graphql.FieldSet)
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("PushCapability")
+		case "reachable":
+			out.Values[i] = ec._PushCapability_reachable(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "subscriptionCount":
+			out.Values[i] = ec._PushCapability_subscriptionCount(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "publicKey":
+			out.Values[i] = ec._PushCapability_publicKey(ctx, field, obj)
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}
@@ -26763,6 +27226,28 @@ func (ec *executionContext) _Query(ctx context.Context, sel ast.SelectionSet) gr
 					}
 				}()
 				res = ec._Query_matchResult(ctx, field)
+				return res
+			}
+
+			rrm := func(ctx context.Context) graphql.Marshaler {
+				return ec.OperationContext.RootResolverMiddleware(ctx,
+					func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
+			}
+
+			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return rrm(innerCtx) })
+		case "pushCapability":
+			field := field
+
+			innerFunc := func(ctx context.Context, fs *graphql.FieldSet) (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Query_pushCapability(ctx, field)
+				if res == graphql.Null {
+					atomic.AddUint32(&fs.Invalids, 1)
+				}
 				return res
 			}
 
@@ -30977,6 +31462,20 @@ func (ec *executionContext) marshalNPublicPlayer2ᚖgithubᚗcomᚋscruffyprodig
 	return ec._PublicPlayer(ctx, sel, v)
 }
 
+func (ec *executionContext) marshalNPushCapability2githubᚗcomᚋscruffyprodigyᚋjoinquestᚋgraphᚋmodelᚐPushCapability(ctx context.Context, sel ast.SelectionSet, v model.PushCapability) graphql.Marshaler {
+	return ec._PushCapability(ctx, sel, &v)
+}
+
+func (ec *executionContext) marshalNPushCapability2ᚖgithubᚗcomᚋscruffyprodigyᚋjoinquestᚋgraphᚋmodelᚐPushCapability(ctx context.Context, sel ast.SelectionSet, v *model.PushCapability) graphql.Marshaler {
+	if v == nil {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			ec.Errorf(ctx, "the requested element is null which the schema does not allow")
+		}
+		return graphql.Null
+	}
+	return ec._PushCapability(ctx, sel, v)
+}
+
 func (ec *executionContext) marshalNQueueOption2ᚕᚖgithubᚗcomᚋscruffyprodigyᚋjoinquestᚋgraphᚋmodelᚐQueueOptionᚄ(ctx context.Context, sel ast.SelectionSet, v []*model.QueueOption) graphql.Marshaler {
 	ret := make(graphql.Array, len(v))
 	var wg sync.WaitGroup
@@ -31472,6 +31971,11 @@ func (ec *executionContext) marshalNRoomMessage2ᚖgithubᚗcomᚋscruffyprodigy
 		return graphql.Null
 	}
 	return ec._RoomMessage(ctx, sel, v)
+}
+
+func (ec *executionContext) unmarshalNSavePushSubscriptionInput2githubᚗcomᚋscruffyprodigyᚋjoinquestᚋgraphᚋmodelᚐSavePushSubscriptionInput(ctx context.Context, v any) (model.SavePushSubscriptionInput, error) {
+	res, err := ec.unmarshalInputSavePushSubscriptionInput(ctx, v)
+	return res, graphql.ErrorOnPath(ctx, err)
 }
 
 func (ec *executionContext) marshalNSession2ᚕᚖgithubᚗcomᚋscruffyprodigyᚋjoinquestᚋgraphᚋmodelᚐSessionᚄ(ctx context.Context, sel ast.SelectionSet, v []*model.Session) graphql.Marshaler {

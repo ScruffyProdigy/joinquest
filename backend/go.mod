@@ -4,6 +4,7 @@ go 1.25.1
 
 require (
 	github.com/99designs/gqlgen v0.17.81
+	github.com/SherClockHolmes/webpush-go v1.4.0
 	github.com/golang-jwt/jwt/v5 v5.3.1
 	github.com/golang-migrate/migrate/v4 v4.19.0
 	github.com/google/uuid v1.6.0
@@ -16,7 +17,6 @@ require (
 )
 
 require (
-	github.com/SherClockHolmes/webpush-go v1.4.0 // indirect
 	github.com/agnivade/levenshtein v1.2.1 // indirect
 	github.com/cespare/xxhash/v2 v2.3.0 // indirect
 	github.com/go-viper/mapstructure/v2 v2.4.0 // indirect

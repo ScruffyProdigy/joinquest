@@ -96,6 +96,7 @@ func SessionJWTMiddleware(signer *Signer, next http.Handler) http.Handler {
 func Middleware(signer *Signer, apiKeys DeveloperAPIKeyVerifier, next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		ctx := WithResponseWriter(r.Context(), w)
+		ctx = WithUserAgent(ctx, r.UserAgent())
 
 		if token := TokenFromRequest(r); token != "" {
 			if MatchesGameServiceToken(token) {

@@ -14,6 +14,7 @@ import (
 	"github.com/scruffyprodigy/joinquest/internal/gameclient"
 	"github.com/scruffyprodigy/joinquest/internal/observe"
 	"github.com/scruffyprodigy/joinquest/internal/pubsub"
+	"github.com/scruffyprodigy/joinquest/internal/push"
 	"github.com/scruffyprodigy/joinquest/internal/queuewait"
 	"github.com/scruffyprodigy/joinquest/internal/spiritanimal"
 	"github.com/scruffyprodigy/joinquest/internal/store"
@@ -54,6 +55,20 @@ type Resolver struct {
 	// caller cannot be told about because the call legitimately succeeded. nil emits
 	// to the log, so a resolver never has to nil-check it.
 	Emitter observe.Emitter
+	// Push delivers match-ready notifications to players who left the page while
+	// queued; nil logs instead of sending and reports push as unconfigured, so a
+	// deployment without VAPID keys hides the affordance rather than offering a
+	// control that cannot work. See internal/push.
+	Push push.Sender
+}
+
+// pushSender returns the configured push sender, or a logging one so callers
+// never have to nil-check it.
+func (r *Resolver) pushSender() push.Sender {
+	if r == nil || r.Push == nil {
+		return push.LogSender{}
+	}
+	return r.Push
 }
 
 // waitEstimateTTL is how long one whole-catalog snapshot of wait estimates is
@@ -128,6 +143,7 @@ func NewResolver(st *store.Store, authService *auth.Service, broker pubsub.Broke
 		QueueOptionsCache: gameclient.NewQueueOptionsCache(gameclient.NewClient(), 5*time.Second),
 		LiveCountsCache:   catalogstats.NewCache(liveCountsSource(st), 5*time.Second),
 		WaitEstimates:     queuewait.NewCache(newMedianEstimator(st), waitEstimateTTL),
+		Push:              push.SenderFromEnv(),
 	}
 }
 
