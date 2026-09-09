@@ -160,6 +160,93 @@ func TestReplaySaveAllClearsStaleEntrants(t *testing.T) {
 	}
 }
 
+// TestListInputsDeduplicatesEntrantKeysWithinASide proves ListInputs collapses a
+// duplicated entrant key on one side into a single entrant, rather than passing the
+// duplicate through to the engine. A side can never legitimately hold the same entrant
+// key twice; this shape can arise today from carrySourceRatingHistoryTx (both accounts
+// having sat in the same match before an account merge), but ListInputs's dedup is
+// unconditionally correct regardless of source, and it is the backstop that keeps that
+// merge collision bounded rather than nondeterministic (see the comment on
+// carrySourceRatingHistoryTx in user_merge_carry.go).
+func TestListInputsDeduplicatesEntrantKeysWithinASide(t *testing.T) {
+	st := openTestStore(t)
+	cleaner := st.NewTestCleaner(t)
+	ctx := context.Background()
+
+	game, mode := setupDuelMode(t, st, cleaner)
+	queues, err := st.ListModeQueuesByModeID(ctx, mode.ID)
+	if err != nil {
+		t.Fatalf("ListModeQueuesByModeID: %v", err)
+	}
+	if len(queues) == 0 {
+		t.Fatal("expected at least one mode queue for duel mode")
+	}
+	queueID := queues[0].ID
+
+	userA, err := st.CreateUser(ctx, CreateUserParams{Email: "dedup-a-" + uuid.NewString() + "@example.com"})
+	if err != nil {
+		t.Fatalf("CreateUser A: %v", err)
+	}
+	cleaner.TrackUser(userA.ID)
+	userB, err := st.CreateUser(ctx, CreateUserParams{Email: "dedup-b-" + uuid.NewString() + "@example.com"})
+	if err != nil {
+		t.Fatalf("CreateUser B: %v", err)
+	}
+	cleaner.TrackUser(userB.ID)
+
+	if _, err := st.JoinModeQueue(ctx, queueID, userA.ID, "", nil); err != nil {
+		t.Fatalf("join A: %v", err)
+	}
+	if _, err := st.JoinModeQueue(ctx, queueID, userB.ID, "", nil); err != nil {
+		t.Fatalf("join B: %v", err)
+	}
+	mustReconcileForming(t, st, ctx, queueID)
+
+	view, err := st.GetUserActiveIntent(ctx, userA.ID)
+	if err != nil {
+		t.Fatalf("GetUserActiveIntent: %v", err)
+	}
+	if view == nil || view.SessionID == nil {
+		t.Fatal("expected matched session")
+	}
+	sessionID := *view.SessionID
+
+	dupKey := "player:" + userA.ID.String()
+
+	// Side 0 stores the same entrant key twice, as if a merge had collapsed both
+	// accounts' keys onto one side of a match they both played in.
+	in := RatingInput{
+		SessionID: sessionID,
+		GameID:    game.ID,
+		ModeKey:   mode.ModeKey,
+		RatedAt:   time.Now().UTC(),
+		Sides: []RatingSideRow{
+			{Rank: 0, Entrants: []RatingEntrantRow{{Key: dupKey}, {Key: dupKey}}},
+			{Rank: 1, Entrants: []RatingEntrantRow{{Key: "player:" + userB.ID.String()}}},
+		},
+	}
+	if err := st.AppendRatingInput(ctx, in); err != nil {
+		t.Fatalf("AppendRatingInput: %v", err)
+	}
+
+	adapter := st.RatingSource()
+	inputs, err := adapter.ListInputs(ctx, game.ID.String(), mode.ModeKey)
+	if err != nil {
+		t.Fatalf("ListInputs: %v", err)
+	}
+	if len(inputs) != 1 {
+		t.Fatalf("expected 1 input, got %d", len(inputs))
+	}
+
+	side0 := inputs[0].Sides[0]
+	if len(side0.Entrants) != 1 {
+		t.Fatalf("side 0 entrants = %+v, want exactly 1 (duplicate collapsed)", side0.Entrants)
+	}
+	if side0.Entrants[0].Key != dupKey {
+		t.Errorf("side 0 entrant key = %q, want %q", side0.Entrants[0].Key, dupKey)
+	}
+}
+
 // matchAndAppendInput matches userA against userB through queueID and
 // appends a rating input for the resulting session, carrying a "seat:P1" /
 // "seat:P2" modifier entrant on each side so the nonplayer_ratings path is

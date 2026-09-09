@@ -164,15 +164,36 @@ func carrySourceHistoryTx(ctx context.Context, tx *sql.Tx, sourceID, targetID uu
 // corrected log (see internal/rating.Replayer), so this is safe by construction: nothing
 // here approximates a rating, it only relocates the input that produces one and then
 // invalidates the stale cache.
+//
+// This can put both accounts' keys on one match: if the guest and the real account both
+// sat in the same session before merging, the rewrite below makes sourceKey and targetKey
+// collide inside the same side (or opposing sides). Unlike game_session_participants 25
+// lines above — which keeps the target's row and drops the source's on that collision —
+// this collapses the two entrant rows into one rather than deleting either. A dropped row
+// would erase that the guest played at all, which is exactly the irreversible loss the
+// doc comment on MergeUserInto (JQ-153) exists to prevent; a collapsed duplicate is
+// merely a rank/teammate distortion on the one match where both accounts happened to
+// play together, and ListInputs (rating_replay.go) deduplicates same-side entrant keys on
+// every replay specifically to make that distortion bounded and deterministic rather than
+// undefined. Losing history is worse than a single distorted match, so this is the
+// intended, lesser-harm outcome, not an oversight.
 func carrySourceRatingHistoryTx(ctx context.Context, tx *sql.Tx, sourceID, targetID uuid.UUID) error {
 	sourceKey := PlayerRatingKey(sourceID)
 	targetKey := PlayerRatingKey(targetID)
+
+	// The WHERE clauses below use jsonb containment (@>), not sides::text LIKE, so
+	// idx_rating_match_inputs_sides_gin (a jsonb_path_ops GIN index) can serve them.
+	// MergeUserInto runs on every guest-to-account conversion (see
+	// internal/auth/guest.go and oauth.go), so this predicate runs once per real signup;
+	// a LIKE '%...%' scan is unindexable and would be a full sequential scan of the
+	// match log on every signup as the table grows.
+	const sideHasEntrant = `sides @> jsonb_build_array(jsonb_build_object('entrants', jsonb_build_array(jsonb_build_object('key', $1::text))))`
 
 	if _, err := tx.ExecContext(ctx, `
 		DELETE FROM player_ratings
 		WHERE (game_id, mode_key) IN (
 			SELECT game_id, mode_key FROM rating_match_inputs
-			WHERE sides::text LIKE '%' || $1 || '%'
+			WHERE `+sideHasEntrant+`
 		)
 	`, sourceKey); err != nil {
 		return err
@@ -181,7 +202,7 @@ func carrySourceRatingHistoryTx(ctx context.Context, tx *sql.Tx, sourceID, targe
 		DELETE FROM nonplayer_ratings
 		WHERE (game_id, mode_key) IN (
 			SELECT game_id, mode_key FROM rating_match_inputs
-			WHERE sides::text LIKE '%' || $1 || '%'
+			WHERE `+sideHasEntrant+`
 		)
 	`, sourceKey); err != nil {
 		return err
@@ -192,11 +213,13 @@ func carrySourceRatingHistoryTx(ctx context.Context, tx *sql.Tx, sourceID, targe
 	// this JSON (another entrant's key, a queue-option value, ...), so a blind text
 	// substitution cannot corrupt an unrelated field. That is a claim a reviewer should be
 	// able to check against the fixed "player:"-prefixed key shape, not take on faith —
-	// flagging it here rather than leaving it implicit in the SQL.
+	// flagging it here rather than leaving it implicit in the SQL. The row-selecting
+	// WHERE clause still uses containment (for the index); only the SET's mechanism is a
+	// text substitution.
 	if _, err := tx.ExecContext(ctx, `
 		UPDATE rating_match_inputs
 		SET sides = REPLACE(sides::text, $1, $2)::jsonb
-		WHERE sides::text LIKE '%' || $1 || '%'
+		WHERE `+sideHasEntrant+`
 	`, sourceKey, targetKey); err != nil {
 		return err
 	}

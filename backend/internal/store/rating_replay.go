@@ -47,9 +47,21 @@ func (a *ratingStoreAdapter) ListInputs(ctx context.Context, gameID, modeKey str
 	for i, row := range rows {
 		sides := make([]rating.Side, len(row.Sides))
 		for j, side := range row.Sides {
-			entrants := make([]rating.Entrant, len(side.Entrants))
-			for k, e := range side.Entrants {
-				entrants[k] = rating.Entrant{Key: e.Key}
+			// A side can never legitimately hold the same entrant key twice: dropping
+			// duplicates here is unconditionally correct, not just a fix for merge's
+			// current REPLACE (see carrySourceRatingHistoryTx). Without it, a duplicated
+			// key double-counts one player as two teammates on the same side, or — split
+			// across opposing sides — makes the merged player's placement depend on slice
+			// order in the engine's ratings map, which is silently nondeterministic from
+			// the caller's point of view.
+			seen := make(map[string]bool, len(side.Entrants))
+			entrants := make([]rating.Entrant, 0, len(side.Entrants))
+			for _, e := range side.Entrants {
+				if seen[e.Key] {
+					continue
+				}
+				seen[e.Key] = true
+				entrants = append(entrants, rating.Entrant{Key: e.Key})
 				counts[e.Key]++
 			}
 			sides[j] = rating.Side{Entrants: entrants, Rank: side.Rank}
