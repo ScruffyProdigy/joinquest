@@ -5,6 +5,13 @@
 // people. That is what lets cooperative scenarios and side-advantage modifiers
 // ride the same equations as ordinary players, and what lets the model be
 // swapped without touching any caller.
+//
+// The Weng-Lin implementation consumes github.com/intinig/go-openskill
+// through a fork, github.com/ScruffyProdigy/go-openskill, pinned via a
+// `replace` directive in backend/go.mod. The fork exists so upstream fixes
+// can be merged in and our own changes can be upstreamed, rather than
+// diverging from an inlined, hand-edited copy. Anyone landing on that
+// `replace` line should start here rather than treating it as unexplained.
 package rating
 
 // Rating is a skill estimate and its uncertainty.
