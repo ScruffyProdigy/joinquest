@@ -200,9 +200,7 @@ type GameModeQueuePath struct {
 }
 
 type GameModeSeat struct {
-	SeatKey string  `json:"seatKey"`
-	Team    *string `json:"team,omitempty"`
-	Role    *string `json:"role,omitempty"`
+	SeatKey string `json:"seatKey"`
 	// Lobby join bucket derived from seatTemplate (empty for fifo modes).
 	QueuePath *string `json:"queuePath,omitempty"`
 	SortOrder int     `json:"sortOrder"`

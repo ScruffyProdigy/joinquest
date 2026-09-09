@@ -88,6 +88,32 @@ describe('GroupPage', () => {
     expect(section).toHaveTextContent('Sam')
   })
 
+  it('lists a previous match player who has not answered as awaiting', () => {
+    currentRoom = makeRoom(
+      makeTable({
+        regroupRoster: [{ user: { id: 'u9', displayName: 'Rae' }, role: 'p-2', regroup: 'PENDING' }],
+      }),
+    )
+    render(<GroupPage />)
+
+    const section = screen.getByRole('region', { name: /picking a seat/i })
+    expect(section).toHaveTextContent('Rae')
+    expect(section).toHaveTextContent('Awaiting')
+  })
+
+  it('never shows the viewer as awaiting, whatever their regroup answer says', () => {
+    currentRoom = makeRoom(
+      makeTable({
+        regroupRoster: [{ user: { id: 'u1', displayName: 'Pat' }, role: 'p-1', regroup: 'PENDING' }],
+      }),
+    )
+    render(<GroupPage />)
+
+    const you = screen.getByRole('region', { name: /picking a seat/i }).querySelector('li')
+    expect(you).toHaveTextContent('You')
+    expect(you).not.toHaveTextContent('Awaiting')
+  })
+
   it('claims a seat through sitAtTable', async () => {
     const user = userEvent.setup()
     render(<GroupPage />)

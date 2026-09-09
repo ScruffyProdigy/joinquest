@@ -103,7 +103,7 @@ export default function GroupPage() {
         onLeaveSeat={() => run(() => leaveTable(table.id))}
       />
 
-      <GroupSpectatorList players={playersPickingASeat(room, table)} userId={user?.id} />
+      <GroupSpectatorList players={playersPickingASeat(room, table, user?.id)} userId={user?.id} />
 
       <GroupStartBar
         cta={cta}

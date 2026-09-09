@@ -142,6 +142,88 @@ func carrySourceHistoryTx(ctx context.Context, tx *sql.Tx, sourceID, targetID uu
 	if _, err := tx.ExecContext(ctx, `DELETE FROM party_members WHERE user_id = $1`, sourceID); err != nil {
 		return err
 	}
+
+	return carrySourceRatingHistoryTx(ctx, tx, sourceID, targetID)
+}
+
+// carrySourceRatingHistoryTx transfers a merged-away user's rating history onto the
+// target. Ratings themselves are never merged: a guest and a real account can each hold an
+// independent mu/sigma estimate for the same (game, mode), and there is no sound way to
+// average two independent skill estimates into one. So instead of merging ratings, this:
+//
+//  1. Drops every cached rating row (in both player_ratings and nonplayer_ratings) for a
+//     (game, mode) that the source's rating history touches. This has to run first, while
+//     sourceKey is still present in rating_match_inputs.sides — the DELETE below finds the
+//     affected (game_id, mode_key) pairs by searching for sourceKey there, so running it
+//     after the rewrite in step 2 (which removes every occurrence of sourceKey) would find
+//     nothing to delete.
+//  2. Rewrites the source's entrant key to the target's inside rating_match_inputs.sides,
+//     so the match history itself — who played whom, and how they placed — survives.
+//
+// A later replay of the affected modes rebuilds player_ratings/nonplayer_ratings from the
+// corrected log (see internal/rating.Replayer), so this is safe by construction: nothing
+// here approximates a rating, it only relocates the input that produces one and then
+// invalidates the stale cache.
+//
+// This can put both accounts' keys on one match: if the guest and the real account both
+// sat in the same session before merging, the rewrite below makes sourceKey and targetKey
+// collide inside the same side (or opposing sides). Unlike game_session_participants 25
+// lines above — which keeps the target's row and drops the source's on that collision —
+// this collapses the two entrant rows into one rather than deleting either. A dropped row
+// would erase that the guest played at all, which is exactly the irreversible loss the
+// doc comment on MergeUserInto (JQ-153) exists to prevent; a collapsed duplicate is
+// merely a rank/teammate distortion on the one match where both accounts happened to
+// play together, and ListInputs (rating_replay.go) deduplicates same-side entrant keys on
+// every replay specifically to make that distortion bounded and deterministic rather than
+// undefined. Losing history is worse than a single distorted match, so this is the
+// intended, lesser-harm outcome, not an oversight.
+func carrySourceRatingHistoryTx(ctx context.Context, tx *sql.Tx, sourceID, targetID uuid.UUID) error {
+	sourceKey := PlayerRatingKey(sourceID)
+	targetKey := PlayerRatingKey(targetID)
+
+	// The WHERE clauses below use jsonb containment (@>), not sides::text LIKE, so
+	// idx_rating_match_inputs_sides_gin (a jsonb_path_ops GIN index) can serve them.
+	// MergeUserInto runs on every guest-to-account conversion (see
+	// internal/auth/guest.go and oauth.go), so this predicate runs once per real signup;
+	// a LIKE '%...%' scan is unindexable and would be a full sequential scan of the
+	// match log on every signup as the table grows.
+	const sideHasEntrant = `sides @> jsonb_build_array(jsonb_build_object('entrants', jsonb_build_array(jsonb_build_object('key', $1::text))))`
+
+	if _, err := tx.ExecContext(ctx, `
+		DELETE FROM player_ratings
+		WHERE (game_id, mode_key) IN (
+			SELECT game_id, mode_key FROM rating_match_inputs
+			WHERE `+sideHasEntrant+`
+		)
+	`, sourceKey); err != nil {
+		return err
+	}
+	if _, err := tx.ExecContext(ctx, `
+		DELETE FROM nonplayer_ratings
+		WHERE (game_id, mode_key) IN (
+			SELECT game_id, mode_key FROM rating_match_inputs
+			WHERE `+sideHasEntrant+`
+		)
+	`, sourceKey); err != nil {
+		return err
+	}
+
+	// REPLACE on the raw JSON text, not a jsonb-path update: sourceKey is
+	// "player:<uuid>", and a UUID string cannot appear as a substring of anything else in
+	// this JSON (another entrant's key, a queue-option value, ...), so a blind text
+	// substitution cannot corrupt an unrelated field. That is a claim a reviewer should be
+	// able to check against the fixed "player:"-prefixed key shape, not take on faith —
+	// flagging it here rather than leaving it implicit in the SQL. The row-selecting
+	// WHERE clause still uses containment (for the index); only the SET's mechanism is a
+	// text substitution.
+	if _, err := tx.ExecContext(ctx, `
+		UPDATE rating_match_inputs
+		SET sides = REPLACE(sides::text, $1, $2)::jsonb
+		WHERE `+sideHasEntrant+`
+	`, sourceKey, targetKey); err != nil {
+		return err
+	}
+
 	return nil
 }
 

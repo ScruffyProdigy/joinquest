@@ -55,16 +55,11 @@ export default function IntentBanner({
         </div>
         <div className="intent-banner__actions">
           {launchUrl ? (
-            <Button asChild variant="default" className="intent-banner__cta font-semibold">
+            <Button asChild variant="default" size="sm">
               <a href={launchUrl}>{LAUNCH_GAME}</a>
             </Button>
           ) : null}
-          <Button
-            type="button"
-            variant="secondary"
-            onClick={onLeave}
-            disabled={busy}
-          >
+          <Button type="button" variant="secondary" size="sm" onClick={onLeave} disabled={busy}>
             {busy ? '…' : LEAVE_GAME}
           </Button>
         </div>
@@ -94,7 +89,7 @@ export default function IntentBanner({
         <LeaveError message={leaveError} />
       </div>
       <div className="intent-banner__actions">
-        <Button type="button" variant="secondary" onClick={onLeave} disabled={busy}>
+        <Button type="button" variant="secondary" size="sm" onClick={onLeave} disabled={busy}>
           {busy ? '…' : LEAVE_TABLE_SEAT}
         </Button>
       </div>

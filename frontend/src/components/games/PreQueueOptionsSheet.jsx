@@ -174,8 +174,6 @@ export default function PreQueueOptionsSheet({
         <footer className="pre-queue-sheet__footer">
           <span className="pre-queue-sheet__summary">{optionsChosenCount(groups, picks)}</span>
           <Button
-            size="lg"
-            className="w-full"
             disabled={!ready || busy}
             onClick={() => onConfirm(selectionsFromPicks(groups, picks))}
           >

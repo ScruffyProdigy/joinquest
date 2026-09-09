@@ -24,6 +24,18 @@ describe('StylePreviewPage', () => {
     expect(screen.getByRole('button', { name: 'Quiet action' })).toHaveClass('text-muted-foreground')
   })
 
+  it('shows Button and Link side by side so the shared geometry is checkable (JQ-223)', () => {
+    render(<StylePreviewPage />)
+    expect(screen.getByRole('heading', { name: 'Button and Link, side by side' })).toBeInTheDocument()
+    const button = screen.getByRole('button', { name: 'Filled button' })
+    const pill = screen.getByRole('link', { name: 'Outlined pill link' })
+    for (const control of [button, pill]) {
+      expect(control).toHaveClass('rounded-[99px]')
+      expect(control).toHaveClass('py-4')
+      expect(control).toHaveClass('font-bold')
+    }
+  })
+
   it('renders all 10 per-game accent swatches', () => {
     render(<StylePreviewPage />)
     expect(screen.getByRole('heading', { name: 'Per-game accents' })).toBeInTheDocument()

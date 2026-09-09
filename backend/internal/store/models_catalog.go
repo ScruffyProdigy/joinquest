@@ -91,8 +91,6 @@ type GameModeSeat struct {
 	ID          uuid.UUID
 	ModeID      uuid.UUID
 	SeatKey     string
-	Team        *string
-	Role        *string
 	AffinityKey *string
 	QueuePath   *string
 	SortOrder   int

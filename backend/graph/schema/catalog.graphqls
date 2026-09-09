@@ -18,8 +18,6 @@ type RegisterGamePayload {
 
 type GameModeSeat {
   seatKey: String!
-  team: String
-  role: String
   """Lobby join bucket derived from seatTemplate (empty for fifo modes)."""
   queuePath: String
   sortOrder: Int!

@@ -29,12 +29,50 @@ export default function StylePreviewPage() {
 
       <section className="flex flex-col gap-4">
         <h2 className="font-heading text-xl font-semibold">Buttons</h2>
-        <div className="flex flex-wrap gap-3">
+        <p className="text-sm text-muted-foreground">
+          One shape, taken from the prototype: a <code>rounded-[99px]</code> pill that owns its
+          row. Full width is the default size, not something a call site asks for. Sizing is
+          padding — there is no fixed height, and nothing above <code>py-4</code>.
+        </p>
+        <div className="flex max-w-xs flex-col gap-2">
           <Button>Default</Button>
           <Button variant="secondary">Secondary</Button>
           <Button variant="outline">Outline</Button>
           <Button variant="ghost">Ghost</Button>
           <Button variant="destructive">Destructive</Button>
+          <Button variant="card">Card — presses with a scale</Button>
+        </div>
+        <p className="text-sm text-muted-foreground">
+          The compact sizes are the prototype&rsquo;s own inline chips — smaller pills, not a
+          different shape.
+        </p>
+        <div className="flex flex-wrap items-center gap-3">
+          <Button size="sm">Small</Button>
+          <Button variant="secondary" size="sm">
+            Small secondary
+          </Button>
+          <Button variant="ghost" size="chip">
+            Chip
+          </Button>
+          <Button variant="ghost" size="icon" aria-label="Close">
+            ✕
+          </Button>
+        </div>
+      </section>
+
+      <section className="flex flex-col gap-4">
+        <h2 className="font-heading text-xl font-semibold">Button and Link, side by side</h2>
+        <p className="text-sm text-muted-foreground">
+          The same geometry at different weights (JQ-223). A filled button and a pill link stacked
+          together should read as one control family — same radius, same vertical padding, same
+          15px bold label — with only the fill telling them apart.
+        </p>
+        <div className="flex max-w-xs flex-col gap-2">
+          <Button>Filled button</Button>
+          <Link variant="pill" href="#buttons">
+            Outlined pill link
+          </Link>
+          <Link variant="quiet">Quiet pill link</Link>
         </div>
       </section>
 
