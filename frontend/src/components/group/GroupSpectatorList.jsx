@@ -86,7 +86,7 @@ function Row({ user, userId, status, leaving }) {
             aria-hidden="true"
             className="motion-safe:animate-spin [animation-duration:3s]"
           />
-          — Awaiting
+          Awaiting
         </span>
       ) : null}
       {status === 'out' ? <span className="text-xs text-muted-foreground">Out</span> : null}

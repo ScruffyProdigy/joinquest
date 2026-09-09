@@ -98,7 +98,7 @@ describe('GroupPage', () => {
 
     const section = screen.getByRole('region', { name: /picking a seat/i })
     expect(section).toHaveTextContent('Rae')
-    expect(section).toHaveTextContent('\u2014 Awaiting')
+    expect(section).toHaveTextContent('Awaiting')
   })
 
   it('never shows the viewer as awaiting, whatever their regroup answer says', () => {

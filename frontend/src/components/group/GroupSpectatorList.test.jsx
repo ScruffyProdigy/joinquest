@@ -39,7 +39,7 @@ describe('GroupSpectatorList', () => {
     const rows = screen.getAllByRole('listitem')
     expect(rows).toHaveLength(2)
     expect(rows[0]).not.toHaveTextContent('Awaiting')
-    expect(rows[1]).toHaveTextContent('\u2014 Awaiting')
+    expect(rows[1]).toHaveTextContent('Awaiting')
   })
 
   it('says Out when it watches someone decline, then drops the row', () => {
