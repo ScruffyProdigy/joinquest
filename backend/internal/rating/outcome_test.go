@@ -1,6 +1,11 @@
 package rating
 
-import "testing"
+import (
+	"strings"
+	"testing"
+
+	"github.com/scruffyprodigy/joinquest/internal/prequeue"
+)
 
 func keysOf(sides []Side) [][]string {
 	out := make([][]string, len(sides))
@@ -239,3 +244,79 @@ func TestBuildSidesRejectsOutcomeWithNoSignal(t *testing.T) {
 
 func intp(i int) *int    { return &i }
 func boolp(b bool) *bool { return &b }
+
+// A group that asks for exactly one pick is a single categorical value —
+// structurally the same thing as a seat class, and ratable the same way.
+func TestBuildSidesRatesSinglePickPreQueueGroup(t *testing.T) {
+	shape := ModeShape{
+		SeatClasses:         map[string]string{"1": "", "2": ""},
+		RatedPreQueueGroups: []string{"color"},
+	}
+	out := MatchOutcome{
+		Participants: []Participant{
+			{PlayerID: "a", SeatKey: "1", IsWinner: true,
+				PreQueue: map[string][]string{"color": {"white"}}},
+			{PlayerID: "b", SeatKey: "2",
+				PreQueue: map[string][]string{"color": {"black"}}},
+		},
+	}
+
+	sides, err := BuildSides(shape, out)
+	if err != nil {
+		t.Fatalf("BuildSides: %v", err)
+	}
+	want := map[string]bool{"prequeue:color/white": false, "prequeue:color/black": false}
+	for _, side := range sides {
+		for _, e := range side.Entrants {
+			if _, ok := want[e.Key]; ok {
+				want[e.Key] = true
+			}
+		}
+	}
+	for key, found := range want {
+		if !found {
+			t.Errorf("missing entrant %q", key)
+		}
+	}
+}
+
+// A group not listed as rated contributes nothing, even when it has one pick.
+func TestBuildSidesIgnoresUnratedPreQueueGroup(t *testing.T) {
+	shape := ModeShape{SeatClasses: map[string]string{"1": "", "2": ""}}
+	out := MatchOutcome{
+		Participants: []Participant{
+			{PlayerID: "a", SeatKey: "1", IsWinner: true,
+				PreQueue: map[string][]string{"color": {"white"}}},
+			{PlayerID: "b", SeatKey: "2",
+				PreQueue: map[string][]string{"color": {"black"}}},
+		},
+	}
+
+	sides, err := BuildSides(shape, out)
+	if err != nil {
+		t.Fatalf("BuildSides: %v", err)
+	}
+	for _, side := range sides {
+		for _, e := range side.Entrants {
+			if strings.HasPrefix(e.Key, "prequeue:") {
+				t.Errorf("unrated group produced entrant %q", e.Key)
+			}
+		}
+	}
+}
+
+// A multi-pick group is a combination, and strength lives in how picks
+// interact — which an additive per-option entity cannot express at any volume.
+func TestRatedPreQueueGroupsRejectsMultiPickGroup(t *testing.T) {
+	groups := []prequeue.Group{
+		{Key: "color", Kind: prequeue.KindCharacter, Min: 1, Max: 1},
+		{Key: "loadout", Kind: prequeue.KindLoadout, Min: 1, Max: 3},
+		{Key: "deck", Kind: prequeue.KindDeck, Min: 0, Max: 1},
+	}
+
+	got := RatedPreQueueGroups(groups)
+
+	if len(got) != 1 || got[0] != "color" {
+		t.Errorf("RatedPreQueueGroups = %v, want only [color]", got)
+	}
+}

@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"sort"
 	"strings"
+
+	"github.com/scruffyprodigy/joinquest/internal/prequeue"
 )
 
 // ModeShape is everything about a mode the translation needs, resolved once by
@@ -17,6 +19,14 @@ type ModeShape struct {
 	// Cooperative means the players win or lose together against the mode
 	// itself, so a scenario entrant supplies the opponent Weng-Lin needs.
 	Cooperative bool
+
+	// RatedPreQueueGroups names the pre-queue option groups (by Group.Key)
+	// whose selections carry a rating of their own, as returned by
+	// RatedPreQueueGroups. A group not listed here contributes no entrant
+	// even if a participant reports a selection for it. Enabling a group is
+	// a human decision made after reading the identifiability report — this
+	// field is never populated automatically.
+	RatedPreQueueGroups []string
 }
 
 // Participant is one player's outcome, as the game reported it.
@@ -26,6 +36,12 @@ type Participant struct {
 	TeamKey   string // affinity key; empty means the player is their own side
 	Placement *int   // 1-based; equal placements are a tie
 	IsWinner  bool
+
+	// PreQueue holds the player's pre-queue selections, keyed by
+	// prequeue.Group.Key, as reported by the game at request time. Only
+	// groups named in ModeShape.RatedPreQueueGroups produce entrants; other
+	// entries here are ignored.
+	PreQueue map[string][]string
 }
 
 // MatchOutcome is one finished match.
@@ -87,7 +103,7 @@ func BuildSides(shape ModeShape, outcome MatchOutcome) ([]Side, error) {
 
 	sides := make([]Side, 0, len(groups)+1)
 	for key, participants := range groups {
-		sides = append(sides, buildSide(shape.SeatClasses, asymmetric, participants, ranks[key]))
+		sides = append(sides, buildSide(shape, asymmetric, participants, ranks[key]))
 	}
 	sortSides(sides)
 
@@ -209,16 +225,23 @@ func deriveRanks(groups map[string][]Participant) (map[string]int, error) {
 // buildSide turns one group of teammates into a Side: one entrant per
 // player, plus — in an asymmetric mode — one entrant per distinct seat class
 // held by the group, deduplicated so three Guessers still add a single
-// seat:Team/Guesser entity rather than three.
-func buildSide(seatClasses map[string]string, asymmetric bool, participants []Participant, rank int) Side {
+// seat:Team/Guesser entity rather than three, plus one entrant per distinct
+// rated pre-queue selection held by the group, deduplicated the same way.
+func buildSide(shape ModeShape, asymmetric bool, participants []Participant, rank int) Side {
 	entrantSet := map[string]Entrant{}
 	for _, p := range participants {
 		key := "player:" + p.PlayerID
 		entrantSet[key] = Entrant{Key: key}
 		if asymmetric {
-			if namePath, ok := seatClasses[p.SeatKey]; ok {
+			if namePath, ok := shape.SeatClasses[p.SeatKey]; ok {
 				seatKey := "seat:" + namePath
 				entrantSet[seatKey] = Entrant{Key: seatKey}
+			}
+		}
+		for _, groupKey := range shape.RatedPreQueueGroups {
+			for _, optionID := range p.PreQueue[groupKey] {
+				key := "prequeue:" + groupKey + "/" + optionID
+				entrantSet[key] = Entrant{Key: key}
 			}
 		}
 	}
@@ -230,6 +253,27 @@ func buildSide(seatClasses map[string]string, asymmetric bool, participants []Pa
 	sort.Slice(entrants, func(i, j int) bool { return entrants[i].Key < entrants[j].Key })
 
 	return Side{Entrants: entrants, Rank: rank}
+}
+
+// RatedPreQueueGroups returns the groups whose selections may carry a rating.
+//
+// Only a group that asks for exactly one required pick qualifies. Min == Max == 1
+// makes the selection a single categorical value — a color, a faction, a
+// character — which is structurally identical to a seat class. Anything else is
+// a combination, and a combination's strength lives in how its picks interact,
+// which an additive entity per option cannot represent no matter how much data
+// it sees. An optional group is excluded for a different reason: players who
+// skip it contribute nothing, so the entity would be estimated only from those
+// who opted in.
+func RatedPreQueueGroups(groups []prequeue.Group) []string {
+	var out []string
+	for _, g := range groups {
+		if g.Min == 1 && g.Max == 1 {
+			out = append(out, g.Key)
+		}
+	}
+	sort.Strings(out)
+	return out
 }
 
 func distinctCount(m map[string]string) int {
