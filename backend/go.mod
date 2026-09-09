@@ -9,6 +9,7 @@ require (
 	github.com/google/uuid v1.6.0
 	github.com/gorilla/websocket v1.5.3
 	github.com/lib/pq v1.10.9
+	github.com/matryer/is v1.4.1
 	github.com/redis/go-redis/v9 v9.20.0
 	github.com/vektah/gqlparser/v2 v2.5.30
 	golang.org/x/oauth2 v0.30.0
