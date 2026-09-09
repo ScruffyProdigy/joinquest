@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
+import { ClockIcon } from 'lucide-react'
 import { displayName } from '../../lib/tables'
 import { cn } from '../../lib/utils'
 import PlayerAvatar from '../avatars/PlayerAvatar'
@@ -7,15 +8,6 @@ import { Card, CardContent } from '../ui/card'
 /** How long a decline stays on the card before the row goes, and when it starts fading. */
 const OUT_BEAT_MS = 3000
 const OUT_FADE_MS = 2700
-
-function ClockIcon() {
-  return (
-    <svg viewBox="0 0 24 24" className="size-3" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
-      <circle cx="12" cy="12" r="9" />
-      <path d="M12 7v5l3 2" strokeLinecap="round" strokeLinejoin="round" />
-    </svg>
-  )
-}
 
 /**
  * Watch for a previous-match player flipping to OUT while this card is on screen, and
@@ -88,7 +80,13 @@ function Row({ user, userId, status, leaving }) {
       <span className="flex-1 truncate">{user?.id === userId ? 'You' : displayName(user)}</span>
       {status === 'awaiting' ? (
         <span className="flex items-center gap-1 text-xs text-muted-foreground">
-          <ClockIcon />— Awaiting
+          {/* The prototype turns the hand once every three seconds, linear and forever. */}
+          <ClockIcon
+            size={11}
+            aria-hidden="true"
+            className="motion-safe:animate-spin [animation-duration:3s]"
+          />
+          — Awaiting
         </span>
       ) : null}
       {status === 'out' ? <span className="text-xs text-muted-foreground">Out</span> : null}
