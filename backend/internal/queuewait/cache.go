@@ -23,7 +23,7 @@ type Cache struct {
 	ttl       time.Duration
 
 	mu        sync.Mutex
-	snapshot  map[uuid.UUID]time.Duration
+	snapshot  map[QueueKey]time.Duration
 	expiresAt time.Time
 }
 
@@ -32,7 +32,7 @@ func NewCache(estimator Estimator, ttl time.Duration) *Cache {
 }
 
 // Get returns the current snapshot, refreshing it when the TTL has run out.
-func (c *Cache) Get(ctx context.Context) (map[uuid.UUID]time.Duration, error) {
+func (c *Cache) Get(ctx context.Context) (map[QueueKey]time.Duration, error) {
 	now := time.Now()
 
 	c.mu.Lock()
@@ -46,12 +46,12 @@ func (c *Cache) Get(ctx context.Context) (map[uuid.UUID]time.Duration, error) {
 	// Refreshing outside the lock lets a burst of concurrent requests overlap on
 	// one refresh rather than queue behind it; the loser just overwrites with
 	// equally fresh numbers.
-	fetched, err := c.estimator.EstimateByModeQueue(ctx, nil, time.Now())
+	fetched, err := c.estimator.EstimateByQueue(ctx, nil, time.Now())
 	if err != nil {
 		return nil, err
 	}
 	if fetched == nil {
-		fetched = map[uuid.UUID]time.Duration{}
+		fetched = map[QueueKey]time.Duration{}
 	}
 
 	c.mu.Lock()
@@ -62,13 +62,29 @@ func (c *Cache) Get(ctx context.Context) (map[uuid.UUID]time.Duration, error) {
 	return fetched, nil
 }
 
-// For returns one queue's estimate. The bool is false when that queue has no
+// For returns one line's estimate. The bool is false when that line has no
 // estimate worth showing, which is not an error.
-func (c *Cache) For(ctx context.Context, modeQueueID uuid.UUID) (time.Duration, bool, error) {
+func (c *Cache) For(ctx context.Context, key QueueKey) (time.Duration, bool, error) {
 	snapshot, err := c.Get(ctx)
 	if err != nil {
 		return 0, false, err
 	}
-	wait, ok := snapshot[modeQueueID]
+	wait, ok := snapshot[key]
 	return wait, ok, nil
+}
+
+// PathsFor returns every path of one mode queue that has an estimate, so a card
+// can paint all of a composition mode's roles from one snapshot.
+func (c *Cache) PathsFor(ctx context.Context, modeQueueID uuid.UUID) (map[string]time.Duration, error) {
+	snapshot, err := c.Get(ctx)
+	if err != nil {
+		return nil, err
+	}
+	paths := make(map[string]time.Duration)
+	for key, wait := range snapshot {
+		if key.ModeQueueID == modeQueueID && key.QueuePath != "" {
+			paths[key.QueuePath] = wait
+		}
+	}
+	return paths, nil
 }

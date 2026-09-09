@@ -14,12 +14,12 @@ import (
 // fakeEstimator stands in for a real strategy so the resolver's own behaviour —
 // rounding, nulls, errors — is testable without a database.
 type fakeEstimator struct {
-	byQueue map[uuid.UUID]time.Duration
+	byQueue map[queuewait.QueueKey]time.Duration
 	err     error
 	calls   int
 }
 
-func (f *fakeEstimator) EstimateByModeQueue(_ context.Context, _ []uuid.UUID, _ time.Time) (map[uuid.UUID]time.Duration, error) {
+func (f *fakeEstimator) EstimateByQueue(_ context.Context, _ []uuid.UUID, _ time.Time) (map[queuewait.QueueKey]time.Duration, error) {
 	f.calls++
 	if f.err != nil {
 		return nil, f.err
@@ -34,8 +34,8 @@ func resolverFor(est *fakeEstimator) *Resolver {
 
 func TestModeQueueEstimatedWaitSecondsRoundsToWholeSeconds(t *testing.T) {
 	queueID := uuid.New()
-	r := resolverFor(&fakeEstimator{byQueue: map[uuid.UUID]time.Duration{
-		queueID: 15600 * time.Millisecond,
+	r := resolverFor(&fakeEstimator{byQueue: map[queuewait.QueueKey]time.Duration{
+		{ModeQueueID: queueID}: 15600 * time.Millisecond,
 	}})
 
 	got, err := r.ModeQueue().EstimatedWaitSeconds(context.Background(), &model.ModeQueue{ID: queueID.String()})
@@ -52,10 +52,10 @@ func TestModeQueueEstimatedWaitSecondsRoundsToWholeSeconds(t *testing.T) {
 
 func TestModeQueueEstimatedWaitSecondsCostsOneEstimateForAWholePageOfCards(t *testing.T) {
 	first, second, third := uuid.New(), uuid.New(), uuid.New()
-	est := &fakeEstimator{byQueue: map[uuid.UUID]time.Duration{
-		first:  10 * time.Second,
-		second: 20 * time.Second,
-		third:  30 * time.Second,
+	est := &fakeEstimator{byQueue: map[queuewait.QueueKey]time.Duration{
+		{ModeQueueID: first}:  10 * time.Second,
+		{ModeQueueID: second}: 20 * time.Second,
+		{ModeQueueID: third}:  30 * time.Second,
 	}}
 	r := resolverFor(est)
 
@@ -135,5 +135,77 @@ func TestWaitEstimatorIgnoresNonsenseEnvironmentOverrides(t *testing.T) {
 	est := newMedianEstimator(nil)
 	if est.Window != 0 || est.MinSamples != 0 {
 		t.Errorf("got window %v and floor %d, want both left unset so the package defaults apply", est.Window, est.MinSamples)
+	}
+}
+
+func TestModeQueueEstimatedWaitSecondsIgnoresPerRoleHistory(t *testing.T) {
+	queueID := uuid.New()
+	r := resolverFor(&fakeEstimator{byQueue: map[queuewait.QueueKey]time.Duration{
+		{ModeQueueID: queueID, QueuePath: "tank"}:   8 * time.Second,
+		{ModeQueueID: queueID, QueuePath: "damage"}: 240 * time.Second,
+	}})
+
+	got, err := r.ModeQueue().EstimatedWaitSeconds(context.Background(), &model.ModeQueue{ID: queueID.String()})
+	if err != nil {
+		t.Fatalf("EstimatedWaitSeconds: %v", err)
+	}
+	// A composition mode's players wait in separate lines. Averaging 8s and 240s
+	// into one queue-wide badge would describe neither of them, so this field
+	// stays null and the per-path field carries the truth.
+	if got != nil {
+		t.Errorf("got %d, want null for a queue whose history is all per-role", *got)
+	}
+}
+
+func TestModeQueueWaitEstimatesByPathReportsEveryRole(t *testing.T) {
+	queueID := uuid.New()
+	r := resolverFor(&fakeEstimator{byQueue: map[queuewait.QueueKey]time.Duration{
+		{ModeQueueID: queueID, QueuePath: "tank"}:    8400 * time.Millisecond,
+		{ModeQueueID: queueID, QueuePath: "damage"}:  240 * time.Second,
+		{ModeQueueID: queueID, QueuePath: "support"}: 30 * time.Second,
+		{ModeQueueID: uuid.New(), QueuePath: "tank"}: 99 * time.Second,
+	}})
+
+	got, err := r.ModeQueue().WaitEstimatesByPath(context.Background(), &model.ModeQueue{ID: queueID.String()})
+	if err != nil {
+		t.Fatalf("WaitEstimatesByPath: %v", err)
+	}
+	if len(got) != 3 {
+		t.Fatalf("got %d paths, want this queue's 3", len(got))
+	}
+	// Sorted by path so a card renders in a stable order across polls.
+	wantPaths := []string{"damage", "support", "tank"}
+	wantSeconds := []int{240, 30, 8}
+	for i, want := range wantPaths {
+		if got[i].QueuePath != want {
+			t.Errorf("path %d is %q, want %q", i, got[i].QueuePath, want)
+		}
+		if got[i].EstimatedWaitSeconds != wantSeconds[i] {
+			t.Errorf("%s got %d seconds, want %d", want, got[i].EstimatedWaitSeconds, wantSeconds[i])
+		}
+	}
+}
+
+func TestModeQueueWaitEstimatesByPathIsEmptyForAModeWithoutRoles(t *testing.T) {
+	queueID := uuid.New()
+	r := resolverFor(&fakeEstimator{byQueue: map[queuewait.QueueKey]time.Duration{
+		{ModeQueueID: queueID}: 30 * time.Second,
+	}})
+
+	got, err := r.ModeQueue().WaitEstimatesByPath(context.Background(), &model.ModeQueue{ID: queueID.String()})
+	if err != nil {
+		t.Fatalf("WaitEstimatesByPath: %v", err)
+	}
+	if len(got) != 0 {
+		t.Errorf("got %d paths, want none — this mode does not split by role", len(got))
+	}
+}
+
+func TestModeQueueWaitEstimatesByPathPropagatesFailure(t *testing.T) {
+	wantErr := errors.New("database is down")
+	r := resolverFor(&fakeEstimator{err: wantErr})
+
+	if _, err := r.ModeQueue().WaitEstimatesByPath(context.Background(), &model.ModeQueue{ID: uuid.NewString()}); !errors.Is(err, wantErr) {
+		t.Fatalf("got error %v, want it to wrap %v", err, wantErr)
 	}
 }

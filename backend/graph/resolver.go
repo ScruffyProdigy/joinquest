@@ -103,7 +103,7 @@ func waitEstimateMinSamples() int {
 // generic name off the store itself — the same reason liveCountsSource exists.
 type storeFills struct{ store *store.Store }
 
-func (s storeFills) RecentFills(ctx context.Context, q queuewait.FillQuery) (map[uuid.UUID][]queuewait.Fill, error) {
+func (s storeFills) RecentFills(ctx context.Context, q queuewait.FillQuery) (map[queuewait.QueueKey][]queuewait.Fill, error) {
 	if s.store == nil {
 		return nil, fmt.Errorf("database store is not configured")
 	}

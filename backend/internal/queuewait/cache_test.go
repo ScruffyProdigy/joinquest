@@ -12,12 +12,12 @@ import (
 // countingEstimator reports fixed estimates and counts how often it was asked,
 // so a test can prove the cache is actually absorbing repeat reads.
 type countingEstimator struct {
-	byQueue map[uuid.UUID]time.Duration
+	byQueue map[QueueKey]time.Duration
 	err     error
 	calls   int
 }
 
-func (c *countingEstimator) EstimateByModeQueue(_ context.Context, _ []uuid.UUID, _ time.Time) (map[uuid.UUID]time.Duration, error) {
+func (c *countingEstimator) EstimateByQueue(_ context.Context, _ []uuid.UUID, _ time.Time) (map[QueueKey]time.Duration, error) {
 	c.calls++
 	if c.err != nil {
 		return nil, c.err
@@ -26,8 +26,10 @@ func (c *countingEstimator) EstimateByModeQueue(_ context.Context, _ []uuid.UUID
 }
 
 func TestCacheAnswersEveryQueueOnThePageFromOneEstimate(t *testing.T) {
-	first, second, third := uuid.New(), uuid.New(), uuid.New()
-	est := &countingEstimator{byQueue: map[uuid.UUID]time.Duration{
+	first := QueueKey{ModeQueueID: uuid.New()}
+	second := QueueKey{ModeQueueID: uuid.New(), QueuePath: "tank"}
+	third := QueueKey{ModeQueueID: second.ModeQueueID, QueuePath: "damage"}
+	est := &countingEstimator{byQueue: map[QueueKey]time.Duration{
 		first:  10 * time.Second,
 		second: 20 * time.Second,
 		third:  30 * time.Second,
@@ -36,9 +38,9 @@ func TestCacheAnswersEveryQueueOnThePageFromOneEstimate(t *testing.T) {
 	ctx := context.Background()
 
 	// Three cards on a page, each resolving its own field.
-	for _, queueID := range []uuid.UUID{first, second, third} {
-		if _, _, err := cache.For(ctx, queueID); err != nil {
-			t.Fatalf("For(%v): %v", queueID, err)
+	for _, key := range []QueueKey{first, second, third} {
+		if _, _, err := cache.For(ctx, key); err != nil {
+			t.Fatalf("For(%v): %v", key, err)
 		}
 	}
 
@@ -48,8 +50,9 @@ func TestCacheAnswersEveryQueueOnThePageFromOneEstimate(t *testing.T) {
 }
 
 func TestCacheReportsAQueueWithNoEstimate(t *testing.T) {
-	known, unknown := uuid.New(), uuid.New()
-	est := &countingEstimator{byQueue: map[uuid.UUID]time.Duration{known: 12 * time.Second}}
+	known := QueueKey{ModeQueueID: uuid.New()}
+	unknown := QueueKey{ModeQueueID: uuid.New()}
+	est := &countingEstimator{byQueue: map[QueueKey]time.Duration{known: 12 * time.Second}}
 	cache := NewCache(est, time.Minute)
 
 	wait, ok, err := cache.For(context.Background(), unknown)
@@ -62,11 +65,11 @@ func TestCacheReportsAQueueWithNoEstimate(t *testing.T) {
 }
 
 func TestCacheServesAQueueThatHasAnEstimate(t *testing.T) {
-	queueID := uuid.New()
-	est := &countingEstimator{byQueue: map[uuid.UUID]time.Duration{queueID: 12 * time.Second}}
+	key := QueueKey{ModeQueueID: uuid.New(), QueuePath: "support"}
+	est := &countingEstimator{byQueue: map[QueueKey]time.Duration{key: 12 * time.Second}}
 	cache := NewCache(est, time.Minute)
 
-	wait, ok, err := cache.For(context.Background(), queueID)
+	wait, ok, err := cache.For(context.Background(), key)
 	if err != nil {
 		t.Fatalf("For: %v", err)
 	}
@@ -79,16 +82,16 @@ func TestCacheServesAQueueThatHasAnEstimate(t *testing.T) {
 }
 
 func TestCacheRefreshesOnceItsSnapshotHasExpired(t *testing.T) {
-	queueID := uuid.New()
-	est := &countingEstimator{byQueue: map[uuid.UUID]time.Duration{queueID: time.Second}}
+	key := QueueKey{ModeQueueID: uuid.New()}
+	est := &countingEstimator{byQueue: map[QueueKey]time.Duration{key: time.Second}}
 	cache := NewCache(est, time.Nanosecond)
 	ctx := context.Background()
 
-	if _, _, err := cache.For(ctx, queueID); err != nil {
+	if _, _, err := cache.For(ctx, key); err != nil {
 		t.Fatalf("first For: %v", err)
 	}
 	time.Sleep(time.Millisecond)
-	if _, _, err := cache.For(ctx, queueID); err != nil {
+	if _, _, err := cache.For(ctx, key); err != nil {
 		t.Fatalf("second For: %v", err)
 	}
 
@@ -101,7 +104,55 @@ func TestCachePropagatesEstimatorFailure(t *testing.T) {
 	wantErr := errors.New("database is down")
 	cache := NewCache(&countingEstimator{err: wantErr}, time.Minute)
 
-	if _, _, err := cache.For(context.Background(), uuid.New()); !errors.Is(err, wantErr) {
+	if _, _, err := cache.For(context.Background(), QueueKey{ModeQueueID: uuid.New()}); !errors.Is(err, wantErr) {
 		t.Fatalf("got error %v, want it to wrap %v", err, wantErr)
+	}
+}
+
+func TestCachePathsForReturnsEveryRoleOfOneQueue(t *testing.T) {
+	queueID, otherQueueID := uuid.New(), uuid.New()
+	est := &countingEstimator{byQueue: map[QueueKey]time.Duration{
+		{ModeQueueID: queueID, QueuePath: "tank"}:      8 * time.Second,
+		{ModeQueueID: queueID, QueuePath: "damage"}:    240 * time.Second,
+		{ModeQueueID: otherQueueID, QueuePath: "tank"}: 99 * time.Second,
+		{ModeQueueID: queueID}:                         30 * time.Second,
+	}}
+	cache := NewCache(est, time.Minute)
+
+	paths, err := cache.PathsFor(context.Background(), queueID)
+	if err != nil {
+		t.Fatalf("PathsFor: %v", err)
+	}
+
+	if paths["tank"] != 8*time.Second {
+		t.Errorf("tank got %v, want 8s", paths["tank"])
+	}
+	if paths["damage"] != 240*time.Second {
+		t.Errorf("damage got %v, want 240s", paths["damage"])
+	}
+	// Another queue's roles, and this queue's own unsplit bucket, are not paths
+	// of this queue.
+	if len(paths) != 2 {
+		t.Errorf("got %d paths (%v), want exactly this queue's two roles", len(paths), paths)
+	}
+}
+
+func TestCachePathsForCostsNoExtraEstimate(t *testing.T) {
+	queueID := uuid.New()
+	est := &countingEstimator{byQueue: map[QueueKey]time.Duration{
+		{ModeQueueID: queueID, QueuePath: "tank"}: 8 * time.Second,
+	}}
+	cache := NewCache(est, time.Minute)
+	ctx := context.Background()
+
+	if _, err := cache.PathsFor(ctx, queueID); err != nil {
+		t.Fatalf("first PathsFor: %v", err)
+	}
+	if _, err := cache.PathsFor(ctx, queueID); err != nil {
+		t.Fatalf("second PathsFor: %v", err)
+	}
+
+	if est.calls != 1 {
+		t.Errorf("estimated %d times, want 1 — PathsFor reads the same snapshot", est.calls)
 	}
 }

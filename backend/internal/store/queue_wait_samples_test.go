@@ -41,6 +41,13 @@ func seedModeQueue(t *testing.T, st *Store, name string) uuid.UUID {
 // matchedAt is stored as NULL — the player never got matched.
 func seedQueueRow(t *testing.T, st *Store, cleaner *TestCleaner, queueID uuid.UUID, status string, joinedAt, matchedAt time.Time) {
 	t.Helper()
+	seedQueueRowOnPath(t, st, cleaner, queueID, "", status, joinedAt, matchedAt)
+}
+
+// seedQueueRowOnPath is seedQueueRow for a composition mode, where the player
+// waits in one role's line rather than the queue at large.
+func seedQueueRowOnPath(t *testing.T, st *Store, cleaner *TestCleaner, queueID uuid.UUID, queuePath, status string, joinedAt, matchedAt time.Time) {
+	t.Helper()
 	ctx := context.Background()
 	user, err := st.CreateUser(ctx, CreateUserParams{Email: "fill-" + uuid.NewString() + "@example.com"})
 	if err != nil {
@@ -52,10 +59,14 @@ func seedQueueRow(t *testing.T, st *Store, cleaner *TestCleaner, queueID uuid.UU
 	if !matchedAt.IsZero() {
 		matched = matchedAt
 	}
+	var path any
+	if queuePath != "" {
+		path = queuePath
+	}
 	if _, err := st.db.ExecContext(ctx, `
-		INSERT INTO game_queues (game_id, user_id, mode_queue_id, status, joined_at, matched_at)
-		VALUES ($1, $2, $3, $4, $5, $6)
-	`, DemoPrimaryGameID, user.ID, queueID, status, joinedAt, matched); err != nil {
+		INSERT INTO game_queues (game_id, user_id, mode_queue_id, queue_path, status, joined_at, matched_at)
+		VALUES ($1, $2, $3, $4, $5, $6, $7)
+	`, DemoPrimaryGameID, user.ID, queueID, path, status, joinedAt, matched); err != nil {
 		t.Fatalf("insert queue row (%s): %v", status, err)
 	}
 }
@@ -81,7 +92,7 @@ func TestRecentModeQueueFillsReturnsCompletedWaitsInsideTheWindow(t *testing.T) 
 		Since:         now.Add(-24 * time.Hour),
 		LimitPerQueue: 100,
 	})
-	fills := byQueue[queueID]
+	fills := byQueue[queuewait.QueueKey{ModeQueueID: queueID}]
 	if err != nil {
 		t.Fatalf("RecentModeQueueFills: %v", err)
 	}
@@ -109,7 +120,7 @@ func TestRecentModeQueueFillsCountsSweptOrphansAsFills(t *testing.T) {
 		Since:         now.Add(-24 * time.Hour),
 		LimitPerQueue: 100,
 	})
-	fills := byQueue[queueID]
+	fills := byQueue[queuewait.QueueKey{ModeQueueID: queueID}]
 	if err != nil {
 		t.Fatalf("RecentModeQueueFills: %v", err)
 	}
@@ -137,7 +148,7 @@ func TestRecentModeQueueFillsIgnoresOtherQueues(t *testing.T) {
 		Since:         now.Add(-24 * time.Hour),
 		LimitPerQueue: 100,
 	})
-	fills := byQueue[mine]
+	fills := byQueue[queuewait.QueueKey{ModeQueueID: mine}]
 	if err != nil {
 		t.Fatalf("RecentModeQueueFills: %v", err)
 	}
@@ -150,7 +161,7 @@ func TestRecentModeQueueFillsIgnoresOtherQueues(t *testing.T) {
 	// Naming a queue must actually narrow the read. Asserting only on our own
 	// key would pass just as happily against a query that ignored the filter
 	// and hauled back every queue in the database.
-	if _, ok := byQueue[theirs]; ok {
+	if _, ok := byQueue[queuewait.QueueKey{ModeQueueID: theirs}]; ok {
 		t.Errorf("got the unrequested queue %v back too, want the id filter to exclude it", theirs)
 	}
 }
@@ -172,7 +183,7 @@ func TestRecentModeQueueFillsTakesTheMostRecentFillsUpToTheLimit(t *testing.T) {
 		Since:         now.Add(-24 * time.Hour),
 		LimitPerQueue: 2,
 	})
-	fills := byQueue[queueID]
+	fills := byQueue[queuewait.QueueKey{ModeQueueID: queueID}]
 	if err != nil {
 		t.Fatalf("RecentModeQueueFills: %v", err)
 	}
@@ -205,11 +216,13 @@ func TestRecentModeQueueFillsReadsEveryQueueInOneQuery(t *testing.T) {
 	if err != nil {
 		t.Fatalf("RecentModeQueueFills: %v", err)
 	}
-	if len(byQueue[quick]) != 1 || byQueue[quick][0].Wait() != 10*time.Second {
-		t.Errorf("quick queue got %v, want a single 10s fill", byQueue[quick])
+	quickFills := byQueue[queuewait.QueueKey{ModeQueueID: quick}]
+	slowFills := byQueue[queuewait.QueueKey{ModeQueueID: slow}]
+	if len(quickFills) != 1 || quickFills[0].Wait() != 10*time.Second {
+		t.Errorf("quick queue got %v, want a single 10s fill", quickFills)
 	}
-	if len(byQueue[slow]) != 1 || byQueue[slow][0].Wait() != 90*time.Second {
-		t.Errorf("slow queue got %v, want a single 90s fill", byQueue[slow])
+	if len(slowFills) != 1 || slowFills[0].Wait() != 90*time.Second {
+		t.Errorf("slow queue got %v, want a single 90s fill", slowFills)
 	}
 }
 
@@ -236,11 +249,11 @@ func TestRecentModeQueueFillsCapsEachQueueSeparately(t *testing.T) {
 	if err != nil {
 		t.Fatalf("RecentModeQueueFills: %v", err)
 	}
-	if len(byQueue[busy]) != 2 {
-		t.Errorf("busy queue got %d fills, want the per-queue cap of 2", len(byQueue[busy]))
+	if got := len(byQueue[queuewait.QueueKey{ModeQueueID: busy}]); got != 2 {
+		t.Errorf("busy queue got %d fills, want the per-queue cap of 2", got)
 	}
-	if len(byQueue[quiet]) != 1 {
-		t.Errorf("quiet queue got %d fills, want its own 1 kept despite the busy queue", len(byQueue[quiet]))
+	if got := len(byQueue[queuewait.QueueKey{ModeQueueID: quiet}]); got != 1 {
+		t.Errorf("quiet queue got %d fills, want its own 1 kept despite the busy queue", got)
 	}
 }
 
@@ -261,7 +274,75 @@ func TestRecentModeQueueFillsReadsEveryQueueWhenNoneAreNamed(t *testing.T) {
 	if err != nil {
 		t.Fatalf("RecentModeQueueFills: %v", err)
 	}
-	if len(byQueue[queueID]) != 1 || byQueue[queueID][0].Wait() != 25*time.Second {
-		t.Errorf("got %v for the seeded queue, want a single 25s fill", byQueue[queueID])
+	fills := byQueue[queuewait.QueueKey{ModeQueueID: queueID}]
+	if len(fills) != 1 || fills[0].Wait() != 25*time.Second {
+		t.Errorf("got %v for the seeded queue, want a single 25s fill", fills)
+	}
+}
+
+func TestRecentModeQueueFillsSeparatesEachQueuePath(t *testing.T) {
+	st := openTestStore(t)
+	cleaner := st.NewTestCleaner(t)
+	ctx := context.Background()
+	now := time.Now()
+	queueID := seedModeQueue(t, st, "roles")
+
+	// One queue, two roles, wildly different waits — the case a queue-wide
+	// median would flatten into a number describing neither.
+	for _, wait := range []int{4, 8, 12} {
+		at := now.Add(-time.Duration(wait) * time.Minute)
+		seedQueueRowOnPath(t, st, cleaner, queueID, "tank", "matched", at, at.Add(time.Duration(wait)*time.Second))
+	}
+	seedQueueRowOnPath(t, st, cleaner, queueID, "damage", "matched", now.Add(-time.Hour), now.Add(-time.Hour).Add(240*time.Second))
+
+	byQueue, err := st.RecentModeQueueFills(ctx, queuewait.FillQuery{
+		ModeQueueIDs:  []uuid.UUID{queueID},
+		Since:         now.Add(-24 * time.Hour),
+		LimitPerQueue: 100,
+	})
+	if err != nil {
+		t.Fatalf("RecentModeQueueFills: %v", err)
+	}
+
+	tank := byQueue[queuewait.QueueKey{ModeQueueID: queueID, QueuePath: "tank"}]
+	damage := byQueue[queuewait.QueueKey{ModeQueueID: queueID, QueuePath: "damage"}]
+	if len(tank) != 3 {
+		t.Errorf("tank path got %d fills, want 3", len(tank))
+	}
+	if len(damage) != 1 || damage[0].Wait() != 240*time.Second {
+		t.Errorf("damage path got %v, want a single 240s fill", damage)
+	}
+	if _, ok := byQueue[queuewait.QueueKey{ModeQueueID: queueID}]; ok {
+		t.Error("got an unsplit bucket for a queue whose rows all carry a path, want none")
+	}
+}
+
+func TestRecentModeQueueFillsCapsEachQueuePathSeparately(t *testing.T) {
+	st := openTestStore(t)
+	cleaner := st.NewTestCleaner(t)
+	ctx := context.Background()
+	now := time.Now()
+	queueID := seedModeQueue(t, st, "role-caps")
+
+	// A crowded role must not eat a scarce role's share of the sample.
+	for i := 1; i <= 4; i++ {
+		at := now.Add(-time.Duration(i) * time.Minute)
+		seedQueueRowOnPath(t, st, cleaner, queueID, "damage", "matched", at, at.Add(time.Duration(i)*time.Second))
+	}
+	seedQueueRowOnPath(t, st, cleaner, queueID, "tank", "matched", now.Add(-time.Hour), now.Add(-time.Hour).Add(5*time.Second))
+
+	byQueue, err := st.RecentModeQueueFills(ctx, queuewait.FillQuery{
+		ModeQueueIDs:  []uuid.UUID{queueID},
+		Since:         now.Add(-24 * time.Hour),
+		LimitPerQueue: 2,
+	})
+	if err != nil {
+		t.Fatalf("RecentModeQueueFills: %v", err)
+	}
+	if got := len(byQueue[queuewait.QueueKey{ModeQueueID: queueID, QueuePath: "damage"}]); got != 2 {
+		t.Errorf("damage path got %d fills, want the per-path cap of 2", got)
+	}
+	if got := len(byQueue[queuewait.QueueKey{ModeQueueID: queueID, QueuePath: "tank"}]); got != 1 {
+		t.Errorf("tank path got %d fills, want its own 1 kept despite the crowded role", got)
 	}
 }

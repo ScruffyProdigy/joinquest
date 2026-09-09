@@ -30,11 +30,26 @@ const (
 	DefaultWindow = 7 * 24 * time.Hour
 	// DefaultMinSamples is the fewest fills worth reporting a median from.
 	DefaultMinSamples = 5
-	// DefaultLimitPerQueue caps how many of each queue's fills are pulled into
-	// memory. Per queue rather than overall, so one busy queue cannot crowd
-	// every other queue out of the sample.
+	// DefaultLimitPerQueue caps how many of each line's fills are pulled into
+	// memory. Per line rather than overall, so one busy queue or role cannot
+	// crowd every other one out of the sample.
 	DefaultLimitPerQueue = 500
 )
+
+// QueueKey identifies one line players actually wait in.
+//
+// A composition mode splits its queue by role — Overwatch's tank/damage/support
+// shape — and those lines move at genuinely different speeds, because the wait
+// for a role is set by the scarcity of the roles it needs alongside it, not by
+// how many players share your own. One estimate per mode queue would average
+// them into a number that describes nobody.
+//
+// QueuePath is empty for modes that do not split, which collapses to exactly
+// one bucket per queue.
+type QueueKey struct {
+	ModeQueueID uuid.UUID
+	QueuePath   string
+}
 
 // Fill is one observed wait: a player joined a queue, and later got matched.
 type Fill struct {
@@ -58,34 +73,37 @@ type FillQuery struct {
 	// recent fills — the whole-catalog snapshot Cache is built on.
 	ModeQueueIDs []uuid.UUID
 	Since        time.Time
-	// LimitPerQueue caps the fills returned for each queue independently.
+	// LimitPerQueue caps the fills returned for each line independently — each
+	// path of a composition mode gets its own allowance, so a crowded role
+	// cannot starve the sample of a scarce one.
 	LimitPerQueue int
 }
 
-// Samples supplies observed fills, keyed by queue. The store implements it
-// against Postgres; tests implement it with a map, which is why no Estimator
-// needs a database.
+// Samples supplies observed fills, keyed by the line they were observed in. The
+// store implements it against Postgres; tests implement it with a map, which is
+// why no Estimator needs a database.
 //
-// Queues with no fills in the window are absent from the map rather than
-// present and empty.
+// Lines with no fills in the window are absent from the map rather than present
+// and empty. Asking about a mode queue returns every path within it.
 type Samples interface {
-	RecentFills(ctx context.Context, q FillQuery) (map[uuid.UUID][]Fill, error)
+	RecentFills(ctx context.Context, q FillQuery) (map[QueueKey][]Fill, error)
 }
 
 // Estimator turns observed fills into the numbers mode cards paint.
 //
-// A queue missing from the returned map has no estimate — the card shows no
+// A line missing from the returned map has no estimate — the card shows no
 // badge rather than a guess. That is distinct from an error, which means we
-// could not look at all.
+// could not look at all. Paths are independent: one role going quiet for want
+// of history does not silence the others.
 //
 // now is a parameter rather than time.Now() inside, so a strategy that depends
 // on the time of day stays testable.
 type Estimator interface {
-	EstimateByModeQueue(ctx context.Context, modeQueueIDs []uuid.UUID, now time.Time) (map[uuid.UUID]time.Duration, error)
+	EstimateByQueue(ctx context.Context, modeQueueIDs []uuid.UUID, now time.Time) (map[QueueKey]time.Duration, error)
 }
 
 // MedianEstimator is unconvinced by outliers: it reports the median of each
-// queue's recent fills, and declines to answer for a queue until it has seen
+// line's recent fills, and declines to answer for a line until it has seen
 // enough of them.
 type MedianEstimator struct {
 	Samples       Samples
@@ -94,10 +112,10 @@ type MedianEstimator struct {
 	LimitPerQueue int
 }
 
-// EstimateByModeQueue reports the median recent wait for each queue that has
-// filled often enough recently to say anything honest. Queues that have not are
-// left out of the map.
-func (e MedianEstimator) EstimateByModeQueue(ctx context.Context, modeQueueIDs []uuid.UUID, now time.Time) (map[uuid.UUID]time.Duration, error) {
+// EstimateByQueue reports the median recent wait for each line that has filled
+// often enough recently to say anything honest. Lines that have not are left
+// out of the map.
+func (e MedianEstimator) EstimateByQueue(ctx context.Context, modeQueueIDs []uuid.UUID, now time.Time) (map[QueueKey]time.Duration, error) {
 	byQueue, err := e.Samples.RecentFills(ctx, FillQuery{
 		ModeQueueIDs:  modeQueueIDs,
 		Since:         now.Add(-e.window()),
@@ -107,8 +125,8 @@ func (e MedianEstimator) EstimateByModeQueue(ctx context.Context, modeQueueIDs [
 		return nil, err
 	}
 
-	estimates := make(map[uuid.UUID]time.Duration, len(byQueue))
-	for queueID, fills := range byQueue {
+	estimates := make(map[QueueKey]time.Duration, len(byQueue))
+	for key, fills := range byQueue {
 		if len(fills) < e.minSamples() {
 			continue
 		}
@@ -116,7 +134,7 @@ func (e MedianEstimator) EstimateByModeQueue(ctx context.Context, modeQueueIDs [
 		for i, f := range fills {
 			waits[i] = f.Wait()
 		}
-		estimates[queueID] = medianDuration(waits)
+		estimates[key] = medianDuration(waits)
 	}
 	return estimates, nil
 }
