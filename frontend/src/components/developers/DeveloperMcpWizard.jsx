@@ -338,7 +338,7 @@ export default function DeveloperMcpWizard({ defaultExpanded = false, alwaysExpa
         {!alwaysExpanded ? (
           <Button
             variant="secondary"
-            className="developer-mcp__toggle"
+            size="sm"
             onClick={() => setExpanded((v) => !v)}
             aria-expanded={expanded}
           >

@@ -25,8 +25,7 @@ function JoinPathButton({ path, busy, disabled, onJoin, prominent = false }) {
   const { queuePath, displayName } = pathOption(path)
   return (
     <Button
-      size={prominent ? 'lg' : 'default'}
-      className={prominent ? 'w-full' : undefined}
+      size={prominent ? 'default' : 'sm'}
       onClick={() => onJoin(queuePath)}
       disabled={busy || disabled}
     >
@@ -48,13 +47,12 @@ function JoinGroupPanel({ children, prominent = false }) {
 }
 
 function FifoQueueActions({ queueState, busy, disabled, onJoin, onLeave, prominent = false }) {
-  const size = prominent ? 'lg' : 'default'
-  const width = prominent ? 'w-full' : undefined
+  const size = prominent ? 'default' : 'sm'
   if (queueState === 'waiting') {
     return (
       <div className="game-list-actions game-list-actions--stack">
         <p className="queue-status-line">{LOOKING_FOR_GROUP}</p>
-        <Button size={size} className={width} onClick={onLeave} disabled={busy}>
+        <Button size={size} onClick={onLeave} disabled={busy}>
           {STOP_LOOKING}
         </Button>
       </div>
@@ -63,7 +61,7 @@ function FifoQueueActions({ queueState, busy, disabled, onJoin, onLeave, promine
 
   return (
     <div className="game-list-actions">
-      <Button size={size} className={width} onClick={() => onJoin()} disabled={busy || disabled}>
+      <Button size={size} onClick={() => onJoin()} disabled={busy || disabled}>
         {busy ? LOOKING_FOR_GROUP : LOOK_FOR_GROUP}
       </Button>
     </div>
@@ -82,19 +80,18 @@ export default function GameQueueActions({
   prominent = false,
   solo = false,
 }) {
-  const size = prominent ? 'lg' : 'default'
-  const width = prominent ? 'w-full' : undefined
+  const size = prominent ? 'default' : 'sm'
 
   if (queueState === 'matched' && joinUrl) {
     return (
       <div className="game-list-actions">
         {/* A raw <a> on purpose (JQ-72): this is a button that navigates, so Button
             wears the styling and the anchor keeps real href semantics. */}
-        <Button asChild size={size} className={width}>
+        <Button asChild size={size}>
           <a href={joinUrl}>{LAUNCH_GAME}</a>
         </Button>
         {solo ? null : (
-          <Button variant="outline" size={size} className={width} onClick={onLeave} disabled={busy}>
+          <Button variant="outline" size={size} onClick={onLeave} disabled={busy}>
             {LEAVE_MATCH}
           </Button>
         )}
@@ -105,7 +102,7 @@ export default function GameQueueActions({
   if (solo) {
     return (
       <div className="game-list-actions">
-        <Button size={size} className={width} onClick={() => onJoin()} disabled={busy || disabled}>
+        <Button size={size} onClick={() => onJoin()} disabled={busy || disabled}>
           {busy ? STARTING_SOLO : PLAY_SOLO}
         </Button>
       </div>
@@ -145,7 +142,7 @@ export default function GameQueueActions({
                 prominent={prominent}
               />
             ))}
-            <Button size={size} className={width} onClick={onLeave} disabled={busy}>
+            <Button size={size} onClick={onLeave} disabled={busy}>
               {STOP_LOOKING}
             </Button>
           </>

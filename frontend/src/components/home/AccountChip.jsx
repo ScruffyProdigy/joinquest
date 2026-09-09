@@ -22,7 +22,7 @@ export default function AccountChip() {
   if (!user || user.isGuest) {
     return (
       <>
-        <Button type="button" className="shrink-0 rounded-full" onClick={() => setSignInOpen(true)}>
+        <Button type="button" size="sm" className="shrink-0" onClick={() => setSignInOpen(true)}>
           {SIGN_IN_OR_JOIN}
         </Button>
         <SignInDialog open={signInOpen} onOpenChange={setSignInOpen} />
@@ -31,7 +31,7 @@ export default function AccountChip() {
   }
 
   return (
-    <Button variant="ghost" className="h-auto shrink-0 gap-2 rounded-full py-1 pr-3 pl-1" asChild>
+    <Button variant="ghost" size="chip" className="shrink-0" asChild>
       {/* Slot plumbing, not page markup (JQ-72): Button owns the styling and the
           anchor supplies only the href, so this stays a real link. */}
       <a href="/account">
