@@ -99,6 +99,12 @@ frontend/public/*
 !frontend/public/games/**
 !frontend/public/fonts/
 !frontend/public/fonts/**
+# PWA install chain (JQ-198). Web Push on iOS requires the site to be
+# installable, so these are shipped source, not build output.
+!frontend/public/manifest.webmanifest
+!frontend/public/sw.js
+!frontend/public/icons/
+!frontend/public/icons/**
 # Spirit-avatar renders are generated at runtime. The leading slash-free form
 # matters: backend tests write them under backend/graph/data/ too.
 **/data/spirit-avatars/
