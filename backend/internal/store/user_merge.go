@@ -72,11 +72,15 @@ func mergedUserEmail(userID uuid.UUID) string {
 //	            room_members, table_seats, parties, forming_match_assignments
 //	                                                       — unwound on source, target wins
 //	history     game_session_participants, game_queues, room_messages,
-//	            avatar_readings, party_members, user_inventory
+//	            avatar_readings, party_members, user_inventory,
+//	            rating_match_inputs (key rewritten in place, not moved wholesale —
+//	            see carrySourceRatingHistoryTx)
 //	                                                       — moved to target
 //	ownership   games.owner_user_id, developer_api_keys, rooms.host_user_id,
 //	            parties.leader_user_id                     — moved to target
 //	credentials magic_links                                — destroyed, never moved
+//	derived     player_ratings, nonplayer_ratings           — dropped, not merged;
+//	            recomputed from rating_match_inputs by replay
 //
 // Note the direction: callers pass the *pre-existing* account as source and the
 // *currently signed-in* user as target, so it is the older account that gets

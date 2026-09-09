@@ -142,6 +142,65 @@ func carrySourceHistoryTx(ctx context.Context, tx *sql.Tx, sourceID, targetID uu
 	if _, err := tx.ExecContext(ctx, `DELETE FROM party_members WHERE user_id = $1`, sourceID); err != nil {
 		return err
 	}
+
+	return carrySourceRatingHistoryTx(ctx, tx, sourceID, targetID)
+}
+
+// carrySourceRatingHistoryTx transfers a merged-away user's rating history onto the
+// target. Ratings themselves are never merged: a guest and a real account can each hold an
+// independent mu/sigma estimate for the same (game, mode), and there is no sound way to
+// average two independent skill estimates into one. So instead of merging ratings, this:
+//
+//  1. Drops every cached rating row (in both player_ratings and nonplayer_ratings) for a
+//     (game, mode) that the source's rating history touches. This has to run first, while
+//     sourceKey is still present in rating_match_inputs.sides — the DELETE below finds the
+//     affected (game_id, mode_key) pairs by searching for sourceKey there, so running it
+//     after the rewrite in step 2 (which removes every occurrence of sourceKey) would find
+//     nothing to delete.
+//  2. Rewrites the source's entrant key to the target's inside rating_match_inputs.sides,
+//     so the match history itself — who played whom, and how they placed — survives.
+//
+// A later replay of the affected modes rebuilds player_ratings/nonplayer_ratings from the
+// corrected log (see internal/rating.Replayer), so this is safe by construction: nothing
+// here approximates a rating, it only relocates the input that produces one and then
+// invalidates the stale cache.
+func carrySourceRatingHistoryTx(ctx context.Context, tx *sql.Tx, sourceID, targetID uuid.UUID) error {
+	sourceKey := PlayerRatingKey(sourceID)
+	targetKey := PlayerRatingKey(targetID)
+
+	if _, err := tx.ExecContext(ctx, `
+		DELETE FROM player_ratings
+		WHERE (game_id, mode_key) IN (
+			SELECT game_id, mode_key FROM rating_match_inputs
+			WHERE sides::text LIKE '%' || $1 || '%'
+		)
+	`, sourceKey); err != nil {
+		return err
+	}
+	if _, err := tx.ExecContext(ctx, `
+		DELETE FROM nonplayer_ratings
+		WHERE (game_id, mode_key) IN (
+			SELECT game_id, mode_key FROM rating_match_inputs
+			WHERE sides::text LIKE '%' || $1 || '%'
+		)
+	`, sourceKey); err != nil {
+		return err
+	}
+
+	// REPLACE on the raw JSON text, not a jsonb-path update: sourceKey is
+	// "player:<uuid>", and a UUID string cannot appear as a substring of anything else in
+	// this JSON (another entrant's key, a queue-option value, ...), so a blind text
+	// substitution cannot corrupt an unrelated field. That is a claim a reviewer should be
+	// able to check against the fixed "player:"-prefixed key shape, not take on faith —
+	// flagging it here rather than leaving it implicit in the SQL.
+	if _, err := tx.ExecContext(ctx, `
+		UPDATE rating_match_inputs
+		SET sides = REPLACE(sides::text, $1, $2)::jsonb
+		WHERE sides::text LIKE '%' || $1 || '%'
+	`, sourceKey, targetKey); err != nil {
+		return err
+	}
+
 	return nil
 }
 
