@@ -2,6 +2,7 @@ package store
 
 import (
 	"context"
+	"database/sql"
 	"encoding/json"
 	"fmt"
 	"strings"
@@ -9,6 +10,13 @@ import (
 
 	"github.com/google/uuid"
 )
+
+// sqlExecContext is satisfied by both *sql.DB and *sql.Tx, letting
+// appendRatingInput run against either a standalone connection or a
+// caller-supplied transaction.
+type sqlExecContext interface {
+	ExecContext(context.Context, string, ...any) (sql.Result, error)
+}
 
 // playerRatingKeyPrefix namespaces a player_ratings row's user id inside the
 // flat string-keyed maps the rating engine works in. Non-player entities
@@ -64,6 +72,17 @@ type RatingInput struct {
 // session_id: a game server that retries its result report must not cause the
 // same match to be rated twice.
 func (s *Store) AppendRatingInput(ctx context.Context, in RatingInput) error {
+	return appendRatingInput(ctx, s.db, in)
+}
+
+// AppendRatingInputTx is AppendRatingInput run against a caller-supplied
+// transaction, so a rating input can be recorded atomically alongside the
+// match result that produced it.
+func (s *Store) AppendRatingInputTx(ctx context.Context, tx *sql.Tx, in RatingInput) error {
+	return appendRatingInput(ctx, tx, in)
+}
+
+func appendRatingInput(ctx context.Context, exec sqlExecContext, in RatingInput) error {
 	sidesJSON, err := json.Marshal(in.Sides)
 	if err != nil {
 		return fmt.Errorf("store: marshal rating sides: %w", err)
@@ -79,7 +98,7 @@ func (s *Store) AppendRatingInput(ctx context.Context, in RatingInput) error {
 		inputsVersion = 1
 	}
 
-	_, err = s.db.ExecContext(ctx, `
+	_, err = exec.ExecContext(ctx, `
 		INSERT INTO rating_match_inputs (session_id, game_id, mode_key, sides, queue_options, inputs_version, rated_at)
 		VALUES ($1, $2, $3, $4, $5, $6, $7)
 		ON CONFLICT (session_id) DO NOTHING

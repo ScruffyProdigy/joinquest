@@ -241,3 +241,110 @@ func seedTwoInputsAtSameInstant(t *testing.T, st *Store, ctx context.Context, cl
 	}
 	return gameID, modeKey
 }
+
+// Assertions here are scoped to the session each test created rather than
+// asserting a bare len(inputs): the demo (game, mode) pair is shared and
+// TestCleaner never deletes rating_match_inputs rows or the demo game (see
+// findRatingInputBySession above), so a raw count breaks as soon as other
+// tests in this package have appended their own inputs against the same
+// mode. Confirmed against the running suite: TestRecordMatchResultAppendsRatingInput
+// saw 16 pre-existing rows for the demo mode before scoping was applied.
+func TestRecordMatchResultAppendsRatingInput(t *testing.T) {
+	st := openTestStore(t)
+	cleaner := st.NewTestCleaner(t)
+	ctx := context.Background()
+
+	sessionID, userA, userB := seedMatchedSession(t, st, ctx, cleaner)
+	gameID, modeKey := gameAndModeForSession(t, st, ctx, sessionID)
+
+	if err := st.RecordMatchResult(ctx, sessionID, "COMPLETED",
+		[]uuid.UUID{userA}, nil, time.Now()); err != nil {
+		t.Fatalf("RecordMatchResult: %v", err)
+	}
+
+	inputs, err := st.ListRatingInputs(ctx, gameID, modeKey)
+	if err != nil {
+		t.Fatalf("ListRatingInputs: %v", err)
+	}
+	row := findRatingInputBySession(t, inputs, sessionID)
+
+	var winnerRank, loserRank int
+	for _, side := range row.Sides {
+		for _, e := range side.Entrants {
+			switch e.Key {
+			case "player:" + userA.String():
+				winnerRank = side.Rank
+			case "player:" + userB.String():
+				loserRank = side.Rank
+			}
+		}
+	}
+	if winnerRank >= loserRank {
+		t.Errorf("winner rank %d must beat loser rank %d", winnerRank, loserRank)
+	}
+}
+
+// A game server that retries its report must not rate the match twice.
+func TestRecordMatchResultTwiceAppendsOneRatingInput(t *testing.T) {
+	st := openTestStore(t)
+	cleaner := st.NewTestCleaner(t)
+	ctx := context.Background()
+
+	sessionID, userA, _ := seedMatchedSession(t, st, ctx, cleaner)
+	gameID, modeKey := gameAndModeForSession(t, st, ctx, sessionID)
+
+	for i := 0; i < 2; i++ {
+		if err := st.RecordMatchResult(ctx, sessionID, "COMPLETED",
+			[]uuid.UUID{userA}, nil, time.Now()); err != nil {
+			t.Fatalf("RecordMatchResult %d: %v", i, err)
+		}
+	}
+
+	inputs, err := st.ListRatingInputs(ctx, gameID, modeKey)
+	if err != nil {
+		t.Fatalf("ListRatingInputs: %v", err)
+	}
+	matches := 0
+	for _, row := range inputs {
+		if row.SessionID == sessionID {
+			matches++
+		}
+	}
+	if matches != 1 {
+		t.Fatalf("inputs for session %s = %d, want 1 after a retried report", sessionID, matches)
+	}
+}
+
+// An unrateable outcome must not fail the result write — the game already
+// committed its report, and failing here would make it retry an applied write.
+func TestRecordMatchResultSurvivesUnrateableOutcome(t *testing.T) {
+	st := openTestStore(t)
+	cleaner := st.NewTestCleaner(t)
+	ctx := context.Background()
+
+	sessionID, _, _ := seedMatchedSession(t, st, ctx, cleaner)
+	gameID, modeKey := gameAndModeForSession(t, st, ctx, sessionID)
+
+	// ABANDONED with no winners and no placements: nothing to rate.
+	if err := st.RecordMatchResult(ctx, sessionID, "ABANDONED", nil, nil, time.Now()); err != nil {
+		t.Fatalf("RecordMatchResult must not fail on an unrateable outcome: %v", err)
+	}
+
+	result, err := st.GetMatchResult(ctx, sessionID)
+	if err != nil {
+		t.Fatalf("GetMatchResult: %v", err)
+	}
+	if result.Status == nil || *result.Status != "ABANDONED" {
+		t.Fatalf("status = %v, want ABANDONED", result.Status)
+	}
+
+	inputs, err := st.ListRatingInputs(ctx, gameID, modeKey)
+	if err != nil {
+		t.Fatalf("ListRatingInputs: %v", err)
+	}
+	for _, row := range inputs {
+		if row.SessionID == sessionID {
+			t.Errorf("found a rating input for session %s, want none for an unrateable match", sessionID)
+		}
+	}
+}
