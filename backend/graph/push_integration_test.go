@@ -277,3 +277,81 @@ func TestLogoutClearsThePlayersPushSubscriptions(t *testing.T) {
 		t.Fatalf("logout must clear push subscriptions, %d remain", after.PushCapability.SubscriptionCount)
 	}
 }
+
+// pushCapability (what the UI gates on) and PushReachability (what JQ-199's
+// seat hold branches on) answer the same question for two audiences. If they
+// ever disagree, one of them is lying to somebody -- and the seat-hold tiers
+// are only sound if the answer is honest.
+func TestPushCapabilityAndSeatHoldReachabilityAgree(t *testing.T) {
+	env := newQueueIntegrationEnv(t)
+	ctx := context.Background()
+	cleaner := env.newCleaner(t)
+	configurePush(t, env)
+	bearer, _ := createTestUserSession(t, ctx, env, cleaner)
+
+	userID := currentUserID(t, ctx, env, bearer)
+
+	assertAgreement := func(t *testing.T, stage string) {
+		t.Helper()
+		var q struct {
+			PushCapability pushCapabilityResponse
+		}
+		env.Client.MustPost(`query { pushCapability { `+pushCapabilityFields+` } }`, &q,
+			client.AddHeader("Authorization", bearer),
+		)
+		reachable, err := env.resolver.PushReachable(ctx, userID)
+		if err != nil {
+			t.Fatalf("PushReachable (%s): %v", stage, err)
+		}
+		if q.PushCapability.Reachable != reachable {
+			t.Fatalf("%s: pushCapability says reachable=%v but the seat-hold predicate says %v",
+				stage, q.PushCapability.Reachable, reachable)
+		}
+	}
+
+	assertAgreement(t, "before subscribing")
+
+	endpoint := testEndpoint()
+	var saved struct {
+		SavePushSubscription pushCapabilityResponse
+	}
+	env.Client.MustPost(
+		`mutation ($e: String!) {
+			savePushSubscription(input: {endpoint: $e, p256dh: "k", auth: "a"}) { `+pushCapabilityFields+` }
+		}`, &saved,
+		client.Var("e", endpoint),
+		client.AddHeader("Authorization", bearer),
+	)
+	assertAgreement(t, "after subscribing")
+
+	// The push service rejects the endpoint: both views must drop together.
+	if err := env.Store.MarkPushSubscriptionExpired(ctx, endpoint); err != nil {
+		t.Fatalf("MarkPushSubscriptionExpired: %v", err)
+	}
+	assertAgreement(t, "after the push service rejected the endpoint")
+
+	reach, reason, err := env.resolver.PushReachability(ctx, userID)
+	if err != nil {
+		t.Fatalf("PushReachability: %v", err)
+	}
+	if reason != store.ReachabilitySubscriptionExpired {
+		t.Fatalf("expected subscription-expired, got %q", reason)
+	}
+	if reach.ExpiredCount != 1 {
+		t.Fatalf("the expired install should be retained for tuning, got %d", reach.ExpiredCount)
+	}
+}
+
+// currentUserID resolves the signed-in user's UUID via the API.
+func currentUserID(t *testing.T, ctx context.Context, env *queueIntegrationEnv, bearer string) uuid.UUID {
+	t.Helper()
+	var me struct {
+		Me struct{ ID string }
+	}
+	env.Client.MustPost(`query { me { id } }`, &me, client.AddHeader("Authorization", bearer))
+	parsed, err := uuid.Parse(me.Me.ID)
+	if err != nil {
+		t.Fatalf("parse user id %q: %v", me.Me.ID, err)
+	}
+	return parsed
+}

@@ -227,7 +227,7 @@ func TestDeletePushSubscriptionOnlyRemovesTheCallersOwnInstall(t *testing.T) {
 	}
 }
 
-func TestDeleteExpiredPushSubscriptionRemovesADeadEndpointRegardlessOfOwner(t *testing.T) {
+func TestMarkPushSubscriptionExpiredStopsReachabilityButKeepsTheEvidence(t *testing.T) {
 	st := openTestStore(t)
 	cleaner := st.NewTestCleaner(t)
 	ctx := context.Background()
@@ -241,8 +241,8 @@ func TestDeleteExpiredPushSubscriptionRemovesADeadEndpointRegardlessOfOwner(t *t
 		t.Fatalf("SavePushSubscription: %v", err)
 	}
 
-	if err := st.DeleteExpiredPushSubscription(ctx, endpoint); err != nil {
-		t.Fatalf("DeleteExpiredPushSubscription: %v", err)
+	if err := st.MarkPushSubscriptionExpired(ctx, endpoint); err != nil {
+		t.Fatalf("MarkPushSubscriptionExpired: %v", err)
 	}
 
 	reachable, err := st.HasPushSubscription(ctx, userID)
@@ -251,6 +251,59 @@ func TestDeleteExpiredPushSubscriptionRemovesADeadEndpointRegardlessOfOwner(t *t
 	}
 	if reachable {
 		t.Fatal("a user whose only endpoint the push service rejected is no longer reachable")
+	}
+
+	subs, err := st.ListPushSubscriptions(ctx, userID)
+	if err != nil {
+		t.Fatalf("ListPushSubscriptions: %v", err)
+	}
+	if len(subs) != 0 {
+		t.Fatal("an expired install must not be offered for delivery")
+	}
+
+	// But the evidence survives: this is what separates "never opted in" from
+	// "opted in and it died", and those have different fixes.
+	reach, err := st.GetPushReachability(ctx, userID)
+	if err != nil {
+		t.Fatalf("GetPushReachability: %v", err)
+	}
+	if reach.ExpiredCount != 1 || reach.LastExpiredAt == nil {
+		t.Fatalf("the expired subscription must be retained for diagnosis: %+v", reach)
+	}
+	if reach.Reason(true) != ReachabilitySubscriptionExpired {
+		t.Fatalf("expected subscription-expired, got %q", reach.Reason(true))
+	}
+}
+
+func TestResubscribingAnExpiredEndpointMakesItLiveAgain(t *testing.T) {
+	st := openTestStore(t)
+	cleaner := st.NewTestCleaner(t)
+	ctx := context.Background()
+
+	userID := createPushTestUser(t, st, cleaner, "push-resurrect")
+	endpoint := "https://push.example.com/" + uuid.NewString()
+
+	if _, err := st.SavePushSubscription(ctx, SavePushSubscriptionParams{
+		UserID: userID, Endpoint: endpoint, P256dh: "k", Auth: "a",
+	}); err != nil {
+		t.Fatalf("SavePushSubscription: %v", err)
+	}
+	if err := st.MarkPushSubscriptionExpired(ctx, endpoint); err != nil {
+		t.Fatalf("MarkPushSubscriptionExpired: %v", err)
+	}
+
+	if _, err := st.SavePushSubscription(ctx, SavePushSubscriptionParams{
+		UserID: userID, Endpoint: endpoint, P256dh: "k2", Auth: "a2",
+	}); err != nil {
+		t.Fatalf("SavePushSubscription (resubscribe): %v", err)
+	}
+
+	reachable, err := st.HasPushSubscription(ctx, userID)
+	if err != nil {
+		t.Fatalf("HasPushSubscription: %v", err)
+	}
+	if !reachable {
+		t.Fatal("a browser that re-subscribed to the same endpoint is reachable again")
 	}
 }
 

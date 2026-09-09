@@ -25,6 +25,10 @@ type PushSubscription struct {
 	UserAgent  string
 	CreatedAt  time.Time
 	LastUsedAt *time.Time
+	// ExpiredAt is set when the push service permanently rejected this
+	// endpoint. Expired rows are kept, not deleted -- see
+	// GetPushReachability for why.
+	ExpiredAt *time.Time
 }
 
 // SavePushSubscriptionParams is the browser's PushSubscription, flattened.
@@ -58,15 +62,19 @@ func (s *Store) SavePushSubscription(ctx context.Context, params SavePushSubscri
 		SET user_id = EXCLUDED.user_id,
 		    p256dh = EXCLUDED.p256dh,
 		    auth = EXCLUDED.auth,
-		    user_agent = EXCLUDED.user_agent
-		RETURNING id, user_id, endpoint, p256dh, auth, user_agent, created_at, last_used_at`
+		    user_agent = EXCLUDED.user_agent,
+		    -- Resurrect a previously expired endpoint. A browser that
+		    -- re-subscribes to the same endpoint is reachable again, and
+		    -- leaving expired_at set would keep it invisible forever.
+		    expired_at = NULL
+		RETURNING id, user_id, endpoint, p256dh, auth, user_agent, created_at, last_used_at, expired_at`
 
 	var out PushSubscription
 	err := s.db.QueryRowContext(ctx, query,
 		params.UserID, endpoint, p256dh, auth, strings.TrimSpace(params.UserAgent),
 	).Scan(
 		&out.ID, &out.UserID, &out.Endpoint, &out.P256dh, &out.Auth,
-		&out.UserAgent, &out.CreatedAt, &out.LastUsedAt,
+		&out.UserAgent, &out.CreatedAt, &out.LastUsedAt, &out.ExpiredAt,
 	)
 	if err != nil {
 		return nil, err
@@ -74,12 +82,13 @@ func (s *Store) SavePushSubscription(ctx context.Context, params SavePushSubscri
 	return &out, nil
 }
 
-// ListPushSubscriptions returns every install currently reachable for a user.
+// ListPushSubscriptions returns the installs still reachable for a user.
+// Expired rows are excluded: they are retained for diagnosis, not delivery.
 func (s *Store) ListPushSubscriptions(ctx context.Context, userID uuid.UUID) ([]PushSubscription, error) {
 	const query = `
-		SELECT id, user_id, endpoint, p256dh, auth, user_agent, created_at, last_used_at
+		SELECT id, user_id, endpoint, p256dh, auth, user_agent, created_at, last_used_at, expired_at
 		FROM push_subscriptions
-		WHERE user_id = $1
+		WHERE user_id = $1 AND expired_at IS NULL
 		ORDER BY created_at`
 
 	rows, err := s.db.QueryContext(ctx, query, userID)
@@ -93,7 +102,7 @@ func (s *Store) ListPushSubscriptions(ctx context.Context, userID uuid.UUID) ([]
 		var sub PushSubscription
 		if err := rows.Scan(
 			&sub.ID, &sub.UserID, &sub.Endpoint, &sub.P256dh, &sub.Auth,
-			&sub.UserAgent, &sub.CreatedAt, &sub.LastUsedAt,
+			&sub.UserAgent, &sub.CreatedAt, &sub.LastUsedAt, &sub.ExpiredAt,
 		); err != nil {
 			return nil, err
 		}
@@ -111,7 +120,9 @@ func (s *Store) ListPushSubscriptions(ctx context.Context, userID uuid.UUID) ([]
 // cannot deliver, or a subscription the push service has since expired, is not
 // reachability.
 func (s *Store) HasPushSubscription(ctx context.Context, userID uuid.UUID) (bool, error) {
-	const query = `SELECT EXISTS (SELECT 1 FROM push_subscriptions WHERE user_id = $1)`
+	const query = `SELECT EXISTS (
+		SELECT 1 FROM push_subscriptions WHERE user_id = $1 AND expired_at IS NULL
+	)`
 	var exists bool
 	if err := s.db.QueryRowContext(ctx, query, userID).Scan(&exists); err != nil {
 		return false, err
@@ -129,15 +140,23 @@ func (s *Store) DeletePushSubscription(ctx context.Context, userID uuid.UUID, en
 	return err
 }
 
-// DeleteExpiredPushSubscription removes an install the push service has
-// rejected as gone (HTTP 404/410), regardless of owner.
+// MarkPushSubscriptionExpired records that the push service permanently
+// rejected an endpoint (HTTP 404/410).
 //
 // Not user-scoped, because the rejection comes from the push service against an
 // endpoint and the send path should not have to trust its own idea of who owns
-// it. Keeping a dead endpoint would make HasPushSubscription lie, and the
-// ticket is explicit that a hold taken on false reachability is worse than none.
-func (s *Store) DeleteExpiredPushSubscription(ctx context.Context, endpoint string) error {
-	const query = `DELETE FROM push_subscriptions WHERE endpoint = $1`
+// it.
+//
+// Marked rather than deleted. The row must stop counting as reachable
+// immediately -- a hold taken on false reachability is worse than none -- but
+// deleting it would erase the difference between a player who never opted in
+// and one whose subscription died, and those have different fixes. See
+// GetPushReachability.
+func (s *Store) MarkPushSubscriptionExpired(ctx context.Context, endpoint string) error {
+	const query = `
+		UPDATE push_subscriptions
+		SET expired_at = NOW()
+		WHERE endpoint = $1 AND expired_at IS NULL`
 	_, err := s.db.ExecContext(ctx, query, strings.TrimSpace(endpoint))
 	return err
 }
