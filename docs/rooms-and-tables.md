@@ -99,7 +99,7 @@ GraphQL operations of its own.
   (everyone still to decide), and a sticky bottom control.
 - **Picking a seat:** one list holding two populations — room members who hold no seat, and
   the previous match's players who have not answered (`Table.regroupRoster`, `PENDING`),
-  badged *Awaiting*. A roster entry beats room membership, because a room-table group never
+  badged *— Awaiting*. A roster entry beats room membership, because a room-table group never
   leaves the room and so membership cannot stand in for "they are back"; the viewer is the
   exception and is never shown as awaiting. Nothing keys on `seatKey`, so a mode with no
   seat template still lists, and more pending players than seats drops none. A decline

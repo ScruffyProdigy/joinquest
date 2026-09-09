@@ -88,8 +88,7 @@ function Row({ user, userId, status, leaving }) {
       <span className="flex-1 truncate">{user?.id === userId ? 'You' : displayName(user)}</span>
       {status === 'awaiting' ? (
         <span className="flex items-center gap-1 text-xs text-muted-foreground">
-          <ClockIcon />
-          Awaiting
+          <ClockIcon />— Awaiting
         </span>
       ) : null}
       {status === 'out' ? <span className="text-xs text-muted-foreground">Out</span> : null}
