@@ -3,6 +3,8 @@ package graph
 import (
 	"context"
 	"fmt"
+	"os"
+	"strconv"
 	"time"
 
 	"github.com/google/uuid"
@@ -12,6 +14,7 @@ import (
 	"github.com/scruffyprodigy/joinquest/internal/gameclient"
 	"github.com/scruffyprodigy/joinquest/internal/observe"
 	"github.com/scruffyprodigy/joinquest/internal/pubsub"
+	"github.com/scruffyprodigy/joinquest/internal/queuewait"
 	"github.com/scruffyprodigy/joinquest/internal/spiritanimal"
 	"github.com/scruffyprodigy/joinquest/internal/store"
 )
@@ -40,10 +43,57 @@ type Resolver struct {
 	QueueOptionsCache *gameclient.QueueOptionsCache
 	// LiveCountsCache serves Game.playerActivity; nil queries the store on every field read.
 	LiveCountsCache *catalogstats.Cache
+	// WaitEstimator serves ModeQueue.estimatedWaitSeconds; nil uses the median of
+	// the queue's recent fills. Swapping in a different strategy — one that
+	// accounts for the time of day, say — is meant to be this field and nothing
+	// else. See internal/queuewait.
+	WaitEstimator queuewait.Estimator
 	// Emitter carries operational signals that have no GraphQL surface — conditions a
 	// caller cannot be told about because the call legitimately succeeded. nil emits
 	// to the log, so a resolver never has to nil-check it.
 	Emitter observe.Emitter
+}
+
+// waitEstimator returns the resolver's wait-time strategy, defaulting to the
+// median of the queue's recent fills.
+func (r *Resolver) waitEstimator() queuewait.Estimator {
+	if r.WaitEstimator != nil {
+		return r.WaitEstimator
+	}
+	return queuewait.MedianEstimator{
+		Samples:    storeFills{r.Store},
+		Window:     waitEstimateWindow(),
+		MinSamples: waitEstimateMinSamples(),
+	}
+}
+
+// waitEstimateWindow and waitEstimateMinSamples let production retune the
+// estimate without a deploy, the way LOBBY_STALE_PLAYING_MINUTES does for live
+// counts. Both return zero on absent or nonsense input, leaving the queuewait
+// package's own defaults in charge.
+func waitEstimateWindow() time.Duration {
+	if v, err := strconv.Atoi(os.Getenv("LOBBY_WAIT_ESTIMATE_WINDOW_DAYS")); err == nil && v > 0 {
+		return time.Duration(v) * 24 * time.Hour
+	}
+	return 0
+}
+
+func waitEstimateMinSamples() int {
+	if v, err := strconv.Atoi(os.Getenv("LOBBY_WAIT_ESTIMATE_MIN_SAMPLES")); err == nil && v > 0 {
+		return v
+	}
+	return 0
+}
+
+// storeFills adapts the store's fill query to queuewait.Samples, keeping that
+// generic name off the store itself — the same reason liveCountsSource exists.
+type storeFills struct{ store *store.Store }
+
+func (s storeFills) RecentFills(ctx context.Context, q queuewait.FillQuery) ([]queuewait.Fill, error) {
+	if s.store == nil {
+		return nil, fmt.Errorf("database store is not configured")
+	}
+	return s.store.RecentModeQueueFills(ctx, q)
 }
 
 // signals returns the resolver's emitter, defaulting to the log emitter.

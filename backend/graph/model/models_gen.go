@@ -283,6 +283,16 @@ type ModeQueue struct {
 	PlayersToStart int    `json:"playersToStart"`
 	Status         string `json:"status"`
 	WaitingCount   int    `json:"waitingCount"`
+	// How long a player typically waits in this queue before being matched, in
+	// whole seconds — the number the mode card paints as "~15 sec wait".
+	//
+	// Drawn from this queue's recent fills, so it describes the queue's habits
+	// rather than the moment: it does not move because the queue happens to be one
+	// player short right now. Read `waitingCount` for that.
+	//
+	// Null until the queue has filled enough times recently to say anything
+	// honest, in which case the card shows no badge rather than a guess.
+	EstimatedWaitSeconds *int `json:"estimatedWaitSeconds,omitempty"`
 }
 
 type Mutation struct {

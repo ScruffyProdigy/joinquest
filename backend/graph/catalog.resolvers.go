@@ -8,6 +8,7 @@ import (
 	"context"
 	"fmt"
 	"strings"
+	"time"
 
 	"github.com/scruffyprodigy/joinquest/graph/generated"
 	"github.com/scruffyprodigy/joinquest/graph/model"
@@ -228,6 +229,25 @@ func (r *modeQueueResolver) WaitingCount(ctx context.Context, obj *model.ModeQue
 		return 0, err
 	}
 	return st.CountWaitingInModeQueue(ctx, queueID)
+}
+
+// EstimatedWaitSeconds is the resolver for the estimatedWaitSeconds field.
+func (r *modeQueueResolver) EstimatedWaitSeconds(ctx context.Context, obj *model.ModeQueue) (*int, error) {
+	queueID, err := parseUUID(obj.ID, "queue id")
+	if err != nil {
+		return nil, err
+	}
+	wait, err := r.waitEstimator().Estimate(ctx, queueID, time.Now())
+	if err != nil {
+		// Deliberately not fail-open to null: a null means "this queue has no
+		// history worth quoting", and a broken lookup must not say that.
+		return nil, err
+	}
+	if wait == nil {
+		return nil, nil
+	}
+	seconds := int(wait.Round(time.Second) / time.Second)
+	return &seconds, nil
 }
 
 // RegisterGame is the resolver for the registerGame field.

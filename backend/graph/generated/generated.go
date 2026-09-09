@@ -259,11 +259,12 @@ type ComplexityRoot struct {
 	}
 
 	ModeQueue struct {
-		ID             func(childComplexity int) int
-		Name           func(childComplexity int) int
-		PlayersToStart func(childComplexity int) int
-		Status         func(childComplexity int) int
-		WaitingCount   func(childComplexity int) int
+		EstimatedWaitSeconds func(childComplexity int) int
+		ID                   func(childComplexity int) int
+		Name                 func(childComplexity int) int
+		PlayersToStart       func(childComplexity int) int
+		Status               func(childComplexity int) int
+		WaitingCount         func(childComplexity int) int
 	}
 
 	Mutation struct {
@@ -685,6 +686,7 @@ type GameModeResolver interface {
 }
 type ModeQueueResolver interface {
 	WaitingCount(ctx context.Context, obj *model.ModeQueue) (int, error)
+	EstimatedWaitSeconds(ctx context.Context, obj *model.ModeQueue) (*int, error)
 }
 type MutationResolver interface {
 	JoinQueue(ctx context.Context, queueID string, queuePath *string, options []*model.QueueOptionSelectionInput, party *model.PartyNodeInput) (*model.JoinResult, error)
@@ -1693,6 +1695,12 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 
 		return e.complexity.ModeEligibility.UnlockModeKey(childComplexity), true
 
+	case "ModeQueue.estimatedWaitSeconds":
+		if e.complexity.ModeQueue.EstimatedWaitSeconds == nil {
+			break
+		}
+
+		return e.complexity.ModeQueue.EstimatedWaitSeconds(childComplexity), true
 	case "ModeQueue.id":
 		if e.complexity.ModeQueue.ID == nil {
 			break
@@ -4168,6 +4176,18 @@ type ModeQueue {
   playersToStart: Int!
   status: String!
   waitingCount: Int!
+  """
+  How long a player typically waits in this queue before being matched, in
+  whole seconds — the number the mode card paints as "~15 sec wait".
+
+  Drawn from this queue's recent fills, so it describes the queue's habits
+  rather than the moment: it does not move because the queue happens to be one
+  player short right now. Read ` + "`" + `waitingCount` + "`" + ` for that.
+
+  Null until the queue has filled enough times recently to say anything
+  honest, in which case the card shows no badge rather than a guess.
+  """
+  estimatedWaitSeconds: Int
 }
 
 extend type Game {
@@ -8729,6 +8749,8 @@ func (ec *executionContext) fieldContext_GameMode_queues(_ context.Context, fiel
 				return ec.fieldContext_ModeQueue_status(ctx, field)
 			case "waitingCount":
 				return ec.fieldContext_ModeQueue_waitingCount(ctx, field)
+			case "estimatedWaitSeconds":
+				return ec.fieldContext_ModeQueue_estimatedWaitSeconds(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type ModeQueue", field.Name)
 		},
@@ -10348,6 +10370,35 @@ func (ec *executionContext) _ModeQueue_waitingCount(ctx context.Context, field g
 }
 
 func (ec *executionContext) fieldContext_ModeQueue_waitingCount(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "ModeQueue",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Int does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _ModeQueue_estimatedWaitSeconds(ctx context.Context, field graphql.CollectedField, obj *model.ModeQueue) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_ModeQueue_estimatedWaitSeconds,
+		func(ctx context.Context) (any, error) {
+			return ec.resolvers.ModeQueue().EstimatedWaitSeconds(ctx, obj)
+		},
+		nil,
+		ec.marshalOInt2ᚖint,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_ModeQueue_estimatedWaitSeconds(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	fc = &graphql.FieldContext{
 		Object:     "ModeQueue",
 		Field:      field,
@@ -25142,6 +25193,39 @@ func (ec *executionContext) _ModeQueue(ctx context.Context, sel ast.SelectionSet
 				if res == graphql.Null {
 					atomic.AddUint32(&fs.Invalids, 1)
 				}
+				return res
+			}
+
+			if field.Deferrable != nil {
+				dfs, ok := deferred[field.Deferrable.Label]
+				di := 0
+				if ok {
+					dfs.AddField(field)
+					di = len(dfs.Values) - 1
+				} else {
+					dfs = graphql.NewFieldSet([]graphql.CollectedField{field})
+					deferred[field.Deferrable.Label] = dfs
+				}
+				dfs.Concurrently(di, func(ctx context.Context) graphql.Marshaler {
+					return innerFunc(ctx, dfs)
+				})
+
+				// don't run the out.Concurrently() call below
+				out.Values[i] = graphql.Null
+				continue
+			}
+
+			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
+		case "estimatedWaitSeconds":
+			field := field
+
+			innerFunc := func(ctx context.Context, _ *graphql.FieldSet) (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._ModeQueue_estimatedWaitSeconds(ctx, field, obj)
 				return res
 			}
 

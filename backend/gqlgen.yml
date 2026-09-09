@@ -43,6 +43,8 @@ models:
     fields:
       waitingCount:
         resolver: true
+      estimatedWaitSeconds:
+        resolver: true
   Session:
     fields:
       game:
