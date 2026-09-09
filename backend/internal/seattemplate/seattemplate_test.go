@@ -166,3 +166,67 @@ func TestExpandSiegeOffenseDefense(t *testing.T) {
 		}
 	}
 }
+
+func TestExpandNamePathIdentifiesEquivalenceClasses(t *testing.T) {
+	tests := []struct {
+		name     string
+		template string
+		// seatKey -> expected NamePath
+		want map[string]string
+	}{
+		{
+			name:     "flat template is one class",
+			template: `{"count": 3}`,
+			want:     map[string]string{"1": "", "2": "", "3": ""},
+		},
+		{
+			name:     "symmetric teams are one class",
+			template: `{"Team":{"count":2,"Seat":{"count":2}}}`,
+			want: map[string]string{
+				"Team-1-Seat-1": "Team/Seat",
+				"Team-2-Seat-2": "Team/Seat",
+			},
+		},
+		{
+			name:     "distinct roles are distinct classes",
+			template: `{"Team":{"count":2,"SpyMaster":{},"Guesser":{"count":2}}}`,
+			want: map[string]string{
+				"Team-1-SpyMaster": "Team/SpyMaster",
+				"Team-2-Guesser-1": "Team/Guesser",
+			},
+		},
+		{
+			name:     "asymmetric sides are distinct classes",
+			template: `{"White":{},"Black":{}}`,
+			want:     map[string]string{"White": "White", "Black": "Black"},
+		},
+		{
+			// A kind whose name ends in a digit must survive intact. This is the
+			// case that rules out deriving the class by trimming the seat key.
+			name:     "kind ending in a digit is not truncated",
+			template: `{"Player2":{"count":2}}`,
+			want:     map[string]string{"Player2-1": "Player2", "Player2-2": "Player2"},
+		},
+		{
+			// Explicit names are instance labels, like indices: same class.
+			name:     "named seats share their kind's class",
+			template: `{"Seat":{"name":["Red","Blue"]}}`,
+			want:     map[string]string{"Seat-Red": "Seat", "Seat-Blue": "Seat"},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			leaves := mustExpand(t, tt.template)
+			got := make(map[string]string, len(leaves))
+			for _, leaf := range leaves {
+				got[leaf.SeatKey] = leaf.NamePath
+			}
+			for seatKey, want := range tt.want {
+				if got[seatKey] != want {
+					t.Errorf("seat %q NamePath = %q, want %q", seatKey, got[seatKey], want)
+				}
+			}
+		})
+	}
+}

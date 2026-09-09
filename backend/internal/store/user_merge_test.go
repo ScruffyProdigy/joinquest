@@ -31,6 +31,53 @@ func countRows(t *testing.T, st *Store, ctx context.Context, query string, args 
 	return n
 }
 
+// seedTwoUsers creates a tracked source and target user for a rating-merge test.
+func seedTwoUsers(t *testing.T, st *Store, ctx context.Context, cleaner *TestCleaner) (uuid.UUID, uuid.UUID) {
+	t.Helper()
+	source := mergeTestUser(t, st, cleaner, ctx, "ratingsource")
+	target := mergeTestUser(t, st, cleaner, ctx, "ratingtarget")
+	return source.ID, target.ID
+}
+
+// seedFinishedMatchFor puts userID through the demo mode's matchmaking against a fresh
+// opponent and records a completed match result naming userID the winner, exactly like
+// TestRecordMatchResultAppendsRatingInput in ratings_test.go — that call is what appends
+// the rating_match_inputs row this helper's caller needs. It returns the (game, mode) the
+// resulting input was recorded against.
+func seedFinishedMatchFor(t *testing.T, st *Store, ctx context.Context, cleaner *TestCleaner, userID uuid.UUID) (uuid.UUID, string) {
+	t.Helper()
+	queueID := DemoDefaultQueueID
+
+	opponent, err := st.CreateUser(ctx, CreateUserParams{Email: "merge-opponent-" + uuid.NewString() + "@example.com"})
+	if err != nil {
+		t.Fatalf("create opponent: %v", err)
+	}
+	cleaner.TrackUser(opponent.ID)
+
+	if _, err := st.JoinModeQueue(ctx, queueID, userID, "", nil); err != nil {
+		t.Fatalf("join user: %v", err)
+	}
+	if _, err := st.JoinModeQueue(ctx, queueID, opponent.ID, "", nil); err != nil {
+		t.Fatalf("join opponent: %v", err)
+	}
+	mustReconcileForming(t, st, ctx, queueID)
+
+	view, err := st.GetUserActiveIntent(ctx, userID)
+	if err != nil {
+		t.Fatalf("GetUserActiveIntent: %v", err)
+	}
+	if view == nil || view.SessionID == nil {
+		t.Fatal("expected a matched session")
+	}
+	sessionID := *view.SessionID
+
+	if err := st.RecordMatchResult(ctx, sessionID, "COMPLETED", []uuid.UUID{userID}, nil, time.Now()); err != nil {
+		t.Fatalf("RecordMatchResult: %v", err)
+	}
+
+	return gameAndModeForSession(t, st, ctx, sessionID)
+}
+
 // playCompletedMatch puts userID through a full match and returns the session id.
 func playCompletedMatch(t *testing.T, st *Store, cleaner *TestCleaner, ctx context.Context, userID uuid.UUID) uuid.UUID {
 	t.Helper()
@@ -285,5 +332,84 @@ func TestMergeUserIntoDeletesSourceMagicLinks(t *testing.T) {
 		`SELECT COUNT(*) FROM magic_links WHERE user_id = $1 OR user_id = $2`, source.ID, target.ID)
 	if left != 0 {
 		t.Fatalf("magic links surviving the merge = %d, want 0", left)
+	}
+}
+
+// A guest's rating history has to survive account creation: the match input log is
+// rewritten to reference the target rather than moved or averaged.
+func TestMergeUserIntoCarriesRatingHistory(t *testing.T) {
+	st := openTestStore(t)
+	cleaner := st.NewTestCleaner(t)
+	ctx := context.Background()
+
+	source, target := seedTwoUsers(t, st, ctx, cleaner)
+	gameID, modeKey := seedFinishedMatchFor(t, st, ctx, cleaner, source)
+
+	if err := st.MergeUserInto(ctx, source, target); err != nil {
+		t.Fatalf("MergeUserInto: %v", err)
+	}
+
+	inputs, err := st.ListRatingInputs(ctx, gameID, modeKey)
+	if err != nil {
+		t.Fatalf("ListRatingInputs: %v", err)
+	}
+	sourceKey, targetKey := "player:"+source.String(), "player:"+target.String()
+	for _, in := range inputs {
+		for _, side := range in.Sides {
+			for _, e := range side.Entrants {
+				if e.Key == sourceKey {
+					t.Errorf("input %s still references the merged-away user", in.SessionID)
+				}
+			}
+		}
+	}
+
+	var sawTarget bool
+	for _, in := range inputs {
+		for _, side := range in.Sides {
+			for _, e := range side.Entrants {
+				if e.Key == targetKey {
+					sawTarget = true
+				}
+			}
+		}
+	}
+	if !sawTarget {
+		t.Error("the guest's rating history did not survive account creation")
+	}
+}
+
+// Ratings are derived, so the merge drops the stale cache rather than trying to
+// combine two mu/sigma pairs — which would be meaningless.
+func TestMergeUserIntoClearsStaleRatingCache(t *testing.T) {
+	st := openTestStore(t)
+	cleaner := st.NewTestCleaner(t)
+	ctx := context.Background()
+
+	source, target := seedTwoUsers(t, st, ctx, cleaner)
+	gameID, modeKey := seedFinishedMatchFor(t, st, ctx, cleaner, source)
+	at := time.Now().UTC()
+
+	if err := st.SaveRatings(ctx, gameID, modeKey, "weng-lin/plackett-luce@1", at,
+		map[string]RatingValue{
+			"player:" + source.String(): {Mu: 30, Sigma: 5, MatchesPlayed: 9},
+			"player:" + target.String(): {Mu: 20, Sigma: 5, MatchesPlayed: 9},
+		}, nil); err != nil {
+		t.Fatalf("SaveRatings: %v", err)
+	}
+
+	if err := st.MergeUserInto(ctx, source, target); err != nil {
+		t.Fatalf("MergeUserInto: %v", err)
+	}
+
+	players, err := st.LoadPlayerRatings(ctx, gameID, modeKey)
+	if err != nil {
+		t.Fatalf("LoadPlayerRatings: %v", err)
+	}
+	if _, ok := players["player:"+source.String()]; ok {
+		t.Error("merged-away user still holds a rating row")
+	}
+	if _, ok := players["player:"+target.String()]; ok {
+		t.Error("stale target rating survived; it must be dropped for recompute")
 	}
 }

@@ -14,6 +14,12 @@ type Leaf struct {
 	SeatKey     string
 	AffinityKey string
 	QueuePath   string
+	// NamePath identifies the seat's equivalence class: the segment kinds with
+	// instance indices and explicit names removed, joined by "/". Two seats are
+	// interchangeable exactly when their NamePaths match — the same fact
+	// matchmaking relies on when it treats seat 1 and seat 5 as one slot. A flat
+	// template yields "" for every seat: one class, a symmetric mode.
+	NamePath string
 }
 
 var reservedKeys = map[string]struct{}{
@@ -63,6 +69,7 @@ func Expand(raw json.RawMessage) ([]Leaf, error) {
 			SeatKey:     strings.Join(lb.segments, "-"),
 			AffinityKey: lb.affinityKey,
 			QueuePath:   qp,
+			NamePath:    strings.Join(lb.names, "/"),
 		}
 	}
 	return out, nil
@@ -70,6 +77,7 @@ func Expand(raw json.RawMessage) ([]Leaf, error) {
 
 type leafBuild struct {
 	segments    []string
+	names       []string
 	queuePath   string
 	affinityKey string
 }
@@ -85,7 +93,7 @@ func expandRoot(root map[string]any) ([]leafBuild, error) {
 		if !ok {
 			return nil, fmt.Errorf("seattemplate: %q must be an object", kind)
 		}
-		sub, err := expandDimension(kind, child, nil, "")
+		sub, err := expandDimension(kind, child, nil, nil, "")
 		if err != nil {
 			return nil, err
 		}
@@ -113,10 +121,10 @@ func expandRootCount(root map[string]any) ([]leafBuild, error) {
 	return out, nil
 }
 
-func expandDimension(kind string, node map[string]any, prefix []string, sideAffinity string) ([]leafBuild, error) {
+func expandDimension(kind string, node map[string]any, prefix []string, namePrefix []string, sideAffinity string) ([]leafBuild, error) {
 	pascal := pascalKeys(node)
 	if len(pascal) == 0 {
-		return expandLeafDimension(kind, node, prefix, sideAffinity)
+		return expandLeafDimension(kind, node, prefix, namePrefix, sideAffinity)
 	}
 
 	if len(pascal) > 1 {
@@ -125,12 +133,13 @@ func expandDimension(kind string, node map[string]any, prefix []string, sideAffi
 			if err != nil {
 				return nil, err
 			}
+			newNamePrefix := append(append([]string{}, namePrefix...), kind)
 			var out []leafBuild
 			for i := 1; i <= count; i++ {
 				seg := formatSegment(kind, i, count, node)
 				newPrefix := append(append([]string{}, prefix...), seg)
 				aff := sideAffinityForInstance(kind, i, count, sideAffinity)
-				sub, err := expandMultiChildren(pascal, node, newPrefix, aff)
+				sub, err := expandMultiChildren(pascal, node, newPrefix, newNamePrefix, aff)
 				if err != nil {
 					return nil, err
 				}
@@ -138,7 +147,7 @@ func expandDimension(kind string, node map[string]any, prefix []string, sideAffi
 			}
 			return out, nil
 		}
-		return expandMultiChildren(pascal, node, append(append([]string{}, prefix...), kind), sideAffinity)
+		return expandMultiChildren(pascal, node, append(append([]string{}, prefix...), kind), append(append([]string{}, namePrefix...), kind), sideAffinity)
 	}
 
 	childKind := pascal[0]
@@ -148,7 +157,7 @@ func expandDimension(kind string, node map[string]any, prefix []string, sideAffi
 	}
 
 	if !hasCountKey(node) {
-		return expandDimension(childKind, child, append(prefix, kind), sideAffinity)
+		return expandDimension(childKind, child, append(prefix, kind), append(append([]string{}, namePrefix...), kind), sideAffinity)
 	}
 
 	count, err := nodeCount(node)
@@ -156,12 +165,13 @@ func expandDimension(kind string, node map[string]any, prefix []string, sideAffi
 		return nil, err
 	}
 
+	newNamePrefix := append(append([]string{}, namePrefix...), kind)
 	var out []leafBuild
 	for i := 1; i <= count; i++ {
 		seg := formatSegment(kind, i, count, node)
 		newPrefix := append(append([]string{}, prefix...), seg)
 		aff := sideAffinityForInstance(kind, i, count, sideAffinity)
-		sub, err := expandDimension(childKind, child, newPrefix, aff)
+		sub, err := expandDimension(childKind, child, newPrefix, newNamePrefix, aff)
 		if err != nil {
 			return nil, err
 		}
@@ -170,14 +180,14 @@ func expandDimension(kind string, node map[string]any, prefix []string, sideAffi
 	return out, nil
 }
 
-func expandMultiChildren(pascal []string, node map[string]any, prefix []string, sideAffinity string) ([]leafBuild, error) {
+func expandMultiChildren(pascal []string, node map[string]any, prefix []string, namePrefix []string, sideAffinity string) ([]leafBuild, error) {
 	var out []leafBuild
 	for _, childKind := range pascal {
 		child, ok := node[childKind].(map[string]any)
 		if !ok {
 			return nil, fmt.Errorf("seattemplate: %q must be an object", childKind)
 		}
-		sub, err := expandDimension(childKind, child, prefix, sideAffinity)
+		sub, err := expandDimension(childKind, child, prefix, namePrefix, sideAffinity)
 		if err != nil {
 			return nil, err
 		}
@@ -189,8 +199,11 @@ func expandMultiChildren(pascal []string, node map[string]any, prefix []string, 
 	return out, nil
 }
 
-func expandLeafDimension(kind string, node map[string]any, prefix []string, sideAffinity string) ([]leafBuild, error) {
+func expandLeafDimension(kind string, node map[string]any, prefix []string, namePrefix []string, sideAffinity string) ([]leafBuild, error) {
 	if names, ok := nodeNames(node); ok {
+		// Explicit names are instance labels, like indices: only the kind joins
+		// the equivalence class, never the name itself.
+		classNames := append(append([]string{}, namePrefix...), kind)
 		out := make([]leafBuild, len(names))
 		for i, name := range names {
 			segments := append(append([]string{}, prefix...), kind, name)
@@ -198,7 +211,7 @@ func expandLeafDimension(kind string, node map[string]any, prefix []string, side
 			if aff == "" {
 				aff = kind + ":" + name
 			}
-			out[i] = leafBuild{segments: segments, affinityKey: aff}
+			out[i] = leafBuild{segments: segments, names: classNames, affinityKey: aff}
 		}
 		return out, nil
 	}
@@ -206,6 +219,14 @@ func expandLeafDimension(kind string, node map[string]any, prefix []string, side
 	n, err := nodeCount(node)
 	if err != nil {
 		return nil, err
+	}
+
+	// A bare index (kind == "") carries no name of its own: it's the flat
+	// {"count": n} case, so the equivalence class is whatever the caller
+	// already built up.
+	classNames := namePrefix
+	if kind != "" {
+		classNames = append(append([]string{}, namePrefix...), kind)
 	}
 
 	var out []leafBuild
@@ -217,7 +238,7 @@ func expandLeafDimension(kind string, node map[string]any, prefix []string, side
 			seg = formatSegment(kind, i, n, node)
 		}
 		segments := append(append([]string{}, prefix...), seg)
-		out = append(out, leafBuild{segments: segments, affinityKey: sideAffinity})
+		out = append(out, leafBuild{segments: segments, names: classNames, affinityKey: sideAffinity})
 	}
 	return out, nil
 }
