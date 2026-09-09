@@ -436,8 +436,8 @@ func replaceModeSeatsFromLeavesTx(ctx context.Context, tx *sql.Tx, modeID uuid.U
 		affinity := optionalString(nonEmptyStringPtr(leaf.AffinityKey))
 		queuePath := optionalString(nonEmptyStringPtr(leaf.QueuePath))
 		if _, err := tx.ExecContext(ctx, `
-			INSERT INTO game_mode_seats (mode_id, seat_key, team, role, affinity_key, queue_path, sort_order)
-			VALUES ($1, $2, NULL, NULL, $3, $4, $5)
+			INSERT INTO game_mode_seats (mode_id, seat_key, affinity_key, queue_path, sort_order)
+			VALUES ($1, $2, $3, $4, $5)
 		`, modeID, strings.TrimSpace(leaf.SeatKey), affinity, queuePath, i); err != nil {
 			return err
 		}
