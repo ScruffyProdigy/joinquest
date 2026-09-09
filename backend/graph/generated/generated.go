@@ -202,10 +202,8 @@ type ComplexityRoot struct {
 
 	GameModeSeat struct {
 		QueuePath func(childComplexity int) int
-		Role      func(childComplexity int) int
 		SeatKey   func(childComplexity int) int
 		SortOrder func(childComplexity int) int
-		Team      func(childComplexity int) int
 	}
 
 	GamePlayerActivity struct {
@@ -1470,12 +1468,6 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.GameModeSeat.QueuePath(childComplexity), true
-	case "GameModeSeat.role":
-		if e.complexity.GameModeSeat.Role == nil {
-			break
-		}
-
-		return e.complexity.GameModeSeat.Role(childComplexity), true
 	case "GameModeSeat.seatKey":
 		if e.complexity.GameModeSeat.SeatKey == nil {
 			break
@@ -1488,12 +1480,6 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.GameModeSeat.SortOrder(childComplexity), true
-	case "GameModeSeat.team":
-		if e.complexity.GameModeSeat.Team == nil {
-			break
-		}
-
-		return e.complexity.GameModeSeat.Team(childComplexity), true
 
 	case "GamePlayerActivity.playing":
 		if e.complexity.GamePlayerActivity.Playing == nil {
@@ -3986,8 +3972,6 @@ type RegisterGamePayload {
 
 type GameModeSeat {
   seatKey: String!
-  team: String
-  role: String
   """Lobby join bucket derived from seatTemplate (empty for fifo modes)."""
   queuePath: String
   sortOrder: Int!
@@ -8639,10 +8623,6 @@ func (ec *executionContext) fieldContext_GameMode_seats(_ context.Context, field
 			switch field.Name {
 			case "seatKey":
 				return ec.fieldContext_GameModeSeat_seatKey(ctx, field)
-			case "team":
-				return ec.fieldContext_GameModeSeat_team(ctx, field)
-			case "role":
-				return ec.fieldContext_GameModeSeat_role(ctx, field)
 			case "queuePath":
 				return ec.fieldContext_GameModeSeat_queuePath(ctx, field)
 			case "sortOrder":
@@ -9039,64 +9019,6 @@ func (ec *executionContext) _GameModeSeat_seatKey(ctx context.Context, field gra
 }
 
 func (ec *executionContext) fieldContext_GameModeSeat_seatKey(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "GameModeSeat",
-		Field:      field,
-		IsMethod:   false,
-		IsResolver: false,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return nil, errors.New("field of type String does not have child fields")
-		},
-	}
-	return fc, nil
-}
-
-func (ec *executionContext) _GameModeSeat_team(ctx context.Context, field graphql.CollectedField, obj *model.GameModeSeat) (ret graphql.Marshaler) {
-	return graphql.ResolveField(
-		ctx,
-		ec.OperationContext,
-		field,
-		ec.fieldContext_GameModeSeat_team,
-		func(ctx context.Context) (any, error) {
-			return obj.Team, nil
-		},
-		nil,
-		ec.marshalOString2ᚖstring,
-		true,
-		false,
-	)
-}
-
-func (ec *executionContext) fieldContext_GameModeSeat_team(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "GameModeSeat",
-		Field:      field,
-		IsMethod:   false,
-		IsResolver: false,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return nil, errors.New("field of type String does not have child fields")
-		},
-	}
-	return fc, nil
-}
-
-func (ec *executionContext) _GameModeSeat_role(ctx context.Context, field graphql.CollectedField, obj *model.GameModeSeat) (ret graphql.Marshaler) {
-	return graphql.ResolveField(
-		ctx,
-		ec.OperationContext,
-		field,
-		ec.fieldContext_GameModeSeat_role,
-		func(ctx context.Context) (any, error) {
-			return obj.Role, nil
-		},
-		nil,
-		ec.marshalOString2ᚖstring,
-		true,
-		false,
-	)
-}
-
-func (ec *executionContext) fieldContext_GameModeSeat_role(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	fc = &graphql.FieldContext{
 		Object:     "GameModeSeat",
 		Field:      field,
@@ -24748,10 +24670,6 @@ func (ec *executionContext) _GameModeSeat(ctx context.Context, sel ast.Selection
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
-		case "team":
-			out.Values[i] = ec._GameModeSeat_team(ctx, field, obj)
-		case "role":
-			out.Values[i] = ec._GameModeSeat_role(ctx, field, obj)
 		case "queuePath":
 			out.Values[i] = ec._GameModeSeat_queuePath(ctx, field, obj)
 		case "sortOrder":

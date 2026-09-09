@@ -77,9 +77,6 @@ func seatDisplayName(modeSeats []store.GameModeSeat, seatKey string, template js
 			}
 			return roleLabel
 		}
-		if seat.Role != nil && strings.TrimSpace(*seat.Role) != "" {
-			return strings.TrimSpace(*seat.Role)
-		}
 		return seatKey
 	}
 	return seatKey
