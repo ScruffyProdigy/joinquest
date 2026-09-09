@@ -316,7 +316,14 @@ describe('TableCard', () => {
     expect(onSit).toHaveBeenCalledWith('1')
   })
 
-  it('names a player who has not answered the regroup', () => {
+  /**
+   * The seat-ghosting this card used to do is gone (JQ-183). Pending previous-match
+   * players are named on the group page's "Picking a seat" card instead, because pairing
+   * a pending player onto the seat they previously held silently proposes "take your old
+   * seat again" — the opposite of what a group rotating the spymaster wants — and it
+   * could place nobody at all in a mode with no seat template.
+   */
+  it('leaves open seats anonymous whatever the regroup roster says', () => {
     const table = {
       id: 'table-1',
       game: { name: 'Rock Paper Scissors Lizard Robot' },
@@ -327,41 +334,7 @@ describe('TableCard', () => {
         { seatKey: 'p2', displayName: 'Player 2', user: null },
       ],
       regroupRoster: [
-        { user: { id: 'a', displayName: 'Ada' }, role: 'p1', regroup: 'IN' },
-        { user: { id: 'b', displayName: 'Bo' }, role: 'p2', regroup: 'PENDING' },
-      ],
-      lookForGroupOptions: [],
-    }
-
-    render(
-      <TableCard table={table} busy={false} onSit={() => {}} onLeave={() => {}} onStart={() => {}} onDiscard={() => {}} />,
-    )
-
-    expect(screen.getByText('Bo')).toBeInTheDocument()
-    expect(screen.getByText('Not back yet')).toBeInTheDocument()
-  })
-
-  // The room-table origin, which is the primary regroup path and the shape the other cases
-  // here miss. When the match completes, resetRoomTableAfterSessionTx re-seats by role
-  // everyone who has *not* returned, and leaves the seat of everyone who *has* open — so a
-  // seated player and an unseated one are both PENDING at once. Pairing PENDING entries onto
-  // open seats in list order put the seated player (first, because the roster is placement
-  // ordered) into the other player's seat: on the card twice, and the player whose seat it
-  // actually is named nowhere.
-  it('does not ghost an already-seated pending player into someone else’s open seat', () => {
-    const table = {
-      id: 'table-1',
-      game: { name: 'Rock Paper Scissors Lizard Robot' },
-      mode: { displayName: '1v1 Duel (best 3 of 5)' },
-      seats: [{ seatKey: 'p1', user: { id: 'a', displayName: 'Ada' } }],
-      seatSlots: [
-        { seatKey: 'p1', displayName: 'Player 1', user: { id: 'a', displayName: 'Ada' } },
-        { seatKey: 'p2', displayName: 'Player 2', user: null },
-      ],
-      regroupRoster: [
-        // Ada won, so she sorts first — and she never returned, so she is still seated.
         { user: { id: 'a', displayName: 'Ada' }, role: 'p1', regroup: 'PENDING' },
-        // Bo returned, which is why p2 is open. p2 is his seat, and his name belongs on it.
         { user: { id: 'b', displayName: 'Bo' }, role: 'p2', regroup: 'PENDING' },
       ],
       lookForGroupOptions: [],
@@ -372,76 +345,6 @@ describe('TableCard', () => {
     )
 
     expect(screen.getAllByText('Ada')).toHaveLength(1)
-    expect(screen.getByText('Bo')).toBeInTheDocument()
-    expect(screen.getAllByText('Not back yet')).toHaveLength(1)
-  })
-
-  // A roster entry with no role cannot be placed: naming a seat it may not own is exactly
-  // the failure above, so the seat stays anonymous instead.
-  it('leaves an open seat anonymous when the pending entry has no seat key', () => {
-    const table = {
-      id: 'table-1',
-      game: { name: 'Rock Paper Scissors Lizard Robot' },
-      mode: { displayName: '1v1 Duel (best 3 of 5)' },
-      seats: [{ seatKey: 'p1', user: { id: 'a', displayName: 'Ada' } }],
-      seatSlots: [
-        { seatKey: 'p1', displayName: 'Player 1', user: { id: 'a', displayName: 'Ada' } },
-        { seatKey: 'p2', displayName: 'Player 2', user: null },
-      ],
-      regroupRoster: [
-        { user: { id: 'a', displayName: 'Ada' }, role: 'p1', regroup: 'IN' },
-        { user: { id: 'b', displayName: 'Bo' }, role: null, regroup: 'PENDING' },
-      ],
-      lookForGroupOptions: [],
-    }
-
-    render(
-      <TableCard table={table} busy={false} onSit={() => {}} onLeave={() => {}} onStart={() => {}} onDiscard={() => {}} />,
-    )
-
-    expect(screen.queryByText('Bo')).not.toBeInTheDocument()
-    expect(screen.queryByText('Not back yet')).not.toBeInTheDocument()
-  })
-
-  it('leaves open seats anonymous when there is no regroup roster', () => {
-    const table = {
-      id: 'table-1',
-      game: { name: 'Rock Paper Scissors Lizard Robot' },
-      mode: { displayName: '1v1 Duel (best 3 of 5)' },
-      seats: [],
-      seatSlots: [{ seatKey: 'p2', displayName: 'Player 2', user: null }],
-      regroupRoster: [],
-      lookForGroupOptions: [],
-    }
-
-    render(
-      <TableCard table={table} busy={false} onSit={() => {}} onLeave={() => {}} onStart={() => {}} onDiscard={() => {}} />,
-    )
-
-    expect(screen.queryByText('Not back yet')).not.toBeInTheDocument()
-  })
-
-  it('leaves open seats anonymous once every roster entry has answered', () => {
-    const table = {
-      id: 'table-1',
-      game: { name: 'Rock Paper Scissors Lizard Robot' },
-      mode: { displayName: '1v1 Duel (best 3 of 5)' },
-      seats: [{ seatKey: 'p1', user: { id: 'a', displayName: 'Ada' } }],
-      seatSlots: [
-        { seatKey: 'p1', displayName: 'Player 1', user: { id: 'a', displayName: 'Ada' } },
-        { seatKey: 'p2', displayName: 'Player 2', user: null },
-      ],
-      regroupRoster: [
-        { user: { id: 'a', displayName: 'Ada' }, role: 'p1', regroup: 'IN' },
-        { user: { id: 'b', displayName: 'Bo' }, role: 'p2', regroup: 'OUT' },
-      ],
-      lookForGroupOptions: [],
-    }
-
-    render(
-      <TableCard table={table} busy={false} onSit={() => {}} onLeave={() => {}} onStart={() => {}} onDiscard={() => {}} />,
-    )
-
     expect(screen.queryByText('Bo')).not.toBeInTheDocument()
     expect(screen.queryByText('Not back yet')).not.toBeInTheDocument()
   })

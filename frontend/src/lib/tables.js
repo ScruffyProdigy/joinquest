@@ -406,53 +406,6 @@ export function enrichTableSeats(table) {
   return { ...table, seatSlots }
 }
 
-/**
- * Pair unoccupied seat slots with the players still deciding whether to rejoin
- * (Table.regroupRoster entries with regroup === 'PENDING'). Once every roster entry has
- * answered (or the roster is empty), no pairing happens and open seats stay anonymous
- * for backfill.
- *
- * The pairing is on `entry.role`, because role *is* the seat key:
- * `resetRoomTableAfterSessionTx` re-seats a finished room-table group by `p.role`, so an
- * open slot on the regroup table belongs to exactly the roster entry whose role names it.
- * Pairing in list order looked equivalent on the queue origin, where nobody is pre-seated,
- * but inverts on the room-table origin — the primary path. There the players who have *not*
- * returned are the ones still holding seats, and the players who *have* returned are the
- * ones whose slots are open; both are PENDING. Ordered pairing therefore ghosted an
- * already-seated player (the placement-ordered winner, typically) into someone else's open
- * seat, showing them twice, and named nobody in the seat that was actually theirs.
- *
- * Roster users already holding a seat are excluded outright for the same reason: they are
- * on the card once already, and a duplicate is worse than an anonymous open seat.
- */
-export function attachPendingRegroup(table) {
-  const seatSlots = table?.seatSlots ?? []
-  const seatedUserIds = new Set(seatSlots.map((slot) => slot.user?.id).filter(Boolean))
-  const pendingBySeatKey = new Map()
-  for (const entry of table?.regroupRoster ?? []) {
-    if (entry?.regroup !== 'PENDING' || !entry.role) {
-      continue
-    }
-    if (entry.user?.id && seatedUserIds.has(entry.user.id)) {
-      continue
-    }
-    if (!pendingBySeatKey.has(entry.role)) {
-      pendingBySeatKey.set(entry.role, entry.user)
-    }
-  }
-  if (pendingBySeatKey.size === 0) {
-    return table
-  }
-  return {
-    ...table,
-    seatSlots: seatSlots.map((slot) =>
-      slot.user || !pendingBySeatKey.has(slot.seatKey)
-        ? slot
-        : { ...slot, pendingRegroupUser: pendingBySeatKey.get(slot.seatKey) },
-    ),
-  }
-}
-
 /** Merge a table subscription/mutation payload into prior room state. */
 export function mergeTableRecord(prevTable, updatedTable) {
   if (!updatedTable?.id) {
