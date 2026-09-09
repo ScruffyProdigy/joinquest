@@ -123,11 +123,11 @@ func groupParticipants(shape ModeShape, participants []Participant) map[string][
 }
 
 func groupKey(shape ModeShape, p Participant) string {
-	if p.TeamKey != "" {
-		return "team:" + p.TeamKey
-	}
 	if shape.Cooperative {
 		return "crew"
+	}
+	if p.TeamKey != "" {
+		return "team:" + p.TeamKey
 	}
 	return "solo:" + p.PlayerID
 }
