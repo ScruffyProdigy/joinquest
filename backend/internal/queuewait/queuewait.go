@@ -7,6 +7,11 @@
 // meaning is the part expected to change. A busy game's wait fluctuates through
 // the day, and representing that should cost a new Estimator in this package,
 // not a new migration.
+//
+// Everything here is batch-shaped: estimates are produced for a set of queues in
+// one fetch, never one queue at a time. A catalog page renders many mode cards
+// at once, so a per-queue interface would be an N+1 waiting to happen — and one
+// that is far more awkward to remove later than to avoid now.
 package queuewait
 
 import (
@@ -25,8 +30,10 @@ const (
 	DefaultWindow = 7 * 24 * time.Hour
 	// DefaultMinSamples is the fewest fills worth reporting a median from.
 	DefaultMinSamples = 5
-	// DefaultLimit caps how many fills are pulled into memory per estimate.
-	DefaultLimit = 500
+	// DefaultLimitPerQueue caps how many of each queue's fills are pulled into
+	// memory. Per queue rather than overall, so one busy queue cannot crowd
+	// every other queue out of the sample.
+	DefaultLimitPerQueue = 500
 )
 
 // Fill is one observed wait: a player joined a queue, and later got matched.
@@ -38,68 +45,80 @@ type Fill struct {
 // Wait is how long the player sat in the queue before being matched.
 func (f Fill) Wait() time.Duration { return f.MatchedAt.Sub(f.JoinedAt) }
 
-// FillQuery asks for one queue's recent fills.
+// FillQuery asks for several queues' recent fills at once.
 //
 // It is a struct rather than positional arguments so a later strategy can ask
 // for samples differently without breaking every implementation of Samples.
 // That matters sooner than it looks: a time-of-day strategy buckets fills by
-// hour, and on a busy game "the most recent Limit fills" can all land inside a
-// few hours and starve every other bucket. Widening the request is an added
-// field here; changing the signature would be a rewrite.
+// hour, and on a busy queue "the most recent LimitPerQueue fills" can all land
+// inside a few hours and starve every other bucket. Widening the request is an
+// added field here; changing the signature would be a rewrite.
 type FillQuery struct {
-	ModeQueueID uuid.UUID
-	Since       time.Time
-	Limit       int
+	// ModeQueueIDs are the queues to sample. Empty means every queue that has
+	// recent fills — the whole-catalog snapshot Cache is built on.
+	ModeQueueIDs []uuid.UUID
+	Since        time.Time
+	// LimitPerQueue caps the fills returned for each queue independently.
+	LimitPerQueue int
 }
 
-// Samples supplies observed fills. The store implements it against Postgres;
-// tests implement it with a slice, which is why no Estimator needs a database.
-type Samples interface {
-	RecentFills(ctx context.Context, q FillQuery) ([]Fill, error)
-}
-
-// Estimator turns observed fills into the number a mode card paints.
+// Samples supplies observed fills, keyed by queue. The store implements it
+// against Postgres; tests implement it with a map, which is why no Estimator
+// needs a database.
 //
-// A nil duration means "not willing to say" — the card shows no badge rather
-// than a guess. That is distinct from an error, which means we could not look.
+// Queues with no fills in the window are absent from the map rather than
+// present and empty.
+type Samples interface {
+	RecentFills(ctx context.Context, q FillQuery) (map[uuid.UUID][]Fill, error)
+}
+
+// Estimator turns observed fills into the numbers mode cards paint.
+//
+// A queue missing from the returned map has no estimate — the card shows no
+// badge rather than a guess. That is distinct from an error, which means we
+// could not look at all.
 //
 // now is a parameter rather than time.Now() inside, so a strategy that depends
 // on the time of day stays testable.
 type Estimator interface {
-	Estimate(ctx context.Context, modeQueueID uuid.UUID, now time.Time) (*time.Duration, error)
+	EstimateByModeQueue(ctx context.Context, modeQueueIDs []uuid.UUID, now time.Time) (map[uuid.UUID]time.Duration, error)
 }
 
-// MedianEstimator is unconvinced by outliers: it reports the median of a
-// queue's recent fills, and declines to answer at all until it has seen enough
-// of them.
+// MedianEstimator is unconvinced by outliers: it reports the median of each
+// queue's recent fills, and declines to answer for a queue until it has seen
+// enough of them.
 type MedianEstimator struct {
-	Samples    Samples
-	Window     time.Duration
-	MinSamples int
-	Limit      int
+	Samples       Samples
+	Window        time.Duration
+	MinSamples    int
+	LimitPerQueue int
 }
 
-// Estimate reports the median recent wait for one queue, or nil when the queue
-// has not filled often enough recently to say anything honest.
-func (e MedianEstimator) Estimate(ctx context.Context, modeQueueID uuid.UUID, now time.Time) (*time.Duration, error) {
-	fills, err := e.Samples.RecentFills(ctx, FillQuery{
-		ModeQueueID: modeQueueID,
-		Since:       now.Add(-e.window()),
-		Limit:       e.limit(),
+// EstimateByModeQueue reports the median recent wait for each queue that has
+// filled often enough recently to say anything honest. Queues that have not are
+// left out of the map.
+func (e MedianEstimator) EstimateByModeQueue(ctx context.Context, modeQueueIDs []uuid.UUID, now time.Time) (map[uuid.UUID]time.Duration, error) {
+	byQueue, err := e.Samples.RecentFills(ctx, FillQuery{
+		ModeQueueIDs:  modeQueueIDs,
+		Since:         now.Add(-e.window()),
+		LimitPerQueue: e.limitPerQueue(),
 	})
 	if err != nil {
 		return nil, err
 	}
-	if len(fills) < e.minSamples() {
-		return nil, nil
-	}
 
-	waits := make([]time.Duration, len(fills))
-	for i, f := range fills {
-		waits[i] = f.Wait()
+	estimates := make(map[uuid.UUID]time.Duration, len(byQueue))
+	for queueID, fills := range byQueue {
+		if len(fills) < e.minSamples() {
+			continue
+		}
+		waits := make([]time.Duration, len(fills))
+		for i, f := range fills {
+			waits[i] = f.Wait()
+		}
+		estimates[queueID] = medianDuration(waits)
 	}
-	median := medianDuration(waits)
-	return &median, nil
+	return estimates, nil
 }
 
 func (e MedianEstimator) window() time.Duration {
@@ -116,11 +135,11 @@ func (e MedianEstimator) minSamples() int {
 	return e.MinSamples
 }
 
-func (e MedianEstimator) limit() int {
-	if e.Limit <= 0 {
-		return DefaultLimit
+func (e MedianEstimator) limitPerQueue() int {
+	if e.LimitPerQueue <= 0 {
+		return DefaultLimitPerQueue
 	}
-	return e.Limit
+	return e.LimitPerQueue
 }
 
 // medianDuration sorts a copy of waits and returns the middle one, averaging

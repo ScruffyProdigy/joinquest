@@ -14,22 +14,29 @@ import (
 // fakeEstimator stands in for a real strategy so the resolver's own behaviour —
 // rounding, nulls, errors — is testable without a database.
 type fakeEstimator struct {
-	wait *time.Duration
-	err  error
-	got  uuid.UUID
+	byQueue map[uuid.UUID]time.Duration
+	err     error
+	calls   int
 }
 
-func (f *fakeEstimator) Estimate(_ context.Context, modeQueueID uuid.UUID, _ time.Time) (*time.Duration, error) {
-	f.got = modeQueueID
-	return f.wait, f.err
+func (f *fakeEstimator) EstimateByModeQueue(_ context.Context, _ []uuid.UUID, _ time.Time) (map[uuid.UUID]time.Duration, error) {
+	f.calls++
+	if f.err != nil {
+		return nil, f.err
+	}
+	return f.byQueue, nil
 }
 
-func durationPtr(d time.Duration) *time.Duration { return &d }
+// resolverFor wires a resolver to a fake estimate, through a real cache.
+func resolverFor(est *fakeEstimator) *Resolver {
+	return &Resolver{WaitEstimates: queuewait.NewCache(est, time.Minute)}
+}
 
 func TestModeQueueEstimatedWaitSecondsRoundsToWholeSeconds(t *testing.T) {
 	queueID := uuid.New()
-	est := &fakeEstimator{wait: durationPtr(15600 * time.Millisecond)}
-	r := &Resolver{WaitEstimator: est}
+	r := resolverFor(&fakeEstimator{byQueue: map[uuid.UUID]time.Duration{
+		queueID: 15600 * time.Millisecond,
+	}})
 
 	got, err := r.ModeQueue().EstimatedWaitSeconds(context.Background(), &model.ModeQueue{ID: queueID.String()})
 	if err != nil {
@@ -41,13 +48,34 @@ func TestModeQueueEstimatedWaitSecondsRoundsToWholeSeconds(t *testing.T) {
 	if *got != 16 {
 		t.Errorf("got %d seconds, want 15.6s rounded to 16", *got)
 	}
-	if est.got != queueID {
-		t.Errorf("estimated for queue %v, want %v", est.got, queueID)
+}
+
+func TestModeQueueEstimatedWaitSecondsCostsOneEstimateForAWholePageOfCards(t *testing.T) {
+	first, second, third := uuid.New(), uuid.New(), uuid.New()
+	est := &fakeEstimator{byQueue: map[uuid.UUID]time.Duration{
+		first:  10 * time.Second,
+		second: 20 * time.Second,
+		third:  30 * time.Second,
+	}}
+	r := resolverFor(est)
+
+	for _, queueID := range []uuid.UUID{first, second, third} {
+		got, err := r.ModeQueue().EstimatedWaitSeconds(context.Background(), &model.ModeQueue{ID: queueID.String()})
+		if err != nil {
+			t.Fatalf("EstimatedWaitSeconds(%v): %v", queueID, err)
+		}
+		if got == nil {
+			t.Fatalf("queue %v got no estimate, want one", queueID)
+		}
+	}
+
+	if est.calls != 1 {
+		t.Errorf("estimated %d times for 3 mode cards, want 1 — this field must not be an N+1", est.calls)
 	}
 }
 
 func TestModeQueueEstimatedWaitSecondsStaysNullForAColdQueue(t *testing.T) {
-	r := &Resolver{WaitEstimator: &fakeEstimator{}}
+	r := resolverFor(&fakeEstimator{})
 
 	got, err := r.ModeQueue().EstimatedWaitSeconds(context.Background(), &model.ModeQueue{ID: uuid.NewString()})
 	if err != nil {
@@ -60,7 +88,7 @@ func TestModeQueueEstimatedWaitSecondsStaysNullForAColdQueue(t *testing.T) {
 
 func TestModeQueueEstimatedWaitSecondsPropagatesEstimatorFailure(t *testing.T) {
 	wantErr := errors.New("database is down")
-	r := &Resolver{WaitEstimator: &fakeEstimator{err: wantErr}}
+	r := resolverFor(&fakeEstimator{err: wantErr})
 
 	got, err := r.ModeQueue().EstimatedWaitSeconds(context.Background(), &model.ModeQueue{ID: uuid.NewString()})
 	if !errors.Is(err, wantErr) {
@@ -72,30 +100,26 @@ func TestModeQueueEstimatedWaitSecondsPropagatesEstimatorFailure(t *testing.T) {
 }
 
 func TestModeQueueEstimatedWaitSecondsRejectsAMalformedQueueID(t *testing.T) {
-	r := &Resolver{WaitEstimator: &fakeEstimator{wait: durationPtr(time.Second)}}
+	r := resolverFor(&fakeEstimator{})
 
 	if _, err := r.ModeQueue().EstimatedWaitSeconds(context.Background(), &model.ModeQueue{ID: "not-a-uuid"}); err == nil {
 		t.Fatal("got no error for a malformed queue id, want one")
 	}
 }
 
-func TestWaitEstimatorDefaultsToTheMedianStrategy(t *testing.T) {
+func TestWaitEstimatesDefaultToACacheOverTheMedianStrategy(t *testing.T) {
 	r := &Resolver{}
 
-	if _, ok := r.waitEstimator().(queuewait.MedianEstimator); !ok {
-		t.Errorf("got %T, want a MedianEstimator by default", r.waitEstimator())
+	if r.waitEstimates() == nil {
+		t.Error("got no wait-estimate cache, want one built by default")
 	}
 }
 
 func TestWaitEstimatorReadsItsWindowAndSampleFloorFromTheEnvironment(t *testing.T) {
 	t.Setenv("LOBBY_WAIT_ESTIMATE_WINDOW_DAYS", "2")
 	t.Setenv("LOBBY_WAIT_ESTIMATE_MIN_SAMPLES", "12")
-	r := &Resolver{}
 
-	est, ok := r.waitEstimator().(queuewait.MedianEstimator)
-	if !ok {
-		t.Fatalf("got %T, want a MedianEstimator", r.waitEstimator())
-	}
+	est := newMedianEstimator(nil)
 	if want := 48 * time.Hour; est.Window != want {
 		t.Errorf("got window %v, want %v", est.Window, want)
 	}
@@ -107,12 +131,8 @@ func TestWaitEstimatorReadsItsWindowAndSampleFloorFromTheEnvironment(t *testing.
 func TestWaitEstimatorIgnoresNonsenseEnvironmentOverrides(t *testing.T) {
 	t.Setenv("LOBBY_WAIT_ESTIMATE_WINDOW_DAYS", "not-a-number")
 	t.Setenv("LOBBY_WAIT_ESTIMATE_MIN_SAMPLES", "-3")
-	r := &Resolver{}
 
-	est, ok := r.waitEstimator().(queuewait.MedianEstimator)
-	if !ok {
-		t.Fatalf("got %T, want a MedianEstimator", r.waitEstimator())
-	}
+	est := newMedianEstimator(nil)
 	if est.Window != 0 || est.MinSamples != 0 {
 		t.Errorf("got window %v and floor %d, want both left unset so the package defaults apply", est.Window, est.MinSamples)
 	}

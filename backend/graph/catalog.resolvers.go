@@ -237,13 +237,13 @@ func (r *modeQueueResolver) EstimatedWaitSeconds(ctx context.Context, obj *model
 	if err != nil {
 		return nil, err
 	}
-	wait, err := r.waitEstimator().Estimate(ctx, queueID, time.Now())
+	wait, ok, err := r.waitEstimates().For(ctx, queueID)
 	if err != nil {
 		// Deliberately not fail-open to null: a null means "this queue has no
 		// history worth quoting", and a broken lookup must not say that.
 		return nil, err
 	}
-	if wait == nil {
+	if !ok {
 		return nil, nil
 	}
 	seconds := int(wait.Round(time.Second) / time.Second)

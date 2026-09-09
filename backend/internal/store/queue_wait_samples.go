@@ -3,42 +3,74 @@ package store
 import (
 	"context"
 
+	"github.com/google/uuid"
+	"github.com/lib/pq"
 	"github.com/scruffyprodigy/joinquest/internal/queuewait"
 )
 
-// RecentModeQueueFills returns one queue's recently observed waits, most recent
-// first.
+// RecentModeQueueFills returns recently observed waits keyed by mode queue, most
+// recent first within each queue. An empty FillQuery.ModeQueueIDs reads every
+// queue that has fills in the window.
+//
+// One query for every queue asked about, never one per queue: a catalog page
+// renders many mode cards, and this is read behind a whole-catalog snapshot.
+// The per-queue cap is applied by ROW_NUMBER rather than in Go so a single busy
+// queue cannot crowd the others out of the result — and so the rows a quiet
+// queue needs are never fetched and thrown away.
 //
 // Deliberately no aggregation: the median (or whatever a later strategy wants)
 // is computed in internal/queuewait, so changing how an estimate is derived
 // does not mean changing SQL. See that package's doc comment.
-func (s *Store) RecentModeQueueFills(ctx context.Context, q queuewait.FillQuery) ([]queuewait.Fill, error) {
+func (s *Store) RecentModeQueueFills(ctx context.Context, q queuewait.FillQuery) (map[uuid.UUID][]queuewait.Fill, error) {
 	// matched_at IS NOT NULL rather than status = 'matched': the question is how
 	// long a player waits to be matched, not whether the handoff afterwards
 	// worked. That keeps rows the stale-matched sweep later cancelled, and drops
 	// players who gave up while waiting — and rolled-back matches, which
 	// match_rollback nulls the column for — without naming either case.
 	rows, err := s.db.QueryContext(ctx, `
-		SELECT joined_at, matched_at
-		FROM game_queues
-		WHERE mode_queue_id = $1
-		  AND matched_at IS NOT NULL
-		  AND matched_at >= $2
-		ORDER BY matched_at DESC
-		LIMIT $3
-	`, q.ModeQueueID, q.Since, q.Limit)
+		SELECT mode_queue_id, joined_at, matched_at
+		FROM (
+			SELECT
+				mode_queue_id,
+				joined_at,
+				matched_at,
+				ROW_NUMBER() OVER (
+					PARTITION BY mode_queue_id
+					ORDER BY matched_at DESC
+				) AS recency
+			FROM game_queues
+			WHERE mode_queue_id IS NOT NULL
+			  AND matched_at IS NOT NULL
+			  AND matched_at >= $1
+			  AND (cardinality($2::uuid[]) = 0 OR mode_queue_id = ANY($2::uuid[]))
+		) ranked
+		WHERE recency <= $3
+		ORDER BY mode_queue_id, matched_at DESC
+	`, q.Since, pq.Array(queueIDStrings(q.ModeQueueIDs)), q.LimitPerQueue)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
 
-	var fills []queuewait.Fill
+	byQueue := make(map[uuid.UUID][]queuewait.Fill)
 	for rows.Next() {
+		var queueID uuid.UUID
 		var f queuewait.Fill
-		if err := rows.Scan(&f.JoinedAt, &f.MatchedAt); err != nil {
+		if err := rows.Scan(&queueID, &f.JoinedAt, &f.MatchedAt); err != nil {
 			return nil, err
 		}
-		fills = append(fills, f)
+		byQueue[queueID] = append(byQueue[queueID], f)
 	}
-	return fills, rows.Err()
+	return byQueue, rows.Err()
+}
+
+// queueIDStrings renders queue ids for pq.Array, which has no uuid.UUID case.
+// A nil slice becomes an empty array rather than NULL, which is what the
+// cardinality check above reads as "every queue".
+func queueIDStrings(ids []uuid.UUID) []string {
+	out := make([]string, 0, len(ids))
+	for _, id := range ids {
+		out = append(out, id.String())
+	}
+	return out
 }

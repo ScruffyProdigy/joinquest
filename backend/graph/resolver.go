@@ -43,25 +43,39 @@ type Resolver struct {
 	QueueOptionsCache *gameclient.QueueOptionsCache
 	// LiveCountsCache serves Game.playerActivity; nil queries the store on every field read.
 	LiveCountsCache *catalogstats.Cache
-	// WaitEstimator serves ModeQueue.estimatedWaitSeconds; nil uses the median of
-	// the queue's recent fills. Swapping in a different strategy — one that
-	// accounts for the time of day, say — is meant to be this field and nothing
-	// else. See internal/queuewait.
-	WaitEstimator queuewait.Estimator
+	// WaitEstimates serves ModeQueue.estimatedWaitSeconds from one whole-catalog
+	// snapshot, so a page of mode cards costs a single estimate rather than one
+	// per card; nil builds the default cache over the median strategy. Swapping
+	// in a different strategy — one that accounts for the time of day, say — is
+	// meant to be the estimator inside this cache and nothing else. See
+	// internal/queuewait.
+	WaitEstimates *queuewait.Cache
 	// Emitter carries operational signals that have no GraphQL surface — conditions a
 	// caller cannot be told about because the call legitimately succeeded. nil emits
 	// to the log, so a resolver never has to nil-check it.
 	Emitter observe.Emitter
 }
 
-// waitEstimator returns the resolver's wait-time strategy, defaulting to the
-// median of the queue's recent fills.
-func (r *Resolver) waitEstimator() queuewait.Estimator {
-	if r.WaitEstimator != nil {
-		return r.WaitEstimator
+// waitEstimateTTL is how long one whole-catalog snapshot of wait estimates is
+// served for. Longer than the live-counts TTL on purpose: a live count changes
+// with every join, while this is a median over days and barely moves minute to
+// minute.
+const waitEstimateTTL = 30 * time.Second
+
+// waitEstimates returns the resolver's wait-estimate cache, building the
+// default one over the median strategy when none was injected.
+func (r *Resolver) waitEstimates() *queuewait.Cache {
+	if r.WaitEstimates != nil {
+		return r.WaitEstimates
 	}
+	return queuewait.NewCache(newMedianEstimator(r.Store), waitEstimateTTL)
+}
+
+// newMedianEstimator builds the default strategy, with its window and sample
+// floor taken from the environment.
+func newMedianEstimator(st *store.Store) queuewait.MedianEstimator {
 	return queuewait.MedianEstimator{
-		Samples:    storeFills{r.Store},
+		Samples:    storeFills{st},
 		Window:     waitEstimateWindow(),
 		MinSamples: waitEstimateMinSamples(),
 	}
@@ -89,7 +103,7 @@ func waitEstimateMinSamples() int {
 // generic name off the store itself — the same reason liveCountsSource exists.
 type storeFills struct{ store *store.Store }
 
-func (s storeFills) RecentFills(ctx context.Context, q queuewait.FillQuery) ([]queuewait.Fill, error) {
+func (s storeFills) RecentFills(ctx context.Context, q queuewait.FillQuery) (map[uuid.UUID][]queuewait.Fill, error) {
 	if s.store == nil {
 		return nil, fmt.Errorf("database store is not configured")
 	}
@@ -113,6 +127,7 @@ func NewResolver(st *store.Store, authService *auth.Service, broker pubsub.Broke
 		EligibilityCache:  gameclient.NewEligibilityCache(gameclient.NewClient(), 5*time.Second),
 		QueueOptionsCache: gameclient.NewQueueOptionsCache(gameclient.NewClient(), 5*time.Second),
 		LiveCountsCache:   catalogstats.NewCache(liveCountsSource(st), 5*time.Second),
+		WaitEstimates:     queuewait.NewCache(newMedianEstimator(st), waitEstimateTTL),
 	}
 }
 
