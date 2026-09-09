@@ -191,17 +191,28 @@ func (s *Store) LoadNonPlayerRatings(ctx context.Context, gameID uuid.UUID, mode
 }
 
 // SaveRatings writes a replay's output for a game/mode in one transaction.
-// Both tables are upserted with ON CONFLICT DO UPDATE, so calling this
-// repeatedly with the same keys (as a re-replay does) overwrites rather than
-// duplicates. players is keyed by PlayerRatingKey(user_id) ("player:<uuid>");
-// nonPlayers is keyed directly by nonplayer_ratings.entity_key. Either map may
-// be nil.
+//
+// It first clears every existing row for this game/mode from both tables,
+// then writes exactly the rows passed in, so the result is always a full
+// recompute rather than an upsert onto whatever was cached before. This is
+// what makes SaveRatings safe to call with a replay's output: replay always
+// produces the complete set of entrants derived from the current input log
+// (see rating.Replayer.ReplayMode), so an entrant that no longer appears in
+// that log — because its input row was corrected or removed — must not
+// survive here either, or the cache silently stops equalling the replay,
+// which is the one invariant this whole path exists to uphold. players is
+// keyed by PlayerRatingKey(user_id) ("player:<uuid>"); nonPlayers is keyed
+// directly by nonplayer_ratings.entity_key. Either map may be nil.
 func (s *Store) SaveRatings(ctx context.Context, gameID uuid.UUID, modeKey, engineID string, at time.Time, players, nonPlayers map[string]RatingValue) error {
 	tx, err := s.db.BeginTx(ctx, nil)
 	if err != nil {
 		return err
 	}
 	defer func() { _ = tx.Rollback() }()
+
+	if err := clearRatingsTx(ctx, tx, gameID, modeKey); err != nil {
+		return err
+	}
 
 	for key, v := range players {
 		userID, ok := parsePlayerRatingKey(key)
@@ -240,8 +251,9 @@ func (s *Store) SaveRatings(ctx context.Context, gameID uuid.UUID, modeKey, engi
 	return tx.Commit()
 }
 
-// ClearRatings deletes both cached rating tables for a game/mode. Used before
-// a from-scratch replay, and when modes merge or are retired.
+// ClearRatings deletes both cached rating tables for a game/mode. Used when
+// modes merge or are retired; a from-scratch replay no longer needs to call
+// this itself since SaveRatings clears in the same transaction as it writes.
 func (s *Store) ClearRatings(ctx context.Context, gameID uuid.UUID, modeKey string) error {
 	tx, err := s.db.BeginTx(ctx, nil)
 	if err != nil {
@@ -249,13 +261,23 @@ func (s *Store) ClearRatings(ctx context.Context, gameID uuid.UUID, modeKey stri
 	}
 	defer func() { _ = tx.Rollback() }()
 
+	if err := clearRatingsTx(ctx, tx, gameID, modeKey); err != nil {
+		return err
+	}
+	return tx.Commit()
+}
+
+// clearRatingsTx deletes both cached rating tables for a game/mode against a
+// caller-supplied transaction, following the ...Tx naming used elsewhere in
+// this package for transaction-scoped variants (e.g. AppendRatingInputTx).
+func clearRatingsTx(ctx context.Context, tx *sql.Tx, gameID uuid.UUID, modeKey string) error {
 	if _, err := tx.ExecContext(ctx, `DELETE FROM player_ratings WHERE game_id = $1 AND mode_key = $2`, gameID, modeKey); err != nil {
 		return err
 	}
 	if _, err := tx.ExecContext(ctx, `DELETE FROM nonplayer_ratings WHERE game_id = $1 AND mode_key = $2`, gameID, modeKey); err != nil {
 		return err
 	}
-	return tx.Commit()
+	return nil
 }
 
 func parsePlayerRatingKey(key string) (uuid.UUID, bool) {

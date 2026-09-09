@@ -239,12 +239,37 @@ func (m *modifierAccumulator) report() map[string]ModifierReport {
 }
 
 // splitModifierKey splits a modifier's namespaced key into a category and a
-// value, e.g. "seat:White" -> ("seat", "White"). A key with no ":" is its
-// own single-value category (e.g. "scenario"), which is intrinsically
-// unidentifiable — there is no other value to vary against.
+// value.
+//
+// Most namespaces are single-dimension: everything after the colon is the
+// value, e.g. "seat:White" -> ("seat", "White"). This holds even when that
+// remainder itself contains "/" — "seat:Team/Guesser" -> ("seat",
+// "Team/Guesser") — because a seat's NamePath (see internal/seattemplate)
+// joins nested template segments with "/" to name one value of the "seat"
+// dimension, not a further split within it.
+//
+// "prequeue" is the one namespace with a real second dimension inside it:
+// its keys are "prequeue:<groupKey>/<optionID>" (see BuildSides in
+// internal/rating/outcome.go), where groupKey names a distinct pre-queue
+// option group — e.g. "color" and "map" are unrelated dimensions that must
+// not be lumped into one "prequeue" category, or a player locked to one
+// color across many maps would be misreported as having a varying,
+// identifiable color. For that namespace only, the category includes the
+// group key: "prequeue:color/white" -> ("prequeue:color", "white").
+//
+// A key with no ":" is its own single-value category (e.g. "scenario"),
+// which is intrinsically unidentifiable — there is no other value to vary
+// against.
 func splitModifierKey(key string) (category, value string) {
-	if idx := strings.Index(key, ":"); idx >= 0 {
-		return key[:idx], key[idx+1:]
+	idx := strings.Index(key, ":")
+	if idx < 0 {
+		return key, key
 	}
-	return key, key
+	namespace, rest := key[:idx], key[idx+1:]
+	if namespace == "prequeue" {
+		if slash := strings.Index(rest, "/"); slash >= 0 {
+			return namespace + ":" + rest[:slash], rest[slash+1:]
+		}
+	}
+	return namespace, rest
 }

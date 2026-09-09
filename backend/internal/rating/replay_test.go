@@ -115,27 +115,46 @@ func TestReplayIsDeterministicAcrossRuns(t *testing.T) {
 	}
 }
 
-// The cache must equal the replay: applying matches one at a time as they
-// arrive has to land on the same numbers as recomputing the whole history.
-func TestReplayEqualsIncrementalApplication(t *testing.T) {
+// TestReplayOfPrefixesIsStableAndOrderPreserving replays each successive
+// prefix of a history (the first match, then the first two, then all three)
+// through two independent Replayers and checks the two runs agree at every
+// prefix length. "Order preserving" means exactly what ReplayMode's own doc
+// promises: replay always walks Input.Sides in slice order, so growing the
+// prefix by one match never reorders the matches already in it. This extends
+// TestReplayIsDeterministicAcrossRuns's determinism check to every prefix
+// length, not only the full history.
+//
+// This test used to be named TestReplayEqualsIncrementalApplication and
+// compared a from-scratch replay of the final prefix (history[:3], the whole
+// history) against a from-scratch replay of the whole history — two
+// byte-identical inputs replayed the same way, so the comparison could never
+// fail no matter what the code did.
+//
+// Incremental application is not a code path this design has: ReplayMode
+// always recomputes every rating from Engine.Prior() over the whole input
+// log, and the Store port (see the Store interface above) deliberately has
+// no method to load an existing rating and append one match to it. There is
+// no incremental path to test, so this test does not pretend one exists.
+func TestReplayOfPrefixesIsStableAndOrderPreserving(t *testing.T) {
 	e, _ := NewWengLin("plackett-luce")
 	history := threeMatchHistory()
 
-	full := &fakeStore{inputs: history}
-	if _, err := NewReplayer(e, full).ReplayMode(context.Background(), "game", "duel"); err != nil {
-		t.Fatalf("full replay: %v", err)
-	}
-
-	incremental := &fakeStore{}
 	for i := range history {
-		incremental.inputs = history[:i+1]
-		if _, err := NewReplayer(e, incremental).ReplayMode(context.Background(), "game", "duel"); err != nil {
-			t.Fatalf("incremental replay at %d: %v", i, err)
-		}
-	}
+		prefix := history[:i+1]
 
-	if !reflect.DeepEqual(full.players, incremental.players) {
-		t.Errorf("full = %+v, incremental = %+v", full.players, incremental.players)
+		a := &fakeStore{inputs: prefix}
+		if _, err := NewReplayer(e, a).ReplayMode(context.Background(), "game", "duel"); err != nil {
+			t.Fatalf("prefix %d, run a: %v", i, err)
+		}
+
+		b := &fakeStore{inputs: prefix}
+		if _, err := NewReplayer(e, b).ReplayMode(context.Background(), "game", "duel"); err != nil {
+			t.Fatalf("prefix %d, run b: %v", i, err)
+		}
+
+		if !reflect.DeepEqual(a.players, b.players) {
+			t.Errorf("prefix %d: two replays of the same prefix diverged:\na = %+v\nb = %+v", i, a.players, b.players)
+		}
 	}
 }
 
@@ -151,6 +170,58 @@ func TestReplayStartsUnratedEntrantsFromThePrior(t *testing.T) {
 			t.Errorf("%s sigma = %v, want below the prior %v after playing",
 				key, got.Sigma, e.Prior().Sigma)
 		}
+	}
+}
+
+// prequeueLockedColorHistory locks alice to "prequeue:color/white" across
+// two matches whose "prequeue:map" value differs (forest, then desert): color
+// and map are separate dimensions, so alice's skill and her color choice are
+// perfectly confounded even though her map varies from match to match. Before
+// splitModifierKey separated the "prequeue:color" and "prequeue:map"
+// dimensions, both collapsed into a single "prequeue" category, and alice's
+// varying map value made the report falsely claim her color was
+// identifiable.
+func prequeueLockedColorHistory() []Input {
+	return []Input{
+		{
+			SessionID: "p1",
+			Sides: []Side{
+				{Rank: 0, Entrants: []Entrant{{Key: "player:alice"}, {Key: "prequeue:color/white"}, {Key: "prequeue:map/forest"}}},
+				{Rank: 1, Entrants: []Entrant{{Key: "player:bob"}, {Key: "prequeue:color/black"}, {Key: "prequeue:map/forest"}}},
+			},
+		},
+		{
+			SessionID: "p2",
+			Sides: []Side{
+				{Rank: 0, Entrants: []Entrant{{Key: "player:alice"}, {Key: "prequeue:color/white"}, {Key: "prequeue:map/desert"}}},
+				{Rank: 1, Entrants: []Entrant{{Key: "player:carol"}, {Key: "prequeue:color/black"}, {Key: "prequeue:map/desert"}}},
+			},
+		},
+	}
+}
+
+// TestReplayReportSeparatesCompoundModifierDimensions guards against a
+// compound key's namespace ("prequeue") being treated as a single category
+// when it actually names several independent dimensions ("color", "map").
+// alice is locked to prequeue:color/white for both matches even though her
+// map varies, so color must be reported as confounded for her (0 players with
+// multiple values), and the color dimension's distinct-value count must not
+// be inflated by map's values.
+func TestReplayReportSeparatesCompoundModifierDimensions(t *testing.T) {
+	e, _ := NewWengLin("plackett-luce")
+	fs := &fakeStore{inputs: prequeueLockedColorHistory()}
+
+	report, err := NewReplayer(e, fs).ReplayMode(context.Background(), "game", "duel")
+	if err != nil {
+		t.Fatalf("ReplayMode: %v", err)
+	}
+
+	got := report.Modifiers["prequeue:color/white"]
+	if got.PlayersWithMultipleValues != 0 {
+		t.Errorf("PlayersWithMultipleValues = %d, want 0: alice is locked to color/white even though her map varies", got.PlayersWithMultipleValues)
+	}
+	if got.DistinctValues != 2 {
+		t.Errorf("DistinctValues = %d, want 2 (white, black) for the color dimension alone, not lumped with map", got.DistinctValues)
 	}
 }
 
