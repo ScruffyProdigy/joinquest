@@ -35,11 +35,52 @@ func TestAppendRatingInputRoundTrips(t *testing.T) {
 	if err != nil {
 		t.Fatalf("ListRatingInputs: %v", err)
 	}
-	if len(got) != 1 {
-		t.Fatalf("inputs = %d, want 1", len(got))
+	row := findRatingInputBySession(t, got, sessionID)
+	if len(row.Sides) != 2 || row.Sides[1].Rank != 1 {
+		t.Fatalf("sides round-tripped wrong: %+v", row.Sides)
 	}
-	if len(got[0].Sides) != 2 || got[0].Sides[1].Rank != 1 {
-		t.Fatalf("sides round-tripped wrong: %+v", got[0].Sides)
+}
+
+// TestAppendRatingInputIsIdempotent asserts the load-bearing property behind
+// the ON CONFLICT (session_id) DO NOTHING clause: retrying a result report
+// for the same session must not duplicate its rating input.
+func TestAppendRatingInputIsIdempotent(t *testing.T) {
+	st := openTestStore(t)
+	cleaner := st.NewTestCleaner(t)
+	ctx := context.Background()
+
+	sessionID, userA, userB := seedMatchedSession(t, st, ctx, cleaner)
+	gameID, modeKey := gameAndModeForSession(t, st, ctx, sessionID)
+	at := time.Now().UTC().Truncate(time.Millisecond)
+
+	in := RatingInput{
+		SessionID: sessionID,
+		GameID:    gameID,
+		ModeKey:   modeKey,
+		RatedAt:   at,
+		Sides: []RatingSideRow{
+			{Rank: 0, Entrants: []RatingEntrantRow{{Key: "player:" + userA.String()}}},
+			{Rank: 1, Entrants: []RatingEntrantRow{{Key: "player:" + userB.String()}}},
+		},
+	}
+	for i := 0; i < 2; i++ {
+		if err := st.AppendRatingInput(ctx, in); err != nil {
+			t.Fatalf("AppendRatingInput (attempt %d): %v", i+1, err)
+		}
+	}
+
+	got, err := st.ListRatingInputs(ctx, gameID, modeKey)
+	if err != nil {
+		t.Fatalf("ListRatingInputs: %v", err)
+	}
+	matches := 0
+	for _, row := range got {
+		if row.SessionID == sessionID {
+			matches++
+		}
+	}
+	if matches != 1 {
+		t.Fatalf("rows for session %s = %d, want 1 (retry must not duplicate)", sessionID, matches)
 	}
 }
 
@@ -125,6 +166,22 @@ func TestSaveRatingsOverwritesRatherThanDuplicating(t *testing.T) {
 	if players[key].Mu != 27 {
 		t.Errorf("mu = %v, want the second write, 27", players[key].Mu)
 	}
+}
+
+// findRatingInputBySession scopes an assertion to the row a test created,
+// rather than asserting an exact count for the game/mode: the demo
+// (gameID, modeKey) pair is shared across every test in this package (and the
+// demo game is never deleted by TestCleaner), so any other test appending an
+// input against the same mode would make a bare len(got) assertion fragile.
+func findRatingInputBySession(t *testing.T, got []RatingInput, sessionID uuid.UUID) RatingInput {
+	t.Helper()
+	for _, row := range got {
+		if row.SessionID == sessionID {
+			return row
+		}
+	}
+	t.Fatalf("no rating input found for session %s among %d rows", sessionID, len(got))
+	return RatingInput{}
 }
 
 // gameAndModeForSession resolves the catalog game and mode key a matched
