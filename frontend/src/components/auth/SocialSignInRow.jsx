@@ -42,9 +42,9 @@ export default function SocialSignInRow({ next = null }) {
         <Button
           key={provider}
           type="button"
-          variant="outline"
+          variant="card"
           className={cn(
-            'w-full justify-start gap-3',
+            'justify-start gap-3',
             provider === 'GOOGLE' && '[&_svg]:size-5',
             provider === 'DISCORD' && '[&_svg]:size-6',
           )}

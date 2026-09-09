@@ -247,8 +247,7 @@ function ModeRow({
             {solo ? null : (
               <Button
                 variant="outline"
-                size={prominent ? 'lg' : 'default'}
-                className={prominent ? 'w-full' : undefined}
+                size={prominent ? 'default' : 'sm'}
                 disabled={tableBusy || blockedByMatch}
                 onClick={handleCreatePrivate}
               >

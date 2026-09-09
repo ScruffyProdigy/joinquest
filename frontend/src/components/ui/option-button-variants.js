@@ -5,9 +5,11 @@ import { cva } from 'class-variance-authority'
  * had byte-identical copies of the row treatment and a fourth had the tile, so it
  * lives here once instead.
  *
- * Not a Button. Button is a fixed-height inline control with `whitespace-nowrap`;
- * these are full-width surfaces that hold an image and wrapping text, and forcing
- * them through Button meant four override classes each to undo it.
+ * Not a Button, still, after Button became a full-width pill (JQ-223). The geometry
+ * is now close enough that folding these in was worth weighing, and the answer is
+ * no: an option carries a tri-state `selected` that drives `aria-pressed`, and a
+ * button that merely runs an action has no business growing a pressed state to
+ * absorb it. `whitespace-nowrap` is the other reason — these hold wrapping text.
  *
  * Hover previews the selected treatment rather than merely greying, so the two
  * states read as the same gesture at different strengths.

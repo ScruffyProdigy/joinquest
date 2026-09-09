@@ -293,7 +293,6 @@ export default function RoomPanel({ compact = false }) {
                 {unreadCount > 0 && !chatAtBottom ? (
                   <Button
                     size="sm"
-                    className="h-auto rounded-full px-3 py-1 text-xs font-semibold"
                     onClick={() => scrollChatToBottom()}
                     aria-label={`${unreadCount} unread messages — jump to latest`}
                   >
@@ -343,7 +342,7 @@ export default function RoomPanel({ compact = false }) {
       </div>
 
       <div className="border-t border-border p-4">
-        <Button type="button" variant="secondary" className="w-full" onClick={handleLeave} disabled={busy || loading}>
+        <Button type="button" variant="secondary" onClick={handleLeave} disabled={busy || loading}>
           <IconClose aria-hidden="true" />
           Leave room
           <IconClose aria-hidden="true" />
