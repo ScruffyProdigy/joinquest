@@ -13,12 +13,16 @@
   -moz-osx-font-smoothing: grayscale;
 }
 
-a {
+/* Link (data-slot="link") opts out of both: it owns its own colour per variant
+   and presses with opacity, so inheriting a hover colour here would make an
+   anchor-rendered Link behave differently from the identical button-rendered
+   one. See components/ui/link.jsx. */
+a:where(:not([data-slot="link"])) {
   font-weight: 500;
   color: var(--primary);
   text-decoration: inherit;
 }
-a:hover {
+a:where(:not([data-slot="link"])):hover {
   color: color-mix(in srgb, var(--primary) 85%, transparent);
 }
 
@@ -38,7 +42,7 @@ h1 {
   line-height: var(--text-3xl--line-height);
 }
 
-button:where(:not([data-slot="button"])) {
+button:where(:not([data-slot="button"]):not([data-slot="link"])) {
   border-radius: 8px;
   border: 1px solid transparent;
   padding: 0.6em 1.2em;
@@ -49,10 +53,10 @@ button:where(:not([data-slot="button"])) {
   cursor: pointer;
   transition: border-color 0.25s;
 }
-button:where(:not([data-slot="button"])):hover {
+button:where(:not([data-slot="button"]):not([data-slot="link"])):hover {
   border-color: var(--primary);
 }
-button:where(:not([data-slot="button"])):focus,
-button:where(:not([data-slot="button"])):focus-visible {
+button:where(:not([data-slot="button"]):not([data-slot="link"])):focus,
+button:where(:not([data-slot="button"]):not([data-slot="link"])):focus-visible {
   outline: 4px auto -webkit-focus-ring-color;
 }

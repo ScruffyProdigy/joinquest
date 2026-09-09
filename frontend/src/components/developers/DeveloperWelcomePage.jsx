@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { Button } from '../ui/button'
+import { Link } from '../ui/link'
 import { APP_NAME } from '../../lib/brand'
 import {
   developerDashboardPath,
@@ -46,9 +47,9 @@ export default function DeveloperWelcomePage({ gameId }) {
     return (
       <main className="app-shell developer-shell">
         <h1>Game not found</h1>
-        <a className="auth-link" href="/developers">
+        <Link className="self-start" href="/developers">
           Back to developers
-        </a>
+        </Link>
       </main>
     )
   }
@@ -59,9 +60,9 @@ export default function DeveloperWelcomePage({ gameId }) {
     <main className="app-shell developer-shell">
       <header className="app-header">
         <p className="developer-back">
-          <a className="auth-link" href="/">
+          <Link href="/">
             ← Back to {APP_NAME}
-          </a>
+          </Link>
         </p>
         <h1>Nice — your game is registered.</h1>
         <p className="tagline">{game.name} · {visibilityLabel(game.visibility)}</p>

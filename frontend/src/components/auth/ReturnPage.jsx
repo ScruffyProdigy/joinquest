@@ -18,6 +18,7 @@ import {
   RESULTS_LIVE_UPDATES_OFF,
 } from '../../lib/playerCopy'
 import { Button } from '../ui/button'
+import { Link } from '../ui/link'
 import { Card, CardContent, CardHeader, CardTitle } from '../ui/card'
 import MatchStandings from '../match/MatchStandings'
 import RegroupCard from '../match/RegroupCard'
@@ -296,9 +297,9 @@ export default function ReturnPage() {
             {message}
           </p>
           {status === 'error' ? (
-            <Button variant="link" className="self-start px-0" asChild>
-              <a href="/">Continue to JoinQuest</a>
-            </Button>
+            <Link className="self-start" href="/">
+              Continue to JoinQuest
+            </Link>
           ) : null}
         </CardContent>
       </Card>

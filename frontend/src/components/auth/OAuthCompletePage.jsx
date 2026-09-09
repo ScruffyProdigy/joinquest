@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { oauthErrorMessage } from '../../lib/oauth'
-import { Button } from '../ui/button'
+import { Link } from '../ui/link'
 import { Card, CardContent, CardHeader, CardTitle } from '../ui/card'
 
 export default function OAuthCompletePage() {
@@ -27,9 +27,9 @@ export default function OAuthCompletePage() {
           <p className="status-message status-message-error" role="alert">
             {message}
           </p>
-          <Button variant="link" className="self-start px-0" asChild>
-            <a href="/">Back to home</a>
-          </Button>
+          <Link className="self-start" href="/">
+            Back to home
+          </Link>
         </CardContent>
       </Card>
     </main>

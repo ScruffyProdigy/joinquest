@@ -205,6 +205,27 @@ function CompositeCard({ pattern }) {
   )
 }
 
+/**
+ * One tab of the segmented control. A real tab rather than a Button: it reports
+ * `aria-selected` inside a tablist, and its selected state is a raised surface
+ * rather than any of Button's variants.
+ */
+function TabButton({ selected, onClick, children }) {
+  return (
+    <button
+      type="button"
+      role="tab"
+      aria-selected={selected}
+      className={`rounded-full px-4 py-2 text-sm font-semibold ${
+        selected ? 'bg-background text-primary' : 'bg-transparent text-muted-foreground'
+      }`}
+      onClick={onClick}
+    >
+      {children}
+    </button>
+  )
+}
+
 export default function ComponentLibrarySection() {
   const [tab, setTab] = useState('primitives')
 
@@ -216,25 +237,13 @@ export default function ComponentLibrarySection() {
         production.
       </p>
 
-      <div className="flex gap-1 bg-muted rounded-full p-1 w-fit">
-        <button
-          type="button"
-          className={`px-4 py-2 rounded-full text-sm font-semibold ${
-            tab === 'primitives' ? 'bg-background text-primary' : 'bg-transparent text-muted-foreground'
-          }`}
-          onClick={() => setTab('primitives')}
-        >
+      <div className="flex w-fit gap-1 rounded-full bg-muted p-1" role="tablist">
+        <TabButton selected={tab === 'primitives'} onClick={() => setTab('primitives')}>
           Primitives
-        </button>
-        <button
-          type="button"
-          className={`px-4 py-2 rounded-full text-sm font-semibold ${
-            tab === 'composite' ? 'bg-background text-primary' : 'bg-transparent text-muted-foreground'
-          }`}
-          onClick={() => setTab('composite')}
-        >
+        </TabButton>
+        <TabButton selected={tab === 'composite'} onClick={() => setTab('composite')}>
           Composite patterns
-        </button>
+        </TabButton>
       </div>
 
       {tab === 'primitives' ? (

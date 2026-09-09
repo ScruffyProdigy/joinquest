@@ -3,6 +3,7 @@ import { createGuestSession } from '../../lib/auth'
 import { updatePlayerProfile } from '../../lib/avatars'
 import { generateGuestIdentities } from '../../lib/guestIdentity'
 import { IDENTITY_GATE_ERROR, IDENTITY_GATE_PROMPT, IDENTITY_GATE_SCOPE_HINT } from '../../lib/playerCopy'
+import { OptionButton } from '../ui/option-button'
 
 /**
  * The whole identity in one pick, for someone who has neither half. Each row is
@@ -44,9 +45,7 @@ export default function GuestIdentityPicker({ user, onSaved, onBusyChange }) {
       <ul className="grid gap-2 sm:grid-cols-2" role="list">
         {identities.map((identity) => (
           <li key={identity.name}>
-            <button
-              type="button"
-              className="flex w-full items-center gap-3 rounded-full border border-border bg-muted/40 px-4 py-2.5 text-left transition-colors hover:bg-muted disabled:opacity-60"
+            <OptionButton
               disabled={Boolean(pendingName)}
               onClick={() => void handlePick(identity)}
             >
@@ -54,7 +53,7 @@ export default function GuestIdentityPicker({ user, onSaved, onBusyChange }) {
               <span className="font-mono-display text-sm text-foreground">
                 {pendingName === identity.name ? 'Starting…' : identity.name}
               </span>
-            </button>
+            </OptionButton>
           </li>
         ))}
       </ul>

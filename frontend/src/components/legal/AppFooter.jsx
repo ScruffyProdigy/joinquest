@@ -1,16 +1,18 @@
+import { Link } from '../ui/link'
+
 export default function AppFooter() {
   return (
     <footer className="app-footer">
       <nav className="app-footer__nav" aria-label="Legal">
-        <a className="app-footer__link" href="/terms">
+        <Link href="/terms">
           Terms of Service
-        </a>
+        </Link>
         <span className="app-footer__sep" aria-hidden="true">
           ·
         </span>
-        <a className="app-footer__link" href="/privacy">
+        <Link href="/privacy">
           Privacy Policy
-        </a>
+        </Link>
       </nav>
     </footer>
   )

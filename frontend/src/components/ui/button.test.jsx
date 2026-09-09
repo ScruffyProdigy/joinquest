@@ -34,10 +34,8 @@ describe('Button', () => {
     expect(button).toHaveClass('border-transparent')
   })
 
-  it('applies an explicit transparent background class for the link variant', () => {
+  it('has no link variant -- link-styled controls belong to the Link component', () => {
     render(<Button variant="link">Link</Button>)
-    const button = screen.getByRole('button')
-    expect(button).toHaveClass('bg-transparent')
-    expect(button).toHaveClass('text-primary')
+    expect(screen.getByRole('button')).not.toHaveClass('underline')
   })
 })

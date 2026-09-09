@@ -158,11 +158,16 @@ Full runbook: [docs/lobby-maintenance.md](docs/lobby-maintenance.md).
 
 ## Conventions
 
+- **Links** — every link and link-styled action goes through `frontend/src/components/ui/link.jsx`; no bare `<a>` in page code, and nothing underlines in any state (JQ-72). Live reference at `/dev/style-preview`
 - **Minimal scope** — smallest correct diff; don't refactor unrelated code
 - **Match existing style** — Go: `gofmt`, store layer for DB; frontend: JSX + Vitest
 - **No secrets** — never commit `.env`, API keys, k8s secrets, or `.DS_Store`
 - **Tests** — add store/resolver tests for backend logic; component/lib tests for dashboard changes
+<<<<<<< HEAD
+- **Human gates** — production deploy, npm publish, and pushes to `main` require explicit user approval; feature-branch pushes and PRs do not
+=======
 - **Human gates** — production deploy and npm publish require explicit user approval. Opening a PR does not: that is how work gets reviewed
+>>>>>>> origin/main
 
 ## Key docs
 

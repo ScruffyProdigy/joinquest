@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { Button } from '../ui/button'
+import { Link } from '../ui/link'
 import AuthPanel from '../auth/AuthPanel'
 import { useAuth } from '../auth/AuthProvider'
 import { APP_NAME } from '../../lib/brand'
@@ -12,6 +12,25 @@ import RegisterGameForm from './RegisterGameForm'
 
 function readLandingPathFromUrl() {
   return parseDeveloperLandingPath(window.location.search)
+}
+
+/**
+ * A whole-card choice: heading, body copy, and an optional badge. Not a Button --
+ * Button is a single-line control, and this is a surface holding a heading and a
+ * paragraph, styled by developer-route-card.
+ */
+function RouteCard({ recommended = false, title, onClick, children }) {
+  return (
+    <button
+      type="button"
+      className={`developer-route-card${recommended ? ' developer-route-card--recommended' : ''}`}
+      onClick={onClick}
+    >
+      {recommended ? <span className="developer-route-card__badge">Recommended</span> : null}
+      <h3 className="developer-route-card__title">{title}</h3>
+      <p className="developer-route-card__copy">{children}</p>
+    </button>
+  )
 }
 
 export default function DeveloperLandingPage() {
@@ -70,9 +89,9 @@ export default function DeveloperLandingPage() {
 
       <header className="app-header">
         <p className="developer-back">
-          <a className="auth-link" href="/">
+          <Link href="/">
             ← Back to {APP_NAME}
-          </a>
+          </Link>
         </p>
         <h1>Have an idea for a multiplayer game?</h1>
       </header>
@@ -101,36 +120,23 @@ export default function DeveloperLandingPage() {
             Pick one path — most developers use an AI assistant (Cursor, Claude, Copilot, and more).
           </p>
           <div className="developer-route-picker__options">
-            <button
-              type="button"
-              className="developer-route-card developer-route-card--recommended"
+            <RouteCard
+              recommended
+              title="Connect an AI assistant"
               onClick={() => selectRoute('ai')}
             >
-              <span className="developer-route-card__badge">Recommended</span>
-              <h3 className="developer-route-card__title">Connect an AI assistant</h3>
-              <p className="developer-route-card__copy">
-                Your agent can register the game, run integration checks, and save metadata from your
-                editor — no browser cookies required.
-              </p>
-            </button>
-            <button
-              type="button"
-              className="developer-route-card"
-              onClick={() => selectRoute('manual')}
-            >
-              <h3 className="developer-route-card__title">Register in the browser</h3>
-              <p className="developer-route-card__copy">
-                Fill out the registration form yourself if you prefer not to use an AI assistant.
-              </p>
-            </button>
+              Your agent can register the game, run integration checks, and save metadata from your
+              editor — no browser cookies required.
+            </RouteCard>
+            <RouteCard title="Register in the browser" onClick={() => selectRoute('manual')}>
+              Fill out the registration form yourself if you prefer not to use an AI assistant.
+            </RouteCard>
           </div>
         </section>
       ) : (
         <>
           <p className="developer-route-back">
-            <Button type="button" variant="link" onClick={clearRoute}>
-              ← Choose a different path
-            </Button>
+            <Link onClick={clearRoute}>← Choose a different path</Link>
           </p>
 
           {route === 'ai' ? (

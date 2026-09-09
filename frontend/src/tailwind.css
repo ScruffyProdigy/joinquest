@@ -29,6 +29,11 @@
   --popover: #191c1b;
   --popover-foreground: #edeeed;
   --primary: #2dd4bf;
+  /* Links carry their own colour, not the brand's: --primary is reserved for the
+     option we want clicked, so a repaint of the brand must not sweep links up with
+     it. Lifted from the prototype, which likewise keeps its link accent (#818cf8)
+     separate from its brand accent. */
+  --link: #818cf8;
   --primary-foreground: #071210;
   --secondary: #1f2220;
   --secondary-foreground: #c8cecc;
@@ -68,6 +73,7 @@
   --color-popover: var(--popover);
   --color-popover-foreground: var(--popover-foreground);
   --color-primary: var(--primary);
+  --color-link: var(--link);
   --color-primary-foreground: var(--primary-foreground);
   --color-secondary: var(--secondary);
   --color-secondary-foreground: var(--secondary-foreground);

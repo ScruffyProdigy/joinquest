@@ -5,6 +5,7 @@ import { fetchSpiritAnimalJourneyEligibility, formatSpiritAnimalJourneyCooldown 
 import { ACCOUNT_LINK_LABEL, GUEST_BADGE, GUEST_SPIRIT_ANIMAL_HINT } from '../../lib/playerCopy'
 import { cn } from '../../lib/utils'
 import { Button } from '../ui/button'
+import { Link } from '../ui/link'
 import { Card, CardContent, CardHeader } from '../ui/card'
 import { useAuth } from './AuthProvider'
 import PlayerProfileEditor from '../avatars/PlayerProfileEditor'
@@ -151,9 +152,7 @@ export default function UserSessionCard({ user, compact = false, showProfileActi
         {guestSpiritHint ? (
           <p className="text-sm text-muted-foreground">
             {GUEST_SPIRIT_ANIMAL_HINT}{' '}
-            <Button variant="link" className="h-auto p-0" asChild>
-              <a href="/account">{ACCOUNT_LINK_LABEL}</a>
-            </Button>
+            <Link href="/account">{ACCOUNT_LINK_LABEL}</Link>
           </p>
         ) : null}
 

@@ -116,6 +116,8 @@ export default function LaunchStep({ activeIntent, activeTableSeat, busy, leaveE
       <div className="launch-step__actions">
         {launchUrl ? (
           <Button asChild variant="default" className="font-semibold">
+            {/* Slot plumbing, not page markup (JQ-72): Button owns the styling and
+                the anchor supplies only the href, so this stays a real link. */}
             <a href={launchUrl}>{LAUNCH_GAME}</a>
           </Button>
         ) : null}

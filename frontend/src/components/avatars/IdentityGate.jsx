@@ -19,7 +19,7 @@ import {
   identityGap,
   viewerTier,
 } from '../../lib/viewer'
-import { Button } from '../ui/button'
+import { Link } from '../ui/link'
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from '../ui/dialog'
 import { useAuth } from '../auth/AuthProvider'
 import SignInPanel from '../auth/SignInPanel'
@@ -90,9 +90,9 @@ export default function IdentityGate() {
         {showSignIn ? (
           <div className="flex flex-col gap-4">
             <SignInPanel heading={null} showGuestOption={false} />
-            <Button type="button" variant="link" onClick={() => setShowSignIn(false)}>
+            <Link variant="quiet" onClick={() => setShowSignIn(false)}>
               {framing.back}
-            </Button>
+            </Link>
           </div>
         ) : (
           <>
@@ -111,15 +111,9 @@ export default function IdentityGate() {
                 <span className="text-2xs uppercase tracking-wide text-muted-foreground">
                   {IDENTITY_GATE_DIVIDER}
                 </span>
-                <Button
-                  type="button"
-                  variant="link"
-                  className="text-sm"
-                  disabled={busy}
-                  onClick={() => setShowSignIn(true)}
-                >
+                <Link variant="pill" disabled={busy} onClick={() => setShowSignIn(true)}>
                   {IDENTITY_GATE_SIGN_IN}
-                </Button>
+                </Link>
               </div>
             ) : null}
           </>

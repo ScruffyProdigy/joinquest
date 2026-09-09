@@ -9,6 +9,7 @@ import {
   joinAsLabel,
   waitingAsRoleLine,
 } from '../../lib/playerCopy'
+import { Button } from '../ui/button'
 
 function pathOption(path) {
   if (typeof path === 'string') {
@@ -23,14 +24,14 @@ function pathOption(path) {
 function JoinPathButton({ path, busy, disabled, onJoin, prominent = false }) {
   const { queuePath, displayName } = pathOption(path)
   return (
-    <button
-      type="button"
-      className={`game-list-button${prominent ? ' game-list-button--prominent' : ''}`}
+    <Button
+      size={prominent ? 'lg' : 'default'}
+      className={prominent ? 'w-full' : undefined}
       onClick={() => onJoin(queuePath)}
       disabled={busy || disabled}
     >
       {busy ? LOOKING_FOR_GROUP : joinAsLabel(displayName)}
-    </button>
+    </Button>
   )
 }
 
@@ -47,28 +48,24 @@ function JoinGroupPanel({ children, prominent = false }) {
 }
 
 function FifoQueueActions({ queueState, busy, disabled, onJoin, onLeave, prominent = false }) {
-  const buttonClass = `game-list-button${prominent ? ' game-list-button--prominent' : ''}`
+  const size = prominent ? 'lg' : 'default'
+  const width = prominent ? 'w-full' : undefined
   if (queueState === 'waiting') {
     return (
       <div className="game-list-actions game-list-actions--stack">
         <p className="queue-status-line">{LOOKING_FOR_GROUP}</p>
-        <button type="button" className={buttonClass} onClick={onLeave} disabled={busy}>
+        <Button size={size} className={width} onClick={onLeave} disabled={busy}>
           {STOP_LOOKING}
-        </button>
+        </Button>
       </div>
     )
   }
 
   return (
     <div className="game-list-actions">
-      <button
-        type="button"
-        className={buttonClass}
-        onClick={() => onJoin()}
-        disabled={busy || disabled}
-      >
+      <Button size={size} className={width} onClick={() => onJoin()} disabled={busy || disabled}>
         {busy ? LOOKING_FOR_GROUP : LOOK_FOR_GROUP}
-      </button>
+      </Button>
     </div>
   )
 }
@@ -85,19 +82,21 @@ export default function GameQueueActions({
   prominent = false,
   solo = false,
 }) {
-  const buttonClass = `game-list-button${prominent ? ' game-list-button--prominent' : ''}`
-  const secondaryClass = `${buttonClass} game-list-button-secondary`
+  const size = prominent ? 'lg' : 'default'
+  const width = prominent ? 'w-full' : undefined
 
   if (queueState === 'matched' && joinUrl) {
     return (
       <div className="game-list-actions">
-        <a className={buttonClass} href={joinUrl}>
-          {LAUNCH_GAME}
-        </a>
+        {/* A raw <a> on purpose (JQ-72): this is a button that navigates, so Button
+            wears the styling and the anchor keeps real href semantics. */}
+        <Button asChild size={size} className={width}>
+          <a href={joinUrl}>{LAUNCH_GAME}</a>
+        </Button>
         {solo ? null : (
-          <button type="button" className={secondaryClass} onClick={onLeave} disabled={busy}>
+          <Button variant="outline" size={size} className={width} onClick={onLeave} disabled={busy}>
             {LEAVE_MATCH}
-          </button>
+          </Button>
         )}
       </div>
     )
@@ -106,14 +105,9 @@ export default function GameQueueActions({
   if (solo) {
     return (
       <div className="game-list-actions">
-        <button
-          type="button"
-          className={buttonClass}
-          onClick={() => onJoin()}
-          disabled={busy || disabled}
-        >
+        <Button size={size} className={width} onClick={() => onJoin()} disabled={busy || disabled}>
           {busy ? STARTING_SOLO : PLAY_SOLO}
-        </button>
+        </Button>
       </div>
     )
   }
@@ -151,9 +145,9 @@ export default function GameQueueActions({
                 prominent={prominent}
               />
             ))}
-            <button type="button" className={buttonClass} onClick={onLeave} disabled={busy}>
+            <Button size={size} className={width} onClick={onLeave} disabled={busy}>
               {STOP_LOOKING}
-            </button>
+            </Button>
           </>
         ) : (
           compositionPaths.map((path) => (

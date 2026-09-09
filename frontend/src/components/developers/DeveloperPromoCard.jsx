@@ -19,6 +19,7 @@ export default function DeveloperPromoCard({ noResults = false }) {
     <li>
       {/* Padding lives on the inner box, not the sized one: box-sizing is content-box
           app-wide, so padding on a w-full element overflows the row. GameCard does the same. */}
+      {/* A raw <a> on purpose (JQ-72): it wraps the whole promo card, like GameCard. */}
       <a
         href={DEVELOPER_LANDING_PATH}
         className="block w-full rounded-2xl border border-dashed border-border bg-card/40 text-left transition-colors hover:border-primary/60 hover:bg-card/70 focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"

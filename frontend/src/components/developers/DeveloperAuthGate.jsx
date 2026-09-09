@@ -1,4 +1,5 @@
 import { Button } from '../ui/button'
+import { Link } from '../ui/link'
 import SignInPanel from '../auth/SignInPanel'
 import { useAuth } from '../auth/AuthProvider'
 
@@ -40,9 +41,7 @@ export default function DeveloperAuthGate({ onBack, next = null }) {
       )}
 
       <p className="developer-route-back">
-        <Button type="button" variant="link" onClick={onBack}>
-          ← Back
-        </Button>
+        <Link onClick={onBack}>← Back</Link>
       </p>
     </section>
   )

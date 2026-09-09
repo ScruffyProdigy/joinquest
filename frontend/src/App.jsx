@@ -31,6 +31,7 @@ import AppFooter from './components/legal/AppFooter'
 import TermsPage from './components/legal/TermsPage'
 import PrivacyPage from './components/legal/PrivacyPage'
 import { useEffect } from 'react'
+import { Link } from './components/ui/link'
 
 function CatalogPage({ intent }) {
   const { user, loading: authLoading } = useAuth()
@@ -205,9 +206,9 @@ function App() {
         ) : (
           <main className="app-shell auth-page">
             <h1>Page not found</h1>
-            <a className="auth-link" href="/">
+            <Link className="self-start" href="/">
               Back to {APP_NAME}
-            </a>
+            </Link>
           </main>
         )}
       </IdentityPromptProvider>

@@ -1,4 +1,5 @@
 import { Button } from '../ui/button'
+import { Link } from '../ui/link'
 import { listAccentColors } from '../../lib/gameAccent'
 import ComponentLibrarySection from './ComponentLibrarySection'
 
@@ -34,6 +35,25 @@ export default function StylePreviewPage() {
           <Button variant="outline">Outline</Button>
           <Button variant="ghost">Ghost</Button>
           <Button variant="destructive">Destructive</Button>
+        </div>
+      </section>
+
+      <section className="flex flex-col gap-4">
+        <h2 className="font-heading text-xl font-semibold">Links</h2>
+        <p className="text-sm text-muted-foreground">
+          Nothing here underlines, in any state. <code>href</code> picks the element: an anchor
+          for navigation, a button for an action that only runs a handler. Only the pill carries
+          the brand colour — it is the option we want clicked. An inline link is navigation, so it
+          takes its own <code>--link</code> colour and its weight, never the brand's.
+        </p>
+        <p className="text-sm">
+          An <Link href="#links">Inline link</Link> sits inside a sentence.
+        </p>
+        <div className="flex max-w-xs flex-col gap-2">
+          <Link variant="pill" href="#links">
+            Pill link
+          </Link>
+          <Link variant="quiet">Quiet action</Link>
         </div>
       </section>
 

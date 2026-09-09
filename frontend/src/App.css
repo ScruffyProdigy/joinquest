@@ -40,8 +40,8 @@
   margin: -0.5rem -0.25rem 0;
   padding: 1rem 1.1rem;
   border-radius: 12px;
-  border: 1px solid rgba(100, 108, 255, 0.45);
-  background: rgba(100, 108, 255, 0.18);
+  border: 1px solid color-mix(in srgb, var(--primary) 45%, transparent);
+  background: color-mix(in srgb, var(--primary) 18%, transparent);
   box-shadow: 0 4px 24px rgba(0, 0, 0, 0.25);
 }
 
@@ -90,8 +90,8 @@
   max-width: 26rem;
   padding: 2.5rem 1.75rem;
   border-radius: 16px;
-  border: 1px solid rgba(100, 108, 255, 0.45);
-  background: rgba(100, 108, 255, 0.12);
+  border: 1px solid color-mix(in srgb, var(--primary) 45%, transparent);
+  background: color-mix(in srgb, var(--primary) 12%, transparent);
   text-align: center;
 }
 
@@ -100,7 +100,7 @@
   height: 2.75rem;
   margin-bottom: 0.75rem;
   border-radius: 50%;
-  background: rgba(100, 108, 255, 0.9);
+  background: color-mix(in srgb, var(--primary) 90%, transparent);
   animation: waiting-pulse 1.6s ease-in-out infinite;
 }
 
@@ -325,17 +325,6 @@
   color: #ff8a8a;
 }
 
-.auth-link,
-.auth-link-button {
-  display: inline-block;
-  margin-top: 1rem;
-  background: none;
-  border: none;
-  padding: 0;
-  color: #646cff;
-  cursor: pointer;
-  font: inherit;
-}
 
 /* The catalog column, capped at the prototype's grid width. The card's type is a
    fixed scale, so a wider column does not make the card bigger -- it makes the
@@ -406,14 +395,6 @@
   gap: 0.65rem;
 }
 
-.game-list-button--prominent {
-  width: 100%;
-  justify-content: center;
-  padding: 0.75rem 1rem;
-  font-size: 1rem;
-  font-weight: 600;
-  text-align: center;
-}
 
 .join-group-panel--prominent {
   min-width: 100%;
@@ -456,9 +437,9 @@
   text-transform: lowercase;
   padding: 0.15rem 0.45rem;
   border-radius: 999px;
-  background: rgba(100, 108, 255, 0.18);
+  background: color-mix(in srgb, var(--primary) 18%, transparent);
   color: #c8cbff;
-  border: 1px solid rgba(100, 108, 255, 0.35);
+  border: 1px solid color-mix(in srgb, var(--primary) 35%, transparent);
 }
 
 .game-list-actions {
@@ -503,26 +484,8 @@
   color: #aaa;
 }
 
-.game-list-button {
-  border: 1px solid rgba(255, 255, 255, 0.2);
-  border-radius: 8px;
-  padding: 0.5rem 0.9rem;
-  background: rgba(100, 108, 255, 0.2);
-  color: inherit;
-  cursor: pointer;
-  font: inherit;
-  text-decoration: none;
-  white-space: nowrap;
-}
 
-.game-list-button:disabled {
-  opacity: 0.6;
-  cursor: not-allowed;
-}
 
-.game-list-button-secondary {
-  background: transparent;
-}
 
 .game-list-meta {
   margin: 0;
@@ -544,15 +507,15 @@
 
 @media (prefers-color-scheme: light) {
   .waiting-page__card {
-    border-color: rgba(100, 108, 255, 0.35);
-    background: rgba(100, 108, 255, 0.08);
+    border-color: color-mix(in srgb, var(--primary) 35%, transparent);
+    background: color-mix(in srgb, var(--primary) 8%, transparent);
   }
 
   .waiting-page__subline,
   .waiting-page__confirm-body,
   .waiting-page__need,
   .waiting-page__hint {
-    color: #5558aa;
+    color: var(--primary);
   }
 
   .launch-step {
@@ -566,13 +529,13 @@
   }
 
   .intent-banner {
-    border-color: rgba(100, 108, 255, 0.35);
-    background: rgba(100, 108, 255, 0.1);
+    border-color: color-mix(in srgb, var(--primary) 35%, transparent);
+    background: color-mix(in srgb, var(--primary) 10%, transparent);
     box-shadow: 0 4px 16px rgba(0, 0, 0, 0.08);
   }
 
   .intent-banner__hint {
-    color: #5558aa;
+    color: var(--primary);
   }
 
   .panel-card {
@@ -591,23 +554,23 @@
   }
 
   .join-group-panel__label {
-    color: #5558aa;
+    color: var(--primary);
   }
 
   .developer-home-cta {
-    border-color: rgba(85, 88, 170, 0.25);
-    background: rgba(85, 88, 170, 0.08);
+    border-color: color-mix(in srgb, var(--primary) 25%, transparent);
+    background: color-mix(in srgb, var(--primary) 8%, transparent);
   }
 
   .developer-home-cta__link {
-    border-color: rgba(85, 88, 170, 0.45);
-    background: rgba(85, 88, 170, 0.12);
+    border-color: color-mix(in srgb, var(--primary) 45%, transparent);
+    background: color-mix(in srgb, var(--primary) 12%, transparent);
     color: #4346a8;
   }
 
   .developer-home-cta__link:hover {
-    border-color: rgba(85, 88, 170, 0.65);
-    background: rgba(85, 88, 170, 0.18);
+    border-color: color-mix(in srgb, var(--primary) 65%, transparent);
+    background: color-mix(in srgb, var(--primary) 18%, transparent);
     color: #2f3280;
   }
 
@@ -716,31 +679,31 @@
 }
 
 .developer-route-card:hover {
-  border-color: rgba(100, 108, 255, 0.45);
-  background: rgba(100, 108, 255, 0.08);
+  border-color: color-mix(in srgb, var(--primary) 45%, transparent);
+  background: color-mix(in srgb, var(--primary) 8%, transparent);
 }
 
 .developer-route-card:focus-visible {
-  outline: 2px solid rgba(100, 108, 255, 0.75);
+  outline: 2px solid color-mix(in srgb, var(--primary) 75%, transparent);
   outline-offset: 2px;
 }
 
 .developer-route-card--recommended {
-  border-color: rgba(100, 108, 255, 0.38);
-  background: rgba(100, 108, 255, 0.1);
-  box-shadow: 0 0 0 1px rgba(100, 108, 255, 0.12);
+  border-color: color-mix(in srgb, var(--primary) 38%, transparent);
+  background: color-mix(in srgb, var(--primary) 10%, transparent);
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--primary) 12%, transparent);
 }
 
 .developer-route-card--recommended:hover {
-  border-color: rgba(100, 108, 255, 0.62);
-  background: rgba(100, 108, 255, 0.14);
+  border-color: color-mix(in srgb, var(--primary) 62%, transparent);
+  background: color-mix(in srgb, var(--primary) 14%, transparent);
 }
 
 .developer-route-card__badge {
   width: fit-content;
   padding: 0.2rem 0.55rem;
   border-radius: 999px;
-  background: rgba(100, 108, 255, 0.22);
+  background: color-mix(in srgb, var(--primary) 22%, transparent);
   color: #c5c9ff;
   font-size: 0.72rem;
   font-weight: 700;
@@ -778,9 +741,9 @@
 
 .developer-auth-gate__notice {
   margin: 0;
-  border: 1px solid rgba(100, 108, 255, 0.35);
+  border: 1px solid color-mix(in srgb, var(--primary) 35%, transparent);
   border-radius: 0.6rem;
-  background: rgba(100, 108, 255, 0.1);
+  background: color-mix(in srgb, var(--primary) 10%, transparent);
   padding: 0.75rem 0.9rem;
   text-align: left;
 }
@@ -799,8 +762,8 @@
   align-items: center;
   justify-content: space-between;
   gap: 0.75rem 1rem;
-  border-color: rgba(100, 108, 255, 0.35);
-  background: rgba(100, 108, 255, 0.1);
+  border-color: color-mix(in srgb, var(--primary) 35%, transparent);
+  background: color-mix(in srgb, var(--primary) 10%, transparent);
 }
 
 .developer-home-cta__copy {
@@ -814,8 +777,8 @@
   align-items: center;
   padding: 0.55rem 1rem;
   border-radius: 8px;
-  border: 1px solid rgba(100, 108, 255, 0.55);
-  background: rgba(100, 108, 255, 0.22);
+  border: 1px solid color-mix(in srgb, var(--primary) 55%, transparent);
+  background: color-mix(in srgb, var(--primary) 22%, transparent);
   color: #c4c8ff;
   font-weight: 600;
   text-decoration: none;
@@ -823,8 +786,8 @@
 }
 
 .developer-home-cta__link:hover {
-  border-color: rgba(100, 108, 255, 0.85);
-  background: rgba(100, 108, 255, 0.32);
+  border-color: color-mix(in srgb, var(--primary) 85%, transparent);
+  background: color-mix(in srgb, var(--primary) 32%, transparent);
   color: #e8eaff;
 }
 
@@ -892,7 +855,7 @@
 }
 
 .your-games-list__item:hover {
-  border-color: rgba(100, 108, 255, 0.45);
+  border-color: color-mix(in srgb, var(--primary) 45%, transparent);
 }
 
 .your-games-list__name {
@@ -1059,8 +1022,8 @@
 }
 
 .developer-next-steps__item--current {
-  border-color: rgba(100, 108, 255, 0.45);
-  background: rgba(100, 108, 255, 0.08);
+  border-color: color-mix(in srgb, var(--primary) 45%, transparent);
+  background: color-mix(in srgb, var(--primary) 8%, transparent);
 }
 
 .developer-next-steps__item--done {
@@ -1100,8 +1063,8 @@
   margin: 0 0 1rem;
   padding: 0.75rem 0.9rem;
   border-radius: 8px;
-  border: 1px solid rgba(100, 108, 255, 0.28);
-  background: rgba(100, 108, 255, 0.1);
+  border: 1px solid color-mix(in srgb, var(--primary) 28%, transparent);
+  background: color-mix(in srgb, var(--primary) 10%, transparent);
   color: #c8ccff;
   font-size: 0.95rem;
   line-height: 1.45;
@@ -1191,8 +1154,8 @@
 }
 
 .developer-mcp__tab--active {
-  border-color: rgba(100, 108, 255, 0.55);
-  background: rgba(100, 108, 255, 0.15);
+  border-color: color-mix(in srgb, var(--primary) 55%, transparent);
+  background: color-mix(in srgb, var(--primary) 15%, transparent);
 }
 
 .developer-mcp__steps {
@@ -1240,8 +1203,8 @@
   gap: 0.5rem;
   padding: 0.75rem;
   border-radius: 8px;
-  border: 1px solid rgba(100, 108, 255, 0.35);
-  background: rgba(100, 108, 255, 0.08);
+  border: 1px solid color-mix(in srgb, var(--primary) 35%, transparent);
+  background: color-mix(in srgb, var(--primary) 8%, transparent);
 }
 
 .developer-mcp__secret code {
@@ -1305,8 +1268,8 @@
 }
 
 .developer-tag-picker__option:has(input:checked) {
-  border-color: rgba(100, 108, 255, 0.55);
-  background: rgba(100, 108, 255, 0.15);
+  border-color: color-mix(in srgb, var(--primary) 55%, transparent);
+  background: color-mix(in srgb, var(--primary) 15%, transparent);
 }
 
 @media (prefers-color-scheme: light) {
@@ -1315,8 +1278,8 @@
   }
 
   .developer-tag-picker__option:has(input:checked) {
-    border-color: rgba(85, 88, 170, 0.45);
-    background: rgba(85, 88, 170, 0.1);
+    border-color: color-mix(in srgb, var(--primary) 45%, transparent);
+    background: color-mix(in srgb, var(--primary) 10%, transparent);
   }
 }
 
@@ -1364,14 +1327,6 @@
   font-size: 0.88rem;
 }
 
-.app-footer__link {
-  color: var(--primary);
-  text-decoration: none;
-}
-
-.app-footer__link:hover {
-  text-decoration: underline;
-}
 
 .app-footer__sep {
   opacity: 0.45;
@@ -1418,10 +1373,6 @@
 @media (prefers-color-scheme: light) {
   .app-footer {
     border-top-color: rgba(0, 0, 0, 0.08);
-  }
-
-  .app-footer__link {
-    color: #535bf2;
   }
 }
 
@@ -1515,15 +1466,6 @@
   font-size: 1.05rem;
 }
 
-.pre-queue-sheet__close {
-  border: 0;
-  background: none;
-  color: inherit;
-  font-size: 1rem;
-  cursor: pointer;
-  opacity: 0.7;
-  padding: 0.2rem 0.35rem;
-}
 
 .pre-queue-sheet__body {
   overflow-y: auto;
@@ -1622,7 +1564,3 @@
   opacity: 0.7;
 }
 
-.pre-queue-sheet__footer .game-list-button:disabled {
-  opacity: 0.4;
-  cursor: not-allowed;
-}
