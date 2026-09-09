@@ -7,12 +7,15 @@ package graph
 import (
 	"context"
 	"fmt"
+	"sort"
 	"strings"
+	"time"
 
 	"github.com/scruffyprodigy/joinquest/graph/generated"
 	"github.com/scruffyprodigy/joinquest/graph/model"
 	"github.com/scruffyprodigy/joinquest/internal/auth"
 	"github.com/scruffyprodigy/joinquest/internal/gameurl"
+	"github.com/scruffyprodigy/joinquest/internal/queuewait"
 	"github.com/scruffyprodigy/joinquest/internal/store"
 )
 
@@ -228,6 +231,53 @@ func (r *modeQueueResolver) WaitingCount(ctx context.Context, obj *model.ModeQue
 		return 0, err
 	}
 	return st.CountWaitingInModeQueue(ctx, queueID)
+}
+
+// EstimatedWaitSeconds is the resolver for the estimatedWaitSeconds field.
+func (r *modeQueueResolver) EstimatedWaitSeconds(ctx context.Context, obj *model.ModeQueue) (*int, error) {
+	queueID, err := parseUUID(obj.ID, "queue id")
+	if err != nil {
+		return nil, err
+	}
+	// The unsplit line only. A composition mode's history lives on its paths, so
+	// this correctly finds nothing there and the per-path field carries it.
+	wait, ok, err := r.waitEstimates().For(ctx, queuewait.QueueKey{ModeQueueID: queueID})
+	if err != nil {
+		// Deliberately not fail-open to null: a null means "this queue has no
+		// history worth quoting", and a broken lookup must not say that.
+		return nil, err
+	}
+	if !ok {
+		return nil, nil
+	}
+	seconds := int(wait.Round(time.Second) / time.Second)
+	return &seconds, nil
+}
+
+// WaitEstimatesByPath is the resolver for the waitEstimatesByPath field.
+func (r *modeQueueResolver) WaitEstimatesByPath(ctx context.Context, obj *model.ModeQueue) ([]*model.QueuePathWaitEstimate, error) {
+	queueID, err := parseUUID(obj.ID, "queue id")
+	if err != nil {
+		return nil, err
+	}
+	paths, err := r.waitEstimates().PathsFor(ctx, queueID)
+	if err != nil {
+		return nil, err
+	}
+
+	estimates := make([]*model.QueuePathWaitEstimate, 0, len(paths))
+	for path, wait := range paths {
+		estimates = append(estimates, &model.QueuePathWaitEstimate{
+			QueuePath:            path,
+			EstimatedWaitSeconds: int(wait.Round(time.Second) / time.Second),
+		})
+	}
+	// Map iteration order is random, and a card that reshuffles its roles on
+	// every poll looks broken.
+	sort.Slice(estimates, func(i, j int) bool {
+		return estimates[i].QueuePath < estimates[j].QueuePath
+	})
+	return estimates, nil
 }
 
 // RegisterGame is the resolver for the registerGame field.

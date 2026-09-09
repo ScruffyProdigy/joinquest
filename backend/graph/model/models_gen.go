@@ -281,6 +281,31 @@ type ModeQueue struct {
 	PlayersToStart int    `json:"playersToStart"`
 	Status         string `json:"status"`
 	WaitingCount   int    `json:"waitingCount"`
+	// How long a player typically waits in this queue before being matched, in
+	// whole seconds — the number the mode card paints as "~15 sec wait".
+	//
+	// Drawn from this queue's recent fills, so it describes the queue's habits
+	// rather than the moment: it does not move because the queue happens to be one
+	// player short right now. Read `waitingCount` for that.
+	//
+	// Null until the queue has filled enough times recently to say anything
+	// honest, in which case the card shows no badge rather than a guess.
+	//
+	// Also null for a composition mode, whose players wait in separate per-role
+	// lines rather than one queue — read `waitEstimatesByPath` there instead.
+	EstimatedWaitSeconds *int `json:"estimatedWaitSeconds,omitempty"`
+	// Per-role wait estimates for a composition mode, sorted by queue path so a
+	// card renders in a stable order across polls.
+	//
+	// A composition mode's roles move at genuinely different speeds: the wait for
+	// one is set by the scarcity of the roles it needs alongside it, not by how
+	// many players share its own line. Collapsing them into a single number would
+	// describe no actual player.
+	//
+	// Empty for modes that do not split by path, and for roles that have not
+	// filled often enough recently to say anything honest — a quiet role stays
+	// quiet without silencing the others.
+	WaitEstimatesByPath []*QueuePathWaitEstimate `json:"waitEstimatesByPath"`
 }
 
 type Mutation struct {
@@ -392,6 +417,13 @@ type QueuePathGap struct {
 	DisplayName string `json:"displayName"`
 	Assigned    int    `json:"assigned"`
 	Needed      int    `json:"needed"`
+}
+
+// How long one role's line of a composition mode typically takes to fill.
+type QueuePathWaitEstimate struct {
+	// Matches `GameModeQueuePath.queuePath`.
+	QueuePath            string `json:"queuePath"`
+	EstimatedWaitSeconds int    `json:"estimatedWaitSeconds"`
 }
 
 type QueueUpdate struct {
