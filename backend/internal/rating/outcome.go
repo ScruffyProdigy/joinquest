@@ -71,6 +71,19 @@ type MatchOutcome struct {
 // nonplayer_ratings.entity_key, alongside "seat:" and "prequeue:".
 const scenarioEntrantPrefix = "scenario:"
 
+// InputsVersion stamps rating_match_inputs.inputs_version with the rules
+// BuildSides used to produce a row, so a row can be read knowing what it was
+// allowed to contain rather than by guessing from its contents.
+//
+// 1 — JQ-139. Player, seat class, scenario and pre-queue entrants.
+// 2 — JQ-229. Adds the per-player-per-seat interaction entrant in asymmetric
+//
+//	modes. A version 1 row is still replayed exactly as before and simply
+//	yields no per-role ratings for the matches it covers; nothing rewrites
+//	history, because the seat a given player held was never recorded in a
+//	version 1 row and cannot be recovered from one.
+const InputsVersion = 2
+
 // scenarioEntrants turns the reported scenario keys into the entrants of the
 // crew's opposing side, deduplicated and sorted so the output is stable for
 // replay regardless of the order the game listed them in.
@@ -299,15 +312,33 @@ func deriveRanks(groups map[string][]Participant) (map[string]int, error) {
 // held by the group, deduplicated so three Guessers still add a single
 // seat:Team/Guesser entity rather than three, plus one entrant per distinct
 // rated pre-queue selection held by the group, deduplicated the same way.
+//
+// In an asymmetric mode each player also contributes a second entrant of
+// their own, "player:<uuid>@seat:<class>" — the interaction between that
+// player and the seat they actually sat in (JQ-229). The two are separate
+// terms on purpose. "player:<uuid>" stays the player's mode-level skill and
+// "seat:<class>" stays the seat's worth to anybody; the interaction carries
+// only what is left over, namely how much better or worse this particular
+// player is in this particular seat than their own average would predict.
+// A side's strength is the sum of its entrants, so the three compose the way
+// a main-effects-plus-interaction decomposition does, and no existing term
+// changes meaning.
+//
+// Unlike the seat entrant this one is not deduplicated across teammates, and
+// must not be: two Guessers on a side are two different players each with
+// their own interaction, whereas seat:Team/Guesser is one shared property of
+// the side. The map still deduplicates a player listed twice.
 func buildSide(shape ModeShape, asymmetric bool, participants []Participant, rank int) Side {
 	entrantSet := map[string]Entrant{}
 	for _, p := range participants {
-		key := "player:" + p.PlayerID
+		key := PlayerKey(p.PlayerID)
 		entrantSet[key] = Entrant{Key: key}
 		if asymmetric {
 			if namePath, ok := shape.SeatClasses[p.SeatKey]; ok {
-				seatKey := "seat:" + namePath
+				seatKey := SeatKey(namePath)
 				entrantSet[seatKey] = Entrant{Key: seatKey}
+				roleKey := PlayerSeatKey(p.PlayerID, namePath)
+				entrantSet[roleKey] = Entrant{Key: roleKey}
 			}
 		}
 		for _, pqGroupKey := range shape.RatedPreQueueGroups {

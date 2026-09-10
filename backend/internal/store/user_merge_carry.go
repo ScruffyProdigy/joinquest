@@ -160,6 +160,14 @@ func carrySourceHistoryTx(ctx context.Context, tx *sql.Tx, sourceID, targetID uu
 //  2. Rewrites the source's entrant key to the target's inside rating_match_inputs.sides,
 //     so the match history itself — who played whom, and how they placed — survives.
 //
+// Per-role history (JQ-229) rides along without a step of its own. A player's per-seat
+// entrant key is "player:<uuid>@seat:<class>" — the plain player key plus a suffix — so
+// the text rewrite in step 2 catches the mode-level and every per-seat occurrence in one
+// pass, and the replay that follows rebuilds the target's per-role ratings from the
+// guest's matches as if the guest had been the target all along. That is a property of
+// the key grammar (internal/rating/key.go), not a coincidence: it is documented there as
+// load-bearing so nobody reshapes the key without seeing what depends on it.
+//
 // A later replay of the affected modes rebuilds player_ratings/nonplayer_ratings from the
 // corrected log (see internal/rating.Replayer), so this is safe by construction: nothing
 // here approximates a rating, it only relocates the input that produces one and then
@@ -181,6 +189,11 @@ func carrySourceRatingHistoryTx(ctx context.Context, tx *sql.Tx, sourceID, targe
 	sourceKey := PlayerRatingKey(sourceID)
 	targetKey := PlayerRatingKey(targetID)
 
+	// Containment on the mode-level key alone is enough to find every affected mode:
+	// buildSide (internal/rating/outcome.go) never emits a per-seat entrant for a player
+	// without also emitting their mode-level one, so a match this user appears in at any
+	// granularity matches this predicate.
+	//
 	// The WHERE clauses below use jsonb containment (@>), not sides::text LIKE, so
 	// idx_rating_match_inputs_sides_gin (a jsonb_path_ops GIN index) can serve them.
 	// MergeUserInto runs on every guest-to-account conversion (see
@@ -211,7 +224,9 @@ func carrySourceRatingHistoryTx(ctx context.Context, tx *sql.Tx, sourceID, targe
 	// REPLACE on the raw JSON text, not a jsonb-path update: sourceKey is
 	// "player:<uuid>", and a UUID string cannot appear as a substring of anything else in
 	// this JSON (another entrant's key, a queue-option value, ...), so a blind text
-	// substitution cannot corrupt an unrelated field. That is a claim a reviewer should be
+	// substitution cannot corrupt an unrelated field. Substring matching is what carries
+	// the per-seat keys too: "player:<uuid>@seat:Team/Guesser" contains sourceKey, so one
+	// REPLACE rewrites every granularity. That is a claim a reviewer should be
 	// able to check against the fixed "player:"-prefixed key shape, not take on faith —
 	// flagging it here rather than leaving it implicit in the SQL. The row-selecting
 	// WHERE clause still uses containment (for the index); only the SET's mechanism is a
