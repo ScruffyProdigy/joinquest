@@ -80,6 +80,23 @@ func (s *Store) syncWaitingPartiesOnFormingTx(
 			continue
 		}
 
+		// Do not seat somebody who is not watching. Without this the seat-hold
+		// achieves nothing: a chair vacated when its window expires is handed
+		// straight back to the same absent player, who is still queued and is the
+		// oldest waiting entry, and their window restarts — so the table churns
+		// instead of filling.
+		//
+		// They keep their place in the queue. This costs them the tables that
+		// complete while they are away, not their position, and they are seated
+		// again the moment they come back.
+		away, err := userIsAwayTx(ctx, tx, entry.UserID)
+		if err != nil {
+			return err
+		}
+		if away {
+			continue
+		}
+
 		party, err := s.getPartyByIDTx(ctx, tx, *entry.PartyID)
 		if err != nil {
 			return err
