@@ -64,3 +64,33 @@ func TestBandOpensWhenThereIsNoBudgetLeftToSpend(t *testing.T) {
 		t.Errorf("Band(no budget) = %v, want the population spread %v", got, want)
 	}
 }
+
+// The tolerance widens as players wait. This is the direction the acceptance
+// criterion names, and it is the one that is easy to leave untested: every
+// other band test varies arrivals and holds the budget still.
+//
+// It is not a second schedule layered on the arrival-rate one. The budget IS
+// the wait -- it starts at TCeiling and shrinks as the oldest waiter ages -- so
+// a shrinking budget expects fewer arrivals inside it, and a band that can be
+// satisfied loosens accordingly. At zero it is wide open, which is the same
+// thing as dropping the constraint.
+func TestBandWidensMonotonicallyAsTheOldestWaiterAges(t *testing.T) {
+	const lambda = 0.5
+
+	prev := 0.0
+	for wait := time.Duration(0); wait <= TCeiling; wait += time.Second {
+		got := Band(lambda, TCeiling-wait, 2)
+		if got < prev {
+			t.Errorf("Band at wait %v = %v narrowed from %v; the band must never tighten as a player waits", wait, got, prev)
+		}
+		if got < Beta {
+			t.Errorf("Band at wait %v = %v fell below Beta %v", wait, got, Beta)
+		}
+		prev = got
+	}
+
+	// The endpoints are what matter, not the shape between them.
+	if fresh, spent := Band(lambda, TCeiling, 2), Band(lambda, 0, 2); !(fresh < spent) {
+		t.Errorf("a fresh queue's band (%v) must be tighter than a spent one's (%v)", fresh, spent)
+	}
+}

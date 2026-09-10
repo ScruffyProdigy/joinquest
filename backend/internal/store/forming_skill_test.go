@@ -217,3 +217,44 @@ func TestAModeWithSkillMatchingOffFiresAWideLobbyOnABusyQueue(t *testing.T) {
 		t.Fatalf("skill matching is off and the lobby still did not fire: %+v", rec)
 	}
 }
+
+// Unrated players are placed at the documented cold-start prior -- neither
+// excluded from matchmaking nor dropped from the lobby's dispersion.
+//
+// The distinction is the point, and it is invisible to the pure tests. Dropping
+// an unrated player would leave a two-seat lobby measuring a single rating,
+// which scores dispersion zero and fires anything. So a lobby of one rated
+// player far from the prior and one unrated player must be judged wide, on the
+// strength of the prior standing in for the seat that has no rating yet.
+func TestAnUnratedPlayerIsJudgedAtThePriorRatherThanDroppedFromTheLobby(t *testing.T) {
+	st := openTestStore(t)
+	cleaner := st.NewTestCleaner(t)
+	ctx := context.Background()
+
+	gameID, queueID := duelQueueForSkill(t, st, cleaner, ctx)
+	seedArrivals(t, st, cleaner, ctx, gameID, queueID, 200)
+
+	rated, err := st.CreateUser(ctx, CreateUserParams{Email: "rated-" + uuid.NewString() + "@example.com"})
+	if err != nil {
+		t.Fatalf("CreateUser: %v", err)
+	}
+	cleaner.TrackUser(rated.ID)
+	unrated, err := st.CreateUser(ctx, CreateUserParams{Email: "unrated-" + uuid.NewString() + "@example.com"})
+	if err != nil {
+		t.Fatalf("CreateUser: %v", err)
+	}
+	cleaner.TrackUser(unrated.ID)
+
+	// Only one of them has a rating, and it sits far from the prior.
+	rateUsers(t, st, ctx, gameID, map[uuid.UUID]float64{rated.ID: 45})
+
+	for _, id := range []uuid.UUID{rated.ID, unrated.ID} {
+		if _, err := st.JoinModeQueue(ctx, queueID, id, "", nil); err != nil {
+			t.Fatalf("JoinModeQueue: %v", err)
+		}
+	}
+
+	if rec := mustReconcileForming(t, st, ctx, queueID); rec.Fired {
+		t.Fatalf("a lobby of one rated player at 45 and one unrated at the prior fired; the unrated seat was not counted")
+	}
+}
