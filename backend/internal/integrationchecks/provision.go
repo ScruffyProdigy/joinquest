@@ -551,9 +551,8 @@ func syntheticAssignment(mode store.GameMode, seats []store.GameModeSeat, matchI
 			// would produce. Sending it means a game's checklist run exercises
 			// the same payload shape a real provision will.
 			Skill: &gameclient.ProvisionSkill{
-				Rating:        unrated.Rating,
-				Uncertainty:   unrated.Uncertainty,
-				MatchesPlayed: unrated.MatchesPlayed,
+				Rating:      unrated.Rating,
+				Uncertainty: unrated.Uncertainty,
 			},
 		})
 	}

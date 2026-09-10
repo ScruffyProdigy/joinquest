@@ -374,13 +374,15 @@ type PlayerSkill struct {
 	// 25.0 and most rated players land roughly between 0 and 50. Higher is stronger.
 	Rating float64 `json:"rating"`
 	// How unsure we are of `rating`, as one standard deviation on the same scale.
-	// Starts near 8.3 and falls as a player accumulates matches. Treat the estimate
-	// as a range, not a point: `rating` plus or minus this.
+	// Starts at its widest (about 8.3) for a player we have never rated here and
+	// narrows as evidence accumulates. Treat the estimate as a range, not a point:
+	// `rating` plus or minus this.
+	//
+	// This is the field to branch on when deciding how much weight to give the
+	// number. JoinQuest does not report a match count — a game already knows how
+	// often it has seen a player id, and "new to this game" is not the same question
+	// as "how good is this estimate".
 	Uncertainty float64 `json:"uncertainty"`
-	// Rated matches behind the estimate. `0` means JoinQuest has never rated this
-	// player in this mode, and `rating` is the starting estimate rather than
-	// anything we have observed.
-	MatchesPlayed int `json:"matchesPlayed"`
 }
 
 // One roster a mode asks the player to pick from — a champion, a kit, a deck.

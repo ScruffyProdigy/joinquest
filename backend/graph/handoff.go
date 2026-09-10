@@ -131,9 +131,8 @@ func attachSeatSkills(ctx context.Context, st *store.Store, gameID uuid.UUID, mo
 	for i := range seats {
 		s := skills[bySeat[i]]
 		seats[i].Skill = &gameclient.ProvisionSkill{
-			Rating:        s.Rating,
-			Uncertainty:   s.Uncertainty,
-			MatchesPlayed: s.MatchesPlayed,
+			Rating:      s.Rating,
+			Uncertainty: s.Uncertainty,
 		}
 	}
 	return nil

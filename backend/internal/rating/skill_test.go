@@ -19,7 +19,4 @@ func TestUnratedSkillMatchesEnginePrior(t *testing.T) {
 	if got.Uncertainty != prior.Sigma {
 		t.Errorf("UnratedSkill().Uncertainty = %v, engine prior sigma = %v", got.Uncertainty, prior.Sigma)
 	}
-	if got.MatchesPlayed != 0 {
-		t.Errorf("UnratedSkill().MatchesPlayed = %d, want 0", got.MatchesPlayed)
-	}
 }

@@ -35,12 +35,11 @@ type ProvisionSkill struct {
 	// unrated player sits at 25.0.
 	Rating float64 `json:"rating"`
 	// Uncertainty is one standard deviation on that same scale — the estimate is
-	// a range, not a point.
+	// a range, not a point, and this is the field that says how much weight the
+	// centre deserves. There is no match count alongside it: a game already
+	// counts its own sightings of a player id, and that count answers a
+	// different question than how good this estimate is.
 	Uncertainty float64 `json:"uncertainty"`
-	// MatchesPlayed is 0 for a player JoinQuest has never rated in this mode,
-	// which is also what says Rating is a starting estimate rather than an
-	// observation.
-	MatchesPlayed int `json:"matchesPlayed"`
 }
 
 // AssignmentSeat is one seat in a Lobby-pushed roster.

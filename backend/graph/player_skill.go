@@ -59,7 +59,7 @@ func playerSkills(ctx context.Context, st *store.Store, gameID uuid.UUID, modeKe
 	out := make(map[uuid.UUID]rating.Skill, len(userIDs))
 	for _, id := range userIDs {
 		if v, ok := rated[id]; ok {
-			out[id] = rating.SkillOf(v.Mu, v.Sigma, v.MatchesPlayed)
+			out[id] = rating.SkillOf(v.Mu, v.Sigma)
 			continue
 		}
 		out[id] = rating.UnratedSkill()
@@ -72,9 +72,8 @@ func playerSkills(ctx context.Context, st *store.Store, gameID uuid.UUID, modeKe
 // never drift into quoting different numbers for the same rating.
 func toGraphQLPlayerSkill(s rating.Skill) *model.PlayerSkill {
 	return &model.PlayerSkill{
-		Rating:        s.Rating,
-		Uncertainty:   s.Uncertainty,
-		MatchesPlayed: s.MatchesPlayed,
+		Rating:      s.Rating,
+		Uncertainty: s.Uncertainty,
 	}
 }
 

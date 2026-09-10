@@ -349,9 +349,8 @@ type ComplexityRoot struct {
 	}
 
 	PlayerSkill struct {
-		MatchesPlayed func(childComplexity int) int
-		Rating        func(childComplexity int) int
-		Uncertainty   func(childComplexity int) int
+		Rating      func(childComplexity int) int
+		Uncertainty func(childComplexity int) int
 	}
 
 	PreQueueGroup struct {
@@ -2375,12 +2374,6 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 
 		return e.complexity.PlayAgainResult.Table(childComplexity), true
 
-	case "PlayerSkill.matchesPlayed":
-		if e.complexity.PlayerSkill.MatchesPlayed == nil {
-			break
-		}
-
-		return e.complexity.PlayerSkill.MatchesPlayed(childComplexity), true
 	case "PlayerSkill.rating":
 		if e.complexity.PlayerSkill.Rating == nil {
 			break
@@ -5032,17 +5025,16 @@ type PlayerSkill {
 
   """
   How unsure we are of ` + "`" + `rating` + "`" + `, as one standard deviation on the same scale.
-  Starts near 8.3 and falls as a player accumulates matches. Treat the estimate
-  as a range, not a point: ` + "`" + `rating` + "`" + ` plus or minus this.
+  Starts at its widest (about 8.3) for a player we have never rated here and
+  narrows as evidence accumulates. Treat the estimate as a range, not a point:
+  ` + "`" + `rating` + "`" + ` plus or minus this.
+
+  This is the field to branch on when deciding how much weight to give the
+  number. JoinQuest does not report a match count — a game already knows how
+  often it has seen a player id, and "new to this game" is not the same question
+  as "how good is this estimate".
   """
   uncertainty: Float!
-
-  """
-  Rated matches behind the estimate. ` + "`" + `0` + "`" + ` means JoinQuest has never rated this
-  player in this mode, and ` + "`" + `rating` + "`" + ` is the starting estimate rather than
-  anything we have observed.
-  """
-  matchesPlayed: Int!
 }
 
 enum AvatarSource {
@@ -13989,35 +13981,6 @@ func (ec *executionContext) fieldContext_PlayerSkill_uncertainty(_ context.Conte
 	return fc, nil
 }
 
-func (ec *executionContext) _PlayerSkill_matchesPlayed(ctx context.Context, field graphql.CollectedField, obj *model.PlayerSkill) (ret graphql.Marshaler) {
-	return graphql.ResolveField(
-		ctx,
-		ec.OperationContext,
-		field,
-		ec.fieldContext_PlayerSkill_matchesPlayed,
-		func(ctx context.Context) (any, error) {
-			return obj.MatchesPlayed, nil
-		},
-		nil,
-		ec.marshalNInt2int,
-		true,
-		true,
-	)
-}
-
-func (ec *executionContext) fieldContext_PlayerSkill_matchesPlayed(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "PlayerSkill",
-		Field:      field,
-		IsMethod:   false,
-		IsResolver: false,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return nil, errors.New("field of type Int does not have child fields")
-		},
-	}
-	return fc, nil
-}
-
 func (ec *executionContext) _PreQueueGroup_key(ctx context.Context, field graphql.CollectedField, obj *model.PreQueueGroup) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
@@ -14308,8 +14271,6 @@ func (ec *executionContext) fieldContext_PublicPlayer_skill(ctx context.Context,
 				return ec.fieldContext_PlayerSkill_rating(ctx, field)
 			case "uncertainty":
 				return ec.fieldContext_PlayerSkill_uncertainty(ctx, field)
-			case "matchesPlayed":
-				return ec.fieldContext_PlayerSkill_matchesPlayed(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type PlayerSkill", field.Name)
 		},
@@ -26424,11 +26385,6 @@ func (ec *executionContext) _PlayerSkill(ctx context.Context, sel ast.SelectionS
 			}
 		case "uncertainty":
 			out.Values[i] = ec._PlayerSkill_uncertainty(ctx, field, obj)
-			if out.Values[i] == graphql.Null {
-				out.Invalids++
-			}
-		case "matchesPlayed":
-			out.Values[i] = ec._PlayerSkill_matchesPlayed(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}

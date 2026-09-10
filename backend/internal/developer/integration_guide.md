@@ -605,7 +605,7 @@ before it starts, with no extra round trip:
       {
         "seatKey": "p1",
         "lobbyUserId": "…",
-        "skill": { "rating": 31.5, "uncertainty": 2.25, "matchesPlayed": 42 }
+        "skill": { "rating": 31.5, "uncertainty": 2.25 }
       }
     ]
   }
@@ -618,7 +618,7 @@ before it starts, with no extra round trip:
 query Player($id: ID!) {
   player(id: $id) {
     displayName
-    skill(modeKey: "duel") { rating uncertainty matchesPlayed }
+    skill(modeKey: "duel") { rating uncertainty }
   }
 }
 ```
@@ -628,13 +628,18 @@ query Player($id: ID!) {
 | Field | Meaning |
 |-------|---------|
 | `rating` | Centre of the estimate. A player we have not rated sits at **25.0**; most rated players land roughly between **0 and 50**. Higher is stronger. |
-| `uncertainty` | One standard deviation on the same scale — how unsure we are. Starts near **8.3** and falls with play. |
-| `matchesPlayed` | Rated matches behind the estimate. **`0` means we have never rated this player in this mode**, and `rating` is the starting estimate rather than something we observed. |
+| `uncertainty` | One standard deviation on the same scale — how unsure we are. Widest at about **8.3**, narrowing as evidence accumulates. |
 
 Treat `rating` as a range, not a point: a player at `28.0 ± 7.0` and one at
 `28.0 ± 1.5` are not the same information. If you are picking AI difficulty for
 someone with a high `uncertainty`, aim near the middle and let the next few
 results sharpen it.
+
+**`uncertainty` is the field to branch on**, not how new the player is to you.
+There is no match count in the payload on purpose: you already know how many
+times you have seen a player id, and that count answers a different question.
+How much a number deserves to be trusted is what `uncertainty` is for, and it
+keeps meaning that however the estimate was arrived at.
 
 A rating is **only ever comparable inside one game and one mode**. A 30 in your
 Duel says nothing about a 30 in your Arena, and nothing at all about a 30 in

@@ -47,9 +47,8 @@ type playerSkillResponse struct {
 		Player *struct {
 			ID    string `json:"id"`
 			Skill *struct {
-				Rating        float64 `json:"rating"`
-				Uncertainty   float64 `json:"uncertainty"`
-				MatchesPlayed int     `json:"matchesPlayed"`
+				Rating      float64 `json:"rating"`
+				Uncertainty float64 `json:"uncertainty"`
 			} `json:"skill"`
 		} `json:"player"`
 	} `json:"data"`
@@ -61,7 +60,7 @@ type playerSkillResponse struct {
 const playerSkillQuery = `query Player($id: ID!, $modeKey: String!) {
 	player(id: $id) {
 		id
-		skill(modeKey: $modeKey) { rating uncertainty matchesPlayed }
+		skill(modeKey: $modeKey) { rating uncertainty }
 	}
 }`
 
@@ -113,9 +112,6 @@ func TestPlayerSkillOverServiceToken(t *testing.T) {
 	if got.Data.Player.Skill.Uncertainty != 2.25 {
 		t.Errorf("uncertainty = %v, want 2.25", got.Data.Player.Skill.Uncertainty)
 	}
-	if got.Data.Player.Skill.MatchesPlayed != 42 {
-		t.Errorf("matchesPlayed = %d, want 42", got.Data.Player.Skill.MatchesPlayed)
-	}
 
 	fresh := queryPlayerSkill(t, env, token, unrated.ID.String(), demoModeKey)
 	if fresh.Data.Player.Skill == nil {
@@ -127,9 +123,6 @@ func TestPlayerSkillOverServiceToken(t *testing.T) {
 	}
 	if fresh.Data.Player.Skill.Uncertainty != prior.Uncertainty {
 		t.Errorf("unrated uncertainty = %v, want the prior %v", fresh.Data.Player.Skill.Uncertainty, prior.Uncertainty)
-	}
-	if fresh.Data.Player.Skill.MatchesPlayed != 0 {
-		t.Errorf("unrated matchesPlayed = %d, want 0 — that zero is what tells a game the number is a starting estimate", fresh.Data.Player.Skill.MatchesPlayed)
 	}
 }
 
@@ -156,7 +149,7 @@ func TestPlayerSkillIsScopedToTheCallingGame(t *testing.T) {
 	if got.Data.Player.Skill == nil {
 		t.Fatal("expected the prior, got no skill at all")
 	}
-	if got.Data.Player.Skill.MatchesPlayed != 0 || got.Data.Player.Skill.Rating != rating.UnratedMu {
+	if got.Data.Player.Skill.Rating != rating.UnratedMu || got.Data.Player.Skill.Uncertainty != rating.UnratedSigma {
 		t.Errorf("a game read a rating from another game's catalog entry: %+v", *got.Data.Player.Skill)
 	}
 }
@@ -242,7 +235,7 @@ func TestPlayerFacingRosterCarriesNoSkill(t *testing.T) {
 
 	query := `query Result($matchId: ID!) {
 		matchResult(matchId: $matchId) {
-			participants { user { id skill(modeKey: "` + demoModeKey + `") { rating matchesPlayed } } }
+			participants { user { id skill(modeKey: "` + demoModeKey + `") { rating } } }
 		}
 	}`
 	body := postGraphQL(t, env.Handler, query, map[string]any{"matchId": match.sessionID.String()}, match.cookieA)
@@ -254,8 +247,7 @@ func TestPlayerFacingRosterCarriesNoSkill(t *testing.T) {
 					User struct {
 						ID    string `json:"id"`
 						Skill *struct {
-							Rating        float64 `json:"rating"`
-							MatchesPlayed int     `json:"matchesPlayed"`
+							Rating float64 `json:"rating"`
 						} `json:"skill"`
 					} `json:"user"`
 				} `json:"participants"`
@@ -306,7 +298,7 @@ func TestProvisionPayloadCarriesSeatSkill(t *testing.T) {
 		if seat.Skill == nil {
 			t.Fatalf("seat %s was provisioned with no skill; a game reading the roster would have to make one up", seat.SeatKey)
 		}
-		if seat.Skill.Rating != prior.Rating || seat.Skill.MatchesPlayed != 0 {
+		if seat.Skill.Rating != prior.Rating || seat.Skill.Uncertainty != prior.Uncertainty {
 			t.Errorf("seat %s: skill = %+v, want the prior for a first-time player", seat.SeatKey, *seat.Skill)
 		}
 	}
@@ -336,11 +328,11 @@ func TestAttachSeatSkillsFillsEverySeat(t *testing.T) {
 		t.Fatalf("attachSeatSkills: %v", err)
 	}
 
-	if seats[0].Skill == nil || *seats[0].Skill != (gameclient.ProvisionSkill{Rating: 18.25, Uncertainty: 4.5, MatchesPlayed: 7}) {
+	if seats[0].Skill == nil || *seats[0].Skill != (gameclient.ProvisionSkill{Rating: 18.25, Uncertainty: 4.5}) {
 		t.Errorf("rated seat = %+v, want the stored rating", seats[0].Skill)
 	}
 	prior := rating.UnratedSkill()
-	want := gameclient.ProvisionSkill{Rating: prior.Rating, Uncertainty: prior.Uncertainty, MatchesPlayed: 0}
+	want := gameclient.ProvisionSkill{Rating: prior.Rating, Uncertainty: prior.Uncertainty}
 	if seats[1].Skill == nil || *seats[1].Skill != want {
 		t.Errorf("unrated seat = %+v, want the prior", seats[1].Skill)
 	}
