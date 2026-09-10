@@ -538,6 +538,15 @@ func (r *subscriptionResolver) QueueUpdated(ctx context.Context, queueID string)
 		// claiming it is still queued — which is exactly what happens to a player
 		// evicted while their page was frozen. Tell them instead; the client's
 		// existing LEFT handling routes them out.
+		//
+		// This also fires for a subscriber who was never queued at all: browsing a
+		// game's modes (GameModesPanel) subscribes via useGameQueue for every mode
+		// whose queue isn't already owned by the intent banner
+		// (frontend/src/components/games/useGameQueue.js, skipSubscription check in
+		// GameModesPanel.jsx), so a visitor who hasn't joined gets this LEFT initial
+		// too. That's safe: applyQueueUpdate's LEFT branch sets queueState 'idle',
+		// joinUrl '', queuedCount 0, selectedQueuePath '', and error '' — exactly
+		// useGameQueue's default state — so the payload is a no-op there.
 		initial = &model.QueueUpdate{
 			GameID:      gameMode.GameID.String(),
 			QueueID:     modeQueueID.String(),
