@@ -227,11 +227,19 @@ Or run `./scripts/test-backend.sh` / `./scripts/test.sh`, which set this automat
 5. **Version control** - Keep migration files in version control
 6. **Sequential numbering** - Use sequential version numbers for migrations
 7. **Descriptive names** - Use clear, descriptive names for migration files
+8. **Watch out for lock-taking DDL** - a plain `CREATE INDEX` or `ALTER TABLE` takes
+   a lock and waits behind any live query on that table, so a migration that is
+   instant on an idle database can hang for minutes against production traffic
 
 ## Troubleshooting
 
 ### Migration Stuck in "Dirty" State
-If a migration fails and leaves the database in a dirty state:
+
+golang-migrate marks the version dirty when a migration dies partway through, and
+then refuses to run anything at all until it is cleared. The backend fails to
+start with `Dirty database version N. Fix and force version.`
+
+Locally:
 
 ```bash
 # Check current version and dirty status
@@ -240,6 +248,19 @@ make migrate-version
 # Force the version to the last successful migration
 make migrate-force VERSION=1
 ```
+
+In production, `deploy-joinquest.sh` checks for this before it migrates and stops
+with the exact command to run. That command is:
+
+```bash
+./scripts/fix-dirty-migration.sh <last-good-version>   # usually the dirty version minus 1
+./scripts/deploy-joinquest.sh
+```
+
+`fix-dirty-migration.sh` scales `lobby-backend` to 0 first, because forcing the
+version while something else holds migration locks is how the database got dirty
+in the first place. Force only rewrites the recorded version — it does not undo
+SQL, so check what the half-applied migration left behind before running it.
 
 ### Connection Issues
 Ensure the `DATABASE_URL` environment variable is set correctly:
