@@ -87,6 +87,22 @@ describe('useLeaveQueueOnExit', () => {
     await waitFor(() => expect(window.location.pathname).toBe('/waiting'))
   })
 
+  it('does not bounce an evicted player back to waiting when the leave still resolves true', async () => {
+    // The server may have already evicted this player (JQ-216's grace-window sweep)
+    // by the time this fires. LeaveModeQueue swallows the missing-row error and
+    // still returns true, so from here this is indistinguishable from an ordinary
+    // successful leave — the failure-only fallback must not fire on it.
+    render(<Probe activeIntent={waitingIntent} />)
+
+    act(() => navigateTo('/games/word-hunt'))
+    await act(async () => {
+      await queue.leaveQueue.mock.results[0].value
+      await Promise.resolve()
+    })
+
+    expect(window.location.pathname).toBe('/games/word-hunt')
+  })
+
   it('survives a StrictMode remount without dropping the player', () => {
     // The dev double-mount unmounts and remounts with no route change. Keying off
     // the route rather than the unmount is what keeps this from leaving the queue.
