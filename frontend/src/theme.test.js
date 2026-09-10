@@ -100,6 +100,28 @@ describe('accent legibility', () => {
   })
 })
 
+/**
+ * A token nothing uses is not a guarantee. The rule above proves
+ * `--destructive-foreground` is legible on a `--destructive` fill, but shadcn's
+ * default ships `text-white` there instead -- 2.77:1. These two components are
+ * the only places the app fills with `--destructive`.
+ */
+describe('destructive fills use the token, not white', () => {
+  it.each(['components/ui/button-variants.js', 'components/ui/badge.jsx'])(
+    '%s labels its --destructive fill with --destructive-foreground',
+    (file) => {
+      const source = readFileSync(resolve(__dirname, file), 'utf8')
+      const fills = source.match(/'[^']*\bbg-destructive\b[^']*'/g)
+
+      expect(fills).not.toBeNull()
+      for (const fill of fills) {
+        expect(fill).toContain('text-destructive-foreground')
+        expect(fill).not.toContain('text-white')
+      }
+    },
+  )
+})
+
 describe('links', () => {
   it.each(['--background', '--card'])('--link reads as text on %s', (surface) => {
     expect(contrast(tokens['--link'], tokens[surface])).toBeGreaterThanOrEqual(AA)
