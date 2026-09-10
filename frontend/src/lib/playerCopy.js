@@ -257,6 +257,27 @@ export function waitingPageSubline(gameName, modeName, roleLabel, selectedOption
 }
 
 // Leaving gives up the player's place, so it is confirmed first.
+/* Notifications: leaving the page without losing your place. */
+
+export const NOTIFY_ME = 'Notify me instead'
+export const NOTIFY_ME_VALUE = 'Leave this page and keep your spot.'
+export const NOTIFY_ME_IOS = 'Get notified on your phone'
+export const NOTIFY_ON = "You'll be notified"
+export const NOTIFY_ON_VALUE = 'Close this page whenever you like.'
+export const NOTIFY_OFF = 'Turn off notifications'
+export const NOTIFY_BLOCKED =
+  'Notifications are switched off for JoinQuest in your browser settings.'
+export const NOTIFY_FAILED = 'Notifications could not be switched on. Try again.'
+
+export const INSTALL_TITLE = 'Add JoinQuest to your Home Screen'
+export const INSTALL_BODY =
+  'Safari only sends notifications from an installed app. It takes two taps, and your spot is held while you do it.'
+export const INSTALL_STEP_SHARE = 'Tap Share'
+export const INSTALL_STEP_SHARE_WHERE = 'in the bar at the bottom of the screen'
+export const INSTALL_STEP_ADD = 'Choose Add to Home Screen'
+export const INSTALL_STEP_ADD_WHERE = 'then open JoinQuest from your Home Screen'
+export const INSTALL_DISMISS = 'Not now'
+
 export const LEAVE_QUEUE_TITLE = 'Leave the queue?'
 export const LEAVE_QUEUE_BODY = "You'll lose your spot and have to start over."
 export const LEAVE_QUEUE_CONFIRM = 'Leave queue'

@@ -1,0 +1,57 @@
+"""
+Whether this player can actually be reached by a notification while away from
+the waiting page, and on what.
+
+Reachability is a property of stored push subscriptions, not of a permission
+the browser once granted: a grant on a platform that cannot deliver, or a
+subscription the push service has since expired, is not reachability. Staying
+queued while away is gated on this, because a queue held open for a player who
+will never be told is worse than one that lets them go.
+"""
+type PushCapability {
+  """
+  True when at least one live subscription is stored for this player.
+  """
+  reachable: Boolean!
+  """
+  How many browser installs are subscribed. A player may queue from a phone and
+  a desktop at once; both ring.
+  """
+  subscriptionCount: Int!
+  """
+  The VAPID application server key the browser needs to subscribe. Null when
+  push is not configured on this deployment, which is the signal to hide the
+  affordance entirely rather than offer a control that cannot work.
+  """
+  publicKey: String
+}
+
+extend type Query {
+  """
+  This player's notification reachability. Available to any signed-in player,
+  including one who has not yet chosen an identity.
+  """
+  pushCapability: PushCapability!
+}
+
+extend type Mutation {
+  """
+  Register a browser install as reachable. Idempotent per endpoint: the same
+  browser re-subscribing updates its keys rather than adding a second row.
+  """
+  savePushSubscription(input: SavePushSubscriptionInput!): PushCapability!
+  """
+  Drop one browser install, by endpoint. Used when the player turns
+  notifications off, or when the browser reports the subscription has changed.
+  """
+  deletePushSubscription(endpoint: String!): PushCapability!
+}
+
+input SavePushSubscriptionInput {
+  """The push service URL that identifies this browser install."""
+  endpoint: String!
+  """The subscription's ECDH public key, base64url."""
+  p256dh: String!
+  """The subscription's auth secret, base64url."""
+  auth: String!
+}

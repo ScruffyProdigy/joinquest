@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { useAuth } from '../auth/AuthProvider'
 import LaunchStep from './LaunchStep'
+import NotifyMeControl from './NotifyMeControl'
 import { useLeaveQueueOnExit } from './useLeaveQueueOnExit'
 import { hasReadyToPlayIntent, hasWaitingIntent } from '../../lib/intent'
 import { navigateOutOfWaiting } from '../../lib/waiting'
@@ -126,6 +127,11 @@ export default function WaitingPage({ intent }) {
             {leaveError}
           </p>
         ) : null}
+
+        {/* Offered from the moment the player joins, not after a delay: someone
+            who pockets their phone at 8s must already have been given the
+            option. The timer inside only promotes it. */}
+        <NotifyMeControl disabled={busy} />
 
         <Button
           type="button"

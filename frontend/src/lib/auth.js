@@ -1,4 +1,5 @@
 import { graphqlRequest } from './graphql'
+import { forgetLocalPushSubscription } from './push'
 import { clearSubscriptionAuthCache } from './queue'
 
 const USER_FIELDS = `
@@ -157,6 +158,11 @@ export async function completeSignInWithCode(email, code) {
 export async function logout() {
   const data = await graphqlRequest(LOGOUT_MUTATION)
   clearSubscriptionAuthCache()
+  // The server drops this account's push rows as part of the mutation; this
+  // clears the browser's own subscription so the install stops holding an
+  // endpoint nothing will send to (JQ-198). Awaited so a sign-out that is
+  // immediately followed by a sign-in cannot race it.
+  await forgetLocalPushSubscription()
   return data.logout === true
 }
 
