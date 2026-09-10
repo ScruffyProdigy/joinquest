@@ -44,10 +44,18 @@ type queueIntegrationEnv struct {
 
 func newQueueIntegrationEnv(t *testing.T) *queueIntegrationEnv {
 	t.Helper()
+	return newQueueIntegrationEnvWithDriver(t, "postgres")
+}
+
+// newQueueIntegrationEnvWithDriver is the same environment over a named database/sql
+// driver, so a test that needs to see what the store actually sends can hand it a counting
+// wrapper around pq instead (JQ-177).
+func newQueueIntegrationEnvWithDriver(t *testing.T, driverName string) *queueIntegrationEnv {
+	t.Helper()
 
 	databaseURL := testdb.RequireURL(t)
 
-	db, err := sql.Open("postgres", databaseURL)
+	db, err := sql.Open(driverName, databaseURL)
 	if err != nil {
 		t.Fatalf("connect database: %v", err)
 	}

@@ -26,6 +26,10 @@ type MatchParticipantResult struct {
 	Reason      *string
 	Placement   *int
 	IsWinner    bool
+	// User is the player record this row joins to. It is carried here because every caller
+	// that renders a participant needs it, and fetching it separately meant a second pass
+	// over the same join on every live push (JQ-177).
+	User User
 }
 
 // MatchResult is the stored outcome of a match, as reported by the game.
@@ -532,7 +536,7 @@ func (s *Store) GetMatchResult(ctx context.Context, sessionID uuid.UUID) (*Match
 	out.Metadata = json.RawMessage(metadata)
 
 	rows, err := s.db.QueryContext(ctx, `
-		SELECT p.user_id,
+		SELECT `+strings.ReplaceAll(userColumns, "id,", "u.id,")+`,
 		       COALESCE(NULLIF(u.display_name, ''), u.username, u.email, ''),
 		       COALESCE(NULLIF(p.role, ''), 'player'),
 		       p.finished_at, p.left_at, p.finish_reason, p.placement, p.is_winner
@@ -548,13 +552,27 @@ func (s *Store) GetMatchResult(ctx context.Context, sessionID uuid.UUID) (*Match
 
 	for rows.Next() {
 		var p MatchParticipantResult
-		if err := rows.Scan(
-			&p.UserID, &p.DisplayName, &p.Role,
+		user, err := scanUser(trailingColumns{rows: rows, rest: []any{
+			&p.DisplayName, &p.Role,
 			&p.FinishedAt, &p.LeftAt, &p.Reason, &p.Placement, &p.IsWinner,
-		); err != nil {
+		}})
+		if err != nil {
 			return nil, err
 		}
+		p.User = *user
+		p.UserID = user.ID
 		out.Participants = append(out.Participants, p)
 	}
 	return &out, rows.Err()
+}
+
+// trailingColumns lets scanUser consume the leading userColumns of a wider row while the
+// caller scans the rest, so a join can answer "the participant and the player" in one pass.
+type trailingColumns struct {
+	rows *sql.Rows
+	rest []any
+}
+
+func (t trailingColumns) Scan(dest ...any) error {
+	return t.rows.Scan(append(dest, t.rest...)...)
 }

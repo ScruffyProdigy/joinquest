@@ -275,3 +275,59 @@ func TestMatchResultUpdatedPushesResultAfterSessionCompleted(t *testing.T) {
 		t.Fatalf("expected player A flagged as the winner in the pushed result: %+v", updated)
 	}
 }
+
+// subscribeMatchResultUpdatedSelecting starts a matchResultUpdated subscription with a
+// caller-chosen selection set, so a test can pin what a client that asks for a field
+// actually receives.
+func subscribeMatchResultUpdatedSelecting(t *testing.T, conn *websocket.Conn, matchID, selection string) string {
+	t.Helper()
+
+	subID := "sel-" + matchID
+	query := fmt.Sprintf(`subscription { matchResultUpdated(matchId: %q) { %s } }`, matchID, selection)
+	if err := writeGraphQLWS(conn, map[string]any{
+		"id":      subID,
+		"type":    "start",
+		"payload": map[string]any{"query": query},
+	}); err != nil {
+		t.Fatalf("subscribe: %v", err)
+	}
+	return subID
+}
+
+// TestMatchResultUpdatedStillCarriesModeWhenSelected is the other half of not fetching mode
+// for clients that never asked for it (JQ-177): the ones that do ask must still get it, and
+// on every push, not only the first. The decision is made once from the selection set when
+// the subscription opens, so a mistake there would show up as a field that is present in
+// the initial payload and null in every update — or null throughout.
+func TestMatchResultUpdatedStillCarriesModeWhenSelected(t *testing.T) {
+	env := newQueueIntegrationEnv(t)
+	cleaner := env.newCleaner(t)
+
+	match := seedFinishedMatch(t, env, cleaner)
+	bearer, _ := createTestUserSessionForUser(t, env, match.userA.ID)
+
+	conn := connectGraphQLWS(t, graphQLWSURL(env.Server.URL), env.Server.URL, bearer)
+	subID := subscribeMatchResultUpdatedSelecting(t, conn, match.sessionID.String(),
+		"matchId complete mode { id modeKey displayName }")
+
+	requireModePresent := func(label string, payload map[string]any) {
+		t.Helper()
+		mode, _ := payload["mode"].(map[string]any)
+		if mode == nil {
+			t.Fatalf("%s: mode is null for a client that selected it; payload=%v", label, payload)
+		}
+		if id, _ := mode["id"].(string); id == "" {
+			t.Errorf("%s: mode has no id; payload=%v", label, payload)
+		}
+		if key, _ := mode["modeKey"].(string); key == "" {
+			t.Errorf("%s: mode has no modeKey; payload=%v", label, payload)
+		}
+	}
+
+	requireModePresent("initial", nextMatchResultUpdatedPayload(t, conn, subID, 5*time.Second))
+
+	if err := env.resolver.publishMatchEvent(context.Background(), match.sessionID, "regroup"); err != nil {
+		t.Fatalf("publish match event: %v", err)
+	}
+	requireModePresent("push", nextMatchResultUpdatedPayload(t, conn, subID, 5*time.Second))
+}

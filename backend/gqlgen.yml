@@ -98,6 +98,13 @@ models:
       formingGaps:
         resolver: true
   Table:
+    # Not a schema field: the table already knows which finished match it came from by the
+    # time the model is built, so regroupRoster reads it here instead of asking the
+    # database on every render of every table in the room (JQ-177).
+    extraFields:
+      OriginSessionID:
+        type: "*github.com/google/uuid.UUID"
+        description: "The finished match this table is regrouping from, or nil for an ordinary table."
     fields:
       game:
         resolver: true

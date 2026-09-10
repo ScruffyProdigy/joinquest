@@ -8,6 +8,8 @@ import (
 	"io"
 	"strconv"
 	"time"
+
+	"github.com/google/uuid"
 )
 
 type ModeRequirementNode interface {
@@ -726,6 +728,8 @@ type Table struct {
 	FormingGaps []*QueuePathGap `json:"formingGaps"`
 	// Originating match roster and regroup state; empty for tables not reached from a finished match.
 	RegroupRoster []*RegroupRosterEntry `json:"regroupRoster"`
+	// The finished match this table is regrouping from, or nil for an ordinary table.
+	OriginSessionID *uuid.UUID `json:"-"`
 }
 
 type TableLookForGroupOption struct {
