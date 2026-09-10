@@ -703,8 +703,10 @@
   width: fit-content;
   padding: 0.2rem 0.55rem;
   border-radius: 999px;
-  background: color-mix(in srgb, var(--primary) 22%, transparent);
-  color: var(--primary);
+  /* Filled rather than tinted: this badge marks the one route we want picked, and
+     accent-on-accent-tint only reached 4.14:1 against its own background. */
+  background: var(--primary);
+  color: var(--primary-foreground);
   font-size: 0.72rem;
   font-weight: 700;
   letter-spacing: 0.04em;
