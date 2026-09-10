@@ -12,8 +12,12 @@ import (
 	"github.com/scruffyprodigy/joinquest/internal/store"
 )
 
-// PushSeatHeld notifies one away player across every install they have, marks
-// any dead endpoints, and publishes the outcome so the seat hold can react.
+// PushComeBack notifies one away player across every install they have, marks
+// any dead endpoints, and publishes the outcome so the caller can react.
+//
+// Carries either notification: SeatHeldNotification when a chair is already
+// theirs, SeatOpenNotification when they are the missing piece but hold
+// nothing.
 //
 // The outcome is both returned and published because a push service only
 // reveals a dead subscription on an actual send, after the hold has already
@@ -21,7 +25,7 @@ import (
 //
 // Best-effort: it never returns an error. This runs inside match-formation
 // fan-out, so a push failure must not fail a match that formed correctly.
-func (r *Resolver) PushSeatHeld(ctx context.Context, userID uuid.UUID, holdID string, note push.Notification) pubsub.PushDeliveryEvent {
+func (r *Resolver) PushComeBack(ctx context.Context, userID uuid.UUID, holdID string, note push.Notification) pubsub.PushDeliveryEvent {
 	event := pubsub.PushDeliveryEvent{
 		UserID: userID.String(),
 		HoldID: holdID,
@@ -34,9 +38,10 @@ func (r *Resolver) PushSeatHeld(ctx context.Context, userID uuid.UUID, holdID st
 		return event
 	}
 	// Without a TTL the push service applies its own retention, which outlives
-	// any seat. Build these with SeatHeldNotification.
+	// the situation being described. Build these with SeatHeldNotification or
+	// SeatOpenNotification.
 	if note.TTL <= 0 {
-		log.Printf("push: refusing an unbounded seat-held notification for %s", userID)
+		log.Printf("push: refusing an unbounded come-back notification for %s", userID)
 		r.publishPushDelivery(ctx, event)
 		return event
 	}
@@ -117,16 +122,19 @@ func (r *Resolver) publishPushDelivery(ctx context.Context, event pubsub.PushDel
 	}
 }
 
-// SeatHeldNotification builds the ping for a chair held for `remaining`.
-// ok=false when there is none, because the chair is already gone and the player
-// would tap through to nothing.
+// comeBackTag collapses every "return to your queue" notification into one
+// alert. The claims supersede each other, so the newest should replace the
+// last rather than stack beside it.
+const comeBackTag = "joinquest-come-back"
+
+// SeatHeldNotification builds the ping for a chair already held for this
+// player, with `remaining` left on the hold. ok=false when there is none: the
+// chair is gone and they would tap through to nothing.
 //
-// The hold happens BEFORE the match is announced, so there is no formed match
-// yet and the copy must not claim one.
-//
-// The loss-framing is licensed by that mechanic: the chair really is vacated if
-// the player does not return. Do not reuse this phrasing anywhere the seat is
-// already theirs -- there it would be a dark pattern.
+// The loss-framing is licensed by the mechanic -- the chair really is vacated
+// if they do not return. Do not reuse this phrasing where the seat is not
+// already theirs; there it would be a dark pattern. SeatOpenNotification is
+// the version for that case.
 //
 // `remaining` is the time left at SEND time, not the ceiling. There is no
 // default: an unset TTL outlives the hold.
@@ -140,8 +148,36 @@ func SeatHeldNotification(joinURL string, remaining time.Duration) (push.Notific
 		// already stale.
 		Body: "Come back now to keep your spot.",
 		URL:  joinURL,
-		Tag:  "joinquest-seat-held",
+		Tag:  comeBackTag,
 		TTL:  remaining,
+	}, true
+}
+
+// SeatOpenNotification builds the ping for a player who is NOT seated, where a
+// table is one seat short and nobody present can fill it. Their return is what
+// makes the match happen.
+//
+// Says nothing spot-shaped. No chair is held here and a present player arriving
+// first should get it, so any phrasing implying the seat is theirs would be a
+// promise the system has deliberately not made.
+//
+// It also avoids racing language. This only fires when no present player can
+// take the seat, so urgency borrowed from a contest would be urgency about a
+// contest that does not exist at send time.
+//
+// `validFor` bounds how long the claim is expected to hold. Required for the
+// same reason as SeatHeldNotification's remaining: an unset TTL outlives the
+// situation it describes.
+func SeatOpenNotification(joinURL string, validFor time.Duration) (push.Notification, bool) {
+	if validFor <= 0 {
+		return push.Notification{}, false
+	}
+	return push.Notification{
+		Title: "One more player and your game starts",
+		Body:  "Come back now to join.",
+		URL:   joinURL,
+		Tag:   comeBackTag,
+		TTL:   validFor,
 	}, true
 }
 

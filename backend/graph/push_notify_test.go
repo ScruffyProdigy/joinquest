@@ -3,6 +3,7 @@ package graph
 import (
 	"context"
 	"errors"
+	"strings"
 	"testing"
 	"time"
 
@@ -54,7 +55,7 @@ func newPushTestUser(t *testing.T, ctx context.Context, env *queueIntegrationEnv
 	return user.ID
 }
 
-func TestPushSeatHeldReportsDeliveryAndRecordsIt(t *testing.T) {
+func TestPushComeBackReportsDeliveryAndRecordsIt(t *testing.T) {
 	env := newQueueIntegrationEnv(t)
 	ctx := context.Background()
 	cleaner := env.newCleaner(t)
@@ -63,7 +64,7 @@ func TestPushSeatHeldReportsDeliveryAndRecordsIt(t *testing.T) {
 	endpoints := subscribeUser(t, ctx, env, userID, 2)
 	env.resolver.Push = &fakeSender{publicKey: "test-key"}
 
-	outcome := env.resolver.PushSeatHeld(ctx, userID, "session-1", push.Notification{Title: "ready", TTL: 45 * time.Second})
+	outcome := env.resolver.PushComeBack(ctx, userID, "session-1", push.Notification{Title: "ready", TTL: 45 * time.Second})
 
 	if outcome.Status != pubsub.PushDelivered {
 		t.Fatalf("expected DELIVERED, got %q", outcome.Status)
@@ -86,7 +87,7 @@ func TestPushSeatHeldReportsDeliveryAndRecordsIt(t *testing.T) {
 // The behaviour JQ-199's tier depends on: a 410 must collapse reachability
 // immediately, because the hold was taken on the belief the player was
 // reachable and nothing will otherwise correct it before the ceiling expires.
-func TestPushSeatHeldCollapsesToUndeliverableWhenEveryInstallIsGone(t *testing.T) {
+func TestPushComeBackCollapsesToUndeliverableWhenEveryInstallIsGone(t *testing.T) {
 	env := newQueueIntegrationEnv(t)
 	ctx := context.Background()
 	cleaner := env.newCleaner(t)
@@ -105,7 +106,7 @@ func TestPushSeatHeldCollapsesToUndeliverableWhenEveryInstallIsGone(t *testing.T
 		t.Fatalf("precondition: expected reachable, got %v (err %v)", reachable, err)
 	}
 
-	outcome := env.resolver.PushSeatHeld(ctx, userID, "session-1", push.Notification{Title: "ready", TTL: 45 * time.Second})
+	outcome := env.resolver.PushComeBack(ctx, userID, "session-1", push.Notification{Title: "ready", TTL: 45 * time.Second})
 
 	if outcome.Status != pubsub.PushUndeliverable {
 		t.Fatalf("expected UNDELIVERABLE, got %q", outcome.Status)
@@ -133,7 +134,7 @@ func TestPushSeatHeldCollapsesToUndeliverableWhenEveryInstallIsGone(t *testing.T
 	}
 }
 
-func TestPushSeatHeldKeepsSubscriptionsWhenTheFailureIsTransient(t *testing.T) {
+func TestPushComeBackKeepsSubscriptionsWhenTheFailureIsTransient(t *testing.T) {
 	env := newQueueIntegrationEnv(t)
 	ctx := context.Background()
 	cleaner := env.newCleaner(t)
@@ -145,7 +146,7 @@ func TestPushSeatHeldKeepsSubscriptionsWhenTheFailureIsTransient(t *testing.T) {
 		results:   map[string]error{endpoints[0]: errors.New("push service returned 503")},
 	}
 
-	outcome := env.resolver.PushSeatHeld(ctx, userID, "session-1", push.Notification{Title: "ready", TTL: 45 * time.Second})
+	outcome := env.resolver.PushComeBack(ctx, userID, "session-1", push.Notification{Title: "ready", TTL: 45 * time.Second})
 
 	// FAILED, not UNDELIVERABLE: a push-service hiccup says nothing about
 	// whether the player can be reached, and evicting them over it would be a
@@ -161,7 +162,7 @@ func TestPushSeatHeldKeepsSubscriptionsWhenTheFailureIsTransient(t *testing.T) {
 	}
 }
 
-func TestPushSeatHeldTreatsOneLiveInstallAsSuccess(t *testing.T) {
+func TestPushComeBackTreatsOneLiveInstallAsSuccess(t *testing.T) {
 	env := newQueueIntegrationEnv(t)
 	ctx := context.Background()
 	cleaner := env.newCleaner(t)
@@ -173,7 +174,7 @@ func TestPushSeatHeldTreatsOneLiveInstallAsSuccess(t *testing.T) {
 		results:   map[string]error{endpoints[0]: push.ErrSubscriptionGone},
 	}
 
-	outcome := env.resolver.PushSeatHeld(ctx, userID, "session-1", push.Notification{Title: "ready", TTL: 45 * time.Second})
+	outcome := env.resolver.PushComeBack(ctx, userID, "session-1", push.Notification{Title: "ready", TTL: 45 * time.Second})
 
 	// The old phone is dead but the desktop rang. The player can still come
 	// back, so the hold should not collapse.
@@ -188,7 +189,7 @@ func TestPushSeatHeldTreatsOneLiveInstallAsSuccess(t *testing.T) {
 	}
 }
 
-func TestPushSeatHeldSkipsWhenThereIsNothingToSendTo(t *testing.T) {
+func TestPushComeBackSkipsWhenThereIsNothingToSendTo(t *testing.T) {
 	env := newQueueIntegrationEnv(t)
 	ctx := context.Background()
 	cleaner := env.newCleaner(t)
@@ -197,7 +198,7 @@ func TestPushSeatHeldSkipsWhenThereIsNothingToSendTo(t *testing.T) {
 		userID := newPushTestUser(t, ctx, env, cleaner, "notify-none")
 		env.resolver.Push = &fakeSender{publicKey: "test-key"}
 
-		outcome := env.resolver.PushSeatHeld(ctx, userID, "s", push.Notification{Title: "ready", TTL: 45 * time.Second})
+		outcome := env.resolver.PushComeBack(ctx, userID, "s", push.Notification{Title: "ready", TTL: 45 * time.Second})
 		if outcome.Status != pubsub.PushSkipped || outcome.Attempted != 0 {
 			t.Fatalf("expected SKIPPED with nothing attempted, got %q / %d", outcome.Status, outcome.Attempted)
 		}
@@ -209,7 +210,7 @@ func TestPushSeatHeldSkipsWhenThereIsNothingToSendTo(t *testing.T) {
 		sender := &fakeSender{publicKey: ""}
 		env.resolver.Push = sender
 
-		outcome := env.resolver.PushSeatHeld(ctx, userID, "s", push.Notification{Title: "ready", TTL: 45 * time.Second})
+		outcome := env.resolver.PushComeBack(ctx, userID, "s", push.Notification{Title: "ready", TTL: 45 * time.Second})
 		if outcome.Status != pubsub.PushSkipped {
 			t.Fatalf("expected SKIPPED, got %q", outcome.Status)
 		}
@@ -223,7 +224,7 @@ func TestPushSeatHeldSkipsWhenThereIsNothingToSendTo(t *testing.T) {
 
 // The hold subscribes to the outcome rather than polling, so it has to actually
 // be published -- including in the cases where nothing was sent.
-func TestPushSeatHeldPublishesTheOutcomeForTheSeatHold(t *testing.T) {
+func TestPushComeBackPublishesTheOutcomeForTheSeatHold(t *testing.T) {
 	env := newQueueIntegrationEnv(t)
 	ctx := context.Background()
 	cleaner := env.newCleaner(t)
@@ -243,7 +244,7 @@ func TestPushSeatHeldPublishesTheOutcomeForTheSeatHold(t *testing.T) {
 		publicKey: "test-key",
 		results:   map[string]error{endpoints[0]: push.ErrSubscriptionGone},
 	}
-	env.resolver.PushSeatHeld(ctx, userID, "session-42", push.Notification{Title: "ready", TTL: 45 * time.Second})
+	env.resolver.PushComeBack(ctx, userID, "session-42", push.Notification{Title: "ready", TTL: 45 * time.Second})
 
 	select {
 	case payload := <-messages:
@@ -270,7 +271,7 @@ func TestPushSeatHeldPublishesTheOutcomeForTheSeatHold(t *testing.T) {
 
 // Best-effort by contract: this runs inside match-formation fan-out, and a
 // match that formed correctly must not fail because a push service hiccupped.
-func TestPushSeatHeldNeverReturnsAnErrorThatCouldAbortAMatch(t *testing.T) {
+func TestPushComeBackNeverReturnsAnErrorThatCouldAbortAMatch(t *testing.T) {
 	env := newQueueIntegrationEnv(t)
 	ctx := context.Background()
 	cleaner := env.newCleaner(t)
@@ -286,7 +287,7 @@ func TestPushSeatHeldNeverReturnsAnErrorThatCouldAbortAMatch(t *testing.T) {
 
 	// The signature has no error return by design; this asserts it also does
 	// not panic with everything failing at once.
-	outcome := env.resolver.PushSeatHeld(ctx, userID, "s", push.Notification{Title: "ready", TTL: 45 * time.Second})
+	outcome := env.resolver.PushComeBack(ctx, userID, "s", push.Notification{Title: "ready", TTL: 45 * time.Second})
 	if outcome.Status != pubsub.PushFailed {
 		t.Fatalf("expected FAILED, got %q", outcome.Status)
 	}
@@ -322,7 +323,7 @@ func TestSeatHeldNotificationRefusesAnExpiredBudget(t *testing.T) {
 	}
 }
 
-func TestPushSeatHeldRefusesAnUnboundedNotification(t *testing.T) {
+func TestPushComeBackRefusesAnUnboundedNotification(t *testing.T) {
 	env := newQueueIntegrationEnv(t)
 	ctx := context.Background()
 	cleaner := env.newCleaner(t)
@@ -335,12 +336,64 @@ func TestPushSeatHeldRefusesAnUnboundedNotification(t *testing.T) {
 	// No TTL. Without the guard the push service applies its own retention,
 	// which can be days -- the player would be told to claim a seat that was
 	// released long ago.
-	outcome := env.resolver.PushSeatHeld(ctx, userID, "s", push.Notification{Title: "ready"})
+	outcome := env.resolver.PushComeBack(ctx, userID, "s", push.Notification{Title: "ready"})
 
 	if outcome.Status != pubsub.PushSkipped {
 		t.Fatalf("expected SKIPPED, got %q", outcome.Status)
 	}
 	if len(sender.sent) != 0 {
-		t.Fatal("an unbounded seat-held notification must never reach the push service")
+		t.Fatal("an unbounded come-back notification must never reach the push service")
+	}
+}
+
+func TestSeatOpenNotificationMakesNoClaimOnTheSeat(t *testing.T) {
+	note, ok := SeatOpenNotification("https://joinquest.cc/waiting", 90*time.Second)
+	if !ok {
+		t.Fatal("a table one seat short should be notifiable")
+	}
+	if note.TTL != 90*time.Second {
+		t.Fatalf("expected the TTL to be the caller's window, got %s", note.TTL)
+	}
+
+	text := note.Title + " " + note.Body
+	// No chair is held in this case and a present player arriving first should
+	// get the seat, so anything spot-shaped would promise what the system has
+	// deliberately not reserved.
+	for _, forbidden := range []string{"your spot", "your seat", "keep your", "held", "reserved"} {
+		if strings.Contains(strings.ToLower(text), forbidden) {
+			t.Fatalf("copy must not imply the seat is theirs, found %q in %q", forbidden, text)
+		}
+	}
+	// It also fires only when nobody present can take the seat, so racing
+	// language would borrow urgency from a contest that does not exist.
+	for _, forbidden := range []string{"grab", "hurry", "race", "before someone"} {
+		if strings.Contains(strings.ToLower(text), forbidden) {
+			t.Fatalf("copy must not invent a race, found %q in %q", forbidden, text)
+		}
+	}
+}
+
+func TestSeatHeldAndSeatOpenMakeDifferentClaims(t *testing.T) {
+	held, _ := SeatHeldNotification("https://joinquest.cc/waiting", time.Minute)
+	open, _ := SeatOpenNotification("https://joinquest.cc/waiting", time.Minute)
+
+	if held.Body == open.Body {
+		t.Fatal("the two cases promise different things and must not share copy")
+	}
+	// Only the held case has a chair to keep.
+	if !strings.Contains(strings.ToLower(held.Body), "your spot") {
+		t.Fatalf("the held case should say the spot is theirs, got %q", held.Body)
+	}
+	// One alert, newest claim wins: a stale one must not sit beside a fresh one.
+	if held.Tag != open.Tag {
+		t.Fatalf("both should collapse into one alert, got %q and %q", held.Tag, open.Tag)
+	}
+}
+
+func TestSeatOpenNotificationRefusesAnUnboundedClaim(t *testing.T) {
+	for _, validFor := range []time.Duration{0, -time.Second} {
+		if _, ok := SeatOpenNotification("https://joinquest.cc/waiting", validFor); ok {
+			t.Fatalf("a claim valid for %s must not be sendable", validFor)
+		}
 	}
 }

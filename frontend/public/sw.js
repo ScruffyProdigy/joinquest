@@ -11,7 +11,9 @@ self.addEventListener('install', () => self.skipWaiting())
 self.addEventListener('activate', (event) => event.waitUntil(self.clients.claim()))
 
 const DEFAULT_TITLE = 'Your game is nearly ready'
-const DEFAULT_BODY = 'Come back now to keep your spot.'
+// Understates on purpose: a malformed payload could be either the held-chair
+// case or the open-seat one, and only the first can promise a spot.
+const DEFAULT_BODY = 'Come back now to join.'
 const DEFAULT_URL = '/waiting'
 
 function parsePayload(event) {
@@ -53,7 +55,7 @@ self.addEventListener('push', (event) => {
         icon: '/icons/icon-192.png',
         badge: '/icons/favicon-32.png',
         // Collapses retries into one alert.
-        tag: payload.tag || 'joinquest-seat-held',
+        tag: payload.tag || 'joinquest-come-back',
         renotify: true,
         // The seat has a deadline, so this must survive a glance.
         requireInteraction: true,
