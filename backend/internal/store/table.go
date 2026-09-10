@@ -612,6 +612,13 @@ func (s *Store) sitAtTableTx(ctx context.Context, tx *sql.Tx, tableID, userID uu
 	if table.Status != TableStatusForming {
 		return nil, fmt.Errorf("store: table is not accepting seats")
 	}
+	// The picker is answered on the way into the seat, so a mode that requires a pick
+	// refuses the seat rather than the start (JQ-211). Provision checks this again,
+	// but only the seat claim can still put the error in front of the player who can
+	// answer it — at start time it lands on the king instead.
+	if err := ensureSelectionsSatisfyMode(mode, options); err != nil {
+		return nil, err
+	}
 	// Read membership through tx: a caller that joined the room earlier in this same
 	// transaction has not committed yet, and s.db would not see them.
 	member, err := s.isRoomMemberTx(ctx, tx, table.RoomID, userID)
@@ -821,7 +828,7 @@ func (s *Store) StartTable(ctx context.Context, tableID, userID uuid.UUID) (*Sta
 
 	notifyIDs := make([]uuid.UUID, 0, len(seated))
 	for _, seat := range seated {
-		if err := addSessionParticipantTx(ctx, tx, session.ID, seat.UserID, seat.SeatKey, returnCtx, seat.QueueOptions); err != nil {
+		if err := addSessionParticipantTx(ctx, tx, mode, session.ID, seat.UserID, seat.SeatKey, returnCtx, seat.QueueOptions); err != nil {
 			return nil, err
 		}
 		notifyIDs = append(notifyIDs, seat.UserID)

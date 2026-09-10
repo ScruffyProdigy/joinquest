@@ -136,6 +136,12 @@ func (s *Store) ClaimRegroupTable(ctx context.Context, sessionID, userID uuid.UU
 		// still picking", which is what the "Picking a seat" card renders. Starting is
 		// gated on seats by canStart, never on this stamp, so the king cannot start on
 		// the strength of someone who has not sat down.
+	case !selectionsSatisfyMode(mode, previous.Options):
+		// Seatless for a different reason with the same shape: the picks we would
+		// replay no longer satisfy what this mode declares, because the manifest moved
+		// between rounds. Replaying them anyway would seat a player with a selection
+		// that cannot start the table, and the king would meet that error rather than
+		// the player who can answer the picker (JQ-211).
 	default:
 		if err := s.seatRegroupClaimantTx(ctx, tx, table, userID, previous.SeatKey, previous.Options); err != nil {
 			return nil, nil, err

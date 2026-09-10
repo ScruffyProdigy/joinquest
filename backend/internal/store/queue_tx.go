@@ -35,7 +35,16 @@ func markQueueEntryMatchedTx(ctx context.Context, tx *sql.Tx, entryID uuid.UUID)
 	return ensureRowsAffected(result, ErrNotFound)
 }
 
-func addSessionParticipantTx(ctx context.Context, tx *sql.Tx, sessionID, userID uuid.UUID, role string, returnCtx ReturnContext, options []prequeue.Selection) error {
+// addSessionParticipantTx writes one player into a session that is being
+// provisioned. Both provision paths funnel through here — the catalog queue via
+// reconcileFormingTx and a room table via StartTable — which makes it the one
+// place the lobby can promise that nothing reaches a game with a selection its
+// mode would not accept. The mode is a required argument for exactly that
+// reason: a caller cannot provision without saying what is being played.
+func addSessionParticipantTx(ctx context.Context, tx *sql.Tx, mode *GameMode, sessionID, userID uuid.UUID, role string, returnCtx ReturnContext, options []prequeue.Selection) error {
+	if err := ensureSelectionsSatisfyMode(mode, options); err != nil {
+		return err
+	}
 	raw, err := encodeReturnContext(returnCtx)
 	if err != nil {
 		return err

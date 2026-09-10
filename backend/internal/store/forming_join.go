@@ -284,7 +284,7 @@ func (s *Store) fireFormingMatchTx(
 				return nil, err
 			}
 			returnCtx := CatalogLFGReturnContext(joinCtx.Game.ID, joinCtx.ModeQueue.ID)
-			if err := addSessionParticipantTx(ctx, tx, session.ID, userID, assignment.SeatKey, returnCtx, entry.QueueOptions); err != nil {
+			if err := addSessionParticipantTx(ctx, tx, joinCtx.Mode, session.ID, userID, assignment.SeatKey, returnCtx, entry.QueueOptions); err != nil {
 				return nil, err
 			}
 		}

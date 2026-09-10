@@ -37,6 +37,55 @@ type Selection struct {
 // client could otherwise have talked its way past: unknown options, options the
 // game locked, and counts outside what the mode asked for.
 func Validate(groups []Group, roster []RosterGroup, selections []Selection) error {
+	if err := ValidateDeclared(groups, selections); err != nil {
+		return err
+	}
+	if len(groups) == 0 {
+		return nil
+	}
+
+	offered := make(map[string]map[string]Choice, len(roster))
+	for _, rg := range roster {
+		byID := make(map[string]Choice, len(rg.Choices))
+		for _, c := range rg.Choices {
+			byID[c.ID] = c
+		}
+		offered[rg.Key] = byID
+	}
+
+	for _, sel := range selections {
+		key := strings.TrimSpace(sel.GroupKey)
+		choices, served := offered[key]
+		if !served {
+			return fmt.Errorf("prequeue: the game offered no choices for %q", key)
+		}
+		for _, id := range sel.OptionIDs {
+			id = strings.TrimSpace(id)
+			choice, exists := choices[id]
+			if !exists {
+				return fmt.Errorf("prequeue: %q is not an option this game offered in group %q", id, key)
+			}
+			if choice.Locked {
+				return fmt.Errorf("prequeue: %q is locked for this player", id)
+			}
+		}
+	}
+	return nil
+}
+
+// ValidateDeclared checks selections against the mode's declaration alone: the
+// groups that exist, how many picks each takes, and which of them are required.
+//
+// It asks the game nothing, so it runs anywhere a mode and a stored selection
+// meet — including inside a transaction, which is what lets the store refuse to
+// provision a seat whose selection does not satisfy its mode (JQ-211).
+//
+// It is deliberately the weaker half of Validate. Whether an option exists and
+// whether it is locked are facts only the game's roster knows, and that roster
+// is one player's answer at one moment: re-asking it at provision time would
+// fail a started match because somebody's unlocks moved since they picked.
+// Those checks belong at pick time, and stay in Validate.
+func ValidateDeclared(groups []Group, selections []Selection) error {
 	if len(groups) == 0 {
 		if len(selections) > 0 {
 			return fmt.Errorf("prequeue: this mode does not use pre-queue options")
@@ -48,16 +97,8 @@ func Validate(groups []Group, roster []RosterGroup, selections []Selection) erro
 	for _, g := range groups {
 		declared[g.Key] = g
 	}
-	offered := make(map[string]map[string]Choice, len(roster))
-	for _, rg := range roster {
-		byID := make(map[string]Choice, len(rg.Choices))
-		for _, c := range rg.Choices {
-			byID[c.ID] = c
-		}
-		offered[rg.Key] = byID
-	}
 
-	chosen := make(map[string]int, len(selections))
+	chosen := make(map[string]struct{}, len(selections))
 	for _, sel := range selections {
 		key := strings.TrimSpace(sel.GroupKey)
 		group, ok := declared[key]
@@ -67,12 +108,8 @@ func Validate(groups []Group, roster []RosterGroup, selections []Selection) erro
 		if _, dup := chosen[key]; dup {
 			return fmt.Errorf("prequeue: group %q was chosen more than once", key)
 		}
-		chosen[key] = len(sel.OptionIDs)
+		chosen[key] = struct{}{}
 
-		choices, served := offered[key]
-		if !served {
-			return fmt.Errorf("prequeue: the game offered no choices for %q", key)
-		}
 		if len(sel.OptionIDs) < group.Min || len(sel.OptionIDs) > group.Max {
 			return fmt.Errorf("prequeue: %s takes %s, got %d",
 				group.Label, boundsPhrase(group), len(sel.OptionIDs))
@@ -84,13 +121,6 @@ func Validate(groups []Group, roster []RosterGroup, selections []Selection) erro
 				return fmt.Errorf("prequeue: %q was chosen twice in group %q", id, key)
 			}
 			seen[id] = struct{}{}
-			choice, exists := choices[id]
-			if !exists {
-				return fmt.Errorf("prequeue: %q is not an option this game offered in group %q", id, key)
-			}
-			if choice.Locked {
-				return fmt.Errorf("prequeue: %q is locked for this player", id)
-			}
 		}
 	}
 

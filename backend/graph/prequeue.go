@@ -22,19 +22,27 @@ func (r *Resolver) queueOptionsCache() *gameclient.QueueOptionsCache {
 
 // declaredGroups reads a mode's option-group declaration.
 //
-// A declaration the lobby cannot parse is treated as "no groups" rather than an
-// error: the manifest sync already rejects bad declarations, so reaching here
-// means a row predates that check, and a mode nobody can join is worse than a
-// mode with no picker.
-func declaredGroups(mode *store.GameMode) []prequeue.Group {
+// A declaration the lobby cannot parse is an error, not "no groups" (JQ-211).
+// It used to read as "no groups" on the grounds that a mode nobody can join is
+// worse than a mode with no picker; that trade is the wrong way round. Dropping
+// the picker does not disable the mode, it provisions the match with an empty
+// selection and tells nobody — and the roster fetch a few lines below has always
+// refused to guess for exactly that reason. One posture, both halves.
+//
+// Manifest sync rejects a bad declaration on the way in, so a row that fails
+// here predates that check and wants a developer, not a silent workaround.
+func declaredGroups(mode *store.GameMode) ([]prequeue.Group, error) {
 	if mode == nil {
-		return nil
+		return nil, nil
 	}
 	decl, err := prequeue.Parse(mode.PreQueue)
-	if err != nil || decl == nil {
-		return nil
+	if err != nil {
+		return nil, fmt.Errorf("this mode's options cannot be read right now: %w", err)
 	}
-	return decl.Groups
+	if decl == nil {
+		return nil, nil
+	}
+	return decl.Groups, nil
 }
 
 // soleGroupKey names the mode's only group, so a game may serve the flat
@@ -80,7 +88,10 @@ func (r *Resolver) resolveSelections(
 	lobbyUserID string,
 	input []*model.QueueOptionSelectionInput,
 ) ([]prequeue.Selection, error) {
-	groups := declaredGroups(mode)
+	groups, err := declaredGroups(mode)
+	if err != nil {
+		return nil, err
+	}
 	selections := selectionsFromInput(input)
 
 	if len(groups) == 0 {

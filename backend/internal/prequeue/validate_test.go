@@ -205,3 +205,40 @@ func TestResolveFallsBackToTheIDWhenTheGameSentNoLabel(t *testing.T) {
 		t.Fatalf("Resolve labels = %v, want the id as a last resort", got[0].Labels)
 	}
 }
+
+func TestValidateDeclaredAcceptsAValidSelectionWithNoRoster(t *testing.T) {
+	sel := []Selection{{GroupKey: "helpers", OptionIDs: []string{"ferrus", "tempered"}}}
+
+	if err := ValidateDeclared(helpersGroup(), sel); err != nil {
+		t.Fatalf("ValidateDeclared: %v", err)
+	}
+}
+
+func TestValidateDeclaredRejectsAMissingRequiredGroup(t *testing.T) {
+	err := ValidateDeclared(helpersGroup(), nil)
+	if err == nil || !strings.Contains(err.Error(), "helpers") {
+		t.Fatalf("ValidateDeclared err = %v, want an error naming the group", err)
+	}
+}
+
+func TestValidateDeclaredRejectsCountsOutsideTheDeclaredBounds(t *testing.T) {
+	sel := []Selection{{GroupKey: "helpers", OptionIDs: []string{"ferrus"}}}
+
+	if err := ValidateDeclared(helpersGroup(), sel); err == nil {
+		t.Fatal("ValidateDeclared = nil, want a bounds error for one pick in a 2-of-2 group")
+	}
+}
+
+// The deliberate limit of the roster-free half. An id the game never offered is
+// not a fact a declaration knows, and re-asking the game at provision time would
+// fail a started match over unlocks that moved while the player waited (JQ-211).
+func TestValidateDeclaredDoesNotJudgeWhetherTheGameOffersTheOption(t *testing.T) {
+	sel := []Selection{{GroupKey: "helpers", OptionIDs: []string{"godmode", "ferrus"}}}
+
+	if err := ValidateDeclared(helpersGroup(), sel); err != nil {
+		t.Fatalf("ValidateDeclared: %v, want the roster question left to Validate", err)
+	}
+	if err := Validate(helpersGroup(), helpersRoster(), sel); err == nil {
+		t.Fatal("Validate = nil, want the roster check to still reject godmode at pick time")
+	}
+}

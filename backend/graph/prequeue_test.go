@@ -134,3 +134,31 @@ func TestResolveSelectionsRejectsPicksForAModeWithNoGroups(t *testing.T) {
 		t.Fatalf("err = %v, want a rejection for a mode that has no picker", err)
 	}
 }
+
+// The other half of JQ-211's "pick one posture": a declaration the lobby cannot
+// read blocks the join, exactly as an unreachable roster does. It used to read
+// as "this mode has no picker", which does not disable the mode — it provisions
+// the match with an empty selection and tells nobody.
+func TestResolveSelectionsBlocksTheJoinWhenTheDeclarationCannotBeRead(t *testing.T) {
+	r, game, mode := newRosterResolver(t, rosterBody, http.StatusOK)
+	mode.PreQueue = json.RawMessage(`{"groups":"not-a-list"}`)
+
+	_, err := r.resolveSelections(context.Background(), game, mode, "player-1", picks("ferrus", "tempered"))
+	if err == nil {
+		t.Fatal("resolveSelections = nil, want an error for an unreadable declaration")
+	}
+	if !strings.Contains(err.Error(), "cannot be read") {
+		t.Fatalf("resolveSelections err = %v, want it to name the unreadable declaration", err)
+	}
+}
+
+// And it blocks a join that sends nothing just as firmly, which is the case that
+// used to sail through: no groups parsed meant no groups required.
+func TestResolveSelectionsBlocksAnEmptyJoinWhenTheDeclarationCannotBeRead(t *testing.T) {
+	r, game, mode := newRosterResolver(t, rosterBody, http.StatusOK)
+	mode.PreQueue = json.RawMessage(`{"groups":"not-a-list"}`)
+
+	if _, err := r.resolveSelections(context.Background(), game, mode, "player-1", nil); err == nil {
+		t.Fatal("resolveSelections = nil, want an unreadable-declaration error even with no picks")
+	}
+}
