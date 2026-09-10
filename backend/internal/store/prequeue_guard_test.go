@@ -22,12 +22,40 @@ func seatWithoutAnsweringThePicker(t *testing.T, st *Store, ctx context.Context,
 	}
 }
 
-// The regression JQ-211 names. A group comes back from a match, regroups, and
-// sits down again; the mode requires two helpers. Neither the seat claim nor the
-// provision may accept a seat that answered nothing — the second half is what
-// used to let regroup hand a game an empty selection while RPSLR's default
-// loadout made it look like a normal match.
-func TestRegroupCannotReachProvisionWithoutTheRequiredSelection(t *testing.T) {
+// The regression JQ-211 names, at the seat claim. A group comes back from a
+// match, regroups, and sits down again; the mode requires two helpers. A seat
+// claim that answered nothing is refused where the player can still answer it.
+func TestRegroupSeatClaimRefusesToSkipTheRequiredPicker(t *testing.T) {
+	st := openTestStore(t)
+	cleaner := st.NewTestCleaner(t)
+	ctx := context.Background()
+
+	game, mode, _ := setupHelpersMode(t, st, cleaner)
+	sessionID, table, host, _ := playRoomTableMatch(t, st, ctx, cleaner, game, mode, helperPicks())
+
+	// A returning group is seated by nobody (JQ-232), so they come back to an empty
+	// table and claim their seats again.
+	if _, _, err := st.ClaimRegroupTable(ctx, sessionID, host.ID); err != nil {
+		t.Fatalf("ClaimRegroupTable host: %v", err)
+	}
+	seats, err := st.ListGameModeSeats(ctx, mode.ID)
+	if err != nil {
+		t.Fatalf("ListGameModeSeats: %v", err)
+	}
+
+	if _, err := st.SitAtTableWithOptions(ctx, table.ID, host.ID, seats[0].SeatKey, nil); err == nil {
+		t.Fatal("SitAtTableWithOptions = nil, want a seat claim refused for answering no required picker")
+	}
+	if got := seatCountAtTable(t, st, ctx, table.ID); got != 0 {
+		t.Fatalf("seats after the refused claim = %d, want 0", got)
+	}
+}
+
+// And the same regression at the provision, which is the half that has to hold on
+// its own: the old regroup path wrote its seats beneath the seat claim entirely.
+// This is what used to hand a game an empty selection while RPSLR's default
+// loadout made the match look normal and the player silently lost their picks.
+func TestStartTableRefusesToProvisionASeatWithNoSelection(t *testing.T) {
 	st := openTestStore(t)
 	cleaner := st.NewTestCleaner(t)
 	ctx := context.Background()
@@ -35,8 +63,6 @@ func TestRegroupCannotReachProvisionWithoutTheRequiredSelection(t *testing.T) {
 	game, mode, _ := setupHelpersMode(t, st, cleaner)
 	sessionID, table, host, guest := playRoomTableMatch(t, st, ctx, cleaner, game, mode, helperPicks())
 
-	// A returning group is seated by nobody (JQ-232), so both come back to an
-	// empty table and claim their seats again.
 	if _, _, err := st.ClaimRegroupTable(ctx, sessionID, host.ID); err != nil {
 		t.Fatalf("ClaimRegroupTable host: %v", err)
 	}
@@ -47,13 +73,6 @@ func TestRegroupCannotReachProvisionWithoutTheRequiredSelection(t *testing.T) {
 	if err != nil {
 		t.Fatalf("ListGameModeSeats: %v", err)
 	}
-
-	if _, err := st.SitAtTableWithOptions(ctx, table.ID, host.ID, seats[0].SeatKey, nil); err == nil {
-		t.Fatal("SitAtTableWithOptions = nil, want a seat claim refused for answering no required picker")
-	}
-
-	// The same state, reached the way the old regroup path reached it: beneath the
-	// seat claim entirely. Provision is the backstop and has to hold on its own.
 	seatWithoutAnsweringThePicker(t, st, ctx, table.ID, host.ID, seats[0].SeatKey)
 	seatWithoutAnsweringThePicker(t, st, ctx, table.ID, guest.ID, seats[1].SeatKey)
 
