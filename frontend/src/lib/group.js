@@ -129,8 +129,11 @@ export function playersPickingASeat(room, table, viewerId = null) {
     }
   }
 
+  // `disconnected` is the API's reading; `away` is the word these entries and the cards
+  // that render them use, because it is the word a player understands (and because
+  // JQ-179's idle signal will feed the same display without being a disconnect).
   for (const member of room?.members ?? []) {
-    add(member?.user, member?.away ?? false)
+    add(member?.user, member?.disconnected ?? false)
   }
   // The regroup roster carries no presence of its own — it is a record of answers, not of
   // sockets. Anyone on it who is also a room member was already added above with their

@@ -516,8 +516,8 @@ type ComplexityRoot struct {
 	}
 
 	RoomMember struct {
-		Away func(childComplexity int) int
-		User func(childComplexity int) int
+		Disconnected func(childComplexity int) int
+		User         func(childComplexity int) int
 	}
 
 	RoomMessage struct {
@@ -3169,12 +3169,12 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 
 		return e.complexity.Room.Tables(childComplexity), true
 
-	case "RoomMember.away":
-		if e.complexity.RoomMember.Away == nil {
+	case "RoomMember.disconnected":
+		if e.complexity.RoomMember.Disconnected == nil {
 			break
 		}
 
-		return e.complexity.RoomMember.Away(childComplexity), true
+		return e.complexity.RoomMember.Disconnected(childComplexity), true
 	case "RoomMember.user":
 		if e.complexity.RoomMember.User == nil {
 			break
@@ -4928,15 +4928,20 @@ One person on a room's roster.
 type RoomMember {
   user: User!
   """
-  Whether the roster has stopped claiming this member is here, because their last
-  socket closed more than DefaultRoomMemberAwayGrace (30s) ago.
+  Whether this member's last socket closed more than store.DefaultRoomRosterPresenceGrace
+  (30s) ago, so the roster has stopped claiming they are here.
 
-  A display state and nothing more. An away member still holds their membership, their
-  chat and their seat; this says only that we no longer believe they are looking at it,
-  so a roster does not have to pretend otherwise for the five minutes their place is
-  held. Reconnecting clears it immediately.
+  A reading and nothing more. A disconnected member still holds their membership, their
+  chat and their seat — their room is held for the full DefaultRoomDisconnectGrace (5m) —
+  and this says only that we no longer believe they are looking at it, so a roster does
+  not have to pretend otherwise meanwhile. Reconnecting clears it immediately.
+
+  Clients draw this as "away", which is the word a player understands. It is named for
+  the evidence instead, because store.UserIsAway is a different signal with the opposite
+  evidence — a live socket with no visible document — and is false for every member this
+  is true for. JQ-179 is where that second signal joins this one in the same display.
   """
-  away: Boolean!
+  disconnected: Boolean!
 }
 
 type RoomMessage {
@@ -18509,8 +18514,8 @@ func (ec *executionContext) fieldContext_Room_members(_ context.Context, field g
 			switch field.Name {
 			case "user":
 				return ec.fieldContext_RoomMember_user(ctx, field)
-			case "away":
-				return ec.fieldContext_RoomMember_away(ctx, field)
+			case "disconnected":
+				return ec.fieldContext_RoomMember_disconnected(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type RoomMember", field.Name)
 		},
@@ -18681,14 +18686,14 @@ func (ec *executionContext) fieldContext_RoomMember_user(_ context.Context, fiel
 	return fc, nil
 }
 
-func (ec *executionContext) _RoomMember_away(ctx context.Context, field graphql.CollectedField, obj *model.RoomMember) (ret graphql.Marshaler) {
+func (ec *executionContext) _RoomMember_disconnected(ctx context.Context, field graphql.CollectedField, obj *model.RoomMember) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
 		ec.OperationContext,
 		field,
-		ec.fieldContext_RoomMember_away,
+		ec.fieldContext_RoomMember_disconnected,
 		func(ctx context.Context) (any, error) {
-			return obj.Away, nil
+			return obj.Disconnected, nil
 		},
 		nil,
 		ec.marshalNBoolean2bool,
@@ -18697,7 +18702,7 @@ func (ec *executionContext) _RoomMember_away(ctx context.Context, field graphql.
 	)
 }
 
-func (ec *executionContext) fieldContext_RoomMember_away(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+func (ec *executionContext) fieldContext_RoomMember_disconnected(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	fc = &graphql.FieldContext{
 		Object:     "RoomMember",
 		Field:      field,
@@ -28987,8 +28992,8 @@ func (ec *executionContext) _RoomMember(ctx context.Context, sel ast.SelectionSe
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
-		case "away":
-			out.Values[i] = ec._RoomMember_away(ctx, field, obj)
+		case "disconnected":
+			out.Values[i] = ec._RoomMember_disconnected(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}

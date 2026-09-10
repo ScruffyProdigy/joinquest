@@ -70,42 +70,40 @@ const DefaultRoomDisconnectGrace = 5 * time.Minute
 // borrow one for the other.
 const DefaultTableSeatDisconnectGrace = 30 * time.Second
 
-// DefaultRoomMemberAwayGrace is how long a room member's socket may stay down before the
-// roster stops claiming they are there.
+// DefaultRoomRosterPresenceGrace is how long the roster keeps calling a member present
+// after their last socket closed.
 //
-// This changes nothing about what the player holds — a member reading as away still has
-// their membership, their seat is governed by DefaultTableSeatDisconnectGrace and their
-// room by DefaultRoomDisconnectGrace. It governs one thing only: what the roster asserts.
+// It changes nothing about what the player holds — a member past it still has their
+// membership, their seat is governed by DefaultTableSeatDisconnectGrace and their room by
+// DefaultRoomDisconnectGrace. It governs one thing only: what the roster asserts.
 //
-// It exists as its own name, rather than reading DefaultRoomDisconnectGrace, because that
-// window is the one it must never be confused with. A room waits 5m for good reasons (see
-// there), and a roster that stayed silent for all of it would spend those five minutes
-// telling everyone else in the room that a player whose battery died is sitting right
-// there. Holding someone's place and claiming they are present are different promises, and
-// only the first one is worth five minutes.
+// Named for the claim it governs rather than for the window it lives inside, because
+// DefaultRoomDisconnectGrace is the constant it must never be mistaken for. A room waits
+// 5m for good reasons (see there), and a roster that stayed silent for all of it would
+// spend those five minutes telling everyone else in the room that a player whose battery
+// died is sitting right there. Holding someone's place and claiming they are present are
+// different promises, and only the first one is worth five minutes.
 //
 // 30s, which is DefaultTableSeatDisconnectGrace's value and deliberately not a borrow of
 // its identifier. Both answer "do we still believe this person is at their device", so
 // they agree today; they are separate constants because they act on that belief for
 // different people. The seat window spends Alice's seat on Bob's behalf, so it is bounded
 // by Bob's patience at a table that cannot fill. This window spends nothing — it only
-// makes the roster honest — so it is free to move if a mobile audience turns out to want
-// a beat longer before their friends see them greyed out. Reusing one identifier would
-// make that a change to seat availability too.
+// makes the roster honest — so it is free to move if a mobile audience turns out to want a
+// beat longer before their friends see them greyed out. One identifier for both would make
+// that a change to seat availability too.
 //
-// It is 30s and not seconds because presence is subscription-count based: a
-// backgrounded tab that keeps its socket never reaches here at all, so this window only
-// starts for a socket that actually closed, and closing on a reload or a tunnel is
-// routine. Short enough that a two-person room learns the truth quickly, long enough
-// that an ordinary reconnect is invisible to everyone else.
+// The window only ever starts for a socket that actually closed: presence counts
+// subscriptions, so a backgrounded tab that keeps its socket never reaches here at all.
+// 30s is then short enough that a two-person room learns the truth quickly, and long
+// enough that an ordinary reload or a passing tunnel is invisible to everybody else.
 //
-// This reads "disconnected" and calls it away, which is the looser of the two senses
-// user_presence's own comment separates: the column records only a closed socket, never
-// a live socket with the player's attention elsewhere. Away here means "we no longer
-// believe they are there", and a closed socket is the only evidence of that we have
-// today. JQ-179's idle signal, when it lands, is a second reason for the same roster
-// state rather than a competing one.
-const DefaultRoomMemberAwayGrace = 30 * time.Second
+// What this measures is disconnection, and only disconnection. It is NOT UserIsAway
+// (visibility.go), which is the opposite evidence — a live socket with no visible
+// document — and returns false for exactly the players this window catches. The roster
+// draws both as "away" to a player, and JQ-179 is where the second signal joins the
+// first, but at this layer they stay two readings that can disagree.
+const DefaultRoomRosterPresenceGrace = 30 * time.Second
 
 // DefaultClosedRoomRetention is how long a closed room's row survives before the
 // sweep deletes it outright.

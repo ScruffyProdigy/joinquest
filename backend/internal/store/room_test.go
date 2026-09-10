@@ -47,7 +47,7 @@ func TestRoomCreateJoinLeave(t *testing.T) {
 		t.Fatalf("joined wrong room")
 	}
 
-	members, err := st.ListRoomRoster(ctx, room.ID, DefaultRoomMemberAwayGrace)
+	members, err := st.ListRoomRoster(ctx, room.ID, DefaultRoomRosterPresenceGrace)
 	if err != nil {
 		t.Fatalf("list members: %v", err)
 	}
@@ -59,7 +59,7 @@ func TestRoomCreateJoinLeave(t *testing.T) {
 	if err != nil || !left {
 		t.Fatalf("leave room: left=%v err=%v", left, err)
 	}
-	members, err = st.ListRoomRoster(ctx, room.ID, DefaultRoomMemberAwayGrace)
+	members, err = st.ListRoomRoster(ctx, room.ID, DefaultRoomRosterPresenceGrace)
 	if err != nil {
 		t.Fatalf("list members after leave: %v", err)
 	}
@@ -99,7 +99,7 @@ func TestRoomOneRoomPerUser(t *testing.T) {
 		t.Fatalf("user should be in newest room")
 	}
 
-	members, err := st.ListRoomRoster(ctx, roomA.ID, DefaultRoomMemberAwayGrace)
+	members, err := st.ListRoomRoster(ctx, roomA.ID, DefaultRoomRosterPresenceGrace)
 	if err != nil {
 		t.Fatalf("list room A members: %v", err)
 	}

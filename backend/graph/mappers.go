@@ -367,15 +367,15 @@ func ToGraphQLUsers(users []store.User) []*model.User {
 	return result
 }
 
-// ToGraphQLRoomMembers maps a room's roster, carrying each member's away reading through
-// as the store derived it. Nothing recomputes the window here: the store's query is the
-// single place that decides what "away" means.
+// ToGraphQLRoomMembers maps a room's roster, carrying each member's disconnected reading
+// through as the store derived it. Nothing recomputes the window here: the store's query is
+// the single place that decides where the line falls.
 func ToGraphQLRoomMembers(members []store.RoomMember) []*model.RoomMember {
 	result := make([]*model.RoomMember, len(members))
 	for i := range members {
 		result[i] = &model.RoomMember{
-			User: ToGraphQLUser(&members[i].User),
-			Away: members[i].Away,
+			User:         ToGraphQLUser(&members[i].User),
+			Disconnected: members[i].Disconnected,
 		}
 	}
 	return result

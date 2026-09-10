@@ -182,7 +182,7 @@ func TestMyRoomIncludesMemberAvatars(t *testing.T) {
 
 	myRoomBody := postGraphQL(t, env.Handler, `query {
 		myRoom {
-			members { user { id avatarUrl avatarKey } away }
+			members { user { id avatarUrl avatarKey } disconnected }
 			host { id avatarUrl }
 		}
 	}`, nil, cookie)

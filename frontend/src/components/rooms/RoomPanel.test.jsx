@@ -7,7 +7,7 @@ const mockRoom = {
   inviteCode: 'ABCD',
   joinUrl: 'https://joinquest.cc/r/abcd',
   host: { id: 'user-1' },
-  members: [{ user: { id: 'user-1', displayName: 'Pat' }, away: false }],
+  members: [{ user: { id: 'user-1', displayName: 'Pat' }, disconnected: false }],
   tables: [],
 }
 
@@ -53,13 +53,13 @@ describe('RoomPanel', () => {
 
   // JQ-265. The member stays listed and still counts — the roster's job here is to stop
   // claiming they are watching, not to start pretending they left. A regression that
-  // filtered away members out would pass a "shows away" assertion on its own, so the
-  // count and the row are asserted together.
-  it('dims an away member without dropping them from the roster', () => {
+  // filtered them out would pass a "shows away" assertion on its own, so the count and the
+  // row are asserted together.
+  it('dims a disconnected member without dropping them from the roster', () => {
     const original = mockRoom.members
     mockRoom.members = [
-      { user: { id: 'user-1', displayName: 'Pat' }, away: false },
-      { user: { id: 'user-2', displayName: 'Sam' }, away: true },
+      { user: { id: 'user-1', displayName: 'Pat' }, disconnected: false },
+      { user: { id: 'user-2', displayName: 'Sam' }, disconnected: true },
     ]
     try {
       const { container } = render(<RoomPanel compact />)

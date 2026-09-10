@@ -55,8 +55,8 @@ function makeRoom(table) {
     inviteCode: 'ABC123',
     joinUrl: 'https://joinquest.cc/room/ABC123',
     members: [
-      { user: { id: 'u1', displayName: 'Pat' }, away: false },
-      { user: { id: 'u7', displayName: 'Sam' }, away: false },
+      { user: { id: 'u1', displayName: 'Pat' }, disconnected: false },
+      { user: { id: 'u7', displayName: 'Sam' }, disconnected: false },
     ],
     tables: [table],
   }
@@ -109,7 +109,7 @@ describe('GroupPage', () => {
   })
 
   it('lists the viewer alone under Picking a seat before they claim', () => {
-    currentRoom = { ...makeRoom(makeTable()), members: [{ user: { id: 'u1', displayName: 'Pat' }, away: false }] }
+    currentRoom = { ...makeRoom(makeTable()), members: [{ user: { id: 'u1', displayName: 'Pat' }, disconnected: false }] }
     render(<GroupPage />)
 
     const section = screen.getByRole('region', { name: /picking a seat/i })

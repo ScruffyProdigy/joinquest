@@ -218,21 +218,25 @@ export default function RoomPanel({ compact = false }) {
     tables[0]?.game?.accentColor,
   )
 
-  // Away members stay in the list and keep their place in it (JQ-265) — they still hold
-  // their membership, so removing or reordering them would be the roster telling a
-  // different lie from the one this fixed. The row dims and says so instead.
+  // A member whose socket is gone stays in the list and keeps their place in it (JQ-265) —
+  // they still hold their membership, so removing or reordering them would be the roster
+  // telling a different lie from the one this fixed. The row dims and says so instead.
+  // `disconnected` is the reading; "away" is what the player is shown.
   const membersList = (
     <ul className="flex flex-col gap-2">
-      {room.members.map(({ user, away }) => (
+      {room.members.map(({ user, disconnected }) => (
         <li
           key={user.id}
-          className={cn('flex items-center gap-2 text-sm text-foreground', away && 'opacity-60')}
+          className={cn(
+            'flex items-center gap-2 text-sm text-foreground',
+            disconnected && 'opacity-60',
+          )}
         >
-          <PlayerAvatar user={user} size="sm" away={away} />
+          <PlayerAvatar user={user} size="sm" away={disconnected} />
           <span>
             {displayName(user)}
             {user.id === room.host?.id ? ' (host)' : ''}
-            {away ? ' — away' : ''}
+            {disconnected ? ' — away' : ''}
           </span>
         </li>
       ))}

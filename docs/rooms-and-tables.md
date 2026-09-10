@@ -91,7 +91,7 @@ Per **mode** row under each game:
 
 A **presentation over one table in a room** — not a second data model. It renders entirely
 from `Table.seatSlots`, `Table.formingGaps`, `Table.king` and `Room.members` (a list of
-`RoomMember { user, away }` — see *Away members* below). Its one
+`RoomMember { user, disconnected }` — see *Away members* below). Its one
 operation of its own is the pre-queue roster fetched when the options sheet opens, and
 that is deliberately lazy — see *Claiming a seat* below.
 
@@ -117,17 +117,20 @@ that is deliberately lazy — see *Claiming a seat* below.
   seat template still lists, and more pending players than seats drops none. A decline
   watched happening flips the row to *Out* for three seconds before it goes. The card is
   absent, not empty, when the viewer is the only person here.
-- **Away members (JQ-265):** `Room.members[].away` is true once a member's last socket has
-  been gone longer than `store.DefaultRoomMemberAwayGrace` (30s), derived on read from
-  `user_presence` and stored nowhere. It is a display state only — an away member keeps
+- **Away members (JQ-265):** `Room.members[].disconnected` is true once a member's last
+  socket has been gone longer than `store.DefaultRoomRosterPresenceGrace` (30s), derived on
+  read from `user_presence` and stored nowhere. The field is named for the evidence and the
+  UI for what a player reads — `store.UserIsAway` is a *different* signal (live socket, no
+  visible document) and is false for every member this is true for. It is a display state only — an away member keeps
   their membership, their seat and their chat, and their room is still held for the full
   `DefaultRoomDisconnectGrace` (5m). The avatar dims and its label gains `(away)`
   (`PlayerAvatar`'s `away` prop, used by the group header, the *Picking a seat* card and the
   room panel's member list); names and badges stay at full strength, because the doubt is
   about whether they are watching, not who they are. Away is independent of the *Awaiting*
   badge above: a player can be both, and each says something the other does not. A live
-  socket always reads as present, so a player who left a tab open and walked away is still
-  *here* — that needs an interaction signal rather than a connection one (JQ-179).
+  socket always reads as present here, so a player who left a tab open and walked away is
+  still *here* — that needs an interaction signal rather than a connection one (JQ-179),
+  and is where `UserIsAway` would join this display.
 - **Bottom control:** `Claim a seat to join` when unseated; `Start game` for the king once
   `canStart`; otherwise `Waiting for <name> to start`. The king gate is production's, but the
   screen never uses the word "king" — it names the person.

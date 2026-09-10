@@ -13,15 +13,20 @@ One person on a room's roster.
 type RoomMember {
   user: User!
   """
-  Whether the roster has stopped claiming this member is here, because their last
-  socket closed more than DefaultRoomMemberAwayGrace (30s) ago.
+  Whether this member's last socket closed more than store.DefaultRoomRosterPresenceGrace
+  (30s) ago, so the roster has stopped claiming they are here.
 
-  A display state and nothing more. An away member still holds their membership, their
-  chat and their seat; this says only that we no longer believe they are looking at it,
-  so a roster does not have to pretend otherwise for the five minutes their place is
-  held. Reconnecting clears it immediately.
+  A reading and nothing more. A disconnected member still holds their membership, their
+  chat and their seat — their room is held for the full DefaultRoomDisconnectGrace (5m) —
+  and this says only that we no longer believe they are looking at it, so a roster does
+  not have to pretend otherwise meanwhile. Reconnecting clears it immediately.
+
+  Clients draw this as "away", which is the word a player understands. It is named for
+  the evidence instead, because store.UserIsAway is a different signal with the opposite
+  evidence — a live socket with no visible document — and is false for every member this
+  is true for. JQ-179 is where that second signal joins this one in the same display.
   """
-  away: Boolean!
+  disconnected: Boolean!
 }
 
 type RoomMessage {

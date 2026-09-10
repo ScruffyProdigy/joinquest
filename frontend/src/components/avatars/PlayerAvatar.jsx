@@ -7,9 +7,13 @@ import { Avatar, AvatarFallback, AvatarImage } from '../ui/avatar'
 const SIZE_MAP = { xs: 'xs', sm: 'sm', md: 'md' }
 
 /**
- * `away` is the roster's honesty about a member whose socket has been gone longer than
- * DefaultRoomMemberAwayGrace (JQ-265). It lives here rather than at each call site so the
- * three places that draw a roster dim it the same way and say the same word.
+ * `away` is the roster's honesty about a member we no longer believe is at their device
+ * (JQ-265). It lives here rather than at each call site so the three places that draw a
+ * roster dim it the same way and say the same word.
+ *
+ * The prop is presentational, which is why it is `away` and not `disconnected`: today it is
+ * fed by `RoomMember.disconnected` (a socket gone longer than the roster's window), and
+ * JQ-179's idle signal will feed the same treatment without being a disconnect at all.
  *
  * Dimmed, not removed or badged: the player still holds their place, and the roster is
  * reporting reduced confidence rather than an event. The title carries the word too,

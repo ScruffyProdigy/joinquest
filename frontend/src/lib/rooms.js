@@ -16,7 +16,7 @@ const ROOM_FIELDS = `
     user {
       ${USER_AVATAR_FIELDS}
     }
-    away
+    disconnected
   }
 `
 
