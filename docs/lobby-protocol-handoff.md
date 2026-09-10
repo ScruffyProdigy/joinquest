@@ -129,6 +129,33 @@ natural **routing/shard key** when the game scales out (see below).
 **Lobby impact:** generate a stable, unique `externalMatchId` per match and reuse
 it for the token and the link.
 
+### 8. A player may re-claim their own seat; nobody else may take it
+**What we do:** a claim against an already-claimed seat succeeds when the token's
+`sub` matches the player already assigned to that seat, and still returns `409` for
+any other `sub`.
+
+**Why:** the original rule was a flat `409` on any second claim, which is correct
+against seat theft and wrong about the far more common case — the same player coming
+back. Players close tabs, lose wifi, and take phone calls mid-match; for a casual
+audience that is routine, not an edge case, and a player locked out of their own seat
+ruins the match for everyone still in it. Comparing `sub` separates the two cases
+exactly: "this seat is taken" is only an error when it is taken **by somebody else**.
+
+Nothing about the seat changes on a re-claim. It is the same player, the same seat,
+and the same match — so re-claiming must be **idempotent on match state**: no reset,
+no second join event, no re-deal, no turn advanced, no rematch of an already-started
+round. Treat it as "resend me the current state," not "join."
+
+**Lobby impact:** Lobby re-mints a seat token for a live session on demand
+(`rejoinActiveMatch`), keeping `sub`, `matchId` and `seatKey` and issuing a fresh
+`jti`/`exp`. Re-mint is refused once the match is over or that player has reported
+finished, so a re-claim that arrives after the match ended cannot be holding a token
+Lobby issued for it. Re-mint tokens are minted on demand and are deliberately
+short-lived (minutes, not hours) — long enough to travel, too short to pass around.
+
+**Game impact:** compare `sub` before returning `409`, and make the claim handler
+safe to run twice for the same player. See *Reconnecting a player* below.
+
 ---
 
 ## Protocol reference (condensed)
@@ -160,7 +187,96 @@ URL, or whose `seatKey` does not match the seat Lobby assigned that player.
 
 **Status codes:** `200/201` ok · `400` bad input/illegal move · `401` bad/missing
 token · `403` **banned** (`bannedLobbyUserIds[]`) **or** seat-reservation violation
-· `404` unknown/unprovisioned match · `409` conflict (seat taken / duplicate move).
+· `404` unknown/unprovisioned match · `409` conflict (seat taken **by a different
+`sub`** / duplicate move). A claim on a seat already held by the **same** `sub` is a
+re-claim and returns `200`, not `409` — see *Reconnecting a player*.
+
+---
+
+## Reconnecting a player
+
+A player who closes the tab, drops their connection, or takes a phone call mid-match
+needs a defined way back into the seat they still hold. There are **two independent
+paths back**, and they are independent on purpose — each one works when the other has
+failed, so no single lost cookie or closed tab strands a player.
+
+### Path 1 — game-origin recovery (primary, no Lobby round trip)
+
+**On a successful claim, the game binds browser → seat on its own origin.** Set a
+cookie (or equivalent local record) on the game's own domain recording which
+`seatKey` of which `externalMatchId` this browser holds, alongside the verified
+`sub`. On a later request to the game with no `?token=`, look that binding up and
+resume the player.
+
+This is the path that covers a refresh, the back button, and a tab crash: it involves
+no Lobby request at all, so it keeps working even if Lobby is slow, unreachable, or
+the player's Lobby session is gone. It is also the fastest — the player is back in
+the match without a navigation through JoinQuest.
+
+The binding must be **checked against the match, not trusted on its own**: it names a
+seat, and the match is still the source of truth for whether that seat is live.
+
+### Path 2 — lobby-origin recovery (fallback, the Rejoin button)
+
+A player who comes back through JoinQuest instead — bookmark, home screen, a link a
+friend sent — sees their live match on the Lobby with a **Rejoin** action. Rejoin
+mints a fresh seat token for the seat they already hold and navigates them to the
+game's launch URL, where the normal claim runs and lands on the re-claim rule above.
+
+This is the path that covers a player whose game-origin binding is gone: different
+browser profile, cleared game-site data, or a game they reached from a new device.
+
+### Why `SameSite=Lax` shapes how games return players
+
+Lobby's session cookie is `SameSite=Lax`. That means it **is** sent on a top-level
+navigation back to the Lobby origin — a link click, a `window.location` assignment, a
+form GET — and is **not** sent on a cross-site POST or a background `fetch`/XHR.
+
+So: **return players by navigation.** A game that sends the browser to
+`{returnUrl}?match={externalMatchId}` gets an authenticated player on the other side.
+A game that tries to hand off by POSTing to Lobby, or by fetching a Lobby endpoint
+from its own page, gets an anonymous request and a player who looks logged out.
+
+### Session lifetime, and the one case that is not recoverable
+
+Lobby's session cookie is persistent with a 7-day `MaxAge`, and `SESSION_TTL` matches
+it, so a guest's identity survives a browser restart. Both were **absolute from
+creation** with no renewal, which meant an active guest could expire out of their own
+identity mid-play; Lobby now **slides** the session, re-issuing the cookie on any
+authenticated request made past roughly half the token's life. A player who keeps
+playing therefore never ages out.
+
+What remains unrecoverable is a guest whose cookie is genuinely gone: an incognito
+window that was closed, cookies cleared, or a different device entirely. There is no
+credential to re-authenticate a guest with, so that identity — and that player's
+history with every integrated game — is gone.
+
+**This is accepted, not engineered around.** Recovering it would mean giving guests a
+credential, which is an account by another name. It is instead the natural trigger
+point for the sign-up upsell: the moment a player has something worth not losing is
+the moment to offer them a way to keep it.
+
+### What a game should do about a disconnect it can see
+
+Games differ, so this is guidance rather than contract, but behaviour should be
+consistent enough across titles that a player learns one set of expectations:
+
+- **Hold the seat.** A disconnected player's seat stays theirs. Do not forfeit them,
+  do not fill the seat, and do not end the match on the first dropped socket.
+- **Say so.** Show the remaining players that someone is disconnected and that the
+  game is waiting — "Waiting for Alex to reconnect…" — rather than leaving the match
+  silently stalled.
+- **Keep the match moving where the design allows.** In a real-time game, continue
+  and let the returning player catch up. In a turn-based game, it is reasonable to
+  hold on their turn with a visible timer rather than freeze indefinitely.
+- **Resync from a full snapshot.** When the player re-claims, send complete
+  authoritative state, not the deltas they missed. They should never have to guess.
+- **Have an end to the grace period.** Decide what happens if they never come back —
+  a timeout that forfeits, or an abandon vote — and tell the other players what it is.
+  An indefinite wait is worse for the people still there than a decided outcome.
+
+Filling an empty seat with a bot or a replacement player is deliberately **not** part
+of this; it is a separate concern.
 
 ---
 
@@ -244,5 +360,8 @@ capability negotiation later without breaking older games.
    `seatKey`, `name`).
 5. On successful provision, read `launchUrls` (or expand `launchUrlTemplate`); attach JWT to each base URL. Persist URL bases on session participants for refresh.
 6. Add the **Play** button / intent banner that opens the final link from step 5.
+   The banner's action for a live match mints on click (`rejoinActiveMatch`), because
+   a rejoin token is short-lived and a URL fetched when the banner rendered would be
+   stale by the time a returning player used it.
 7. Before production: authenticate the push and confirm the game's WS fan-out is
    fleet-safe. Reference games set `GAME_PLAY_URL` to their browser origin for minted links.
