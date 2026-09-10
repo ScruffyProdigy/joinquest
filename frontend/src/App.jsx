@@ -5,13 +5,13 @@ import AccountPage from './components/auth/AccountPage'
 import ReturnPage from './components/auth/ReturnPage'
 import StylePreviewPage from './components/dev/StylePreviewPage'
 import { isStylePreviewEnabled } from './lib/stylePreview'
-import IntentBanner from './components/games/IntentBanner'
 import GameLobby from './components/games/GameLobby'
 import GameDetailPage from './components/games/GameDetailPage'
 import WaitingPage from './components/games/WaitingPage'
 import { ActiveRoomProvider } from './components/rooms/ActiveRoomProvider'
-import { AuthProvider, useAuth } from './components/auth/AuthProvider'
-import { useActiveIntent } from './components/games/useActiveIntent'
+import { AuthProvider } from './components/auth/AuthProvider'
+import ActiveMatchDialog from './components/games/ActiveMatchDialog'
+import { ActiveIntentProvider, useActiveIntentContext } from './components/games/ActiveIntentProvider'
 import { APP_NAME } from './lib/brand'
 import { parseRoomInviteCode } from './lib/rooms'
 import { parseGroupRoute } from './lib/group'
@@ -34,30 +34,13 @@ import PrivacyPage from './components/legal/PrivacyPage'
 import { useEffect } from 'react'
 import { Link } from './components/ui/link'
 
-function CatalogPage({ intent }) {
-  const { user, loading: authLoading } = useAuth()
-  const { activeIntent, activeTableSeat, busy, leaveError, rejoinError, rejoining, handleLeave, handleRejoin } =
-    intent
-
+function CatalogPage() {
   useEffect(() => {
     restoreCatalogScrollIfPending()
   }, [])
 
   return (
     <main className="app-shell app-shell--catalog">
-      {!authLoading && user ? (
-        <IntentBanner
-          activeIntent={activeIntent}
-          activeTableSeat={activeTableSeat}
-          busy={busy}
-          leaveError={leaveError}
-          rejoinError={rejoinError}
-          rejoining={rejoining}
-          onLeave={handleLeave}
-          onRejoin={handleRejoin}
-        />
-      ) : null}
-
       <HomeHeader />
 
       <GameLobby />
@@ -69,19 +52,7 @@ function CatalogPage({ intent }) {
 }
 
 function GameDetailShell({ slug, intent }) {
-  const { user, loading: authLoading } = useAuth()
-  const {
-    activeIntent,
-    activeTableSeat,
-    busy,
-    leaveError,
-    rejoinError,
-    rejoining,
-    refresh,
-    notifyQueueJoined,
-    handleLeave,
-    handleRejoin,
-  } = intent
+  const { activeIntent, activeTableSeat, refresh, notifyQueueJoined } = intent
 
   // Joining a queue is the only route onto the waiting page.
   function handleQueueJoined(queueId, result, meta) {
@@ -92,28 +63,14 @@ function GameDetailShell({ slug, intent }) {
   }
 
   return (
-    <>
-      {!authLoading && user ? (
-        <IntentBanner
-          activeIntent={activeIntent}
-          activeTableSeat={activeTableSeat}
-          busy={busy}
-          leaveError={leaveError}
-          rejoinError={rejoinError}
-          rejoining={rejoining}
-          onLeave={handleLeave}
-          onRejoin={handleRejoin}
-        />
-      ) : null}
-      <GameDetailPage
+    <GameDetailPage
         slug={slug}
         activeIntent={activeIntent}
         activeTableSeat={activeTableSeat}
         onQueueChange={refresh}
-        onQueueJoined={handleQueueJoined}
-        onTableChange={refresh}
-      />
-    </>
+      onQueueJoined={handleQueueJoined}
+      onTableChange={refresh}
+    />
   )
 }
 
@@ -127,9 +84,7 @@ function MainLayout() {
   const gameSlug = parseGameSlug(pathname)
   const onGroup = parseGroupRoute(pathname)
   const onWaiting = parseWaitingRoute(pathname)
-  // One instance for the whole shell. It has to survive the navigation from a game
-  // page to /waiting, which carries the optimistic join state and its grace window.
-  const intent = useActiveIntent()
+  const intent = useActiveIntentContext()
 
   useEffect(() => {
     const root = document.getElementById('root')
@@ -166,7 +121,7 @@ function MainLayout() {
   ) : gameSlug ? (
     <GameDetailShell slug={gameSlug} intent={intent} />
   ) : (
-    <CatalogPage intent={intent} />
+    <CatalogPage />
   )
 }
 
@@ -207,6 +162,55 @@ function MainShell() {
   )
 }
 
+/**
+ * Where the live-match dialog is allowed to appear (JQ-261).
+ *
+ * Everywhere, with three deliberate holes.
+ *
+ * `/waiting` and `/group` already render `LaunchStep` themselves for a match that has
+ * just formed -- that is an event, and this dialog is a recovery; the same component
+ * in both at once would stack.
+ *
+ * `/return` is the post-match screen, and it is the one place where a live match and
+ * a player who should not be in it are both correct at the same time. A session the
+ * game has not reported a finish for is still `MATCHED` while the player stands on
+ * that screen reading "Still playing", so a dialog here would carry them straight
+ * back into the match they just walked out of, and do it again on every return.
+ *
+ * An `/auth/*` route is mid-sign-in, where interrupting costs more than the five
+ * seconds the player would otherwise wait.
+ */
+function suppressesActiveMatchDialog(pathname) {
+  return (
+    parseWaitingRoute(pathname) ||
+    parseGroupRoute(pathname) ||
+    pathname.startsWith('/return') ||
+    pathname.startsWith('/auth/')
+  )
+}
+
+function ActiveMatchDialogHost() {
+  const pathname = usePathname()
+  const intent = useActiveIntentContext()
+
+  if (!intent || suppressesActiveMatchDialog(pathname)) {
+    return null
+  }
+
+  return (
+    <ActiveMatchDialog
+      activeIntent={intent.activeIntent}
+      activeTableSeat={intent.activeTableSeat}
+      busy={intent.busy}
+      leaveError={intent.leaveError}
+      rejoinError={intent.rejoinError}
+      rejoining={intent.rejoining}
+      onLeave={intent.handleLeave}
+      onRejoin={intent.handleRejoin}
+    />
+  )
+}
+
 function App() {
   const pathname = usePathname()
   const developerRoute = parseDeveloperRoute(pathname)
@@ -219,38 +223,44 @@ function App() {
 
   return (
     <AuthProvider>
-      <IdentityPromptProvider>
-        {pathname.startsWith('/auth/oauth/complete') ? (
-          <OAuthCompletePage />
-        ) : pathname.startsWith('/auth/complete') ? (
-          <CompleteSignInPage />
-        ) : pathname.startsWith('/auth/link') ? (
-          <LinkEmailPage />
-        ) : pathname.startsWith('/terms') ? (
-          <TermsPage />
-        ) : pathname.startsWith('/privacy') ? (
-          <PrivacyPage />
-        ) : pathname.startsWith('/account') ? (
-          <AccountPage />
-        ) : pathname.startsWith('/dev/style-preview') && isStylePreviewEnabled() ? (
-          <StylePreviewPage />
-        ) : pathname.startsWith('/return') ? (
-          <ReturnPage />
-        ) : developerRoute ? (
-          <ActiveRoomProvider>
-            <DeveloperShell />
-          </ActiveRoomProvider>
-        ) : isMainRoute ? (
-          <MainShell />
-        ) : (
-          <main className="app-shell auth-page">
-            <h1>Page not found</h1>
-            <Link className="self-start" href="/">
-              Back to {APP_NAME}
-            </Link>
-          </main>
-        )}
-      </IdentityPromptProvider>
+      <ActiveIntentProvider>
+        <IdentityPromptProvider>
+          {pathname.startsWith('/auth/oauth/complete') ? (
+            <OAuthCompletePage />
+          ) : pathname.startsWith('/auth/complete') ? (
+            <CompleteSignInPage />
+          ) : pathname.startsWith('/auth/link') ? (
+            <LinkEmailPage />
+          ) : pathname.startsWith('/terms') ? (
+            <TermsPage />
+          ) : pathname.startsWith('/privacy') ? (
+            <PrivacyPage />
+          ) : pathname.startsWith('/account') ? (
+            <AccountPage />
+          ) : pathname.startsWith('/dev/style-preview') && isStylePreviewEnabled() ? (
+            <StylePreviewPage />
+          ) : pathname.startsWith('/return') ? (
+            <ReturnPage />
+          ) : developerRoute ? (
+            <ActiveRoomProvider>
+              <DeveloperShell />
+            </ActiveRoomProvider>
+          ) : isMainRoute ? (
+            <MainShell />
+          ) : (
+            <main className="app-shell auth-page">
+              <h1>Page not found</h1>
+              <Link className="self-start" href="/">
+                Back to {APP_NAME}
+              </Link>
+            </main>
+          )}
+
+          {/* Last child, and outside the route switch: a live match outranks
+              whatever page the player thought they were opening (JQ-261). */}
+          <ActiveMatchDialogHost />
+        </IdentityPromptProvider>
+      </ActiveIntentProvider>
     </AuthProvider>
   )
 }
