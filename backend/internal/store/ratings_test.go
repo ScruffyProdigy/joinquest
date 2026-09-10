@@ -435,7 +435,17 @@ func TestRecordMatchResultSurvivesUnrateableOutcome(t *testing.T) {
 // and newCooperativeSessionFixture are thin wrappers over this shared setup —
 // per the plan, the cooperative fixture differs from the competitive one only
 // in the mode's declared social mode.
-func newSessionFixture(t *testing.T, n int, socialMode string) (st *Store, sessionID uuid.UUID, gameID uuid.UUID, users []uuid.UUID) {
+func newSessionFixture(t *testing.T, n int, socialMode string) (*Store, uuid.UUID, uuid.UUID, []uuid.UUID) {
+	t.Helper()
+	return newSessionFixtureWithSeatTemplate(t, n, socialMode, json.RawMessage(fmt.Sprintf(`{"count":%d}`, n)))
+}
+
+// newSessionFixtureWithSeatTemplate is newSessionFixture generalized over the
+// seat template, so a format whose shape a flat {"count":n} template cannot
+// express (teams, which needs seats that carry a team affinity) can reuse
+// the same game registration, matchmaking and cleanup rather than
+// duplicating it.
+func newSessionFixtureWithSeatTemplate(t *testing.T, n int, socialMode string, seatTemplate json.RawMessage) (st *Store, sessionID uuid.UUID, gameID uuid.UUID, users []uuid.UUID) {
 	t.Helper()
 	st = openTestStore(t)
 	cleaner := st.NewTestCleaner(t)
@@ -447,7 +457,7 @@ func newSessionFixture(t *testing.T, n int, socialMode string) (st *Store, sessi
 			Key:          "arena",
 			DisplayName:  "Arena",
 			SocialMode:   socialMode,
-			SeatTemplate: json.RawMessage(fmt.Sprintf(`{"count":%d}`, n)),
+			SeatTemplate: seatTemplate,
 		}},
 		Status:     gameclient.StatusResponse{Game: "Rating Fixture", Version: "1.0.0"},
 		ETag:       `"rating-fixture"`,
@@ -511,6 +521,17 @@ func newCompetitiveSessionFixture(t *testing.T, n int) (*Store, uuid.UUID, uuid.
 func newCooperativeSessionFixture(t *testing.T) (*Store, uuid.UUID, uuid.UUID, []uuid.UUID) {
 	t.Helper()
 	return newSessionFixture(t, 2, "co-op")
+}
+
+// newTeamsSessionFixture registers and matches a four-player session whose
+// seat template groups seats into two teams of two ("Team-1-Seat-1" ..
+// "Team-2-Seat-2"), each pair sharing an affinity key ("Team:1"/"Team:2") per
+// internal/seattemplate. That affinity key is what match_results.go reads
+// into rating.Participant.TeamKey, which is what puts both teammates on one
+// side of the rated match.
+func newTeamsSessionFixture(t *testing.T) (*Store, uuid.UUID, uuid.UUID, []uuid.UUID) {
+	t.Helper()
+	return newSessionFixtureWithSeatTemplate(t, 4, "", json.RawMessage(`{"Team":{"count":2,"Seat":{"count":2}}}`))
 }
 
 func TestRecordMatchResultCooperativeUsesReportedScenarioKeys(t *testing.T) {
