@@ -4,6 +4,10 @@ set -euo pipefail
 
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 cd "$ROOT"
+# shellcheck source=lib/lobby-migrations.sh
+. "$ROOT/scripts/lib/lobby-migrations.sh"
+
+NAMESPACE="${NAMESPACE:-joinquest}"
 
 usage() {
   cat <<'EOF'
@@ -45,7 +49,29 @@ for arg in "$@"; do
   esac
 done
 
+# A dirty schema_migrations sits invisible until the next pod restart, then turns
+# a routine deploy into an outage (JQ-181). Catch it before the deploy, not
+# during it. Reads the live cluster, so it skips when there are no credentials --
+# --check has to keep working offline.
+check_production_migration_state() {
+  if ! command -v kubectl >/dev/null 2>&1; then
+    echo "  kubectl not found — skipping"
+    return 0
+  fi
+  if ! kubectl get namespace "$NAMESPACE" >/dev/null 2>&1; then
+    echo "  namespace $NAMESPACE not reachable — skipping"
+    return 0
+  fi
+  preflight_migration_state "$NAMESPACE" "docker.io/scruffyprodigy/joinquest-backend:latest"
+}
+
 run_check() {
+  echo "==> deploy migration ordering"
+  "$ROOT/scripts/check-deploy-migration-order.sh"
+
+  echo "==> production schema_migrations state"
+  check_production_migration_state
+
   echo "==> gqlgen drift"
   (cd backend && make check-drift)
 
