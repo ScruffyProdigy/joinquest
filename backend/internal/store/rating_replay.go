@@ -24,6 +24,7 @@ type ratingStoreAdapter struct {
 	st *Store
 
 	matchesPlayed map[string]int
+	lastInputAt   time.Time
 }
 
 // RatingSource adapts the store to rating.Store for one replay run.
@@ -45,6 +46,9 @@ func (a *ratingStoreAdapter) ListInputs(ctx context.Context, gameID, modeKey str
 	counts := make(map[string]int)
 	out := make([]rating.Input, len(rows))
 	for i, row := range rows {
+		if row.RatedAt.After(a.lastInputAt) {
+			a.lastInputAt = row.RatedAt
+		}
 		sides := make([]rating.Side, len(row.Sides))
 		for j, side := range row.Sides {
 			// A side can never legitimately hold the same entrant key twice: dropping
@@ -74,6 +78,12 @@ func (a *ratingStoreAdapter) ListInputs(ctx context.Context, gameID, modeKey str
 }
 
 func (a *ratingStoreAdapter) SaveAll(ctx context.Context, gameID, modeKey, engineID string, players, entities map[string]rating.Rating) error {
+	if a.matchesPlayed == nil {
+		// ListInputs is what populates matchesPlayed. Saving without it would
+		// silently write zero matches-played for every entrant — see JQ-241.
+		return fmt.Errorf("store: rating adapter SaveAll called without a preceding ListInputs")
+	}
+
 	id, err := uuid.Parse(gameID)
 	if err != nil {
 		return fmt.Errorf("store: parse game id %q: %w", gameID, err)
@@ -88,5 +98,10 @@ func (a *ratingStoreAdapter) SaveAll(ctx context.Context, gameID, modeKey, engin
 		entityValues[key] = RatingValue{Mu: r.Mu, Sigma: r.Sigma, MatchesPlayed: a.matchesPlayed[key]}
 	}
 
-	return a.st.SaveRatings(ctx, id, modeKey, engineID, time.Now().UTC(), playerValues, entityValues)
+	ratedAt := a.lastInputAt
+	if ratedAt.IsZero() {
+		ratedAt = time.Now().UTC()
+	}
+
+	return a.st.SaveRatings(ctx, id, modeKey, engineID, ratedAt, playerValues, entityValues)
 }

@@ -180,6 +180,75 @@ func (s *Store) fireFormingMatchTx(
 		return nil, nil
 	}
 
+	// Every chair is filled, but a filled chair is not an attentive player. Firing
+	// now would drop someone into a game they are not looking at, and the seat is
+	// only recoverable before this point -- once the session exists there is no
+	// chair left to put a replacement in.
+	away, err := awayAssignedUsersTx(ctx, tx, assignments)
+	if err != nil {
+		return nil, err
+	}
+	switch {
+	case len(away) > 1:
+		// Never hold two chairs at once. One held chair cannot disappoint anybody:
+		// the held player's return is itself the fire condition. Two can — tell both
+		// to come back, one does, and they arrive to a match that never formed.
+		//
+		// But a window already running has very likely been announced to that player
+		// ("come back now to keep your spot"), and vacating them because somebody
+		// else then wandered off would make that message retroactively false. So the
+		// running hold stands and only the new absences give up their chairs.
+		holding, err := heldUserIDTx(ctx, tx, fm.ID)
+		if err != nil {
+			return nil, err
+		}
+		kept := false
+		for _, userID := range away {
+			if holding != nil && *holding == userID {
+				kept = true
+				continue
+			}
+			if err := s.releaseFormingSlotsForUserTx(ctx, tx, userID); err != nil {
+				return nil, err
+			}
+		}
+		if !kept {
+			// Nobody had been promised anything yet, so there is no window to keep.
+			if err := clearHoldTx(ctx, tx, fm.ID); err != nil {
+				return nil, err
+			}
+		}
+		return nil, nil
+
+	case len(away) == 1:
+		expired, err := advanceHoldTx(ctx, tx, fm.ID, away[0], holdWindowFor(false))
+		if err != nil {
+			return nil, err
+		}
+		if !expired {
+			// Declining leaves the assignment intact, so the held chair survives to
+			// the next reconcile. Nobody has been told a match formed, so the players
+			// who are present are still simply queuing rather than watching a stall.
+			return nil, nil
+		}
+		// Out of time. Vacating the chair is not ejecting the player: their waiting
+		// row is untouched, so they stay in line for the next table. They were never
+		// told a match formed, so there is nothing to explain to them.
+		if err := s.releaseFormingSlotsForUserTx(ctx, tx, away[0]); err != nil {
+			return nil, err
+		}
+		if err := clearHoldTx(ctx, tx, fm.ID); err != nil {
+			return nil, err
+		}
+		return nil, nil
+	}
+
+	// Everyone is here. Drop any window left over from an absence that resolved,
+	// so the next one starts from scratch rather than inheriting a stale stamp.
+	if err := clearHoldTx(ctx, tx, fm.ID); err != nil {
+		return nil, err
+	}
+
 	session, err := createModeQueueSessionTx(ctx, tx, joinCtx.Game.ID, joinCtx.Mode.ID, joinCtx.ModeQueue.ID)
 	if err != nil {
 		return nil, err

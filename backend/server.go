@@ -16,6 +16,8 @@ import (
 	"github.com/scruffyprodigy/joinquest/internal/avatars"
 	"github.com/scruffyprodigy/joinquest/internal/formingworker"
 	"github.com/scruffyprodigy/joinquest/internal/pubsub"
+	"github.com/scruffyprodigy/joinquest/internal/rating"
+	"github.com/scruffyprodigy/joinquest/internal/ratingworker"
 	"github.com/scruffyprodigy/joinquest/internal/spiritanimal"
 	"github.com/scruffyprodigy/joinquest/internal/store"
 )
@@ -92,6 +94,22 @@ func main() {
 	resolver.FormingWorker = formingworker.New(dataStore, resolver.HandleFormingReconciled, 25*time.Millisecond, formingTick)
 	resolver.FormingWorker.SetProvisionHook(resolver.HandleUnprovisionedSession)
 	go resolver.FormingWorker.Start(context.Background())
+
+	ratingTick := 5 * time.Second
+	if v := strings.TrimSpace(os.Getenv("RATING_REPLAY_INTERVAL")); v != "" {
+		if d, err := time.ParseDuration(v); err == nil && d > 0 {
+			ratingTick = d
+		}
+	}
+	ratingEngine, err := rating.NewWengLin("plackett-luce")
+	if err != nil {
+		log.Fatalf("rating engine: %v", err)
+	}
+	resolver.RatingWorker = ratingworker.New(func() ratingworker.Replayer {
+		return rating.NewReplayer(ratingEngine, dataStore.RatingSource())
+	}, ratingTick)
+	resolver.RatingWorker.SetSweeper(dataStore, 10*time.Minute)
+	go resolver.RatingWorker.Start(context.Background())
 
 	mux := http.NewServeMux()
 

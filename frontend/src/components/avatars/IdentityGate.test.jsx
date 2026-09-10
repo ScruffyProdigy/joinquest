@@ -184,6 +184,19 @@ describe('IdentityGate', () => {
     expect(signIn).not.toHaveClass('hover:underline')
   })
 
+  it('lays the choices out as a bare grid, with no list bullets', async () => {
+    // Tailwind's theme and utilities load without preflight (see tailwind.css), so
+    // a `ul` keeps the browser's disc marker and 40px indent unless it opts out.
+    mockUnauthenticatedSession()
+    renderGate()
+    await waitForGate()
+
+    const list = screen.getByRole('list')
+    expect(list).toHaveClass('list-none')
+    expect(list).toHaveClass('p-0')
+    expect(list).toHaveClass('m-0')
+  })
+
   it('cannot be dismissed without picking an avatar or signing in', async () => {
     // pointerEventsCheck is off because the open dialog blocks pointer events on
     // everything behind it — clicking the scrim is the only outside click available.
@@ -345,5 +358,16 @@ describe('IdentityGate, when only the avatar is missing', () => {
     for (const button of avatarChoices()) {
       expect(button.getAttribute('aria-label')).toMatch(/^[A-Za-z]+ [A-Za-z]+$/)
     }
+  })
+
+  it('lays the faces out as a bare grid, with no list bullets', async () => {
+    mockAuthenticatedSession(FACELESS_MEMBER)
+    renderGate()
+    await waitForHeading('Pick your face')
+
+    const list = screen.getByRole('list')
+    expect(list).toHaveClass('list-none')
+    expect(list).toHaveClass('p-0')
+    expect(list).toHaveClass('m-0')
   })
 })

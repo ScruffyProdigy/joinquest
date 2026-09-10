@@ -63,6 +63,43 @@ func (r *mutationResolver) LeaveQueue(ctx context.Context, queueID string) (bool
 	return true, nil
 }
 
+// SetDocumentVisibility is the resolver for the setDocumentVisibility field.
+func (r *mutationResolver) SetDocumentVisibility(ctx context.Context, documentID string, visible bool) (bool, error) {
+	st, err := r.requireStore()
+	if err != nil {
+		return false, err
+	}
+	userID, err := requireAuthUserID(ctx)
+	if err != nil {
+		return false, err
+	}
+	docID, err := parseUUID(documentID, "document id")
+	if err != nil {
+		return false, err
+	}
+	if err := st.SetDocumentVisibility(ctx, userID, docID, visible); err != nil {
+		return false, err
+	}
+
+	// Coming back is the one transition worth acting on immediately. If this player
+	// was holding a chair on a table that is otherwise ready, that table can fire
+	// now — and waiting for the reconcile tick instead would leave them staring at a
+	// queue screen for longer than the hold they just made it back inside.
+	//
+	// Going away needs no nudge: the hold only starts when the table is complete,
+	// and completing it is already a reconcile.
+	if visible && r.FormingWorker != nil {
+		queueID, waiting, err := st.WaitingModeQueueIDForUser(ctx, userID)
+		if err != nil {
+			return false, err
+		}
+		if waiting {
+			r.FormingWorker.Schedule(queueID)
+		}
+	}
+	return true, nil
+}
+
 // LeaveActiveGame is the resolver for the leaveActiveGame field.
 func (r *mutationResolver) LeaveActiveGame(ctx context.Context) (bool, error) {
 	st, err := r.requireStore()

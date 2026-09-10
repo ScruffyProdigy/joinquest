@@ -365,6 +365,26 @@ type PlayAgainResult struct {
 	Seated     bool   `json:"seated"`
 }
 
+// One player's skill in one game and one mode.
+//
+// Not comparable across games or modes: each is rated separately, and a 30 in one
+// game says nothing about a 30 in another.
+type PlayerSkill struct {
+	// Centre of the estimate, on JoinQuest's skill scale. An unrated player sits at
+	// 25.0 and most rated players land roughly between 0 and 50. Higher is stronger.
+	Rating float64 `json:"rating"`
+	// How unsure we are of `rating`, as one standard deviation on the same scale.
+	// Starts at its widest (about 8.3) for a player we have never rated here and
+	// narrows as evidence accumulates. Treat the estimate as a range, not a point:
+	// `rating` plus or minus this.
+	//
+	// This is the field to branch on when deciding how much weight to give the
+	// number. JoinQuest does not report a match count — a game already knows how
+	// often it has seen a player id, and "new to this game" is not the same question
+	// as "how good is this estimate".
+	Uncertainty float64 `json:"uncertainty"`
+}
+
 // One roster a mode asks the player to pick from — a champion, a kit, a deck.
 type PreQueueGroup struct {
 	Key  string       `json:"key"`
@@ -381,6 +401,19 @@ type PublicPlayer struct {
 	DisplayName  *string       `json:"displayName,omitempty"`
 	AvatarURL    *string       `json:"avatarUrl,omitempty"`
 	AvatarSource *AvatarSource `json:"avatarSource,omitempty"`
+	// This player's skill in one of the calling game's modes.
+	//
+	// Readable only with a game's `serviceToken`. A request carrying a player's own
+	// session gets `null` here, never a number — including a player asking about
+	// themselves. Skill is for a game to tune itself with (pick AI difficulty,
+	// balance sides); it is not something players are shown, and JoinQuest does not
+	// show it to them.
+	//
+	// The mode must be one this game currently declares, and the rating returned is
+	// always this game's own — the calling `serviceToken` decides which game that
+	// is, so there is no way to read a player's standing anywhere else in the
+	// catalog.
+	Skill *PlayerSkill `json:"skill,omitempty"`
 }
 
 // Whether this player can actually be reached by a notification while away from

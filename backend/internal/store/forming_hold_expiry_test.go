@@ -1,0 +1,161 @@
+package store
+
+import (
+	"context"
+	"testing"
+	"time"
+
+	"github.com/google/uuid"
+)
+
+// backdateHold ages the running hold so expiry can be tested without sleeping.
+func backdateHold(t *testing.T, st *Store, ctx context.Context, queueID uuid.UUID, by time.Duration) {
+	t.Helper()
+	res, err := st.db.ExecContext(ctx, `
+		UPDATE forming_matches
+		SET hold_started_at = hold_started_at - $2::interval
+		WHERE mode_queue_id = $1 AND status = $3 AND hold_started_at IS NOT NULL
+	`, queueID, pgInterval(by), FormingMatchStatusFilling)
+	if err != nil {
+		t.Fatalf("backdate hold: %v", err)
+	}
+	if n, _ := res.RowsAffected(); n != 1 {
+		t.Fatalf("backdate hold touched %d rows, want 1 — no hold was running, so this test proves nothing", n)
+	}
+}
+
+// A hold that never ends is a wedged queue: filling matches do not expire, so a
+// chair held for someone who never comes back would block that mode queue for
+// good.
+func TestHeldChairIsVacatedOnceTheWindowExpires(t *testing.T) {
+	st := openTestStore(t)
+	cleaner := st.NewTestCleaner(t)
+	ctx := context.Background()
+	resetDemoQueue(t, st, ctx)
+
+	away := newPresenceUser(t, st, cleaner, ctx)
+	joinAndPlace(t, st, ctx, away)
+	goAway(t, st, ctx, away)
+
+	present := newPresenceUser(t, st, cleaner, ctx)
+	if _, err := st.JoinModeQueue(ctx, DemoDefaultQueueID, present, "", nil); err != nil {
+		t.Fatalf("join second player: %v", err)
+	}
+	if rec := mustReconcileForming(t, st, ctx, DemoDefaultQueueID); rec.Fired {
+		t.Fatal("fixture fired instead of holding")
+	}
+
+	backdateHold(t, st, ctx, DemoDefaultQueueID, HoldUnreachableFloor+time.Second)
+	mustReconcileForming(t, st, ctx, DemoDefaultQueueID)
+
+	if n := assignedSeatCount(t, st, ctx, away); n != 0 {
+		t.Fatalf("expired hold left the chair assigned (%d seats), want it vacated for the waiting pool", n)
+	}
+	// Vacating the chair is not ejecting the player. They were never told a match
+	// formed, so there is nothing to explain and nothing to requeue for — they are
+	// simply still in line.
+	if n := waitingRowCount(t, st, ctx, away); n != 1 {
+		t.Fatalf("expired hold removed the player from the queue (%d waiting rows), want them still queued", n)
+	}
+}
+
+// Holding two chairs at once is what makes a "come back and keep your spot"
+// notification falsifiable: tell both, one returns, the other does not, and the
+// returner arrives to find no match. One held chair cannot fail that way, because
+// the returning player's arrival is itself the fire condition.
+//
+// Four seats, because both players have to be seated while present -- an away
+// player is never placed on a forming match in the first place.
+func TestTwoAwayPlayersVacateBothRatherThanHolding(t *testing.T) {
+	st := openTestStore(t)
+	cleaner := st.NewTestCleaner(t)
+	ctx := context.Background()
+	queueID := newFourSeatQueue(t, st, cleaner, ctx)
+
+	first := newPresenceUser(t, st, cleaner, ctx)
+	second := newPresenceUser(t, st, cleaner, ctx)
+	joinPartyAndPlace(t, st, ctx, queueID, first, second)
+	goAway(t, st, ctx, first)
+	goAway(t, st, ctx, second)
+
+	third := newPresenceUser(t, st, cleaner, ctx)
+	fourth := newPresenceUser(t, st, cleaner, ctx)
+	joinPartyAndPlace(t, st, ctx, queueID, third, fourth)
+
+	if rec := mustReconcileForming(t, st, ctx, queueID); rec.Fired {
+		t.Fatal("match fired with two away players in it")
+	}
+	for name, userID := range map[string]uuid.UUID{"first": first, "second": second} {
+		if n := assignedSeatCount(t, st, ctx, userID); n != 0 {
+			t.Fatalf("%s away player kept their chair (%d seats); two holds should vacate both", name, n)
+		}
+		if n := waitingRowCount(t, st, ctx, userID); n != 1 {
+			t.Fatalf("%s away player was dropped from the queue (%d waiting rows)", name, n)
+		}
+	}
+}
+
+// The window belongs to the absence being waited out, not to the match. If one
+// player returns and a different one wanders off, the second player gets their
+// own full window rather than inheriting however much of the first was left.
+func TestHoldWindowRestartsWhenADifferentPlayerGoesAway(t *testing.T) {
+	st := openTestStore(t)
+	cleaner := st.NewTestCleaner(t)
+	ctx := context.Background()
+	resetDemoQueue(t, st, ctx)
+
+	first := newPresenceUser(t, st, cleaner, ctx)
+	joinAndPlace(t, st, ctx, first)
+	goAway(t, st, ctx, first)
+
+	second := newPresenceUser(t, st, cleaner, ctx)
+	if _, err := st.JoinModeQueue(ctx, DemoDefaultQueueID, second, "", nil); err != nil {
+		t.Fatalf("join second player: %v", err)
+	}
+	mustReconcileForming(t, st, ctx, DemoDefaultQueueID)
+
+	// Age the first player's hold to the brink, then swap who is absent.
+	backdateHold(t, st, ctx, DemoDefaultQueueID, HoldUnreachableFloor-time.Second)
+	comeBack(t, st, ctx, first)
+	goAway(t, st, ctx, second)
+
+	mustReconcileForming(t, st, ctx, DemoDefaultQueueID)
+	if n := assignedSeatCount(t, st, ctx, second); n != 1 {
+		t.Fatalf("second player's chair was vacated on the first player's stale window (%d seats)", n)
+	}
+}
+
+// A window already running was very likely announced to that player -- "your game
+// is nearly ready, come back to keep your spot". Vacating them because somebody
+// else then wandered off makes that message retroactively false, which is the one
+// thing it cannot survive. So the running hold is kept and only the new absence
+// gives up its chair.
+func TestASecondAbsenceDoesNotEvictThePlayerAlreadyBeingHeldFor(t *testing.T) {
+	st := openTestStore(t)
+	cleaner := st.NewTestCleaner(t)
+	ctx := context.Background()
+	queueID := newFourSeatQueue(t, st, cleaner, ctx)
+
+	held := newPresenceUser(t, st, cleaner, ctx)
+	later := newPresenceUser(t, st, cleaner, ctx)
+	joinPartyAndPlace(t, st, ctx, queueID, held, later)
+
+	// Away before the table completes, so completing it starts a window for `held`
+	// rather than firing.
+	goAway(t, st, ctx, held)
+
+	third := newPresenceUser(t, st, cleaner, ctx)
+	fourth := newPresenceUser(t, st, cleaner, ctx)
+	joinPartyAndPlace(t, st, ctx, queueID, third, fourth)
+
+	// A second player wanders off while the first is still being waited for.
+	goAway(t, st, ctx, later)
+	mustReconcileForming(t, st, ctx, queueID)
+
+	if n := assignedSeatCount(t, st, ctx, held); n != 1 {
+		t.Fatalf("the player already being held for lost their chair (%d seats); a promise already sent must stand", n)
+	}
+	if n := assignedSeatCount(t, st, ctx, later); n != 0 {
+		t.Fatalf("the newly absent player kept their chair (%d seats), so two chairs are held at once", n)
+	}
+}

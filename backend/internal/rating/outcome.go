@@ -42,6 +42,14 @@ type Participant struct {
 	// groups named in ModeShape.RatedPreQueueGroups produce entrants; other
 	// entries here are ignored.
 	PreQueue map[string][]string
+
+	// Excluded marks a participant who took part but must not be rated —
+	// a player the lobby knows dropped out for a reason that says nothing
+	// about skill. They are removed before sides are formed, so they neither
+	// gain nor lose rating and neither help nor hurt the side they were on.
+	// The caller decides which reasons qualify; this package does not know
+	// what a disconnect is.
+	Excluded bool
 }
 
 // MatchOutcome is one finished match.
@@ -49,11 +57,37 @@ type MatchOutcome struct {
 	Participants []Participant
 	// CooperativeSuccess is set only for cooperative modes. Nil elsewhere.
 	CooperativeSuccess *bool
+	// ScenarioKeys names what the crew faced, as the game reported it —
+	// "hard", "night", "wave-12". Each becomes one entrant on the opposing
+	// side, and the engine learns each key's strength from how crews fare
+	// against it; the platform assigns the ratings, the game only supplies
+	// the identifiers. Several keys compose the way teammates do, so a game
+	// can report orthogonal facets and each carries its own contribution.
+	// Required for a cooperative mode and ignored elsewhere.
+	ScenarioKeys []string
 }
 
-// scenarioEntrantKey names the single opponent entity a cooperative match's
-// crew is rated against.
-const scenarioEntrantKey = "scenario"
+// scenarioEntrantPrefix namespaces a cooperative scenario key inside
+// nonplayer_ratings.entity_key, alongside "seat:" and "prequeue:".
+const scenarioEntrantPrefix = "scenario:"
+
+// scenarioEntrants turns the reported scenario keys into the entrants of the
+// crew's opposing side, deduplicated and sorted so the output is stable for
+// replay regardless of the order the game listed them in.
+func scenarioEntrants(keys []string) []Entrant {
+	seen := make(map[string]bool, len(keys))
+	entrants := make([]Entrant, 0, len(keys))
+	for _, k := range keys {
+		key := scenarioEntrantPrefix + k
+		if seen[key] {
+			continue
+		}
+		seen[key] = true
+		entrants = append(entrants, Entrant{Key: key})
+	}
+	sort.Slice(entrants, func(i, j int) bool { return entrants[i].Key < entrants[j].Key })
+	return entrants
+}
 
 // BuildSides translates a finished match into the sides the rating engine
 // consumes. It is the only place that knows what a game, a seat, a team or a
@@ -76,9 +110,23 @@ func BuildSides(shape ModeShape, outcome MatchOutcome) ([]Side, error) {
 	if shape.Cooperative && outcome.CooperativeSuccess == nil {
 		return nil, fmt.Errorf("rating: cooperative match outcome has no success result")
 	}
+	if shape.Cooperative && len(outcome.ScenarioKeys) == 0 {
+		return nil, fmt.Errorf("rating: cooperative match outcome reported no scenario keys")
+	}
+
+	rated := make([]Participant, 0, len(outcome.Participants))
+	for _, p := range outcome.Participants {
+		if p.Excluded {
+			continue
+		}
+		rated = append(rated, p)
+	}
+	if len(rated) == 0 {
+		return nil, fmt.Errorf("rating: every participant is excluded from rating")
+	}
 
 	asymmetric := distinctCount(shape.SeatClasses) > 1
-	groups := groupParticipants(shape, outcome.Participants)
+	groups := groupParticipants(shape, rated)
 
 	var ranks map[string]int
 	if shape.Cooperative {
@@ -116,9 +164,17 @@ func BuildSides(shape ModeShape, outcome MatchOutcome) ([]Side, error) {
 		// always the last element regardless of whether it out-ranks the
 		// crew, so a failed match doesn't reorder which side is "the crew".
 		sides = append(sides, Side{
-			Entrants: []Entrant{{Key: scenarioEntrantKey}},
+			Entrants: scenarioEntrants(outcome.ScenarioKeys),
 			Rank:     scenarioRank,
 		})
+	}
+
+	// Fewer than two sides is not a match the engine can learn anything from:
+	// Weng-Lin rates sides against each other, and a lone side has no
+	// opponent. This is reachable whenever exclusions empty out every side
+	// but one — a 1v1 where the loser disconnected, say.
+	if len(sides) < 2 {
+		return nil, fmt.Errorf("rating: match has %d rateable side(s), want at least 2", len(sides))
 	}
 
 	return sides, nil
@@ -204,6 +260,7 @@ func deriveRanks(groups map[string][]Participant) (map[string]int, error) {
 		}
 
 	case hasWinner:
+		winningSides := 0
 		for key, ps := range groups {
 			rank := 1
 			for _, p := range ps {
@@ -212,7 +269,22 @@ func deriveRanks(groups map[string][]Participant) (map[string]int, error) {
 					break
 				}
 			}
+			if rank == 0 {
+				winningSides++
+			}
 			ranks[key] = rank
+		}
+		// Unlike equal placements, which state a draw, "everybody won" states
+		// no ordering: nobody was better than anybody. Rating it would move
+		// sigma on a report that carries no information.
+		//
+		// Requiring more than one group keeps this from claiming the far
+		// commoner single-side case, where it would send an operator hunting
+		// a phantom all-winner report: exclusions routinely leave one
+		// winner-marked group (a 1v1 whose loser disconnected), and that is
+		// BuildSides' side-count refusal below, which says so accurately.
+		if len(groups) > 1 && winningSides == len(groups) {
+			return nil, fmt.Errorf("rating: every side is marked a winner, so the outcome carries no ranking")
 		}
 
 	default:

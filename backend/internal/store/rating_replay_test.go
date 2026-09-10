@@ -45,6 +45,21 @@ func TestReplayOverRealHistoryIsReproducible(t *testing.T) {
 		t.Errorf("seat:P1 = %+v (present=%v), want MatchesPlayed 3", got, ok)
 	}
 
+	// last_rated_at must be stamped from the newest input's rated_at (see
+	// ratingStoreAdapter.ListInputs/SaveAll), not from wall-clock time at the
+	// moment the replay ran. seedThreeFinishedMatches spaces its three inputs
+	// a second apart, so a wall-clock stamp and the newest-input stamp would
+	// only coincide by the test racing the clock — they're asserted equal
+	// here, not just close, which a time.Now() stamp could not reliably
+	// satisfy. Without this assertion, a future refactor could silently
+	// revert to time.Now() and the only symptom would be Task 6's sweep
+	// (which compares max-input against last-rated) looping forever.
+	lastRatedAt := loadPlayerLastRatedAt(t, st, gameID, modeKey, userA)
+	newestInputAt := maxRatingInputRatedAt(t, st, gameID, modeKey)
+	if !lastRatedAt.Equal(newestInputAt) {
+		t.Errorf("player_ratings.last_rated_at = %v, want newest input's rated_at %v", lastRatedAt, newestInputAt)
+	}
+
 	// No explicit ClearRatings here: SaveAll (via SaveRatings) clears the
 	// mode's cached ratings in the same transaction as it writes, so a
 	// second replay is atomically a full recompute without the caller having
@@ -245,6 +260,78 @@ func TestListInputsDeduplicatesEntrantKeysWithinASide(t *testing.T) {
 	if side0.Entrants[0].Key != dupKey {
 		t.Errorf("side 0 entrant key = %q, want %q", side0.Entrants[0].Key, dupKey)
 	}
+}
+
+// TestSaveAllWithoutListInputsErrors proves the JQ-241 guard: a bare
+// ratingStoreAdapter — matchesPlayed still nil because ListInputs was never
+// called on it — must refuse SaveAll rather than silently write zero
+// matches-played for every entrant. This needs no database at all: the guard
+// fires before SaveAll does anything else.
+func TestSaveAllWithoutListInputsErrors(t *testing.T) {
+	a := &ratingStoreAdapter{}
+	ctx := context.Background()
+
+	err := a.SaveAll(ctx, uuid.New().String(), "arena", "engine", nil, nil)
+	if err == nil {
+		t.Fatal("SaveAll without a preceding ListInputs must error, got nil")
+	}
+}
+
+// TestSaveAllAfterListInputsOverEmptyLogSucceeds proves the guard is keyed on
+// matchesPlayed being nil, not on it being empty: ListInputs over a mode with
+// no rating inputs at all sets matchesPlayed to a non-nil empty map (see the
+// `counts := make(map[string]int)` in ListInputs, unconditionally assigned to
+// a.matchesPlayed even when the input log is empty), and SaveAll must accept
+// that — an empty log is a legitimate mode with nothing rated yet, not a
+// misuse of the adapter.
+func TestSaveAllAfterListInputsOverEmptyLogSucceeds(t *testing.T) {
+	st := openTestStore(t)
+	cleaner := st.NewTestCleaner(t)
+	ctx := context.Background()
+
+	game, mode := setupDuelMode(t, st, cleaner)
+
+	adapter := st.RatingSource()
+	inputs, err := adapter.ListInputs(ctx, game.ID.String(), mode.ModeKey)
+	if err != nil {
+		t.Fatalf("ListInputs: %v", err)
+	}
+	if len(inputs) != 0 {
+		t.Fatalf("expected no rating inputs for a freshly created mode, got %d", len(inputs))
+	}
+
+	if err := adapter.SaveAll(ctx, game.ID.String(), mode.ModeKey, "engine", nil, nil); err != nil {
+		t.Fatalf("SaveAll after ListInputs over an empty log must succeed, got: %v", err)
+	}
+}
+
+// loadPlayerLastRatedAt reads player_ratings.last_rated_at directly, since
+// LoadPlayerRatings' RatingValue doesn't carry it (nothing outside this test
+// needs it yet).
+func loadPlayerLastRatedAt(t *testing.T, st *Store, gameID uuid.UUID, modeKey string, userID uuid.UUID) time.Time {
+	t.Helper()
+	var at time.Time
+	err := st.db.QueryRowContext(context.Background(), `
+		SELECT last_rated_at FROM player_ratings WHERE user_id = $1 AND game_id = $2 AND mode_key = $3
+	`, userID, gameID, modeKey).Scan(&at)
+	if err != nil {
+		t.Fatalf("query player_ratings.last_rated_at: %v", err)
+	}
+	return at
+}
+
+// maxRatingInputRatedAt reads the newest rated_at across a mode's rating
+// input log directly from rating_match_inputs.
+func maxRatingInputRatedAt(t *testing.T, st *Store, gameID uuid.UUID, modeKey string) time.Time {
+	t.Helper()
+	var at time.Time
+	err := st.db.QueryRowContext(context.Background(), `
+		SELECT MAX(rated_at) FROM rating_match_inputs WHERE game_id = $1 AND mode_key = $2
+	`, gameID, modeKey).Scan(&at)
+	if err != nil {
+		t.Fatalf("query MAX(rating_match_inputs.rated_at): %v", err)
+	}
+	return at
 }
 
 // matchAndAppendInput matches userA against userB through queueID and

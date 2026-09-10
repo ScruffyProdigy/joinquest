@@ -47,6 +47,14 @@ models:
         resolver: true
       waitEstimatesByPath:
         resolver: true
+  PublicPlayer:
+    fields:
+      # Forced to a resolver, not bound to a model field. The mode argument
+      # needs one, and so does the service-auth gate: PublicPlayer is reached
+      # from player-facing types too (Table.user, MatchSeat.user), so the check
+      # has to sit on this field rather than on the paths that lead to it.
+      skill:
+        resolver: true
   Session:
     fields:
       game:
