@@ -304,7 +304,11 @@ func TestStartNeverRunsConcurrentDrains(t *testing.T) {
 	defer cancel()
 	w.Start(ctx)
 
-	if got := atomic.LoadInt32(&maxInFlight); got > 1 {
-		t.Fatalf("max concurrent replay calls observed = %d, want at most 1 — the sweep and tick arms must never drain concurrently", got)
+	maxObserved := atomic.LoadInt32(&maxInFlight)
+	if maxObserved > 1 {
+		t.Fatalf("max concurrent replay calls observed = %d, want at most 1 — the sweep and tick arms must never drain concurrently", maxObserved)
+	}
+	if maxObserved == 0 {
+		t.Fatalf("max concurrent replay calls observed = 0, but draining should have occurred")
 	}
 }

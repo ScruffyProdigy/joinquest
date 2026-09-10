@@ -307,14 +307,11 @@ func clearRatingsTx(ctx context.Context, tx *sql.Tx, gameID uuid.UUID, modeKey s
 // an older session keeps its original rated_at and so is invisible here; it
 // is scheduled directly by the result path instead.
 //
-// The join is against player_ratings only, not nonplayer_ratings: every
-// rateable match has at least one player entrant (BuildSides refuses an
-// outcome with fewer than two rateable sides before a row ever reaches
-// rating_match_inputs — see appendRatingInputForResultTx), so a mode that
-// appears on the input side of this query always has a player_ratings row to
-// compare against once it has been replayed at all. A mode replayed zero
-// times still reports correctly: the LEFT JOIN's r.last_rated is NULL, which
-// the WHERE clause treats as needing replay.
+// The join is against player_ratings only, not nonplayer_ratings because
+// every stored input carries at least one player: entrant (BuildSides/buildSide),
+// so any replay of a mode in this query writes at least one player_ratings row;
+// a NULL therefore means "not currently cached" — never replayed, or invalidated
+// by ClearRatings or a user merge — and one replay clears it either way.
 func (s *Store) ListModesNeedingReplay(ctx context.Context) ([]RatedMode, error) {
 	rows, err := s.db.QueryContext(ctx, `
 		SELECT i.game_id, i.mode_key

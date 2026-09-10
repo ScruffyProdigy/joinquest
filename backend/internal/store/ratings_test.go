@@ -647,7 +647,8 @@ func TestRecordMatchResultRatesForfeitAsALoss(t *testing.T) {
 // actually appends the unapplied input.
 func TestListModesNeedingReplayFindsUnappliedInputs(t *testing.T) {
 	st, sessionID, gameID, users := newCompetitiveSessionFixture(t, 2)
-	if _, err := st.RecordMatchResult(context.Background(), sessionID, "COMPLETED", users[:1], nil, time.Now()); err != nil {
+	rated, err := st.RecordMatchResult(context.Background(), sessionID, "COMPLETED", users[:1], nil, time.Now())
+	if err != nil {
 		t.Fatalf("RecordMatchResult: %v", err)
 	}
 	// An input has been appended and nothing has replayed it yet.
@@ -659,7 +660,7 @@ func TestListModesNeedingReplayFindsUnappliedInputs(t *testing.T) {
 
 	found := false
 	for _, m := range modes {
-		if m.GameID == gameID {
+		if m.GameID == gameID && m.ModeKey == rated.ModeKey {
 			found = true
 		}
 	}
@@ -674,7 +675,8 @@ func TestListModesNeedingReplayFindsUnappliedInputs(t *testing.T) {
 // perpetual re-replay.
 func TestListModesNeedingReplaySkipsAppliedModes(t *testing.T) {
 	st, sessionID, gameID, users := newCompetitiveSessionFixture(t, 2)
-	if _, err := st.RecordMatchResult(context.Background(), sessionID, "COMPLETED", users[:1], nil, time.Now()); err != nil {
+	rated, err := st.RecordMatchResult(context.Background(), sessionID, "COMPLETED", users[:1], nil, time.Now())
+	if err != nil {
 		t.Fatalf("RecordMatchResult: %v", err)
 	}
 
@@ -683,7 +685,7 @@ func TestListModesNeedingReplaySkipsAppliedModes(t *testing.T) {
 		t.Fatalf("NewWengLin: %v", err)
 	}
 	replayer := rating.NewReplayer(engine, st.RatingSource())
-	modeKey := "arena" // whatever the fixture uses
+	modeKey := rated.ModeKey
 	if _, err := replayer.ReplayMode(context.Background(), gameID.String(), modeKey); err != nil {
 		t.Fatalf("ReplayMode: %v", err)
 	}
