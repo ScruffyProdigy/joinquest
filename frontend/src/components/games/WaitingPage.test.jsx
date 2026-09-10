@@ -172,4 +172,24 @@ describe('WaitingPage', () => {
 
     await waitFor(() => expect(window.location.pathname).toBe('/'))
   })
+
+  it('routes away when a LEFT update clears an intent it had been showing as queued', async () => {
+    sessionStorage.setItem('lobby.waitingReturnPath', '/games/word-hunt')
+    setIntentState({ loading: true })
+    const { rerender } = render(<WaitingPage intent={intentState} />)
+    expect(window.location.pathname).toBe('/waiting')
+
+    // The initial fetch resolves: the player is still queued.
+    setIntentState({ activeIntent: waitingIntent })
+    rerender(<WaitingPage intent={intentState} />)
+    expect(screen.getByRole('heading', { name: 'Finding players…' })).toBeInTheDocument()
+
+    // A restored tab gets a LEFT update (the server evicted it while frozen);
+    // useActiveIntent's refresh settles to no active intent at all.
+    setIntentState({ activeIntent: null })
+    rerender(<WaitingPage intent={intentState} />)
+
+    await waitFor(() => expect(window.location.pathname).toBe('/games/word-hunt'))
+    expect(screen.queryByRole('heading', { name: 'Finding players…' })).toBeNull()
+  })
 })

@@ -533,10 +533,20 @@ func (r *subscriptionResolver) QueueUpdated(ctx context.Context, queueID string)
 		}
 	}
 	initial := queueUpdateFromView(view, initialLaunchURL)
-	if initial != nil {
-		if err := r.enrichQueueUpdateGaps(ctx, initial); err != nil {
-			return nil, err
+	if initial == nil {
+		// The subscriber is not in this queue. Saying nothing leaves a restored tab
+		// claiming it is still queued — which is exactly what happens to a player
+		// evicted while their page was frozen. Tell them instead; the client's
+		// existing LEFT handling routes them out.
+		initial = &model.QueueUpdate{
+			GameID:      gameMode.GameID.String(),
+			QueueID:     modeQueueID.String(),
+			Status:      model.QueueStatusLeft,
+			FormingGaps: []*model.QueuePathGap{},
 		}
+	}
+	if err := r.enrichQueueUpdateGaps(ctx, initial); err != nil {
+		return nil, err
 	}
 
 	messages, unsubscribe, err := r.PubSub.Subscribe(ctx, pubsub.UserQueueChannel(userID.String()))

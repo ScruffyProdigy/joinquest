@@ -521,10 +521,14 @@ func TestQueueSubscriptionNotifiesWaitingPlayerOnMatch(t *testing.T) {
 	joinQuery := `mutation Join($id: ID!) { joinQueue(queueId: $id) { queued queuedCount } }`
 	vars := map[string]any{"id": demoDefaultQueueID}
 
+	// Join before subscribing, mirroring the real client (it only opens this
+	// subscription once it already has a queueId). JQ-216 made the resolver send an
+	// initial LEFT payload for a subscriber who isn't queued yet, so subscribing
+	// first here would hand back LEFT instead of the WAITING this test checks for.
+	postGraphQL(t, env.Handler, joinQuery, vars, cookieA)
+
 	conn := connectGraphQLWS(t, graphQLWSURL(env.Server.URL), "http://localhost:5173", bearerA)
 	subID := subscribeQueueUpdated(t, conn, demoDefaultQueueID)
-
-	postGraphQL(t, env.Handler, joinQuery, vars, cookieA)
 
 	first := nextQueueUpdatePayload(t, conn, subID, 5*time.Second)
 	if first["status"] != "WAITING" {
