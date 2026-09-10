@@ -22,18 +22,34 @@ import { Button } from '../ui/button'
  * is gated on the tab actually being in front: navigating a tab nobody is watching
  * is hostile, and the player who left is JQ-199's seat-hold problem, not a reason to
  * yank the browser. A held countdown always keeps the manual launch link.
+ *
+ * `immediate` drops the beat and the countdown for a group that started together.
+ * The ceremony is worth it when a match forms out of a queue, because that is news
+ * to the player; in a friend room the whole group is already watching the Start
+ * button, and a countdown does nothing but strand them behind whoever pressed it.
+ * The tab gate stays, because it is about the browser rather than about the wait.
  */
-export default function LaunchStep({ activeIntent, activeTableSeat, busy, leaveError, onLeave }) {
+export default function LaunchStep({
+  activeIntent,
+  activeTableSeat,
+  busy,
+  leaveError,
+  onLeave,
+  immediate = false,
+}) {
   const launchUrl = resolveIntentLaunchUrl(activeIntent, activeTableSeat)
-  const [ready, setReady] = useState(false)
-  const [secondsLeft, setSecondsLeft] = useState(LAUNCH_COUNTDOWN_SECONDS)
+  const [ready, setReady] = useState(immediate)
+  const [secondsLeft, setSecondsLeft] = useState(immediate ? 0 : LAUNCH_COUNTDOWN_SECONDS)
   const [held, setHeld] = useState(false)
   const [leaving, setLeaving] = useState(false)
 
   useEffect(() => {
+    if (immediate) {
+      return undefined
+    }
     const timer = window.setTimeout(() => setReady(true), MATCH_FOUND_BEAT_MS)
     return () => window.clearTimeout(timer)
-  }, [])
+  }, [immediate])
 
   // No launch URL yet means the provision is still in flight: the clock waits for it
   // rather than running down to a dead end.
@@ -60,6 +76,12 @@ export default function LaunchStep({ activeIntent, activeTableSeat, busy, leaveE
 
   useEffect(() => {
     if (!armed || secondsLeft > 0) {
+      return
+    }
+    // The last word on whether to navigate, so that a launch with no countdown in
+    // front of it is gated on the tab too, not only the ticks of one.
+    if (!isTabVisible()) {
+      setHeld(true)
       return
     }
     navigateToLaunchUrl(launchUrl)

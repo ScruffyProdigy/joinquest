@@ -53,6 +53,10 @@ export default function GroupPage({ intent }) {
     button's result only ever existed for whoever pressed it. This is checked before
     the table, because the per-user seat event and the room-wide table event race:
     the seat saying "started" is the answer either way.
+
+    `immediate` because a group goes in together or not at all: the player who pressed
+    Start rides the mutation's own result straight into the game, so anyone made to sit
+    out a countdown arrives to find their friends already there.
   */
   if (hasReadyToPlayIntent(activeIntent, activeTableSeat)) {
     return (
@@ -63,6 +67,7 @@ export default function GroupPage({ intent }) {
           busy={intentBusy}
           leaveError={leaveError}
           onLeave={leaveActiveGame}
+          immediate
         />
       </main>
     )

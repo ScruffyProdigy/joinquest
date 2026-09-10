@@ -24,6 +24,12 @@ vi.mock('../../lib/games', async (importOriginal) => ({
   fetchModeQueueOptions: (...args) => fetchModeQueueOptions(...args),
 }))
 
+const navigateToLaunchUrl = vi.fn()
+vi.mock('../../lib/launch', async (importOriginal) => ({
+  ...(await importOriginal()),
+  navigateToLaunchUrl: (...args) => navigateToLaunchUrl(...args),
+}))
+
 const navigateTo = vi.fn()
 vi.mock('../../lib/usePathname', () => ({
   navigateTo: (...args) => navigateTo(...args),
@@ -406,6 +412,17 @@ describe('GroupPage when the game starts', () => {
     seatDisplayName: 'Player · 2',
     joinUrl: 'https://game.example/play?token=friend',
   }
+
+  // Nobody in a friend room is surprised the game started — they were watching the
+  // button. Waiting out the queue's countdown only strands them behind the host.
+  it('launches the group without the queue\'s countdown', () => {
+    currentRoom = { ...makeRoom(makeTable()), tables: [] }
+
+    render(<GroupPage intent={makeIntent({ activeTableSeat: startedSeat })} />)
+
+    expect(navigateToLaunchUrl).toHaveBeenCalledWith(startedSeat.joinUrl)
+    expect(screen.queryByText(/Entering in/)).toBeNull()
+  })
 
   it('takes a player who did not press Start into the match their seat says began', () => {
     currentRoom = { ...makeRoom(makeTable()), tables: [] }
