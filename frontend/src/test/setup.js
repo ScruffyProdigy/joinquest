@@ -1,6 +1,6 @@
 import '@testing-library/jest-dom'
-import { configure } from '@testing-library/react'
-import { beforeEach, vi } from 'vitest'
+import { configure, screen, waitFor } from '@testing-library/react'
+import { beforeEach, expect, vi } from 'vitest'
 import { clearSubscriptionAuthCache } from '../lib/queue'
 
 // findBy*/waitFor default to 1s, which is too tight for the catalog's fetch chain
@@ -269,6 +269,20 @@ function createFetchMock(handlers) {
       // to a mock that keeps returning one `me` reference.
       json: async () => ({ data: structuredClone(data) }),
     }
+  })
+}
+
+/**
+ * Waits for an open dialog to be clickable, not just on screen.
+ *
+ * A modal dialog switches pointer events off for the whole body, then switches
+ * them back on for itself one render later. A test that waits only for the
+ * dialog's text can land in that gap, where user-event refuses to click
+ * anything inside and fails with `pointer-events: none`.
+ */
+export async function waitForClickableDialog() {
+  await waitFor(() => {
+    expect(window.getComputedStyle(screen.getByRole('dialog')).pointerEvents).not.toBe('none')
   })
 }
 
