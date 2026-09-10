@@ -9,7 +9,7 @@ import (
 	"github.com/scruffyprodigy/joinquest/internal/gameclient"
 )
 
-func registerModeForSkillMatching(t *testing.T, st *Store, ctx context.Context) *GameMode {
+func registerModeForSkillMatching(t *testing.T, st *Store, cleaner *TestCleaner, ctx context.Context) *GameMode {
 	t.Helper()
 
 	slug := "skillsw-" + uuid.NewString()
@@ -33,6 +33,7 @@ func registerModeForSkillMatching(t *testing.T, st *Store, ctx context.Context) 
 	if err != nil {
 		t.Fatalf("RegisterGame: %v", err)
 	}
+	cleaner.TrackGame(result.Game.ID)
 	modes, err := st.ListGameModesByGameID(ctx, result.Game.ID)
 	if err != nil {
 		t.Fatalf("ListGameModesByGameID: %v", err)
@@ -49,10 +50,10 @@ func registerModeForSkillMatching(t *testing.T, st *Store, ctx context.Context) 
 // out to be weak or meaningless should be able to opt out however busy it is.
 func TestANewModeHasSkillMatchingEnabled(t *testing.T) {
 	st := openTestStore(t)
-	st.NewTestCleaner(t)
+	cleaner := st.NewTestCleaner(t)
 	ctx := context.Background()
 
-	mode := registerModeForSkillMatching(t, st, ctx)
+	mode := registerModeForSkillMatching(t, st, cleaner, ctx)
 
 	if !mode.SkillMatchingEnabled {
 		t.Errorf("a newly registered mode has SkillMatchingEnabled = false, want true")
@@ -61,10 +62,10 @@ func TestANewModeHasSkillMatchingEnabled(t *testing.T) {
 
 func TestSkillMatchingCanBeDisabledPerMode(t *testing.T) {
 	st := openTestStore(t)
-	st.NewTestCleaner(t)
+	cleaner := st.NewTestCleaner(t)
 	ctx := context.Background()
 
-	mode := registerModeForSkillMatching(t, st, ctx)
+	mode := registerModeForSkillMatching(t, st, cleaner, ctx)
 
 	if _, err := st.db.ExecContext(ctx, `
 		UPDATE game_modes SET skill_matching_enabled = false WHERE id = $1
