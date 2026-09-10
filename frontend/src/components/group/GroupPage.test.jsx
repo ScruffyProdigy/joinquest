@@ -370,3 +370,72 @@ describe('GroupPage', () => {
     })
   })
 })
+
+/**
+ * Starting the game does not end the group — it is the point of it. The table leaves
+ * `room.tables` the instant it starts (`Room.tables` only returns forming tables), so
+ * every player except the one who pressed Start used to watch the page they were
+ * waiting on turn into "This group has ended."
+ */
+describe('GroupPage when the game starts', () => {
+  function makeIntent(overrides = {}) {
+    return {
+      activeIntent: null,
+      activeTableSeat: null,
+      loading: false,
+      busy: false,
+      leaveError: null,
+      handleLeave: vi.fn(),
+      ...overrides,
+    }
+  }
+
+  const startedSeat = {
+    tableId: 'table-1',
+    status: 'started',
+    gameName: 'Word Hunt',
+    modeName: 'Arena',
+    seatDisplayName: 'Player · 2',
+    joinUrl: 'https://game.example/play?token=friend',
+  }
+
+  it('takes a player who did not press Start into the match their seat says began', () => {
+    currentRoom = { ...makeRoom(makeTable()), tables: [] }
+
+    render(<GroupPage intent={makeIntent({ activeTableSeat: startedSeat })} />)
+
+    expect(screen.getByRole('link', { name: 'Launch Now' })).toHaveAttribute(
+      'href',
+      startedSeat.joinUrl,
+    )
+    expect(screen.queryByText('This group has ended.')).not.toBeInTheDocument()
+  })
+
+  // The per-user seat event and the room-wide table event race, so the seat may say
+  // "started" while the table is still in the room snapshot. The launch moment wins.
+  it('launches even when the started table has not left the room snapshot yet', () => {
+    currentRoom = makeRoom(makeTable())
+
+    render(<GroupPage intent={makeIntent({ activeTableSeat: startedSeat })} />)
+
+    expect(screen.getByRole('link', { name: 'Launch Now' })).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: /claim/i })).not.toBeInTheDocument()
+  })
+
+  // The table disappearing is not evidence the group ended: the seat has to answer first.
+  it('does not declare the group over while the seat is still being resolved', () => {
+    currentRoom = { ...makeRoom(makeTable()), tables: [] }
+
+    render(<GroupPage intent={makeIntent({ loading: true })} />)
+
+    expect(screen.queryByText('This group has ended.')).not.toBeInTheDocument()
+  })
+
+  it('still says the group ended once the seat has answered and there is none', () => {
+    currentRoom = { ...makeRoom(makeTable()), tables: [] }
+
+    render(<GroupPage intent={makeIntent()} />)
+
+    expect(screen.getByText('This group has ended.')).toBeInTheDocument()
+  })
+})

@@ -57,6 +57,8 @@ export function ActiveRoomProvider({ children, pendingInviteCode = null }) {
   const [lastReadMessageId, setLastReadMessageId] = useState(null)
   const [memberHint, setMemberHint] = useState(() => readRoomMemberHint())
   const [tableSeatInviteCode, setTableSeatInviteCode] = useState('')
+  // Table ids from the snapshot last applied, so a refresh can tell that one went away.
+  const knownTableIdsRef = useRef([])
   const unsubscribeRef = useRef(null)
   // Callers legitimately hold on to callbacks across a sign-in, a guest session
   // being created, or a sign-out — `requireIdentity` replays the closure it was
@@ -83,6 +85,14 @@ export function ActiveRoomProvider({ children, pendingInviteCode = null }) {
   }, [messages])
 
   const applyRoom = useCallback((nextRoom, nextMessages = []) => {
+    // A refreshed snapshot that has dropped a table is the same news the subscription
+    // delivers below: a table stopped forming. Announce it either way, so a player
+    // whose group started between polls re-checks their own seat now rather than
+    // waiting on the next one — the seat is what carries them into the game.
+    const nextTableIds = (nextRoom?.tables ?? []).map((table) => table.id)
+    const droppedTable = knownTableIdsRef.current.some((id) => !nextTableIds.includes(id))
+    knownTableIdsRef.current = nextTableIds
+
     setRoom((prev) => {
       if (prev?.id !== nextRoom?.id) {
         const latest = nextMessages[nextMessages.length - 1]
@@ -94,6 +104,9 @@ export function ActiveRoomProvider({ children, pendingInviteCode = null }) {
     setError('')
     writeRoomDockHint({ member: true, inviteCode: nextRoom?.inviteCode })
     setMemberHint(true)
+    if (droppedTable) {
+      window.dispatchEvent(new CustomEvent(TABLE_UPDATED_EVENT))
+    }
   }, [])
 
   const mergeTableUpdate = useCallback((updatedTable) => {

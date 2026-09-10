@@ -5,6 +5,7 @@ import { navigateTo } from '../../lib/usePathname'
 import { discardTable, leaveTable, sitAtTable, startTable } from '../../lib/tables'
 import { fetchModeQueueOptions } from '../../lib/games'
 import { GROUP_FIND_SOMETHING_NEW, GROUP_TAKE_SEAT, GROUP_TAKING_SEAT } from '../../lib/playerCopy'
+import { hasReadyToPlayIntent } from '../../lib/intent'
 import {
   groupCtaState,
   isLastSeatedPlayer,
@@ -16,6 +17,7 @@ import GroupInviteCard from './GroupInviteCard'
 import GroupSeatList from './GroupSeatList'
 import GroupSpectatorList from './GroupSpectatorList'
 import GroupStartBar from './GroupStartBar'
+import LaunchStep from '../games/LaunchStep'
 import PreQueueOptionsSheet from '../games/PreQueueOptionsSheet'
 import { Link } from '../ui/link'
 
@@ -24,9 +26,17 @@ import { Link } from '../ui/link'
  * code, multiple tables and the king role all still exist on the room underneath —
  * this view simply does not surface them.
  */
-export default function GroupPage() {
+export default function GroupPage({ intent }) {
   const { user } = useAuth()
   const { room, refresh } = useActiveRoom()
+  const {
+    activeIntent = null,
+    activeTableSeat = null,
+    loading: intentLoading = false,
+    busy: intentBusy = false,
+    leaveError = null,
+    handleLeave: leaveActiveGame,
+  } = intent ?? {}
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
   // The seat the player has asked for but not yet paid the picker for. Holding it here is
@@ -36,12 +46,40 @@ export default function GroupPage() {
 
   const table = selectGroupTable(room, user?.id)
 
+  /*
+    Starting the game is what this page is for, so the launch moment JQ-136 built for
+    the queue belongs here too. Everyone reaches it off their own `myTableSeat`, which
+    the server pushes a signed launch URL to for every seated player — the Start
+    button's result only ever existed for whoever pressed it. This is checked before
+    the table, because the per-user seat event and the room-wide table event race:
+    the seat saying "started" is the answer either way.
+  */
+  if (hasReadyToPlayIntent(activeIntent, activeTableSeat)) {
+    return (
+      <main className="app-shell waiting-page">
+        <LaunchStep
+          activeIntent={activeIntent}
+          activeTableSeat={activeTableSeat}
+          busy={intentBusy}
+          leaveError={leaveError}
+          onLeave={leaveActiveGame}
+        />
+      </main>
+    )
+  }
+
   if (!table) {
     return (
       <main className="app-shell px-6 py-8">
         <h1>Your Group</h1>
+        {/*
+          A started table leaves `room.tables` at once — the server only returns forming
+          ones — so its absence is not by itself evidence the group ended. Until the
+          seat lookup that the same update kicks off has answered, the page says only
+          that it is still looking.
+        */}
         <p className="status-message" role="status">
-          This group has ended.
+          {intentLoading ? 'Checking your group…' : 'This group has ended.'}
         </p>
         <Link className="self-start" href="/">
           Back to the catalog
