@@ -94,7 +94,6 @@ func (r *Replayer) ReplayMode(ctx context.Context, gameID, modeKey string) (Repo
 	}
 
 	ratings := make(map[string]Rating)
-	modifiers := newModifierAccumulator()
 
 	for _, in := range inputs {
 		sides := make([]Side, len(in.Sides))
@@ -125,8 +124,6 @@ func (r *Replayer) ReplayMode(ctx context.Context, gameID, modeKey string) (Repo
 				ratings[entrant.Key] = updated[i][j]
 			}
 		}
-
-		modifiers.observe(in.SessionID, in.Sides)
 	}
 
 	players := make(map[string]Rating)
@@ -143,7 +140,28 @@ func (r *Replayer) ReplayMode(ctx context.Context, gameID, modeKey string) (Repo
 		return Report{}, fmt.Errorf("rating: save replay results for %s/%s: %w", gameID, modeKey, err)
 	}
 
-	return Report{Matches: len(inputs), Modifiers: modifiers.report()}, nil
+	return Report{Matches: len(inputs), Modifiers: ModifierIdentifiability(inputs)}, nil
+}
+
+// ModifierIdentifiability reports, per modifier key, whether that modifier is
+// separable from player skill in the given history.
+//
+// It is exported and takes inputs directly because replay is not the only
+// caller that needs it: the backtest harness (internal/ratingbacktest) reports
+// the same statistic alongside every score, since a comparison of two engines
+// over history where a modifier is confounded is a comparison of two numbers
+// that both mean something other than what they appear to. Sharing the
+// function rather than the reasoning is what keeps the two reports from
+// drifting into disagreement about the same history.
+//
+// Nothing here is order-sensitive: it is built from sets and counts, and
+// nothing it computes feeds back into an Engine.Rate call.
+func ModifierIdentifiability(inputs []Input) map[string]ModifierReport {
+	acc := newModifierAccumulator()
+	for _, in := range inputs {
+		acc.observe(in.SessionID, in.Sides)
+	}
+	return acc.report()
 }
 
 // modifierAccumulator tallies identifiability bookkeeping while replay walks
