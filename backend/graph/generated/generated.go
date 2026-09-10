@@ -45,6 +45,7 @@ type ResolverRoot interface {
 	ModeQueue() ModeQueueResolver
 	Mutation() MutationResolver
 	MyTableSeat() MyTableSeatResolver
+	PublicPlayer() PublicPlayerResolver
 	Query() QueryResolver
 	Room() RoomResolver
 	RoomMessage() RoomMessageResolver
@@ -347,6 +348,12 @@ type ComplexityRoot struct {
 		Table      func(childComplexity int) int
 	}
 
+	PlayerSkill struct {
+		MatchesPlayed func(childComplexity int) int
+		Rating        func(childComplexity int) int
+		Uncertainty   func(childComplexity int) int
+	}
+
 	PreQueueGroup struct {
 		Key   func(childComplexity int) int
 		Kind  func(childComplexity int) int
@@ -360,6 +367,7 @@ type ComplexityRoot struct {
 		AvatarURL    func(childComplexity int) int
 		DisplayName  func(childComplexity int) int
 		ID           func(childComplexity int) int
+		Skill        func(childComplexity int, modeKey string) int
 	}
 
 	Query struct {
@@ -751,6 +759,9 @@ type MutationResolver interface {
 type MyTableSeatResolver interface {
 	BackfillActive(ctx context.Context, obj *model.MyTableSeat) (bool, error)
 	FormingGaps(ctx context.Context, obj *model.MyTableSeat) ([]*model.QueuePathGap, error)
+}
+type PublicPlayerResolver interface {
+	Skill(ctx context.Context, obj *model.PublicPlayer, modeKey string) (*model.PlayerSkill, error)
 }
 type QueryResolver interface {
 	Version(ctx context.Context) (string, error)
@@ -2364,6 +2375,25 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 
 		return e.complexity.PlayAgainResult.Table(childComplexity), true
 
+	case "PlayerSkill.matchesPlayed":
+		if e.complexity.PlayerSkill.MatchesPlayed == nil {
+			break
+		}
+
+		return e.complexity.PlayerSkill.MatchesPlayed(childComplexity), true
+	case "PlayerSkill.rating":
+		if e.complexity.PlayerSkill.Rating == nil {
+			break
+		}
+
+		return e.complexity.PlayerSkill.Rating(childComplexity), true
+	case "PlayerSkill.uncertainty":
+		if e.complexity.PlayerSkill.Uncertainty == nil {
+			break
+		}
+
+		return e.complexity.PlayerSkill.Uncertainty(childComplexity), true
+
 	case "PreQueueGroup.key":
 		if e.complexity.PreQueueGroup.Key == nil {
 			break
@@ -2419,6 +2449,17 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.PublicPlayer.ID(childComplexity), true
+	case "PublicPlayer.skill":
+		if e.complexity.PublicPlayer.Skill == nil {
+			break
+		}
+
+		args, err := ec.field_PublicPlayer_skill_args(ctx, rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.complexity.PublicPlayer.Skill(childComplexity, args["modeKey"].(string)), true
 
 	case "Query.catalogTagTaxonomy":
 		if e.complexity.Query.CatalogTagTaxonomy == nil {
@@ -4958,6 +4999,50 @@ type PublicPlayer {
   displayName: String
   avatarUrl: String
   avatarSource: AvatarSource
+
+  """
+  This player's skill in one of the calling game's modes.
+
+  Readable only with a game's ` + "`" + `serviceToken` + "`" + `. A request carrying a player's own
+  session gets ` + "`" + `null` + "`" + ` here, never a number — including a player asking about
+  themselves. Skill is for a game to tune itself with (pick AI difficulty,
+  balance sides); it is not something players are shown, and JoinQuest does not
+  show it to them.
+
+  The mode must be one this game currently declares, and the rating returned is
+  always this game's own — the calling ` + "`" + `serviceToken` + "`" + ` decides which game that
+  is, so there is no way to read a player's standing anywhere else in the
+  catalog.
+  """
+  skill(modeKey: String!): PlayerSkill
+}
+
+"""
+One player's skill in one game and one mode.
+
+Not comparable across games or modes: each is rated separately, and a 30 in one
+game says nothing about a 30 in another.
+"""
+type PlayerSkill {
+  """
+  Centre of the estimate, on JoinQuest's skill scale. An unrated player sits at
+  25.0 and most rated players land roughly between 0 and 50. Higher is stronger.
+  """
+  rating: Float!
+
+  """
+  How unsure we are of ` + "`" + `rating` + "`" + `, as one standard deviation on the same scale.
+  Starts near 8.3 and falls as a player accumulates matches. Treat the estimate
+  as a range, not a point: ` + "`" + `rating` + "`" + ` plus or minus this.
+  """
+  uncertainty: Float!
+
+  """
+  Rated matches behind the estimate. ` + "`" + `0` + "`" + ` means JoinQuest has never rated this
+  player in this mode, and ` + "`" + `rating` + "`" + ` is the starting estimate rather than
+  anything we have observed.
+  """
+  matchesPlayed: Int!
 }
 
 enum AvatarSource {
@@ -5606,6 +5691,17 @@ func (ec *executionContext) field_Mutation_updatePlayerProfile_args(ctx context.
 		return nil, err
 	}
 	args["avatarKey"] = arg1
+	return args, nil
+}
+
+func (ec *executionContext) field_PublicPlayer_skill_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
+	var err error
+	args := map[string]any{}
+	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "modeKey", ec.unmarshalNString2string)
+	if err != nil {
+		return nil, err
+	}
+	args["modeKey"] = arg0
 	return args, nil
 }
 
@@ -9593,6 +9689,8 @@ func (ec *executionContext) fieldContext_MatchParticipantResult_user(_ context.C
 				return ec.fieldContext_PublicPlayer_avatarUrl(ctx, field)
 			case "avatarSource":
 				return ec.fieldContext_PublicPlayer_avatarSource(ctx, field)
+			case "skill":
+				return ec.fieldContext_PublicPlayer_skill(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type PublicPlayer", field.Name)
 		},
@@ -13833,6 +13931,93 @@ func (ec *executionContext) fieldContext_PlayAgainResult_seated(_ context.Contex
 	return fc, nil
 }
 
+func (ec *executionContext) _PlayerSkill_rating(ctx context.Context, field graphql.CollectedField, obj *model.PlayerSkill) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_PlayerSkill_rating,
+		func(ctx context.Context) (any, error) {
+			return obj.Rating, nil
+		},
+		nil,
+		ec.marshalNFloat2float64,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_PlayerSkill_rating(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "PlayerSkill",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Float does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _PlayerSkill_uncertainty(ctx context.Context, field graphql.CollectedField, obj *model.PlayerSkill) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_PlayerSkill_uncertainty,
+		func(ctx context.Context) (any, error) {
+			return obj.Uncertainty, nil
+		},
+		nil,
+		ec.marshalNFloat2float64,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_PlayerSkill_uncertainty(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "PlayerSkill",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Float does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _PlayerSkill_matchesPlayed(ctx context.Context, field graphql.CollectedField, obj *model.PlayerSkill) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_PlayerSkill_matchesPlayed,
+		func(ctx context.Context) (any, error) {
+			return obj.MatchesPlayed, nil
+		},
+		nil,
+		ec.marshalNInt2int,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_PlayerSkill_matchesPlayed(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "PlayerSkill",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Int does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _PreQueueGroup_key(ctx context.Context, field graphql.CollectedField, obj *model.PreQueueGroup) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
@@ -14090,6 +14275,55 @@ func (ec *executionContext) fieldContext_PublicPlayer_avatarSource(_ context.Con
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			return nil, errors.New("field of type AvatarSource does not have child fields")
 		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _PublicPlayer_skill(ctx context.Context, field graphql.CollectedField, obj *model.PublicPlayer) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_PublicPlayer_skill,
+		func(ctx context.Context) (any, error) {
+			fc := graphql.GetFieldContext(ctx)
+			return ec.resolvers.PublicPlayer().Skill(ctx, obj, fc.Args["modeKey"].(string))
+		},
+		nil,
+		ec.marshalOPlayerSkill2ᚖgithubᚗcomᚋscruffyprodigyᚋjoinquestᚋgraphᚋmodelᚐPlayerSkill,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_PublicPlayer_skill(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "PublicPlayer",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "rating":
+				return ec.fieldContext_PlayerSkill_rating(ctx, field)
+			case "uncertainty":
+				return ec.fieldContext_PlayerSkill_uncertainty(ctx, field)
+			case "matchesPlayed":
+				return ec.fieldContext_PlayerSkill_matchesPlayed(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type PlayerSkill", field.Name)
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_PublicPlayer_skill_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
 	}
 	return fc, nil
 }
@@ -14759,6 +14993,8 @@ func (ec *executionContext) fieldContext_Query_player(ctx context.Context, field
 				return ec.fieldContext_PublicPlayer_avatarUrl(ctx, field)
 			case "avatarSource":
 				return ec.fieldContext_PublicPlayer_avatarSource(ctx, field)
+			case "skill":
+				return ec.fieldContext_PublicPlayer_skill(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type PublicPlayer", field.Name)
 		},
@@ -17322,6 +17558,8 @@ func (ec *executionContext) fieldContext_RegroupRosterEntry_user(_ context.Conte
 				return ec.fieldContext_PublicPlayer_avatarUrl(ctx, field)
 			case "avatarSource":
 				return ec.fieldContext_PublicPlayer_avatarSource(ctx, field)
+			case "skill":
+				return ec.fieldContext_PublicPlayer_skill(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type PublicPlayer", field.Name)
 		},
@@ -20686,6 +20924,8 @@ func (ec *executionContext) fieldContext_Table_king(_ context.Context, field gra
 				return ec.fieldContext_PublicPlayer_avatarUrl(ctx, field)
 			case "avatarSource":
 				return ec.fieldContext_PublicPlayer_avatarSource(ctx, field)
+			case "skill":
+				return ec.fieldContext_PublicPlayer_skill(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type PublicPlayer", field.Name)
 		},
@@ -21152,6 +21392,8 @@ func (ec *executionContext) fieldContext_TableSeat_user(_ context.Context, field
 				return ec.fieldContext_PublicPlayer_avatarUrl(ctx, field)
 			case "avatarSource":
 				return ec.fieldContext_PublicPlayer_avatarSource(ctx, field)
+			case "skill":
+				return ec.fieldContext_PublicPlayer_skill(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type PublicPlayer", field.Name)
 		},
@@ -21373,6 +21615,8 @@ func (ec *executionContext) fieldContext_TableSeatSlot_user(_ context.Context, f
 				return ec.fieldContext_PublicPlayer_avatarUrl(ctx, field)
 			case "avatarSource":
 				return ec.fieldContext_PublicPlayer_avatarSource(ctx, field)
+			case "skill":
+				return ec.fieldContext_PublicPlayer_skill(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type PublicPlayer", field.Name)
 		},
@@ -26162,6 +26406,55 @@ func (ec *executionContext) _PlayAgainResult(ctx context.Context, sel ast.Select
 	return out
 }
 
+var playerSkillImplementors = []string{"PlayerSkill"}
+
+func (ec *executionContext) _PlayerSkill(ctx context.Context, sel ast.SelectionSet, obj *model.PlayerSkill) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, playerSkillImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	deferred := make(map[string]*graphql.FieldSet)
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("PlayerSkill")
+		case "rating":
+			out.Values[i] = ec._PlayerSkill_rating(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "uncertainty":
+			out.Values[i] = ec._PlayerSkill_uncertainty(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "matchesPlayed":
+			out.Values[i] = ec._PlayerSkill_matchesPlayed(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch(ctx)
+	if out.Invalids > 0 {
+		return graphql.Null
+	}
+
+	atomic.AddInt32(&ec.deferred, int32(len(deferred)))
+
+	for label, dfs := range deferred {
+		ec.processDeferredGroup(graphql.DeferredGroup{
+			Label:    label,
+			Path:     graphql.GetPath(ctx),
+			FieldSet: dfs,
+			Context:  ctx,
+		})
+	}
+
+	return out
+}
+
 var preQueueGroupImplementors = []string{"PreQueueGroup"}
 
 func (ec *executionContext) _PreQueueGroup(ctx context.Context, sel ast.SelectionSet, obj *model.PreQueueGroup) graphql.Marshaler {
@@ -26235,7 +26528,7 @@ func (ec *executionContext) _PublicPlayer(ctx context.Context, sel ast.Selection
 		case "id":
 			out.Values[i] = ec._PublicPlayer_id(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
-				out.Invalids++
+				atomic.AddUint32(&out.Invalids, 1)
 			}
 		case "displayName":
 			out.Values[i] = ec._PublicPlayer_displayName(ctx, field, obj)
@@ -26243,6 +26536,39 @@ func (ec *executionContext) _PublicPlayer(ctx context.Context, sel ast.Selection
 			out.Values[i] = ec._PublicPlayer_avatarUrl(ctx, field, obj)
 		case "avatarSource":
 			out.Values[i] = ec._PublicPlayer_avatarSource(ctx, field, obj)
+		case "skill":
+			field := field
+
+			innerFunc := func(ctx context.Context, _ *graphql.FieldSet) (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._PublicPlayer_skill(ctx, field, obj)
+				return res
+			}
+
+			if field.Deferrable != nil {
+				dfs, ok := deferred[field.Deferrable.Label]
+				di := 0
+				if ok {
+					dfs.AddField(field)
+					di = len(dfs.Values) - 1
+				} else {
+					dfs = graphql.NewFieldSet([]graphql.CollectedField{field})
+					deferred[field.Deferrable.Label] = dfs
+				}
+				dfs.Concurrently(di, func(ctx context.Context) graphql.Marshaler {
+					return innerFunc(ctx, dfs)
+				})
+
+				// don't run the out.Concurrently() call below
+				out.Values[i] = graphql.Null
+				continue
+			}
+
+			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}
@@ -32876,6 +33202,13 @@ func (ec *executionContext) marshalOPlayerFinishReason2ᚖgithubᚗcomᚋscruffy
 		return graphql.Null
 	}
 	return v
+}
+
+func (ec *executionContext) marshalOPlayerSkill2ᚖgithubᚗcomᚋscruffyprodigyᚋjoinquestᚋgraphᚋmodelᚐPlayerSkill(ctx context.Context, sel ast.SelectionSet, v *model.PlayerSkill) graphql.Marshaler {
+	if v == nil {
+		return graphql.Null
+	}
+	return ec._PlayerSkill(ctx, sel, v)
 }
 
 func (ec *executionContext) marshalOPublicPlayer2ᚖgithubᚗcomᚋscruffyprodigyᚋjoinquestᚋgraphᚋmodelᚐPublicPlayer(ctx context.Context, sel ast.SelectionSet, v *model.PublicPlayer) graphql.Marshaler {

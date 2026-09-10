@@ -22,6 +22,27 @@ type ProvisionPlayer struct {
 	AvatarURL   string `json:"avatarUrl,omitempty"`
 }
 
+// ProvisionSkill is a seated player's skill estimate in the mode being
+// provisioned, so a game can size the match — AI difficulty, side balance —
+// before it starts, without a round trip back for every seat.
+//
+// It rides the provision push and nothing else. The push is server-to-server
+// and authenticated with the game's serviceToken; the seat token that reaches
+// the player's browser carries no skill data, and a test holds that line (see
+// auth.TestSeatTokenCarriesNoSkillData).
+type ProvisionSkill struct {
+	// Rating is the centre of the estimate on JoinQuest's skill scale, where an
+	// unrated player sits at 25.0.
+	Rating float64 `json:"rating"`
+	// Uncertainty is one standard deviation on that same scale — the estimate is
+	// a range, not a point.
+	Uncertainty float64 `json:"uncertainty"`
+	// MatchesPlayed is 0 for a player JoinQuest has never rated in this mode,
+	// which is also what says Rating is a starting estimate rather than an
+	// observation.
+	MatchesPlayed int `json:"matchesPlayed"`
+}
+
 // AssignmentSeat is one seat in a Lobby-pushed roster.
 type AssignmentSeat struct {
 	SeatKey     string           `json:"seatKey"`
@@ -29,6 +50,12 @@ type AssignmentSeat struct {
 	Team        string           `json:"team,omitempty"`
 	Role        string           `json:"role,omitempty"`
 	Player      *ProvisionPlayer `json:"player,omitempty"`
+	// Skill is populated on every seat Lobby provisions, unrated players
+	// included. The pointer is for callers that build a roster without one
+	// rather than for a seat that legitimately has none: a zero-valued struct
+	// would publish a rating of 0.0, which is a real point on the scale and a
+	// very wrong one.
+	Skill *ProvisionSkill `json:"skill,omitempty"`
 	// Options is what this player picked before the match — the champion, kit
 	// or deck they chose. Omitted entirely for modes without a pre-queue step,
 	// so a game that does not use them sees an unchanged payload.

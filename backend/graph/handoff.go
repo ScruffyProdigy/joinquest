@@ -88,7 +88,55 @@ func assignmentFromParticipants(
 	if len(nameless) > 0 {
 		return gameclient.Assignment{}, &IdentityMissingError{UserIDs: nameless}
 	}
+
+	if err := attachSeatSkills(ctx, st, mode.GameID, modeKey, assignment.Seats); err != nil {
+		return gameclient.Assignment{}, err
+	}
 	return assignment, nil
+}
+
+// attachSeatSkills fills in every seat's skill for the mode being provisioned.
+//
+// One query for the whole roster, not one per seat: this runs on the path that
+// puts players into a match they are already waiting on, and a per-seat lookup
+// would scale the handoff's latency with the size of the match.
+//
+// An error here fails the provision rather than shipping a roster with the
+// field missing. This is an indexed read against the same database the handoff
+// has already queried several times by now, so a failure means that database is
+// unreachable — not that skill is unavailable — and a game that has been told
+// the field is always present should not have to discover otherwise on a bad
+// day.
+func attachSeatSkills(ctx context.Context, st *store.Store, gameID uuid.UUID, modeKey string, seats []gameclient.AssignmentSeat) error {
+	if len(seats) == 0 {
+		return nil
+	}
+
+	userIDs := make([]uuid.UUID, 0, len(seats))
+	bySeat := make([]uuid.UUID, len(seats))
+	for i, seat := range seats {
+		userID, err := uuid.Parse(seat.LobbyUserID)
+		if err != nil {
+			return fmt.Errorf("seat %s: lobby user id %q: %w", seat.SeatKey, seat.LobbyUserID, err)
+		}
+		bySeat[i] = userID
+		userIDs = append(userIDs, userID)
+	}
+
+	skills, err := playerSkills(ctx, st, gameID, modeKey, userIDs)
+	if err != nil {
+		return fmt.Errorf("skill for mode %q: %w", modeKey, err)
+	}
+
+	for i := range seats {
+		s := skills[bySeat[i]]
+		seats[i].Skill = &gameclient.ProvisionSkill{
+			Rating:        s.Rating,
+			Uncertainty:   s.Uncertainty,
+			MatchesPlayed: s.MatchesPlayed,
+		}
+	}
+	return nil
 }
 
 // ErrPlayerIdentityMissing marks a seat that reached the handoff without a name.

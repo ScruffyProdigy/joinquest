@@ -11,6 +11,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/scruffyprodigy/joinquest/internal/auth"
 	"github.com/scruffyprodigy/joinquest/internal/gameclient"
+	"github.com/scruffyprodigy/joinquest/internal/rating"
 	"github.com/scruffyprodigy/joinquest/internal/store"
 )
 
@@ -541,9 +542,19 @@ func syntheticAssignment(mode store.GameMode, seats []store.GameModeSeat, matchI
 	}
 	for i := 0; i < seatCount; i++ {
 		seat := seats[i]
+		unrated := rating.UnratedSkill()
 		out.Seats = append(out.Seats, gameclient.AssignmentSeat{
 			SeatKey:     seat.SeatKey,
 			LobbyUserID: userIDs[i],
+			// The synthetic user ids belong to nobody, so the prior is both the
+			// honest answer and the one a real roster of first-time players
+			// would produce. Sending it means a game's checklist run exercises
+			// the same payload shape a real provision will.
+			Skill: &gameclient.ProvisionSkill{
+				Rating:        unrated.Rating,
+				Uncertainty:   unrated.Uncertainty,
+				MatchesPlayed: unrated.MatchesPlayed,
+			},
 		})
 	}
 	return out

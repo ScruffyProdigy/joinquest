@@ -15,6 +15,50 @@ type PublicPlayer {
   displayName: String
   avatarUrl: String
   avatarSource: AvatarSource
+
+  """
+  This player's skill in one of the calling game's modes.
+
+  Readable only with a game's `serviceToken`. A request carrying a player's own
+  session gets `null` here, never a number — including a player asking about
+  themselves. Skill is for a game to tune itself with (pick AI difficulty,
+  balance sides); it is not something players are shown, and JoinQuest does not
+  show it to them.
+
+  The mode must be one this game currently declares, and the rating returned is
+  always this game's own — the calling `serviceToken` decides which game that
+  is, so there is no way to read a player's standing anywhere else in the
+  catalog.
+  """
+  skill(modeKey: String!): PlayerSkill
+}
+
+"""
+One player's skill in one game and one mode.
+
+Not comparable across games or modes: each is rated separately, and a 30 in one
+game says nothing about a 30 in another.
+"""
+type PlayerSkill {
+  """
+  Centre of the estimate, on JoinQuest's skill scale. An unrated player sits at
+  25.0 and most rated players land roughly between 0 and 50. Higher is stronger.
+  """
+  rating: Float!
+
+  """
+  How unsure we are of `rating`, as one standard deviation on the same scale.
+  Starts near 8.3 and falls as a player accumulates matches. Treat the estimate
+  as a range, not a point: `rating` plus or minus this.
+  """
+  uncertainty: Float!
+
+  """
+  Rated matches behind the estimate. `0` means JoinQuest has never rated this
+  player in this mode, and `rating` is the starting estimate rather than
+  anything we have observed.
+  """
+  matchesPlayed: Int!
 }
 
 enum AvatarSource {

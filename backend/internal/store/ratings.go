@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/lib/pq"
 )
 
 // sqlExecContext is satisfied by both *sql.DB and *sql.Tx, letting
@@ -307,4 +308,63 @@ func parsePlayerRatingKey(key string) (uuid.UUID, bool) {
 		return uuid.UUID{}, false
 	}
 	return id, true
+}
+
+// GetPlayerRatings returns the cached rating for each of userIDs in one game
+// and mode, keyed by user id. A user with no rating row is simply absent from
+// the map: what an unrated player should report to a game is an exposure
+// decision (see rating.UnratedSkill), not something the cache invents.
+//
+// This is the read counterpart to LoadPlayerRatings, which pulls every rated
+// player in a mode because a replay needs the whole population. Serving a
+// roster — or a single lookup — does not, and on a popular mode the difference
+// is the entire table versus a handful of rows.
+func (s *Store) GetPlayerRatings(ctx context.Context, gameID uuid.UUID, modeKey string, userIDs []uuid.UUID) (map[uuid.UUID]RatingValue, error) {
+	out := make(map[uuid.UUID]RatingValue, len(userIDs))
+	if len(userIDs) == 0 {
+		return out, nil
+	}
+
+	ids := make([]string, 0, len(userIDs))
+	for _, id := range userIDs {
+		ids = append(ids, id.String())
+	}
+
+	rows, err := s.db.QueryContext(ctx, `
+		SELECT user_id, mu, sigma, matches_played
+		FROM player_ratings
+		WHERE game_id = $1 AND mode_key = $2 AND user_id = ANY($3::uuid[])
+	`, gameID, modeKey, pq.Array(ids))
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	for rows.Next() {
+		var userID uuid.UUID
+		var v RatingValue
+		if err := rows.Scan(&userID, &v.Mu, &v.Sigma, &v.MatchesPlayed); err != nil {
+			return nil, err
+		}
+		out[userID] = v
+	}
+	return out, rows.Err()
+}
+
+// GameModeExists reports whether a game currently declares a mode under this
+// key.
+//
+// The skill lookup asks first so a typo'd mode key answers null instead of a
+// plausible-looking prior. A rating can outlive the mode row that produced it —
+// manifest sync deletes and rewrites mode rows, and player_ratings is keyed by
+// the mode_key string precisely so it survives that — but a mode the game no
+// longer declares is one it should no longer be reading skill for either.
+func (s *Store) GameModeExists(ctx context.Context, gameID uuid.UUID, modeKey string) (bool, error) {
+	var exists bool
+	err := s.db.QueryRowContext(ctx, `
+		SELECT EXISTS (
+			SELECT 1 FROM game_modes WHERE game_id = $1 AND mode_key = $2
+		)
+	`, gameID, modeKey).Scan(&exists)
+	return exists, err
 }
