@@ -394,3 +394,70 @@ func TestBuildSidesEveryoneWinsIsUnrateable(t *testing.T) {
 		t.Fatal("BuildSides succeeded with every side winning; want an error rather than a meaningless update")
 	}
 }
+
+func TestBuildSidesDropsExcludedParticipants(t *testing.T) {
+	shape := ModeShape{SeatClasses: map[string]string{"s1": "Player", "s2": "Player", "s3": "Player"}}
+	out := MatchOutcome{
+		Participants: []Participant{
+			{PlayerID: "a", SeatKey: "s1", IsWinner: true},
+			{PlayerID: "b", SeatKey: "s2"},
+			{PlayerID: "c", SeatKey: "s3", Excluded: true},
+		},
+	}
+
+	sides, err := BuildSides(shape, out)
+	if err != nil {
+		t.Fatalf("BuildSides: %v", err)
+	}
+	for _, side := range sides {
+		for _, e := range side.Entrants {
+			if e.Key == "player:c" {
+				t.Fatal("excluded participant c was rated")
+			}
+		}
+	}
+	if len(sides) != 2 {
+		t.Fatalf("got %d sides, want 2 after dropping the excluded player", len(sides))
+	}
+}
+
+func TestBuildSidesWithFewerThanTwoSidesIsUnrateable(t *testing.T) {
+	shape := ModeShape{SeatClasses: map[string]string{"s1": "Player", "s2": "Player"}}
+	out := MatchOutcome{
+		Participants: []Participant{
+			{PlayerID: "a", SeatKey: "s1", IsWinner: true},
+			{PlayerID: "b", SeatKey: "s2", Excluded: true},
+		},
+	}
+
+	if _, err := BuildSides(shape, out); err == nil {
+		t.Fatal("BuildSides succeeded with one side left; a lone side has nothing to be rated against")
+	}
+}
+
+func TestBuildSidesCooperativeKeepsCrewWhenOneMemberIsExcluded(t *testing.T) {
+	success := true
+	shape := ModeShape{
+		SeatClasses: map[string]string{"s1": "Crew", "s2": "Crew"},
+		Cooperative: true,
+	}
+	out := MatchOutcome{
+		Participants: []Participant{
+			{PlayerID: "a", SeatKey: "s1"},
+			{PlayerID: "b", SeatKey: "s2", Excluded: true},
+		},
+		CooperativeSuccess: &success,
+		ScenarioKeys:       []string{"hard"},
+	}
+
+	sides, err := BuildSides(shape, out)
+	if err != nil {
+		t.Fatalf("BuildSides: %v", err)
+	}
+	if len(sides) != 2 {
+		t.Fatalf("got %d sides, want crew plus scenario", len(sides))
+	}
+	if len(sides[0].Entrants) != 1 || sides[0].Entrants[0].Key != "player:a" {
+		t.Fatalf("crew side = %v, want only player:a", sides[0].Entrants)
+	}
+}

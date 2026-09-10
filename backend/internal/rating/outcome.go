@@ -42,6 +42,14 @@ type Participant struct {
 	// groups named in ModeShape.RatedPreQueueGroups produce entrants; other
 	// entries here are ignored.
 	PreQueue map[string][]string
+
+	// Excluded marks a participant who took part but must not be rated —
+	// a player the lobby knows dropped out for a reason that says nothing
+	// about skill. They are removed before sides are formed, so they neither
+	// gain nor lose rating and neither help nor hurt the side they were on.
+	// The caller decides which reasons qualify; this package does not know
+	// what a disconnect is.
+	Excluded bool
 }
 
 // MatchOutcome is one finished match.
@@ -106,8 +114,19 @@ func BuildSides(shape ModeShape, outcome MatchOutcome) ([]Side, error) {
 		return nil, fmt.Errorf("rating: cooperative match outcome reported no scenario keys")
 	}
 
+	rated := make([]Participant, 0, len(outcome.Participants))
+	for _, p := range outcome.Participants {
+		if p.Excluded {
+			continue
+		}
+		rated = append(rated, p)
+	}
+	if len(rated) == 0 {
+		return nil, fmt.Errorf("rating: every participant is excluded from rating")
+	}
+
 	asymmetric := distinctCount(shape.SeatClasses) > 1
-	groups := groupParticipants(shape, outcome.Participants)
+	groups := groupParticipants(shape, rated)
 
 	var ranks map[string]int
 	if shape.Cooperative {
@@ -148,6 +167,14 @@ func BuildSides(shape ModeShape, outcome MatchOutcome) ([]Side, error) {
 			Entrants: scenarioEntrants(outcome.ScenarioKeys),
 			Rank:     scenarioRank,
 		})
+	}
+
+	// Fewer than two sides is not a match the engine can learn anything from:
+	// Weng-Lin rates sides against each other, and a lone side has no
+	// opponent. This is reachable whenever exclusions empty out every side
+	// but one — a 1v1 where the loser disconnected, say.
+	if len(sides) < 2 {
+		return nil, fmt.Errorf("rating: match has %d rateable side(s), want at least 2", len(sides))
 	}
 
 	return sides, nil
