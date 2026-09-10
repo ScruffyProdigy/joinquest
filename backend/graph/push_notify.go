@@ -42,6 +42,17 @@ func (r *Resolver) PushMatchReady(ctx context.Context, userID uuid.UUID, session
 		r.publishPushDelivery(ctx, event)
 		return event
 	}
+	// An unbounded match-ready push is a bug, not a lenient default. Without a
+	// TTL the push service applies its own retention, which outlives any stall
+	// budget -- the player would be told to claim a seat that is already gone.
+	// Build the notification with MatchReadyNotification, which cannot produce
+	// one of these.
+	if note.TTL <= 0 {
+		log.Printf("push: refusing an unbounded match-ready notification for %s", userID)
+		r.publishPushDelivery(ctx, event)
+		return event
+	}
+
 	sender := r.pushSender()
 	if sender.PublicKey() == "" {
 		// Nothing can be signed. Skipped rather than failed: no attempt was
@@ -128,23 +139,37 @@ func (r *Resolver) publishPushDelivery(ctx context.Context, event pubsub.PushDel
 	}
 }
 
-// MatchReadyNotification is the standard match-ready ping.
+// MatchReadyNotification builds the match-ready ping for a seat with
+// `remaining` left on its stall budget.
 //
-// TTL is bounded by the seat-hold ceiling rather than left to the push
-// service's default: a notification that outlives the seat is the failure the
-// ticket calls worse than sending nothing. JQ-199 owns the actual number; this
-// is a ceiling, not a promise.
-func MatchReadyNotification(joinURL string, holdSeconds int) push.Notification {
-	note := push.Notification{
+// Returns ok=false when there is no budget left. The seat is already gone at
+// that point, and a notification that arrives after it is the failure the
+// ticket calls worse than sending nothing -- the player taps, lands on a
+// released seat, and gets the dead end JQ-199 AC #5 exists to prevent.
+//
+// `remaining` is the budget left AT SEND TIME, deliberately not the ceiling.
+// Under JQ-199's match-level stall budget the hold is explicitly not a fixed
+// promise: a busy queue frees the seat early. A TTL of "the ceiling" would
+// promise two minutes on a seat with forty seconds left.
+//
+// There is no default. An unset TTL would fall through to the push service's
+// own retention (or push.DefaultTTL), both of which outlive any hold -- so the
+// duration is required, and the ok=false return makes an expired budget
+// impossible to send on by accident rather than merely discouraged.
+func MatchReadyNotification(joinURL string, remaining time.Duration) (push.Notification, bool) {
+	if remaining <= 0 {
+		return push.Notification{}, false
+	}
+	return push.Notification{
 		Title: "Your match is ready",
-		Body:  "Tap to take your seat.",
-		URL:   joinURL,
-		Tag:   "joinquest-match-ready",
-	}
-	if holdSeconds > 0 {
-		note.TTL = time.Duration(holdSeconds) * time.Second
-	}
-	return note
+		// Deliberately no countdown in the copy. The body is rendered whenever
+		// the push is delivered, which may be seconds after it was built, so a
+		// stated time would be wrong exactly when it mattered most.
+		Body: "Tap to take your seat.",
+		URL:  joinURL,
+		Tag:  "joinquest-match-ready",
+		TTL:  remaining,
+	}, true
 }
 
 // ReachabilityForHold is a convenience for the seat-hold path: the combined

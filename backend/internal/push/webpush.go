@@ -14,9 +14,15 @@ import (
 	webpush "github.com/SherClockHolmes/webpush-go"
 )
 
-// DefaultTTL bounds how long the push service retries. Sized against JQ-199's
-// 2 minute seat-hold ceiling with headroom for delivery latency; there is no
-// value in a ping that arrives after the seat has been released.
+// DefaultTTL is a backstop for callers that set no TTL, not a value any
+// seat-bound notification should rely on.
+//
+// The match-ready path always passes an explicit TTL derived from the stall
+// budget remaining at send time (see graph.MatchReadyNotification), because
+// under JQ-199's match-level budget the hold is not a fixed promise and a
+// constant would over-promise on a seat about to be released. This exists so a
+// caller that forgets gets something bounded rather than the push service's own
+// retention, which can be days.
 const DefaultTTL = 5 * time.Minute
 
 // WebPushSender is the real sender, signing payloads with VAPID.

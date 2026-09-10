@@ -63,7 +63,7 @@ func TestPushMatchReadyReportsDeliveryAndRecordsIt(t *testing.T) {
 	endpoints := subscribeUser(t, ctx, env, userID, 2)
 	env.resolver.Push = &fakeSender{publicKey: "test-key"}
 
-	outcome := env.resolver.PushMatchReady(ctx, userID, "session-1", push.Notification{Title: "ready"})
+	outcome := env.resolver.PushMatchReady(ctx, userID, "session-1", push.Notification{Title: "ready", TTL: 45 * time.Second})
 
 	if outcome.Status != pubsub.PushDelivered {
 		t.Fatalf("expected DELIVERED, got %q", outcome.Status)
@@ -105,7 +105,7 @@ func TestPushMatchReadyCollapsesToUndeliverableWhenEveryInstallIsGone(t *testing
 		t.Fatalf("precondition: expected reachable, got %v (err %v)", reachable, err)
 	}
 
-	outcome := env.resolver.PushMatchReady(ctx, userID, "session-1", push.Notification{Title: "ready"})
+	outcome := env.resolver.PushMatchReady(ctx, userID, "session-1", push.Notification{Title: "ready", TTL: 45 * time.Second})
 
 	if outcome.Status != pubsub.PushUndeliverable {
 		t.Fatalf("expected UNDELIVERABLE, got %q", outcome.Status)
@@ -145,7 +145,7 @@ func TestPushMatchReadyKeepsSubscriptionsWhenTheFailureIsTransient(t *testing.T)
 		results:   map[string]error{endpoints[0]: errors.New("push service returned 503")},
 	}
 
-	outcome := env.resolver.PushMatchReady(ctx, userID, "session-1", push.Notification{Title: "ready"})
+	outcome := env.resolver.PushMatchReady(ctx, userID, "session-1", push.Notification{Title: "ready", TTL: 45 * time.Second})
 
 	// FAILED, not UNDELIVERABLE: a push-service hiccup says nothing about
 	// whether the player can be reached, and evicting them over it would be a
@@ -173,7 +173,7 @@ func TestPushMatchReadyTreatsOneLiveInstallAsSuccess(t *testing.T) {
 		results:   map[string]error{endpoints[0]: push.ErrSubscriptionGone},
 	}
 
-	outcome := env.resolver.PushMatchReady(ctx, userID, "session-1", push.Notification{Title: "ready"})
+	outcome := env.resolver.PushMatchReady(ctx, userID, "session-1", push.Notification{Title: "ready", TTL: 45 * time.Second})
 
 	// The old phone is dead but the desktop rang. The player can still come
 	// back, so the hold should not collapse.
@@ -197,7 +197,7 @@ func TestPushMatchReadySkipsWhenThereIsNothingToSendTo(t *testing.T) {
 		userID := newPushTestUser(t, ctx, env, cleaner, "notify-none")
 		env.resolver.Push = &fakeSender{publicKey: "test-key"}
 
-		outcome := env.resolver.PushMatchReady(ctx, userID, "s", push.Notification{Title: "ready"})
+		outcome := env.resolver.PushMatchReady(ctx, userID, "s", push.Notification{Title: "ready", TTL: 45 * time.Second})
 		if outcome.Status != pubsub.PushSkipped || outcome.Attempted != 0 {
 			t.Fatalf("expected SKIPPED with nothing attempted, got %q / %d", outcome.Status, outcome.Attempted)
 		}
@@ -209,7 +209,7 @@ func TestPushMatchReadySkipsWhenThereIsNothingToSendTo(t *testing.T) {
 		sender := &fakeSender{publicKey: ""}
 		env.resolver.Push = sender
 
-		outcome := env.resolver.PushMatchReady(ctx, userID, "s", push.Notification{Title: "ready"})
+		outcome := env.resolver.PushMatchReady(ctx, userID, "s", push.Notification{Title: "ready", TTL: 45 * time.Second})
 		if outcome.Status != pubsub.PushSkipped {
 			t.Fatalf("expected SKIPPED, got %q", outcome.Status)
 		}
@@ -243,7 +243,7 @@ func TestPushMatchReadyPublishesTheOutcomeForTheSeatHold(t *testing.T) {
 		publicKey: "test-key",
 		results:   map[string]error{endpoints[0]: push.ErrSubscriptionGone},
 	}
-	env.resolver.PushMatchReady(ctx, userID, "session-42", push.Notification{Title: "ready"})
+	env.resolver.PushMatchReady(ctx, userID, "session-42", push.Notification{Title: "ready", TTL: 45 * time.Second})
 
 	select {
 	case payload := <-messages:
@@ -286,8 +286,61 @@ func TestPushMatchReadyNeverReturnsAnErrorThatCouldAbortAMatch(t *testing.T) {
 
 	// The signature has no error return by design; this asserts it also does
 	// not panic with everything failing at once.
-	outcome := env.resolver.PushMatchReady(ctx, userID, "s", push.Notification{Title: "ready"})
+	outcome := env.resolver.PushMatchReady(ctx, userID, "s", push.Notification{Title: "ready", TTL: 45 * time.Second})
 	if outcome.Status != pubsub.PushFailed {
 		t.Fatalf("expected FAILED, got %q", outcome.Status)
+	}
+}
+
+func TestMatchReadyNotificationCarriesTheRemainingBudget(t *testing.T) {
+	note, ok := MatchReadyNotification("https://joinquest.cc/launch/abc", 40*time.Second)
+	if !ok {
+		t.Fatal("a seat with budget left should be notifiable")
+	}
+	// Exactly the remaining budget, not a ceiling: under a match-level stall
+	// budget a busy queue frees the seat early, and a TTL of "the ceiling"
+	// would promise two minutes on a seat with forty seconds left.
+	if note.TTL != 40*time.Second {
+		t.Fatalf("expected the TTL to be the remaining budget, got %s", note.TTL)
+	}
+	if note.URL != "https://joinquest.cc/launch/abc" {
+		t.Fatalf("the tap target must be the launch step, got %q", note.URL)
+	}
+	if note.Tag == "" {
+		t.Fatal("a tag is needed so a retry replaces rather than stacks")
+	}
+}
+
+func TestMatchReadyNotificationRefusesAnExpiredBudget(t *testing.T) {
+	for _, remaining := range []time.Duration{0, -1 * time.Second} {
+		if _, ok := MatchReadyNotification("https://joinquest.cc/launch/abc", remaining); ok {
+			// The seat is already gone. Telling the player to claim it lands
+			// them on a released seat -- the dead end JQ-199 AC #5 exists to
+			// prevent, and worse than sending nothing.
+			t.Fatalf("a seat with %s left must not be notifiable", remaining)
+		}
+	}
+}
+
+func TestPushMatchReadyRefusesAnUnboundedNotification(t *testing.T) {
+	env := newQueueIntegrationEnv(t)
+	ctx := context.Background()
+	cleaner := env.newCleaner(t)
+
+	userID := newPushTestUser(t, ctx, env, cleaner, "notify-unbounded")
+	subscribeUser(t, ctx, env, userID, 1)
+	sender := &fakeSender{publicKey: "test-key"}
+	env.resolver.Push = sender
+
+	// No TTL. Without the guard the push service applies its own retention,
+	// which can be days -- the player would be told to claim a seat that was
+	// released long ago.
+	outcome := env.resolver.PushMatchReady(ctx, userID, "s", push.Notification{Title: "ready"})
+
+	if outcome.Status != pubsub.PushSkipped {
+		t.Fatalf("expected SKIPPED, got %q", outcome.Status)
+	}
+	if len(sender.sent) != 0 {
+		t.Fatal("an unbounded match-ready notification must never reach the push service")
 	}
 }
