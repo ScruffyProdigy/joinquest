@@ -23,7 +23,9 @@ expanded paths; **`affinity_key` derivation** at expand time (Phase B step 1).
 [lfg-phase-b-plan.md](./lfg-phase-b-plan.md).
 
 **Not yet (Phase C):** weighted dequeue, `allocations` by affinity, player relocation on the forming map,
-multiple concurrent forming matches. Sections marked **Phase C target** describe future engine behavior.
+multiple concurrent forming matches. Note that JQ-226's same-shape swap is *not* relocation: it substitutes a
+whole party into seats another party is giving up, matched seat-for-seat on queue path, so no player ever moves
+to a different seat and the placement solver never re-runs. Sections marked **Phase C target** describe future engine behavior.
 
 ---
 
@@ -291,13 +293,73 @@ When pulling from the waiter queue, Lobby uses a **score**, not queue head only:
 |--------|-----|
 | **Complementarity** | Party fills current gaps (e.g. second 2+1 split) |
 | **Party size** | Larger groups are harder to place later — favor slightly over long-waiting solos when re-solving the map (see [fifo stall example](./lfg-phase-b-plan.md#example-count-3-with-a-b-solo-then-cd-party)) |
-| **Skill / MMR** | Minimize rating dispersion across **all** seats, not parity between team averages. Requires holding the fire briefly to accumulate candidates, and only when the arrival rate says that will pay — see [the design](https://app.notion.com/p/3d7c637d78a581c1a83bfe722967062a) (JQ-142) |
+| **Skill / MMR** | **Shipped (JQ-226).** Minimizes rating dispersion across **all** seats — teammates and opponents together — never parity between team averages. Enters as a second term on the fire condition: a full map fires when dispersion is inside the band **or** the wait budget is spent. See [Skill-aware lobby formation](#skill-aware-lobby-formation) below |
 | **Already on forming map** | Prefer finishing partial placements (Phase B); may yield to size/fit in Phase C when relocation is enabled |
 | **Wait time** | Tie-break for fairness within same tier |
 
 ```text
 score(party, formingMap) = wFit * fitBonus(gaps) + wSize * party.size + wAge * ageSeconds
 ```
+
+### Skill-aware lobby formation
+
+Shipped in JQ-226, implementing [JQ-142's design](https://app.notion.com/p/3d7c637d78a581c1a83bfe722967062a).
+Engine in `backend/internal/dispersion`; wiring in `backend/internal/store/forming_skill.go` and
+`forming_reselect.go`.
+
+**What is minimized.** The standard deviation of μ across *every* seat, with `max − min` as a hard cap on
+top. Not the gap between team averages: a 5v5 whose sides average the same can pair one excellent player and
+four weak ones against five average ones, which is balanced on paper and enjoyable for nobody, and a
+free-for-all has no sides to balance at all. The cap is not redundant with the standard deviation — a single
+distant player in an otherwise tight lobby barely moves it, and that player is the one the objective exists
+to protect.
+
+**How it enters.** A full map used to fire immediately. It now fires when the map is full **and** either the
+dispersion sits inside the band or the wait budget is spent. There is no separate mechanism and no new
+worker.
+
+**Why holding is the mechanism, not an optimisation.** In serial arrival the player who completes a lobby is
+the only candidate that ever existed, so the surplus of eligible waiters at the fire event is structurally
+zero however large the population is. Choice does not accumulate in a queue that fires eagerly; it has to be
+manufactured by not firing. Skill matching buys choice with time, and there is no free version.
+
+**Why it needs no launch flag.** Whether to hold is gated on arrival rate λ, never on queue depth — a healthy
+mode drains to near-zero depth just as a dead one does, so depth measures the fire threshold rather than the
+population. When λ → 0 the hold → 0 and the queue behaves exactly as it did before this existed. At launch λ
+is near zero everywhere, so the system fires immediately and unbiased and engages continuously as population
+grows.
+
+**Why the budget is anchored to the oldest waiter.** A second does not cost every player the same. The
+newest waiter never saw the queue's state on arrival, so a three-second match is indistinguishable from an
+instant one; the player ninety seconds in feels every additional second. The budget is `T_ceiling` minus the
+oldest waiter's accumulated wait, which spends the hold on the player who cannot perceive it. It also removes
+a moving part: the band widens as that budget shrinks rather than on a schedule of its own.
+
+**Parties.** Members enter dispersion individually — never split, never collapsed to one number. A party
+spanning a wide range *is* a dispersion cost and is charged as one. A party wider than the band can never
+satisfy it, which is why the ceiling is load-bearing rather than defensive: the budget reaches zero and the
+lobby fires.
+
+**Unrated players** are placed at `rating.UnratedMu`, the documented cold-start prior. Not excluded, and not
+dropped from the dispersion in a way that would let a lobby full of them score artificially well.
+
+**Per-mode opt-out.** `game_modes.skill_matching_enabled`, default true. Deliberately not a population
+threshold — λ already answers that. It exists for a mode whose skill signal says little about whether its
+players enjoy each other, which is true however busy the mode is. It is an operator's setting, so a game
+re-registering its manifest cannot switch it back on.
+
+**Starting constants** live in `backend/internal/dispersion/constants.go` with their reasoning attached.
+`Beta` derives from `rating.UnratedSigma` rather than being restated, so a change of engine prior cannot
+silently decouple the band from the scale it is measured on.
+
+**Known gaps, deliberately:**
+
+- `T_ceiling` is flat at 15s. The right shape scales with a mode's expected match duration — 15s of queue
+  for a 90-second duel is a different proposition from 15s for a twenty-minute co-op run. `GameMode.TypicalMinutes`
+  could carry it; nobody has decided the scaling.
+- λ is a flat 15-minute window rather than exponentially weighted. A refinement for `internal/queuewait`.
+- Achieved dispersion per formed match is **not recorded yet** — that is [JQ-225](https://linear.app/joinquest/issue/JQ-225).
+  Until it lands, whether this helps is unmeasured, and matches formed in the meantime cannot be reconstructed.
 
 Exact weights are implementation constants; the spec requires **fit-first, then size, then age**.
 
