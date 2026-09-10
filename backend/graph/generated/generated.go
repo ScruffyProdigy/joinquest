@@ -293,6 +293,7 @@ type ComplexityRoot struct {
 		RegenerateSpiritAnimalImages func(childComplexity int) int
 		RegisterGame                 func(childComplexity int, input model.RegisterGameInput) int
 		RegisterMyGame               func(childComplexity int, input model.RegisterMyGameInput) int
+		RejoinActiveMatch            func(childComplexity int) int
 		RemoveLinkedEmail            func(childComplexity int, emailID string) int
 		RemoveLinkedIdentity         func(childComplexity int, identityID string) int
 		ReportMatchResult            func(childComplexity int, matchID string, status model.MatchResultStatus, winnerLobbyUserIds []string, metadata map[string]any) int
@@ -697,6 +698,7 @@ type MutationResolver interface {
 	JoinQueue(ctx context.Context, queueID string, queuePath *string, options []*model.QueueOptionSelectionInput, party *model.PartyNodeInput) (*model.JoinResult, error)
 	LeaveQueue(ctx context.Context, queueID string) (bool, error)
 	LeaveActiveGame(ctx context.Context) (bool, error)
+	RejoinActiveMatch(ctx context.Context) (string, error)
 	GrantGood(ctx context.Context, userID string, goodID string, quantity *int) (bool, error)
 	RevokeGood(ctx context.Context, userID string, goodID string, quantity *int) (bool, error)
 	CreateGuestSession(ctx context.Context) (*model.User, error)
@@ -1987,6 +1989,12 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.Mutation.RegisterMyGame(childComplexity, args["input"].(model.RegisterMyGameInput)), true
+	case "Mutation.rejoinActiveMatch":
+		if e.complexity.Mutation.RejoinActiveMatch == nil {
+			break
+		}
+
+		return e.complexity.Mutation.RejoinActiveMatch(childComplexity), true
 	case "Mutation.removeLinkedEmail":
 		if e.complexity.Mutation.RemoveLinkedEmail == nil {
 			break
@@ -4298,6 +4306,12 @@ type Mutation {
   leaveQueue(queueId: ID!): Boolean!
   """Abandon the current playing intent (matched queue or room table session)."""
   leaveActiveGame: Boolean!
+  """
+  Mint a fresh, short-lived launch URL back into the match the player is already
+  seated in — same seat, same match, new token. Errors once the session is over or
+  the player has finished, so it can never re-open a match someone has left.
+  """
+  rejoinActiveMatch: String!
 
   # Digital goods (simple entitlement grant)
   grantGood(userId: ID!, goodId: ID!, quantity: Int = 1): Boolean!
@@ -10540,6 +10554,35 @@ func (ec *executionContext) fieldContext_Mutation_leaveActiveGame(_ context.Cont
 		IsResolver: true,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			return nil, errors.New("field of type Boolean does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Mutation_rejoinActiveMatch(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_Mutation_rejoinActiveMatch,
+		func(ctx context.Context) (any, error) {
+			return ec.resolvers.Mutation().RejoinActiveMatch(ctx)
+		},
+		nil,
+		ec.marshalNString2string,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_Mutation_rejoinActiveMatch(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Mutation",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
 		},
 	}
 	return fc, nil
@@ -25407,6 +25450,13 @@ func (ec *executionContext) _Mutation(ctx context.Context, sel ast.SelectionSet)
 		case "leaveActiveGame":
 			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
 				return ec._Mutation_leaveActiveGame(ctx, field)
+			})
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "rejoinActiveMatch":
+			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
+				return ec._Mutation_rejoinActiveMatch(ctx, field)
 			})
 			if out.Values[i] == graphql.Null {
 				out.Invalids++

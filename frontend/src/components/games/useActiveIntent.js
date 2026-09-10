@@ -1,6 +1,11 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { useAuth } from '../auth/AuthProvider'
-import { fetchMyActiveIntent, leaveActiveGame, resolveIntentLaunchUrl } from '../../lib/intent'
+import {
+  fetchMyActiveIntent,
+  leaveActiveGame,
+  rejoinActiveMatch,
+  resolveIntentLaunchUrl,
+} from '../../lib/intent'
 import {
   fetchMyQueueStatus,
   leaveQueue,
@@ -10,7 +15,7 @@ import {
 } from '../../lib/queue'
 import { subscribeToMyTableSeat, TABLE_UPDATED_EVENT, fetchMyTableSeat } from '../../lib/tables'
 import { lobbyDebug } from '../../lib/lobbyDebug'
-import { LEAVE_GAME_FAILED, LEAVE_GAME_NOT_FOUND } from '../../lib/playerCopy'
+import { LEAVE_GAME_FAILED, LEAVE_GAME_NOT_FOUND, REJOIN_FAILED, REJOIN_OVER } from '../../lib/playerCopy'
 import { onTabVisible } from '../../lib/tabVisibility'
 import { useActiveTableSeat } from './useActiveTableSeat'
 
@@ -27,6 +32,8 @@ export function useActiveIntent() {
   const [loading, setLoading] = useState(false)
   const [busy, setBusy] = useState(false)
   const [leaveError, setLeaveError] = useState(null)
+  const [rejoinError, setRejoinError] = useState(null)
+  const [rejoining, setRejoining] = useState(false)
   const [queueWsConnected, setQueueWsConnected] = useState(false)
   const queueUnsubRef = useRef(null)
   const seatUnsubRef = useRef(null)
@@ -332,6 +339,34 @@ export function useActiveIntent() {
     refresh,
   ])
 
+  /**
+   * Takes the player back into the match they fell out of (JQ-86).
+   *
+   * The URL is minted here rather than read off the banner's cached intent: a
+   * rejoin token is short-lived on purpose, and the banner may have been sitting
+   * on screen since long before the player came back to the tab.
+   */
+  const handleRejoin = useCallback(async () => {
+    setRejoinError(null)
+    setRejoining(true)
+    try {
+      const url = await rejoinActiveMatch()
+      if (!url) {
+        setRejoinError(REJOIN_FAILED)
+        return
+      }
+      window.location.assign(url)
+    } catch (err) {
+      lobbyDebug('intent:rejoin:failed', { error: err?.message || String(err) })
+      // The server refuses once the match is over, and the banner we just acted on
+      // was stale. Refresh so it clears itself instead of offering a dead action.
+      setRejoinError(REJOIN_OVER)
+      await refresh()
+    } finally {
+      setRejoining(false)
+    }
+  }, [refresh])
+
   const notifyQueueJoined = useCallback((queueId, result, { gameId, gameName, modeName, queuePathDisplayName } = {}) => {
     if (!result) {
       return
@@ -374,9 +409,12 @@ export function useActiveIntent() {
     loading: loading || tableLoading,
     busy: busy || tableBusy,
     leaveError,
+    rejoinError,
+    rejoining,
     queueWsConnected,
     refresh,
     notifyQueueJoined,
     handleLeave,
+    handleRejoin,
   }
 }

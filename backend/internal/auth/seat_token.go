@@ -12,6 +12,13 @@ import (
 
 const defaultSeatTokenTTL = 2 * time.Hour
 
+// RejoinSeatTokenTTL is the life of a seat token minted to put a player back into a
+// match they are already seated in (JQ-86). It is deliberately far shorter than the
+// launch TTL: a rejoin link is handed out on demand, at the moment the player asks
+// for it, so it only has to survive the navigation. Keeping the window small is what
+// stops re-issue from being a way to pass your seat to someone else.
+const RejoinSeatTokenTTL = 5 * time.Minute
+
 // SignSeatToken issues a short-lived JWT for launching into a third-party game.
 // Claims: iss, aud, sub, jti, matchId, seatKey, name (optional), nbf, iat, exp.
 func (s *Signer) SignSeatToken(userID uuid.UUID, audience, externalMatchID, seatKey, displayName string, ttl time.Duration) (string, error) {
