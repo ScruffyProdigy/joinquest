@@ -563,16 +563,12 @@ func (r *subscriptionResolver) QueueUpdated(ctx context.Context, queueID string)
 		return nil, err
 	}
 
-	initialStatus := "none"
-	if initial != nil {
-		initialStatus = string(initial.Status)
-	}
 	pubsub.DebugLog(
 		"subscription open user=%s queue=%s channel=%s initial=%s",
 		userID,
 		modeQueueID,
 		pubsub.UserQueueChannel(userID.String()),
-		initialStatus,
+		initial.Status,
 	)
 
 	releasePresence := r.Presence.Track(ctx, userID)
@@ -583,20 +579,20 @@ func (r *subscriptionResolver) QueueUpdated(ctx context.Context, queueID string)
 		defer unsubscribe()
 		defer releasePresence()
 
-		if initial != nil {
-			select {
-			case updates <- initial:
-				pubsub.DebugLog(
-					"subscription initial user=%s queue=%s status=%s hasJoinUrl=%t",
-					userID,
-					modeQueueID,
-					initial.Status,
-					initial.JoinURL != nil && *initial.JoinURL != "",
-				)
-			case <-ctx.Done():
-				pubsub.DebugLog("subscription cancelled before initial user=%s queue=%s", userID, modeQueueID)
-				return
-			}
+		// Always an initial payload: a subscriber who is not in this queue gets a
+		// LEFT one rather than silence.
+		select {
+		case updates <- initial:
+			pubsub.DebugLog(
+				"subscription initial user=%s queue=%s status=%s hasJoinUrl=%t",
+				userID,
+				modeQueueID,
+				initial.Status,
+				initial.JoinURL != nil && *initial.JoinURL != "",
+			)
+		case <-ctx.Done():
+			pubsub.DebugLog("subscription cancelled before initial user=%s queue=%s", userID, modeQueueID)
+			return
 		}
 
 		for {

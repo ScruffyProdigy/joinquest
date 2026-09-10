@@ -195,3 +195,25 @@ func TestResetPresenceOnBootZeroesCountsAndPreservesExistingStamp(t *testing.T) 
 		t.Fatalf("boot restarted an existing window: got %v, want %v", goneStamp, original)
 	}
 }
+
+// The invariant every consumer reads against — connection_count = 0 <=>
+// disconnected_at IS NOT NULL — is held by a CHECK rather than by convention,
+// because the columns' own defaults break it and a bare INSERT would have produced a
+// row that reads as connected and disconnected at once.
+func TestPresenceRowCannotContradictItself(t *testing.T) {
+	st := openTestStore(t)
+	cleaner := st.NewTestCleaner(t)
+	ctx := context.Background()
+	userID := newPresenceUser(t, st, cleaner, ctx)
+
+	if _, err := st.db.ExecContext(ctx,
+		`INSERT INTO user_presence (user_id) VALUES ($1)`, userID,
+	); err == nil {
+		t.Fatal("a row with no sockets and no disconnect stamp was accepted")
+	}
+	if _, err := st.db.ExecContext(ctx,
+		`INSERT INTO user_presence (user_id, connection_count, disconnected_at) VALUES ($1, 2, NOW())`, userID,
+	); err == nil {
+		t.Fatal("a row holding sockets was accepted while carrying a disconnect stamp")
+	}
+}

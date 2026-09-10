@@ -10,9 +10,13 @@
 -- than a join.
 CREATE TABLE user_presence (
     user_id          UUID PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
-    -- Sockets, not tabs. The frontend creates three independent graphql-ws
-    -- clients (queue.js, rooms.js, tables.js), each with its own module-level
-    -- client and no shared socket, so a single tab can hold three.
+    -- Subscription operations, not tabs. The frontend creates three independent
+    -- graphql-ws clients (queue.js, rooms.js, tables.js), each with its own
+    -- module-level client and no shared socket, and one of those sockets carries
+    -- several subscriptions at once — rooms.js alone runs RoomUpdated,
+    -- RoomMessageAdded and TableUpdated, so one tab can contribute well past
+    -- three. Only zero versus non-zero is ever read, and every increment has a
+    -- matching decrement, so the magnitude is nobody's business.
     --
     -- Every per-user subscription counts here, not just the queue one:
     -- QueueUpdated, MyTableSeatUpdated, TableUpdated, RoomUpdated,
@@ -28,7 +32,16 @@ CREATE TABLE user_presence (
     -- window to it. This records "disconnected" (socket gone) and never "away"
     -- (socket alive, attention gone), which is a different signal owned elsewhere.
     disconnected_at  TIMESTAMP WITH TIME ZONE,
-    updated_at       TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW()
+    updated_at       TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
+    -- connection_count = 0 <=> disconnected_at IS NOT NULL. The invariant every
+    -- reader depends on: a consumer asking "is this player gone, and since when"
+    -- reads both columns and must never find them disagreeing. A constraint
+    -- rather than a convention because the columns' own defaults (0, NULL)
+    -- violate it, so a bare INSERT of a user_id would have created a row that
+    -- reads as connected and disconnected at once.
+    CONSTRAINT user_presence_stamp_matches_count CHECK (
+        (connection_count = 0) = (disconnected_at IS NOT NULL)
+    )
 );
 
 CREATE INDEX idx_user_presence_disconnected

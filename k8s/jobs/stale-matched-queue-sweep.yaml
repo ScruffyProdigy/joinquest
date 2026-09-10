@@ -1,12 +1,30 @@
-# Cancel `matched` game_queues rows that have no live session behind them, across all
-# users. This is the scheduled counterpart to the per-user heal that runs lazily inside
-# GetUserActiveIntent — that one only fires for whoever happens to make a request, so an
-# orphaned row belonging to an idle player sat until a human noticed a stuck banner.
+# Run both fleet-wide queue sweeps.
+#
+# 1. Cancel `matched` game_queues rows that have no live session behind them, across all
+#    users. This is the scheduled counterpart to the per-user heal that runs lazily
+#    inside GetUserActiveIntent — that one only fires for whoever happens to make a
+#    request, so an orphaned row belonging to an idle player sat until a human noticed a
+#    stuck banner.
+#
+# 2. Cancel `waiting` rows whose player's last socket closed longer ago than the 90s
+#    grace window (JQ-216). This one removes a player who is still nominally queued, so
+#    it is player-visible in a way the matched sweep is not.
+#
+# THE */15 CADENCE GOVERNS `waiting` ROWS ONLY. When the API pod survives, an in-process
+# timer removes a disconnected player at exactly 90s and this sweep finds nothing; it
+# exists for windows whose timer died with their pod, where up to 15 minutes late is
+# fine. Matched rows never wait that long — STALE_MATCHED_QUEUE_AGE reaches them at 5
+# minutes — so do not retune this cadence believing it governs held seats.
 #
 # A matched row is legitimately transient while the session is created and the handoff
 # completes, so STALE_MATCHED_QUEUE_AGE acts as the match-proposal deadline: past it, an
 # unfulfilled match dissolves instead of stranding the player. Tune it here without a
-# code change. See docs/lobby-maintenance.md.
+# code change. The disconnect window is not tunable here: it is a code constant, shared
+# with the timer that is the real removal path.
+#
+# Metrics per run: lobby.queue.stale_matched.{count,cancelled,remaining} and
+# lobby.queue.stale_disconnected.{count,cancelled,remaining}.
+# See docs/lobby-maintenance.md.
 apiVersion: batch/v1
 kind: CronJob
 metadata:
@@ -35,5 +53,8 @@ spec:
                       key: DATABASE_URL
                 # How old a matched row must be before the sweep treats it as
                 # orphaned rather than still provisioning. Defaults to 5m in code.
+                # Applies to the matched sweep ONLY — the disconnected-waiting sweep
+                # always uses the 90s grace window from the code constant, so that the
+                # sweep and the in-process timer cannot disagree about the window.
                 - name: STALE_MATCHED_QUEUE_AGE
                   value: "5m"

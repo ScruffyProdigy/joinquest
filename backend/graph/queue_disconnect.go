@@ -46,15 +46,22 @@ func (r *Resolver) OnGraceExpired(ctx context.Context, userID uuid.UUID, stamp t
 		result, err := st.EvictDisconnectedWaitingEntry(ctx, userID, stamp)
 		if err != nil {
 			log.Printf("disconnect expiry: evict %s: %v", userID, err)
-			return
 		}
 		if !result.Acted {
 			// A reconnect, a deliberate leave, or a match forming got here first.
 			// Not an error — the guard doing its job.
 			return
 		}
-		// The same event a deliberate leave publishes, so other players' queued
-		// counts and forming gaps stay correct either way.
+		// Acted survives an error: the cancel is committed by the time anything
+		// downstream of it can fail, so returning early here would drop the publish
+		// for a removal that already happened.
+		//
+		// The publish is the same event a deliberate leave sends, and reaches the
+		// same audience: publishQueueLeft addresses only the leaving player's own
+		// channel, and this path fires precisely when they hold no socket, so in
+		// practice nobody receives it. It is kept for parity — a returning player's
+		// LEFT initial payload is what actually tells them, and other players learn
+		// the new count from the next forming reconcile, not from here.
 		if err := r.publishQueueLeft(ctx, result.GameID, result.ModeQueueID, userID, result.QueuedCount, ""); err != nil {
 			log.Printf("disconnect expiry: publish for %s: %v", userID, err)
 		}
