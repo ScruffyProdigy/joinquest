@@ -181,6 +181,7 @@ export default function GroupPage() {
         busy={busy}
         confirmLabel={GROUP_TAKE_SEAT}
         busyLabel={GROUP_TAKING_SEAT}
+        confirmIcon={null}
         onConfirm={handleOptionsConfirmed}
         onClose={closePicker}
       />

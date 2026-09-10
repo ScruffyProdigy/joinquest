@@ -73,7 +73,7 @@ describe('IntentBanner', () => {
       />,
     )
     expect(screen.getByText(/Playing Demo Game/)).toBeInTheDocument()
-    expect(screen.getByRole('link', { name: 'Launch game' })).toHaveAttribute(
+    expect(screen.getByRole('link', { name: 'Launch Now' })).toHaveAttribute(
       'href',
       'http://game.example/play',
     )
@@ -138,7 +138,7 @@ describe('IntentBanner', () => {
       />,
     )
     expect(screen.getByText(/Playing Word Hunt \(Word Hunt Party\) as Guesser · 2/)).toBeInTheDocument()
-    expect(screen.getByRole('link', { name: 'Launch game' })).toHaveAttribute(
+    expect(screen.getByRole('link', { name: 'Launch Now' })).toHaveAttribute(
       'href',
       'https://play.example.com/match?token=abc',
     )
@@ -164,7 +164,7 @@ describe('IntentBanner', () => {
       />,
     )
     expect(screen.getByText(/Playing Word Hunt \(Word Hunt Party\) as Guesser · 2/)).toBeInTheDocument()
-    expect(screen.getByRole('link', { name: 'Launch game' })).toHaveAttribute(
+    expect(screen.getByRole('link', { name: 'Launch Now' })).toHaveAttribute(
       'href',
       'https://play.example.com/table?token=xyz',
     )
@@ -185,7 +185,7 @@ describe('IntentBanner', () => {
       />,
     )
     expect(screen.getByText(/Playing Demo Game \(Classic\)/)).toBeInTheDocument()
-    expect(screen.getByRole('link', { name: 'Launch game' })).toHaveAttribute(
+    expect(screen.getByRole('link', { name: 'Launch Now' })).toHaveAttribute(
       'href',
       'https://play.example.com/start',
     )
@@ -207,7 +207,7 @@ describe('IntentBanner', () => {
     )
     expect(screen.getByText(/Playing Word Hunt/)).toBeInTheDocument()
     expect(screen.getByText(/Preparing your launch link/)).toBeInTheDocument()
-    expect(screen.queryByRole('link', { name: 'Launch game' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('link', { name: 'Launch Now' })).not.toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Leave game' })).toBeInTheDocument()
   })
 })

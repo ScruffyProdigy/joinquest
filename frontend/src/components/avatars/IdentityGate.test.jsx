@@ -163,11 +163,11 @@ describe('IdentityGate', () => {
     const signIn = screen.getByRole('button', { name: 'Log in or create account' })
     await user.click(signIn)
 
-    // The sign-in view must not offer "Jump in", which would loop back to this gate.
+    // The sign-in view must not offer "Play as guest", which would loop back to this gate.
     await waitFor(() => {
       expect(screen.getByRole('button', { name: 'Back to avatars' })).toBeInTheDocument()
     })
-    expect(screen.queryByRole('button', { name: 'Jump in' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Play as guest' })).not.toBeInTheDocument()
   })
 
   it('renders the sign-in action as an outlined pill, never as underlined text', async () => {
@@ -259,7 +259,7 @@ describe('IdentityGate, when only the name is missing', () => {
 
     expect(screen.queryByRole('heading', { name: 'Welcome to JoinQuest' })).not.toBeInTheDocument()
     expect(screen.queryByRole('button', { name: 'Log in or create account' })).not.toBeInTheDocument()
-    expect(screen.queryByRole('button', { name: 'Jump in' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Play as guest' })).not.toBeInTheDocument()
   })
 
   it('saves the typed name without sending an avatar key', async () => {

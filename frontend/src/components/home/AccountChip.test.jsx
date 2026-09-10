@@ -48,8 +48,8 @@ describe('AccountChip', () => {
 
     expect(await screen.findByRole('dialog')).toBeInTheDocument()
     expect(screen.getByText('Sign in or create an account')).toBeInTheDocument()
-    // The visitor already has a guest session, so "Jump in" would be a no-op.
-    expect(screen.queryByRole('button', { name: 'Jump in' })).not.toBeInTheDocument()
+    // The visitor already has a guest session, so "Play as guest" would be a no-op.
+    expect(screen.queryByRole('button', { name: 'Play as guest' })).not.toBeInTheDocument()
   })
 
   it('links a signed-in player to their account via their avatar', async () => {

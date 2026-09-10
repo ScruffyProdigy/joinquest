@@ -25,7 +25,7 @@ import DeveloperDashboard from './components/developers/DeveloperDashboard'
 import DeveloperLandingPage from './components/developers/DeveloperLandingPage'
 import DeveloperWelcomePage from './components/developers/DeveloperWelcomePage'
 import YourGamesStrip from './components/developers/YourGamesStrip'
-import HomeHeader, { HOME_HEADING_ID } from './components/home/HomeHeader'
+import HomeHeader from './components/home/HomeHeader'
 import IdentityPromptProvider, { useIdentityPromptOnMount } from './components/avatars/IdentityPromptProvider'
 import AppFooter from './components/legal/AppFooter'
 import TermsPage from './components/legal/TermsPage'
@@ -55,7 +55,7 @@ function CatalogPage({ intent }) {
 
       <HomeHeader />
 
-      <GameLobby headingId={HOME_HEADING_ID} />
+      <GameLobby />
       <YourGamesStrip />
 
       <AppFooter />

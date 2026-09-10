@@ -110,7 +110,7 @@ describe('TableCard', () => {
     expect(screen.getAllByRole('button', { name: 'Sit' })).toHaveLength(2)
   })
 
-  it('shows Look for group alongside Start now when the table can start but has open seats', () => {
+  it('shows Jump in alongside Start now when the table can start but has open seats', () => {
     const table = {
       id: 'table-1',
       game: { name: 'WordHunt' },
@@ -143,10 +143,10 @@ describe('TableCard', () => {
     )
 
     expect(screen.getByRole('button', { name: 'Start now' })).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: 'Look for group (Default)' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Jump in (Default)' })).toBeInTheDocument()
   })
 
-  it('hides Look for group from non-kings when options are visible', () => {
+  it('hides Jump in from non-kings when options are visible', () => {
     const table = {
       id: 'table-1',
       game: { name: 'WordHunt' },
@@ -178,7 +178,7 @@ describe('TableCard', () => {
       <TableCard table={table} busy={false} onSit={() => {}} onLeave={() => {}} onStart={() => {}} onDiscard={() => {}} />,
     )
 
-    expect(screen.queryByRole('button', { name: 'Look for group (Default)' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Jump in (Default)' })).not.toBeInTheDocument()
     expect(screen.queryByRole('button', { name: 'Start now' })).not.toBeInTheDocument()
   })
 
