@@ -1,6 +1,7 @@
 package rating
 
 import (
+	"reflect"
 	"strings"
 	"testing"
 
@@ -118,6 +119,7 @@ func TestBuildSidesCooperativeAddsScenarioOpponent(t *testing.T) {
 			{PlayerID: "b", SeatKey: "2"},
 			{PlayerID: "c", SeatKey: "3"},
 		},
+		ScenarioKeys: []string{"standard"},
 	}
 
 	sides, err := BuildSides(shape, out)
@@ -131,7 +133,7 @@ func TestBuildSidesCooperativeAddsScenarioOpponent(t *testing.T) {
 	if len(crew.Entrants) != 3 {
 		t.Errorf("crew = %v, want 3 players", crew.Entrants)
 	}
-	if len(scenario.Entrants) != 1 || scenario.Entrants[0].Key != "scenario" {
+	if len(scenario.Entrants) != 1 || scenario.Entrants[0].Key != "scenario:standard" {
 		t.Fatalf("opposing side = %v, want a single scenario entrant", scenario.Entrants)
 	}
 	if crew.Rank >= scenario.Rank {
@@ -155,6 +157,7 @@ func TestBuildSidesCooperativeIgnoresTeamKeyGrouping(t *testing.T) {
 			{PlayerID: "b", SeatKey: "2", TeamKey: "Team:1"},
 			{PlayerID: "c", SeatKey: "3", TeamKey: "Team:2"},
 		},
+		ScenarioKeys: []string{"standard"},
 	}
 
 	sides, err := BuildSides(shape, out)
@@ -168,7 +171,7 @@ func TestBuildSidesCooperativeIgnoresTeamKeyGrouping(t *testing.T) {
 	if len(crew.Entrants) != 3 {
 		t.Errorf("crew = %v, want all 3 players on one crew side despite differing TeamKeys", crew.Entrants)
 	}
-	if len(scenario.Entrants) != 1 || scenario.Entrants[0].Key != "scenario" {
+	if len(scenario.Entrants) != 1 || scenario.Entrants[0].Key != "scenario:standard" {
 		t.Fatalf("opposing side = %v, want a single scenario entrant", scenario.Entrants)
 	}
 }
@@ -178,6 +181,7 @@ func TestBuildSidesCooperativeFailureFlipsRanks(t *testing.T) {
 	out := MatchOutcome{
 		CooperativeSuccess: boolp(false),
 		Participants:       []Participant{{PlayerID: "a", SeatKey: "1"}},
+		ScenarioKeys:       []string{"standard"},
 	}
 
 	sides, err := BuildSides(shape, out)
@@ -318,5 +322,61 @@ func TestRatedPreQueueGroupsRejectsMultiPickGroup(t *testing.T) {
 
 	if len(got) != 1 || got[0] != "color" {
 		t.Errorf("RatedPreQueueGroups = %v, want only [color]", got)
+	}
+}
+
+func TestBuildSidesCooperativeAddsOneEntrantPerScenarioKey(t *testing.T) {
+	success := true
+	shape := ModeShape{
+		SeatClasses: map[string]string{"s1": "Crew", "s2": "Crew"},
+		Cooperative: true,
+	}
+	out := MatchOutcome{
+		Participants: []Participant{
+			{PlayerID: "a", SeatKey: "s1"},
+			{PlayerID: "b", SeatKey: "s2"},
+		},
+		CooperativeSuccess: &success,
+		ScenarioKeys:       []string{"night", "hard", "night"},
+	}
+
+	sides, err := BuildSides(shape, out)
+	if err != nil {
+		t.Fatalf("BuildSides: %v", err)
+	}
+	if len(sides) != 2 {
+		t.Fatalf("got %d sides, want 2", len(sides))
+	}
+
+	scenario := sides[len(sides)-1]
+	var keys []string
+	for _, e := range scenario.Entrants {
+		keys = append(keys, e.Key)
+	}
+	want := []string{"scenario:hard", "scenario:night"}
+	if !reflect.DeepEqual(keys, want) {
+		t.Fatalf("scenario entrants = %v, want %v (deduplicated and sorted)", keys, want)
+	}
+	if scenario.Rank != 1 {
+		t.Fatalf("scenario rank = %d, want 1 on a successful clear", scenario.Rank)
+	}
+}
+
+func TestBuildSidesCooperativeWithoutScenarioKeysIsUnrateable(t *testing.T) {
+	success := true
+	shape := ModeShape{
+		SeatClasses: map[string]string{"s1": "Crew", "s2": "Crew"},
+		Cooperative: true,
+	}
+	out := MatchOutcome{
+		Participants: []Participant{
+			{PlayerID: "a", SeatKey: "s1"},
+			{PlayerID: "b", SeatKey: "s2"},
+		},
+		CooperativeSuccess: &success,
+	}
+
+	if _, err := BuildSides(shape, out); err == nil {
+		t.Fatal("BuildSides succeeded without scenario keys; want an error rather than a guessed opponent")
 	}
 }

@@ -49,11 +49,37 @@ type MatchOutcome struct {
 	Participants []Participant
 	// CooperativeSuccess is set only for cooperative modes. Nil elsewhere.
 	CooperativeSuccess *bool
+	// ScenarioKeys names what the crew faced, as the game reported it —
+	// "hard", "night", "wave-12". Each becomes one entrant on the opposing
+	// side, and the engine learns each key's strength from how crews fare
+	// against it; the platform assigns the ratings, the game only supplies
+	// the identifiers. Several keys compose the way teammates do, so a game
+	// can report orthogonal facets and each carries its own contribution.
+	// Required for a cooperative mode and ignored elsewhere.
+	ScenarioKeys []string
 }
 
-// scenarioEntrantKey names the single opponent entity a cooperative match's
-// crew is rated against.
-const scenarioEntrantKey = "scenario"
+// scenarioEntrantPrefix namespaces a cooperative scenario key inside
+// nonplayer_ratings.entity_key, alongside "seat:" and "prequeue:".
+const scenarioEntrantPrefix = "scenario:"
+
+// scenarioEntrants turns the reported scenario keys into the entrants of the
+// crew's opposing side, deduplicated and sorted so the output is stable for
+// replay regardless of the order the game listed them in.
+func scenarioEntrants(keys []string) []Entrant {
+	seen := make(map[string]bool, len(keys))
+	entrants := make([]Entrant, 0, len(keys))
+	for _, k := range keys {
+		key := scenarioEntrantPrefix + k
+		if seen[key] {
+			continue
+		}
+		seen[key] = true
+		entrants = append(entrants, Entrant{Key: key})
+	}
+	sort.Slice(entrants, func(i, j int) bool { return entrants[i].Key < entrants[j].Key })
+	return entrants
+}
 
 // BuildSides translates a finished match into the sides the rating engine
 // consumes. It is the only place that knows what a game, a seat, a team or a
@@ -75,6 +101,9 @@ func BuildSides(shape ModeShape, outcome MatchOutcome) ([]Side, error) {
 	}
 	if shape.Cooperative && outcome.CooperativeSuccess == nil {
 		return nil, fmt.Errorf("rating: cooperative match outcome has no success result")
+	}
+	if shape.Cooperative && len(outcome.ScenarioKeys) == 0 {
+		return nil, fmt.Errorf("rating: cooperative match outcome reported no scenario keys")
 	}
 
 	asymmetric := distinctCount(shape.SeatClasses) > 1
@@ -116,7 +145,7 @@ func BuildSides(shape ModeShape, outcome MatchOutcome) ([]Side, error) {
 		// always the last element regardless of whether it out-ranks the
 		// crew, so a failed match doesn't reorder which side is "the crew".
 		sides = append(sides, Side{
-			Entrants: []Entrant{{Key: scenarioEntrantKey}},
+			Entrants: scenarioEntrants(outcome.ScenarioKeys),
 			Rank:     scenarioRank,
 		})
 	}
