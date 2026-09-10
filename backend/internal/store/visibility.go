@@ -3,6 +3,7 @@ package store
 import (
 	"context"
 	"database/sql"
+	"errors"
 	"fmt"
 
 	"github.com/google/uuid"
@@ -103,4 +104,29 @@ func awayAssignedUsersTx(ctx context.Context, tx *sql.Tx, assignments []FormingA
 		}
 	}
 	return away, nil
+}
+
+// WaitingModeQueueIDForUser reports which mode queue the user is waiting in, if
+// any.
+//
+// Exists so a player coming back to their tab can nudge the forming worker at the
+// right queue. Without it a returning player waits out the reconcile tick, which is
+// twice the shortest hold window — the chair would still be theirs, but the match
+// they were being held for would not start until the poll came round.
+func (s *Store) WaitingModeQueueIDForUser(ctx context.Context, userID uuid.UUID) (uuid.UUID, bool, error) {
+	var queueID uuid.UUID
+	err := s.db.QueryRowContext(ctx, `
+		SELECT mode_queue_id
+		FROM game_queues
+		WHERE user_id = $1 AND status = 'waiting' AND mode_queue_id IS NOT NULL
+		ORDER BY joined_at DESC
+		LIMIT 1
+	`, userID).Scan(&queueID)
+	if errors.Is(err, sql.ErrNoRows) {
+		return uuid.Nil, false, nil
+	}
+	if err != nil {
+		return uuid.Nil, false, fmt.Errorf("waiting mode queue for user: %w", err)
+	}
+	return queueID, true, nil
 }
