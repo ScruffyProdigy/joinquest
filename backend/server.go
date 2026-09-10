@@ -14,6 +14,7 @@ import (
 	"github.com/scruffyprodigy/joinquest/graph"
 	"github.com/scruffyprodigy/joinquest/internal/auth"
 	"github.com/scruffyprodigy/joinquest/internal/avatars"
+	"github.com/scruffyprodigy/joinquest/internal/coldstart"
 	"github.com/scruffyprodigy/joinquest/internal/formingworker"
 	"github.com/scruffyprodigy/joinquest/internal/pubsub"
 	"github.com/scruffyprodigy/joinquest/internal/rating"
@@ -115,6 +116,13 @@ func main() {
 	}, ratingTick)
 	resolver.RatingWorker.SetSweeper(dataStore, 10*time.Minute)
 	go resolver.RatingWorker.Start(context.Background())
+
+	// Cold-start seeding measures on its own schedule and serves only behind
+	// COLD_START_SEEDING (see internal/coldstart). The recompute runs whether
+	// or not the flag is on, because the decision to turn it on is supposed to
+	// be made by reading the residuals it produces — a deployment that fitted
+	// nothing until seeding was enabled would have to enable it blind.
+	go coldstart.NewRecomputer(dataStore).Start(context.Background(), coldstart.RefitIntervalFromEnv())
 
 	mux := http.NewServeMux()
 

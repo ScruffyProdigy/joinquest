@@ -51,6 +51,7 @@ Documentation for **JoinQuest** — the platform that connects players to third-
 - **[API Documentation](api.md)** — GraphQL reference and examples
 - **[Pub/Sub](pubsub.md)** — Redis queue notifications
 - **[Rating backtesting](rating-backtesting.md)** — Scoring rating models against held-out match history
+- **[Cold-start seeding](cold-start-seeding.md)** — Seeding a player's rating in an unplayed mode from another mode of the same game
 
 ### Operations
 - **[Database Migrations](database-migrations.md)** — Schema migrations and CLI
