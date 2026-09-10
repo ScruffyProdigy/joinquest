@@ -12,9 +12,16 @@ afterEach(() => {
 })
 
 describe('GroupSpectatorList', () => {
-  it('stays out of the way when nobody but the viewer is here', () => {
-    const { container } = render(<GroupSpectatorList players={[you]} userId="u1" />)
-    expect(container).toBeEmptyDOMElement()
+  /**
+   * The prototype seeds this list with `You: in-lobby` and only removes the row when the
+   * seat is claimed, so a player who has just arrived sees themselves waiting. Production
+   * used to hide a viewer-only card on the grounds that it said nothing; it said the one
+   * thing that mattered — you have not sat down yet.
+   */
+  it('shows the viewer their own row while they hold no seat', () => {
+    render(<GroupSpectatorList players={[you]} userId="u1" />)
+    expect(screen.getByText('Picking a seat')).toBeInTheDocument()
+    expect(screen.getByText('You')).toBeInTheDocument()
   })
 
   it('stays out of the way when there is nobody to list at all', () => {
@@ -40,6 +47,17 @@ describe('GroupSpectatorList', () => {
     expect(rows).toHaveLength(2)
     expect(rows[0]).not.toHaveTextContent('Awaiting')
     expect(rows[1]).toHaveTextContent('Awaiting')
+  })
+
+  it('lists the rows bare, with no bullet indent pushing them off the card edge', () => {
+    // Tailwind's theme and utilities load without preflight (see tailwind.css), so a
+    // `ul` keeps the browser's disc marker and 40px indent unless it opts out.
+    render(<GroupSpectatorList players={[you, member]} userId="u1" />)
+
+    const list = screen.getByRole('list')
+    expect(list).toHaveClass('list-none')
+    expect(list).toHaveClass('p-0')
+    expect(list).toHaveClass('m-0')
   })
 
   it('says Out when it watches someone decline, then drops the row', () => {
