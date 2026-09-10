@@ -63,6 +63,26 @@ func (r *mutationResolver) LeaveQueue(ctx context.Context, queueID string) (bool
 	return true, nil
 }
 
+// SetDocumentVisibility is the resolver for the setDocumentVisibility field.
+func (r *mutationResolver) SetDocumentVisibility(ctx context.Context, documentID string, visible bool) (bool, error) {
+	st, err := r.requireStore()
+	if err != nil {
+		return false, err
+	}
+	userID, err := requireAuthUserID(ctx)
+	if err != nil {
+		return false, err
+	}
+	docID, err := parseUUID(documentID, "document id")
+	if err != nil {
+		return false, err
+	}
+	if err := st.SetDocumentVisibility(ctx, userID, docID, visible); err != nil {
+		return false, err
+	}
+	return true, nil
+}
+
 // LeaveActiveGame is the resolver for the leaveActiveGame field.
 func (r *mutationResolver) LeaveActiveGame(ctx context.Context) (bool, error) {
 	st, err := r.requireStore()
