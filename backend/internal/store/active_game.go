@@ -167,10 +167,18 @@ func resetRoomTableAfterSessionTx(ctx context.Context, tx *sql.Tx, sessionID uui
 	}
 
 	// A room-table group regroups at the table they already have, so record it as the
-	// one table the finished match converges on (JQ-135).
+	// one table the finished match converges on (JQ-135). Both directions are stamped:
+	// the table needs to name its originating match without reading game_sessions
+	// backwards on every render, and a room's persistent table is reused match after
+	// match, so the newer stamp replacing the older is exactly the wanted answer (JQ-177).
 	if _, err := tx.ExecContext(ctx, `
 		UPDATE game_sessions SET regroup_table_id = $2 WHERE id = $1
 	`, sessionID, tableID); err != nil {
+		return err
+	}
+	if _, err := tx.ExecContext(ctx, `
+		UPDATE room_tables SET regroup_session_id = $2 WHERE id = $1
+	`, tableID, sessionID); err != nil {
 		return err
 	}
 

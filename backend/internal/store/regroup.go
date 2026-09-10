@@ -100,6 +100,15 @@ func (s *Store) ClaimRegroupTable(ctx context.Context, sessionID, userID uuid.UU
 			return nil, nil, err
 		}
 	}
+	// The forward pointer is stamped whether the table was just created or adopted from an
+	// earlier claimant: a table reached from resetRoomTableAfterSessionTx already carries
+	// it, but one created here on first claim does not (JQ-177).
+	if _, err := tx.ExecContext(ctx, `
+		UPDATE room_tables SET regroup_session_id = $2 WHERE id = $1
+	`, table.ID, sessionID); err != nil {
+		return nil, nil, err
+	}
+	table.RegroupSessionID = &sessionID
 
 	if err := s.ensureRoomMemberTx(ctx, tx, table.RoomID, userID); err != nil {
 		return nil, nil, err
@@ -418,34 +427,4 @@ func (s *Store) GetRegroupTableID(ctx context.Context, sessionID uuid.UUID) (*uu
 		return nil, err
 	}
 	return id, nil
-}
-
-// GetSessionIDByRegroupTable is the reverse of GetRegroupTableID: given a table, find the
-// finished match it originated from. Returns nil, not an error, when no session points at
-// this table — an ordinary table (created directly, never reached via playAgain) is the
-// normal case, not a failure.
-//
-// regroup_table_id is not unique and is never cleared, so a room that plays more than once
-// at its persistent table accumulates one matching row per match: CompleteSession stamps
-// the finished session via resetRoomTableAfterSessionTx without touching the previous
-// ones. The most recently started match is the one this table is regrouping from, so the
-// ordering is load-bearing — without it Postgres is free to return the oldest row, which
-// would name players who already left and omit anyone who backfilled since. The id
-// tiebreak only keeps the answer stable if two sessions somehow share a started_at.
-func (s *Store) GetSessionIDByRegroupTable(ctx context.Context, tableID uuid.UUID) (*uuid.UUID, error) {
-	var id uuid.UUID
-	err := s.db.QueryRowContext(ctx, `
-		SELECT id
-		FROM game_sessions
-		WHERE regroup_table_id = $1
-		ORDER BY started_at DESC NULLS LAST, id DESC
-		LIMIT 1
-	`, tableID).Scan(&id)
-	if err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
-			return nil, nil
-		}
-		return nil, err
-	}
-	return &id, nil
 }

@@ -536,25 +536,21 @@ func (r *tableResolver) FormingGaps(ctx context.Context, obj *model.Table) ([]*m
 //
 // Because that gate is missing, the payload is RegroupRosterEntry rather than
 // MatchParticipantResult: identity, seat and intent only, never the standings (JQ-174).
+//
+// The field is selected for every table in the room on every load and every push, and
+// almost none of them came from a match. OriginSessionID rides along on the model from the
+// row the caller already read, so the ordinary case costs nothing at all (JQ-177).
 func (r *tableResolver) RegroupRoster(ctx context.Context, obj *model.Table) ([]*model.RegroupRosterEntry, error) {
-	st, err := r.requireStore()
-	if err != nil {
-		return nil, err
-	}
-	tableID, err := tableRoomIDFromObj(obj)
-	if err != nil {
-		return nil, err
-	}
-	sessionID, err := st.GetSessionIDByRegroupTable(ctx, tableID)
-	if err != nil {
-		return nil, err
-	}
-	if sessionID == nil {
+	if obj == nil || obj.OriginSessionID == nil {
 		// An ordinary table (never claimed via playAgain) has no originating match.
 		// Non-null list contract: empty, never nil.
 		return []*model.RegroupRosterEntry{}, nil
 	}
-	return loadRegroupRosterEntries(ctx, st, *sessionID)
+	st, err := r.requireStore()
+	if err != nil {
+		return nil, err
+	}
+	return loadRegroupRosterEntries(ctx, st, *obj.OriginSessionID)
 }
 
 // User is the resolver for the user field.
