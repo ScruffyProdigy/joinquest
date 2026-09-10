@@ -1,6 +1,7 @@
 import { cn } from '../../lib/utils'
 
 const AVATAR_SIZE_CLASSES = {
+  xs: 'size-7 text-[10px]',
   sm: 'size-8 text-xs',
   md: 'size-12 text-base',
   lg: 'size-16 text-xl',

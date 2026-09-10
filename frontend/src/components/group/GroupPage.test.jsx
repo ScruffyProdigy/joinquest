@@ -99,6 +99,14 @@ describe('GroupPage', () => {
     expect(section).toHaveTextContent('Sam')
   })
 
+  it('lists the viewer alone under Picking a seat before they claim', () => {
+    currentRoom = { ...makeRoom(makeTable()), members: [{ id: 'u1', displayName: 'Pat' }] }
+    render(<GroupPage />)
+
+    const section = screen.getByRole('region', { name: /picking a seat/i })
+    expect(section).toHaveTextContent('You')
+  })
+
   it('lists a previous match player who has not answered as awaiting', () => {
     currentRoom = makeRoom(
       makeTable({

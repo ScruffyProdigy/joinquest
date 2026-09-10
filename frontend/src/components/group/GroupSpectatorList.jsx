@@ -71,15 +71,20 @@ function Row({ user, userId, status, leaving }) {
   return (
     <li
       className={cn(
-        'flex items-center gap-2 text-sm',
+        'flex items-center gap-3 py-2',
+        // The prototype slides each arrival up into place; rows are keyed by player, so
+        // only a genuinely new one plays it.
+        'motion-safe:animate-in motion-safe:fade-in motion-safe:slide-in-from-bottom-1',
         status === 'awaiting' && 'opacity-45',
         status === 'out' && (leaving ? 'animate-out fade-out' : 'animate-in fade-in'),
       )}
     >
-      <PlayerAvatar user={user} size="sm" />
-      <span className="flex-1 truncate">{user?.id === userId ? 'You' : displayName(user)}</span>
+      <PlayerAvatar user={user} size="xs" />
+      <span className="flex-1 truncate text-sm font-bold text-foreground">
+        {user?.id === userId ? 'You' : displayName(user)}
+      </span>
       {status === 'awaiting' ? (
-        <span className="flex items-center gap-1 text-xs text-muted-foreground">
+        <span className="flex items-center gap-1 text-2xs font-normal text-muted-foreground">
           {/* The prototype turns the hand once every three seconds, linear and forever. */}
           <ClockIcon
             size={11}
@@ -89,7 +94,9 @@ function Row({ user, userId, status, leaving }) {
           Awaiting
         </span>
       ) : null}
-      {status === 'out' ? <span className="text-xs text-muted-foreground">Out</span> : null}
+      {status === 'out' ? (
+        <span className="text-2xs font-normal text-muted-foreground">Out</span>
+      ) : null}
     </li>
   )
 }
@@ -99,8 +106,13 @@ function Row({ user, userId, status, leaving }) {
  * players who have not answered. One list, as the prototype has it — the Awaiting badge
  * is what separates the two populations, not a second heading.
  *
- * The card is absent, not empty, when the viewer is the only person here. A card whose
- * whole content is your own name says nothing.
+ * The viewer counts. The prototype seeds this list with `You` and only takes the row away
+ * once the seat is claimed, so the card is the standing answer to "who still has to sit
+ * down", and on the common path — you open a fresh group and look at it before claiming —
+ * you are the whole list. Production used to hide that case as saying nothing, which in
+ * practice meant most players never saw this card at all.
+ *
+ * Nobody left to list at all — everyone seated — takes the card away entirely.
  */
 export default function GroupSpectatorList({ players = [], userId }) {
   const declining = useDeclineBeat(players)
@@ -109,18 +121,23 @@ export default function GroupSpectatorList({ players = [], userId }) {
     ...players.filter((entry) => entry.status !== 'out'),
     ...declining.map((row) => ({ user: row.user, status: 'out', leaving: row.leaving })),
   ]
-  if (!rows.some((row) => row.user?.id !== userId)) {
+  if (rows.length === 0) {
     return null
   }
 
   return (
     <section className="px-4 pt-4" aria-label="Picking a seat">
-      <Card className="py-4">
-        <CardContent className="flex flex-col gap-3 px-4">
-          <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+      <Card className="gap-0 py-0">
+        <CardContent className="px-4 pt-4 pb-3">
+          <p className="mb-3 text-2xs font-bold uppercase tracking-widest text-muted-foreground">
             Picking a seat
           </p>
-          <ul className="flex flex-col gap-2">
+          {/*
+            Tailwind loads here without preflight (see tailwind.css), so a `ul` that does
+            not opt out keeps the browser's disc marker and 40px indent — which is what
+            pushed these rows off the card's own left edge.
+          */}
+          <ul className="m-0 list-none space-y-1 p-0" role="list">
             {rows.map((row) => (
               <Row
                 key={row.user?.id}

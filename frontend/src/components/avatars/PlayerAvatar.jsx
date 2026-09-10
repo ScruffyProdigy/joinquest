@@ -4,7 +4,7 @@ import { KING_LABEL } from '../../lib/playerCopy'
 import { displayName } from '../../lib/tables'
 import { Avatar, AvatarFallback, AvatarImage } from '../ui/avatar'
 
-const SIZE_MAP = { sm: 'sm', md: 'md' }
+const SIZE_MAP = { xs: 'xs', sm: 'sm', md: 'md' }
 
 export default function PlayerAvatar({ user, size = 'md', className = '', title, ring }) {
   const baseLabel = title ?? displayName(user)
