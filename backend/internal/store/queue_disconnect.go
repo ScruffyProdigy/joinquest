@@ -22,6 +22,21 @@ import (
 // This is NOT the seat-hold window for an already-formed match, which answers a
 // different question (how long a formed match waits for a player who is not there)
 // and carries its own number. Do not borrow one for the other.
+//
+// What you are really trading against, when you tune this: a bfcache freeze, not a
+// network blip. The client deliberately does NOT give up the queue on a pagehide
+// whose persisted flag is set, because a frozen page comes back with its state
+// intact (useLeaveQueueOnExit) — and JQ-218 goes further, intercepting the iOS
+// back-swipe so it raises a confirmation sheet rather than silently costing the
+// player their place. But a frozen page's WebSocket closes, so this window starts
+// anyway, and the page is not running to show any sheet. Past 90s the server
+// therefore overrides both of those client-side judgements silently.
+//
+// That is a deliberate trade, not an oversight (decided 2026-09-10): a player absent
+// past this window has arguably left however it started, and holding the slot longer
+// costs every other player in the queue. But it means raising this number protects a
+// backgrounded player's place, and lowering it makes JQ-218's confirmation easier to
+// bypass. Measure both before moving it.
 const DefaultQueueDisconnectGrace = 90 * time.Second
 
 // EvictionResult reports whether an expiry actually removed a player, and what the
@@ -129,6 +144,16 @@ func (s *Store) EvictDisconnectedWaitingEntry(ctx context.Context, userID uuid.U
 // still queued, still counted, and re-assigned if the pool is otherwise too thin.
 // The accepted costs are that a brief disconnect un-assigns and re-assigns them, and
 // that a nearly-ready match un-forms.
+//
+// For a player in a MULTI-MEMBER PARTY the cost is sharper than that, and worth saying
+// plainly: partyAssignedOnFormingTx still sees the party as assigned through its other
+// members, so the vacated seat is fillable by a solo and the match can fire with the
+// connected member plus strangers while the disconnected member stays queued. In other
+// words a briefly-disconnected player can be split from their party. It self-heals —
+// the reconnecting member is re-placed on a later reconcile, thanks to
+// fireFormingMatchTx tolerating a vacated seat — so this is a bad minute rather than a
+// wedge. Releasing the whole party's seats instead would punish the member who did
+// nothing wrong, which is why it is not done here.
 //
 // Guarded on the stamp for the same reason the eviction is: a reconnect landing
 // between the edge and this write owns the presence row now, and must not have their
