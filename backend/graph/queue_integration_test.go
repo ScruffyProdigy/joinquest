@@ -77,6 +77,12 @@ func newQueueIntegrationEnv(t *testing.T) *queueIntegrationEnv {
 	t.Cleanup(func() { _ = st.RestorePrimaryGameHandoffURLs(context.Background()) })
 
 	resolver := NewResolver(st, authService, pubsub.NewMemory())
+	// Presence is wired here, not only in the one test that asserts on it, because the
+	// six Track/release pairs are otherwise dead code to the whole suite: deleting any
+	// of them passes. onExpire stays nil so no grace timer outlives a test — the
+	// tracker declines to arm without one, and the eviction decision has its own
+	// coverage in the store.
+	resolver.Presence = NewPresenceTracker(st, resolver.PubSub, store.DefaultQueueDisconnectGrace, nil)
 	resolver.SpiritAnimal = spiritanimal.NewRunnerFromEnv(st, "https://joinquest.test")
 	resolver.FormingWorker = formingworker.New(st, resolver.HandleFormingReconciled, 5*time.Millisecond, time.Minute)
 	resolver.FormingWorker.SetProvisionHook(resolver.HandleUnprovisionedSession)
@@ -521,10 +527,14 @@ func TestQueueSubscriptionNotifiesWaitingPlayerOnMatch(t *testing.T) {
 	joinQuery := `mutation Join($id: ID!) { joinQueue(queueId: $id) { queued queuedCount } }`
 	vars := map[string]any{"id": demoDefaultQueueID}
 
+	// Join before subscribing, mirroring the real client (it only opens this
+	// subscription once it already has a queueId). JQ-216 made the resolver send an
+	// initial LEFT payload for a subscriber who isn't queued yet, so subscribing
+	// first here would hand back LEFT instead of the WAITING this test checks for.
+	postGraphQL(t, env.Handler, joinQuery, vars, cookieA)
+
 	conn := connectGraphQLWS(t, graphQLWSURL(env.Server.URL), "http://localhost:5173", bearerA)
 	subID := subscribeQueueUpdated(t, conn, demoDefaultQueueID)
-
-	postGraphQL(t, env.Handler, joinQuery, vars, cookieA)
 
 	first := nextQueueUpdatePayload(t, conn, subID, 5*time.Second)
 	if first["status"] != "WAITING" {
@@ -543,6 +553,44 @@ func TestQueueSubscriptionNotifiesWaitingPlayerOnMatch(t *testing.T) {
 	}
 	if !strings.Contains(joinURL, "match=") || !strings.Contains(joinURL, "token=") {
 		t.Fatalf("expected protocol handoff launch URL (?match=&token=), got %q", joinURL)
+	}
+}
+
+// TestQueueSubscriptionNotifiesWaitingPlayerOnJoin covers the case
+// TestQueueSubscriptionNotifiesWaitingPlayerOnMatch stopped covering when it was
+// reordered for JQ-216 (join before subscribe, to match the real client): a
+// subscription opened before the player joins must still receive the live
+// WAITING push that publishQueueResult sends via NotifyUserIDs once they join,
+// not just the synchronously computed initial payload. Here the initial is LEFT
+// (correct per JQ-216, since the subscriber isn't queued yet at subscribe time),
+// and the WAITING push that follows the join is a second, later message on the
+// same open subscription.
+func TestQueueSubscriptionNotifiesWaitingPlayerOnJoin(t *testing.T) {
+	env := newQueueIntegrationEnv(t)
+	cleaner := env.newCleaner(t)
+	ctx := context.Background()
+	clearDemoQueue(t, env.Store)
+
+	env.resolverWithProvisioner(t, &syncProvisioner{})
+
+	bearerA, cookieA := createTestUserSession(t, ctx, env, cleaner)
+
+	joinQuery := `mutation Join($id: ID!) { joinQueue(queueId: $id) { queued queuedCount } }`
+	vars := map[string]any{"id": demoDefaultQueueID}
+
+	conn := connectGraphQLWS(t, graphQLWSURL(env.Server.URL), "http://localhost:5173", bearerA)
+	subID := subscribeQueueUpdated(t, conn, demoDefaultQueueID)
+
+	initial := nextQueueUpdatePayload(t, conn, subID, 5*time.Second)
+	if initial["status"] != "LEFT" {
+		t.Fatalf("expected LEFT initial before joining, got %+v", initial)
+	}
+
+	postGraphQL(t, env.Handler, joinQuery, vars, cookieA)
+
+	waiting := nextQueueUpdatePayload(t, conn, subID, 5*time.Second)
+	if waiting["status"] != "WAITING" {
+		t.Fatalf("expected live WAITING push over the already-open subscription after joining, got %+v (stale queue rows? run db.sh clean-test-data)", waiting)
 	}
 }
 

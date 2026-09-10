@@ -42,6 +42,22 @@ export function navigateToWaiting({ replace = false } = {}) {
   navigateTo(WAITING_PATH, { replace })
 }
 
+/**
+ * Undo a browser Back that has already left the waiting page, so the player can be
+ * asked before their queue place is spent. Pushing rather than pretending keeps the
+ * URL honest, and it costs no history depth: the pop removed an entry, this puts one
+ * back. The remembered return path is deliberately left alone — the player has not
+ * gone anywhere, so where they came from has not changed.
+ */
+export function restoreWaitingRoute() {
+  // Already back on the page (two waiting entries in a row) — nothing to undo, and
+  // pushing anyway would be the history leak this design exists to avoid.
+  if (parseWaitingRoute()) {
+    return
+  }
+  navigateTo(WAITING_PATH)
+}
+
 /** Every exit from the waiting page. A formed match is not one: it stays here for
  * the launch step (JQ-136) and leaves by entering the game. */
 export function navigateOutOfWaiting({ replace = true } = {}) {

@@ -4,11 +4,20 @@ import (
 	"context"
 	"database/sql"
 	"errors"
+	"strings"
 
 	"github.com/google/uuid"
 )
 
 const queueColumns = `id, game_id, user_id, status, joined_at, mode_queue_id, queue_path, party_id, forming_match_id, queue_options`
+
+// queueColumnsGQ is queueColumns bound to the `gq` alias, for the queries that join
+// another table and would otherwise be ambiguous on shared column names (user_id).
+//
+// Derived from queueColumns rather than written out again: the two lists must stay in
+// the same order forever, because scanQueueEntry reads them positionally, and a second
+// hand-maintained copy is exactly how that goes wrong silently.
+var queueColumnsGQ = "gq." + strings.ReplaceAll(queueColumns, ", ", ", gq.")
 
 func scanQueueEntry(row interface{ Scan(dest ...any) error }) (*QueueEntry, error) {
 	var entry QueueEntry

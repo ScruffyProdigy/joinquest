@@ -28,35 +28,46 @@
   --card-foreground: #edeeed;
   --popover: #191c1b;
   --popover-foreground: #edeeed;
-  --primary: #2dd4bf;
+  /* The designer's magenta, at a lightness that survives a dark background. The
+     prototype is light-first and its own magentas are far too dark for ours --
+     #9000b4 measures 2.53:1 on --background and #be00ed 3.92:1, both failing AA.
+     Magenta carries much less luminance than the teal it replaces at the same HSL
+     lightness, because luminance is dominated by the green channel, so the hue
+     transfers from the prototype and the lightness does not. #a855f7 is the trap:
+     a real prototype colour that clears AA on the background at 4.71 and fails on
+     cards at 4.34, which is where most accented text sits. Hue 289, S 100%, L 70%
+     clears AA on all three jobs. See src/theme.test.js. */
+  --primary: #e366ff;
   /* Links carry their own colour, not the brand's: --primary is reserved for the
      option we want clicked, so a repaint of the brand must not sweep links up with
-     it. Lifted from the prototype, which likewise keeps its link accent (#818cf8)
-     separate from its brand accent. */
-  --link: #818cf8;
+     it. The prototype does the same, keeping its link accent separate from its
+     brand accent. Re-picked with the magenta: the previous #818cf8 measured only
+     1.08:1 against it -- near-identical luminance at 236 vs 289 degrees, so the
+     two read as one colour in a paragraph. This blue splits by both. */
+  --link: #93c5fd;
   --primary-foreground: #071210;
   --secondary: #1f2220;
   --secondary-foreground: #c8cecc;
   --muted: #1f2220;
   --muted-foreground: #8c9896;
   --accent: #1f2220;
-  --accent-foreground: #2dd4bf;
+  --accent-foreground: #e366ff;
   --destructive: #f87171;
   --destructive-foreground: #3b0c0c;
   --border: #ffffff1c;
   --input: transparent;
   --input-background: #1f2220;
   --switch-background: #2d3533;
-  --ring: #2dd4bf;
+  --ring: #e366ff;
   --radius: 1rem;
   --sidebar: #191c1b;
   --sidebar-foreground: #edeeed;
-  --sidebar-primary: #2dd4bf;
+  --sidebar-primary: #e366ff;
   --sidebar-primary-foreground: #071210;
   --sidebar-accent: #1f2220;
   --sidebar-accent-foreground: #edeeed;
   --sidebar-border: #ffffff12;
-  --sidebar-ring: #2dd4bf;
+  --sidebar-ring: #e366ff;
   --font-heading: "Cal Sans", "Bricolage Grotesque", sans-serif;
   --font-sans: "Plus Jakarta Sans", sans-serif;
   --font-mono-display: "DM Mono", monospace;

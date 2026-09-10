@@ -229,6 +229,8 @@ count and writes nothing:
 ```
 {"metric":"lobby.queue.stale_matched.count","signal":"metric","type":"gauge","value":0,...}
 dry run: 0 stale matched queue rows older than 5m0s
+{"metric":"lobby.queue.stale_disconnected.count","signal":"metric","type":"gauge","value":0,...}
+dry run: 0 stale disconnected queue rows older than 1m30s
 ```
 
 ### Clear manually
@@ -242,13 +244,18 @@ kubectl -n joinquest create job stale-queue-clear \
 kubectl -n joinquest logs job/stale-queue-clear
 ```
 
-Observed output when it finds and clears one row:
+Observed output when it finds and clears one row. Both sweeps run on every invocation,
+so a clean run still prints the disconnected half:
 
 ```
 {"metric":"lobby.queue.stale_matched.count","...","type":"gauge","value":1}
 {"metric":"lobby.queue.stale_matched.cancelled","...","type":"count","value":1}
 {"metric":"lobby.queue.stale_matched.remaining","...","type":"gauge","value":0}
 stale matched queue sweep: found=1 cancelled=1 remaining=0 threshold=5m0s
+{"metric":"lobby.queue.stale_disconnected.count","...","type":"gauge","value":0}
+{"metric":"lobby.queue.stale_disconnected.cancelled","...","type":"count","value":0}
+{"metric":"lobby.queue.stale_disconnected.remaining","...","type":"gauge","value":0}
+stale disconnected queue sweep: found=0 cancelled=0 remaining=0 threshold=1m30s
 ```
 
 Running it again immediately reports `found=0 cancelled=0 remaining=0` — it is
@@ -261,9 +268,13 @@ guard. That is the narrowest possible fix and needs no production write.
 ### What the sweep does automatically
 
 `lobby-stale-matched-queue-sweep` (`k8s/jobs/stale-matched-queue-sweep.yaml`) runs every
-15 minutes and cancels stale matched rows **across all users**. It is the scheduled
-counterpart to the per-user heal, which only ever fires for whoever happens to make a
-request — that is why an idle player's orphaned row could sit indefinitely.
+15 minutes and performs **two** sweeps, both across all users. The name is historical:
+the CronJob and the binary behind it now also clear `waiting` rows abandoned by a
+disconnected player.
+
+The first cancels stale matched rows. It is the scheduled counterpart to the per-user
+heal, which only ever fires for whoever happens to make a request — that is why an idle
+player's orphaned row could sit indefinitely.
 
 - **Threshold**: `STALE_MATCHED_QUEUE_AGE` on the CronJob, default `5m`. This is the
   match-proposal deadline: past it, an unfulfilled match dissolves rather than stranding
@@ -279,7 +290,34 @@ request — that is why an idle player's orphaned row could sit indefinitely.
   alert without an agent installed. Alert on `.count` staying above zero across
   consecutive runs, which means rows are appearing faster than they are cleared.
 - **Failure is a signal too**: if any row survives its own sweep, the job exits non-zero
-  so the CronJob's failure count surfaces it.
+  so the CronJob's failure count surfaces it. Both sweeps always run first — a problem
+  in one is reported in the exit status, never by skipping the other, because a stuck
+  matched row must not be able to silently disable the disconnect backstop below.
+
+#### The disconnected-waiting sweep (JQ-216)
+
+The second sweep cancels `waiting` rows whose player's last socket closed longer ago
+than the 90s grace window. Unlike the matched sweep, this removes a player who is still
+nominally queued — a **player-visible** action, so the bar for changing it is higher.
+
+- **It is a backstop, not the normal path.** When the API pod survives, an in-process
+  timer removes the player at exactly 90s and publishes the departure. This sweep only
+  ever finds windows whose timer died with its pod, which is also why it publishes
+  nothing: those players hold no socket to receive it.
+- **The `*/15` cadence governs `waiting` rows only.** 90s is the real number whenever
+  the pod is alive; up to 15 minutes late is acceptable for the crash case. Matched rows
+  are reached far sooner, by the 5-minute `STALE_MATCHED_QUEUE_AGE` window above. Nobody
+  should retune this cadence believing it governs held seats.
+- **The window is not tunable from the manifest.** It is
+  `store.DefaultQueueDisconnectGrace`, shared with the timer, so the sweep and the timer
+  cannot drift on what the window is. `STALE_MATCHED_QUEUE_AGE` and `-older-than` apply
+  to the matched sweep only.
+- **Scoped to `waiting`.** A `matched` row belongs to the seat-hold window, not to this
+  sweep, and cancelling one here would destroy a seat being legitimately held.
+- **Signal**: three more metrics per run —
+  `lobby.queue.stale_disconnected.count` (found), `.cancelled`, and `.remaining`.
+  `.count` staying above zero across consecutive runs means pods are dying with live
+  grace windows in them, which is a pod-health question, not a queue one.
 
 The emitter (`backend/internal/observe`) is a deliberate placeholder — the platform has
 no metrics backend yet. Choosing one is JQ-166; swapping it in means adding an `Emitter`
