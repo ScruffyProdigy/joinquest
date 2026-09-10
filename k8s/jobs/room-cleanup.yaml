@@ -1,0 +1,67 @@
+# Run the fleet-wide room sweeps (JQ-253).
+#
+# 1. Remove room memberships whose player's last socket closed longer ago than the 30s
+#    room grace window, and close whichever rooms that emptied. Player-visible, but only
+#    ever in the crash case: when the API pod survives, an in-process timer removes the
+#    member at exactly 30s and this finds nothing. It exists for the windows whose timer
+#    died with their pod.
+#
+# 2. Close open rooms that nothing is left in. Not a coarser version of the first: a
+#    room whose players went into a game is held open on purpose while the match runs,
+#    and by the time it ends there is no member left whose departure would close it.
+#    Nothing else ever reconsiders those rooms, so without this pass a room outlives
+#    every match played in it and sweep 3 never reaches it either.
+#
+# 3. Delete rooms that have been closed longer than CLOSED_ROOM_RETENTION. Not
+#    player-visible at all — a closed room is already unreachable by invite code and
+#    invisible to the player who was in it. This is the row going away, deferred so the
+#    regroup path (which reads a table through its closed room deliberately) is finished
+#    with it. Every Play with friends click now mints a fresh room, so without this the
+#    table grows without bound.
+#
+# THE HOURLY CADENCE GOVERNS NO WINDOW. Memberships are removed at 30s by the
+# in-process timer, and a closed room's retention is measured from when it closed, not
+# from when this job runs — the cadence only decides how promptly each backstop notices.
+# Hourly rather than the queue sweep's */15 because neither consequence is urgent: a
+# membership this job removes belongs to a player whose pod died, and a room row an hour
+# past its retention costs a row.
+#
+# The 30s window is NOT tunable here: it is a code constant shared with the timer that
+# is the real removal path, so the two cannot disagree. CLOSED_ROOM_RETENTION is tunable,
+# because it is a storage policy rather than something a player feels.
+#
+# Metrics per run: lobby.room.stale_members.{count,removed,remaining}, lobby.room.closed,
+# lobby.room.empty.count, lobby.room.empty_closed, and lobby.room.retired.{count,deleted}.
+# See docs/lobby-maintenance.md.
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: lobby-room-cleanup
+  namespace: joinquest
+spec:
+  schedule: "17 * * * *"
+  concurrencyPolicy: Forbid
+  successfulJobsHistoryLimit: 3
+  failedJobsHistoryLimit: 3
+  jobTemplate:
+    spec:
+      ttlSecondsAfterFinished: 3600
+      template:
+        spec:
+          restartPolicy: Never
+          containers:
+            - name: roomsweep
+              image: docker.io/scruffyprodigy/joinquest-backend:latest
+              command: ["./roomsweep"]
+              env:
+                - name: DATABASE_URL
+                  valueFrom:
+                    secretKeyRef:
+                      name: pg-dsn
+                      key: DATABASE_URL
+                # How long a closed room's row survives before deletion. Defaults to 6h
+                # in code. The floor is "past any possible regroup", which is minutes —
+                # anything at or above an hour is safe; below that starts cutting into
+                # rematch.
+                - name: CLOSED_ROOM_RETENTION
+                  value: "6h"

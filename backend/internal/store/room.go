@@ -120,6 +120,15 @@ func (s *Store) leaveRoomTx(ctx context.Context, tx *sql.Tx, userID uuid.UUID) (
 		return nil, err
 	}
 
+	// Leaving the room gives up the seat held in it. A seat is only claimable by a
+	// member (sitAtTableTx's isRoomMemberTx), so a seat outliving its membership is a
+	// state no rule allows: it blocks its seat_key against the friends still here, and
+	// it reads as live play in roomHasLivePlayClause, which would hold the room open on
+	// behalf of somebody who has left.
+	if _, _, err := s.leaveTableSeatTx(ctx, tx, userID); err != nil {
+		return nil, err
+	}
+
 	var remaining int
 	if err := tx.QueryRowContext(ctx, `
 		SELECT COUNT(*) FROM room_members WHERE room_id = $1
@@ -128,11 +137,15 @@ func (s *Store) leaveRoomTx(ctx context.Context, tx *sql.Tx, userID uuid.UUID) (
 	}
 
 	if remaining == 0 {
-		if _, err := tx.ExecContext(ctx, `
-			UPDATE rooms SET status = $2, updated_at = NOW() WHERE id = $1
-		`, roomID, RoomStatusClosed); err != nil {
+		// An empty roster is not always a finished room: players who are IN a game
+		// have their sockets on the game rather than the lobby, and a started table
+		// with an active session is the room they come back to. closeRoomIfEmptyTx
+		// makes that distinction; when it declines, the room stays open with nobody
+		// in it until the play behind it ends.
+		if _, err := s.closeRoomIfEmptyTx(ctx, tx, roomID); err != nil {
 			return nil, err
 		}
+		// No members left, so there is no host to reassign either way.
 		return &roomID, nil
 	}
 

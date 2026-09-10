@@ -419,17 +419,27 @@ func (s *Store) CreateTable(ctx context.Context, roomID, gameID, modeID, userID 
 	return table, nil
 }
 
-// CreatePrivateTable ensures the user has a room, then creates a forming table.
+// CreatePrivateTable opens a fresh room for the player and creates a forming table in
+// it. This is what Play with friends calls.
+//
+// Always a NEW room, never the one they were in before the click. It used to look up
+// GetUserRoom first and only create when that found nothing, which meant a player who
+// still had a room — and nothing ever tore rooms down, so they did — was dropped back
+// into it. Asking to play with friends and landing in last night's room, with its old
+// invite code already shared with people who are not here, is the bug.
+//
+// One room per player globally still holds, and holds by the same mechanism it always
+// did: createRoomTx leaves whatever room the player is in before inserting the new one,
+// so the unique index on room_members.user_id is never contested. The old room closes
+// behind them if that emptied it.
+//
+// Joining someone else's room is untouched by this. JoinRoom is how you enter a room
+// that already exists, and an invite code still finds exactly the room it names — this
+// changes only what happens when a player asks for a room of their own.
 func (s *Store) CreatePrivateTable(ctx context.Context, userID, gameID, modeID uuid.UUID) (*RoomTable, error) {
-	room, err := s.GetUserRoom(ctx, userID)
+	room, err := s.CreateRoom(ctx, userID)
 	if err != nil {
-		if !errors.Is(err, ErrNotFound) {
-			return nil, err
-		}
-		room, err = s.CreateRoom(ctx, userID)
-		if err != nil {
-			return nil, err
-		}
+		return nil, err
 	}
 	return s.CreateTable(ctx, room.ID, gameID, modeID, userID)
 }
