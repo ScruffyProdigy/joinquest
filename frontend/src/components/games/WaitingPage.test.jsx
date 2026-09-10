@@ -173,19 +173,25 @@ describe('WaitingPage', () => {
     await waitFor(() => expect(window.location.pathname).toBe('/'))
   })
 
-  it('routes away when a LEFT update clears an intent it had been showing as queued', async () => {
+  it('routes away when a queued intent it was already showing disappears', async () => {
+    // Distinct from the case above, which never got past loading: this one has
+    // rendered the queued state before the intent goes, so it pins that the page
+    // gives up a view it is already committed to rather than only declining to
+    // enter it.
+    //
+    // That is the transition a LEFT update produces — the server evicted a frozen
+    // tab, the reconnect's initial payload says LEFT, and useActiveIntent's refresh
+    // settles to no intent — but the LEFT payload itself is upstream of this
+    // component and is handled in useGameQueue, so nothing here mocks one.
     sessionStorage.setItem('lobby.waitingReturnPath', '/games/word-hunt')
     setIntentState({ loading: true })
     const { rerender } = render(<WaitingPage intent={intentState} />)
     expect(window.location.pathname).toBe('/waiting')
 
-    // The initial fetch resolves: the player is still queued.
     setIntentState({ activeIntent: waitingIntent })
     rerender(<WaitingPage intent={intentState} />)
     expect(screen.getByRole('heading', { name: 'Finding players…' })).toBeInTheDocument()
 
-    // A restored tab gets a LEFT update (the server evicted it while frozen);
-    // useActiveIntent's refresh settles to no active intent at all.
     setIntentState({ activeIntent: null })
     rerender(<WaitingPage intent={intentState} />)
 

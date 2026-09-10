@@ -87,11 +87,14 @@ describe('useLeaveQueueOnExit', () => {
     await waitFor(() => expect(window.location.pathname).toBe('/waiting'))
   })
 
-  it('does not bounce an evicted player back to waiting when the leave still resolves true', async () => {
-    // The server may have already evicted this player (JQ-216's grace-window sweep)
-    // by the time this fires. LeaveModeQueue swallows the missing-row error and
-    // still returns true, so from here this is indistinguishable from an ordinary
-    // successful leave — the failure-only fallback must not fire on it.
+  it('lets a resolved leave route away, including the one the server already handled', async () => {
+    // Named for what it can actually pin. A server-side eviction (JQ-216) reaches
+    // this hook as a leaveQueue that resolves normally — LeaveModeQueue swallows the
+    // missing-row case and still returns true — so there is no client-side input
+    // that distinguishes it from an ordinary successful leave, and no test here can
+    // fail specifically for the eviction. What it does pin is that the recovery
+    // above is failure-only: a resolved leave must not bounce the player back to the
+    // waiting page.
     render(<Probe activeIntent={waitingIntent} />)
 
     act(() => navigateTo('/games/word-hunt'))
@@ -100,6 +103,7 @@ describe('useLeaveQueueOnExit', () => {
       await Promise.resolve()
     })
 
+    expect(queue.leaveQueue).toHaveBeenCalledWith('q1')
     expect(window.location.pathname).toBe('/games/word-hunt')
   })
 
