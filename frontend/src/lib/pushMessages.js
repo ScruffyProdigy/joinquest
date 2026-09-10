@@ -1,4 +1,4 @@
-import { startMatchReadySignals, stopMatchReadySignals } from './inTabSignals'
+import { startSeatHeldSignals, stopSeatHeldSignals } from './inTabSignals'
 import { isPushSupported, resubscribeAfterChange } from './push'
 
 /*
@@ -9,18 +9,18 @@ import { isPushSupported, resubscribeAfterChange } from './push'
  * instead of raising the in-tab signals.
  */
 
-export const MATCH_READY = 'joinquest:match-ready'
+export const SEAT_HELD = 'joinquest:seat-held'
 export const NOTIFICATION_CLICK = 'joinquest:notification-click'
 export const SUBSCRIPTION_CHANGED = 'joinquest:push-subscription-changed'
 
 /**
  * Starts listening. Returns a teardown.
  *
- * `onMatchReady` fires for a push delivered to a visible tab -- the page is
+ * `onSeatHeld` fires for a push delivered to a visible tab -- the page is
  * already live, so this is for attention, not navigation. `onNotificationClick`
  * fires when the player taps a notification and does need routing.
  */
-export function listenForPushMessages({ onMatchReady, onNotificationClick } = {}) {
+export function listenForPushMessages({ onSeatHeld, onNotificationClick } = {}) {
   if (!isPushSupported() || !navigator.serviceWorker?.addEventListener) {
     return () => {}
   }
@@ -28,16 +28,16 @@ export function listenForPushMessages({ onMatchReady, onNotificationClick } = {}
   const handler = (event) => {
     const { type, url } = event.data ?? {}
     switch (type) {
-      case MATCH_READY:
+      case SEAT_HELD:
         // The tab is visible but may not be the window the player is looking
         // at. The page updates itself over its own subscription, so this only
         // needs to draw attention -- never navigate a page the player is using.
-        startMatchReadySignals()
-        onMatchReady?.(url)
+        startSeatHeldSignals()
+        onSeatHeld?.(url)
         break
       case NOTIFICATION_CLICK:
         // They are here now, so clear anything still flashing.
-        stopMatchReadySignals()
+        stopSeatHeldSignals()
         onNotificationClick?.(url)
         break
       case SUBSCRIPTION_CHANGED:

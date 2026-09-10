@@ -12,8 +12,8 @@ import (
 	"github.com/scruffyprodigy/joinquest/internal/store"
 )
 
-// PushMatchReady notifies one player across every install they have, marks any
-// dead endpoints, and publishes the outcome so the seat hold can react.
+// PushSeatHeld notifies one away player across every install they have, marks
+// any dead endpoints, and publishes the outcome so the seat hold can react.
 //
 // The outcome is both returned and published because a push service only
 // reveals a dead subscription on an actual send, after the hold has already
@@ -21,11 +21,11 @@ import (
 //
 // Best-effort: it never returns an error. This runs inside match-formation
 // fan-out, so a push failure must not fail a match that formed correctly.
-func (r *Resolver) PushMatchReady(ctx context.Context, userID uuid.UUID, sessionID string, note push.Notification) pubsub.PushDeliveryEvent {
+func (r *Resolver) PushSeatHeld(ctx context.Context, userID uuid.UUID, holdID string, note push.Notification) pubsub.PushDeliveryEvent {
 	event := pubsub.PushDeliveryEvent{
-		UserID:    userID.String(),
-		SessionID: sessionID,
-		Status:    pubsub.PushSkipped,
+		UserID: userID.String(),
+		HoldID: holdID,
+		Status: pubsub.PushSkipped,
 	}
 
 	st, err := r.requireStore()
@@ -34,9 +34,9 @@ func (r *Resolver) PushMatchReady(ctx context.Context, userID uuid.UUID, session
 		return event
 	}
 	// Without a TTL the push service applies its own retention, which outlives
-	// any seat. Build these with MatchReadyNotification.
+	// any seat. Build these with SeatHeldNotification.
 	if note.TTL <= 0 {
-		log.Printf("push: refusing an unbounded match-ready notification for %s", userID)
+		log.Printf("push: refusing an unbounded seat-held notification for %s", userID)
 		r.publishPushDelivery(ctx, event)
 		return event
 	}
@@ -117,23 +117,28 @@ func (r *Resolver) publishPushDelivery(ctx context.Context, event pubsub.PushDel
 	}
 }
 
-// MatchReadyNotification builds the ping for a seat with `remaining` left on
-// its hold. ok=false when there is none, because the seat is already gone and
-// the player would tap through to a released seat.
+// SeatHeldNotification builds the ping for a chair held for `remaining`.
+// ok=false when there is none, because the chair is already gone and the player
+// would tap through to nothing.
 //
-// `remaining` is the budget left at SEND time, not the ceiling: a busy queue
-// frees the seat early, so a fixed TTL would over-promise. There is no default.
-func MatchReadyNotification(joinURL string, remaining time.Duration) (push.Notification, bool) {
+// The hold happens BEFORE the match is announced, so there is no formed match
+// yet and the copy must not claim one. It is loss-framed instead -- the chair
+// really is released if they do not return -- which carries more pull than a
+// vaguer promise would.
+//
+// `remaining` is the time left at SEND time, not the ceiling. There is no
+// default: an unset TTL outlives the hold.
+func SeatHeldNotification(joinURL string, remaining time.Duration) (push.Notification, bool) {
 	if remaining <= 0 {
 		return push.Notification{}, false
 	}
 	return push.Notification{
-		Title: "Your match is ready",
+		Title: "Your game is nearly ready",
 		// No countdown: the body renders at delivery, so any stated time is
 		// already stale.
-		Body: "Tap to take your seat.",
+		Body: "Come back now to keep your spot.",
 		URL:  joinURL,
-		Tag:  "joinquest-match-ready",
+		Tag:  "joinquest-seat-held",
 		TTL:  remaining,
 	}, true
 }

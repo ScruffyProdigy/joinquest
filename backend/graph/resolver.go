@@ -60,10 +60,9 @@ type Resolver struct {
 	// caller cannot be told about because the call legitimately succeeded. nil emits
 	// to the log, so a resolver never has to nil-check it.
 	Emitter observe.Emitter
-	// Push delivers match-ready notifications to players who left the page while
-	// queued; nil logs instead of sending and reports push as unconfigured, so a
-	// deployment without VAPID keys hides the affordance rather than offering a
-	// control that cannot work. See internal/push.
+	// Push notifies players who left the page while queued. nil logs instead of
+	// sending and reports push as unconfigured, which the frontend reads as
+	// "hide the control". See internal/push.
 	Push push.Sender
 }
 

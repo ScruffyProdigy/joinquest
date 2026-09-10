@@ -2,9 +2,9 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import {
   clearFaviconBadge,
   playChime,
-  startMatchReadySignals,
+  startSeatHeldSignals,
   startTitleFlash,
-  stopMatchReadySignals,
+  stopSeatHeldSignals,
   stopTitleFlash,
 } from './inTabSignals'
 
@@ -146,7 +146,7 @@ describe('chime', () => {
   })
 })
 
-describe('startMatchReadySignals', () => {
+describe('startSeatHeldSignals', () => {
   beforeEach(() => {
     vi.useFakeTimers()
     // Order matters: assigning head.innerHTML removes the <title> element, so
@@ -156,13 +156,13 @@ describe('startMatchReadySignals', () => {
   })
 
   afterEach(() => {
-    stopMatchReadySignals()
+    stopSeatHeldSignals()
     vi.useRealTimers()
     document.head.innerHTML = ''
   })
 
   it('returns a teardown that clears every signal at once', () => {
-    const stop = startMatchReadySignals('Match ready!')
+    const stop = startSeatHeldSignals('Match ready!')
     expect(document.title).toBe('Match ready!')
 
     stop()

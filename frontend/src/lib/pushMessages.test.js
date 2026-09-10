@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import {
-  MATCH_READY,
+  SEAT_HELD,
   NOTIFICATION_CLICK,
   SUBSCRIPTION_CHANGED,
   listenForPushMessages,
@@ -21,8 +21,8 @@ function emit(data) {
 describe('listenForPushMessages', () => {
   beforeEach(() => {
     mockPushSupported()
-    vi.spyOn(signals, 'startMatchReadySignals').mockImplementation(() => {})
-    vi.spyOn(signals, 'stopMatchReadySignals').mockImplementation(() => {})
+    vi.spyOn(signals, 'startSeatHeldSignals').mockImplementation(() => {})
+    vi.spyOn(signals, 'stopSeatHeldSignals').mockImplementation(() => {})
     vi.spyOn(push, 'resubscribeAfterChange').mockResolvedValue(null)
   })
 
@@ -32,15 +32,15 @@ describe('listenForPushMessages', () => {
   })
 
   it('raises the in-tab signals for a push delivered to a visible tab', () => {
-    const onMatchReady = vi.fn()
-    listenForPushMessages({ onMatchReady })
+    const onSeatHeld = vi.fn()
+    listenForPushMessages({ onSeatHeld })
 
-    emit({ type: MATCH_READY, url: '/waiting' })
+    emit({ type: SEAT_HELD, url: '/waiting' })
 
     // The worker suppresses the system notification for a visible tab, so
     // without this the push would be dropped entirely.
-    expect(signals.startMatchReadySignals).toHaveBeenCalled()
-    expect(onMatchReady).toHaveBeenCalledWith('/waiting')
+    expect(signals.startSeatHeldSignals).toHaveBeenCalled()
+    expect(onSeatHeld).toHaveBeenCalledWith('/waiting')
   })
 
   it('clears the signals and routes when the player taps the notification', () => {
@@ -49,15 +49,15 @@ describe('listenForPushMessages', () => {
 
     emit({ type: NOTIFICATION_CLICK, url: '/launch/abc' })
 
-    expect(signals.stopMatchReadySignals).toHaveBeenCalled()
+    expect(signals.stopSeatHeldSignals).toHaveBeenCalled()
     expect(onNotificationClick).toHaveBeenCalledWith('/launch/abc')
   })
 
   it('does not route a push that landed on a visible tab', () => {
     const onNotificationClick = vi.fn()
-    listenForPushMessages({ onMatchReady: vi.fn(), onNotificationClick })
+    listenForPushMessages({ onSeatHeld: vi.fn(), onNotificationClick })
 
-    emit({ type: MATCH_READY, url: '/waiting' })
+    emit({ type: SEAT_HELD, url: '/waiting' })
 
     // The page is live and updates over its own subscription. Navigating would
     // yank a page the player is actively using.
@@ -83,14 +83,14 @@ describe('listenForPushMessages', () => {
   })
 
   it('ignores messages it does not own', () => {
-    const onMatchReady = vi.fn()
-    listenForPushMessages({ onMatchReady })
+    const onSeatHeld = vi.fn()
+    listenForPushMessages({ onSeatHeld })
 
     emit({ type: 'some-other-library:event' })
     emit(undefined)
 
-    expect(onMatchReady).not.toHaveBeenCalled()
-    expect(signals.startMatchReadySignals).not.toHaveBeenCalled()
+    expect(onSeatHeld).not.toHaveBeenCalled()
+    expect(signals.startSeatHeldSignals).not.toHaveBeenCalled()
   })
 
   it('removes its listener on teardown', () => {
@@ -104,7 +104,7 @@ describe('listenForPushMessages', () => {
 
   it('is a no-op on a browser without push', () => {
     mockPushUnsupported()
-    const stop = listenForPushMessages({ onMatchReady: vi.fn() })
+    const stop = listenForPushMessages({ onSeatHeld: vi.fn() })
     expect(() => stop()).not.toThrow()
   })
 })

@@ -10,8 +10,8 @@
 self.addEventListener('install', () => self.skipWaiting())
 self.addEventListener('activate', (event) => event.waitUntil(self.clients.claim()))
 
-const DEFAULT_TITLE = 'Your match is ready'
-const DEFAULT_BODY = 'Tap to take your seat.'
+const DEFAULT_TITLE = 'Your game is nearly ready'
+const DEFAULT_BODY = 'Come back now to keep your spot.'
 const DEFAULT_URL = '/waiting'
 
 function parsePayload(event) {
@@ -43,7 +43,7 @@ self.addEventListener('push', (event) => {
       const visible = clients.some((client) => client.visibilityState === 'visible')
       if (visible) {
         for (const client of clients) {
-          client.postMessage({ type: 'joinquest:match-ready', url })
+          client.postMessage({ type: 'joinquest:seat-held', url })
         }
         return
       }
@@ -53,7 +53,7 @@ self.addEventListener('push', (event) => {
         icon: '/icons/icon-192.png',
         badge: '/icons/favicon-32.png',
         // Collapses retries into one alert.
-        tag: payload.tag || 'joinquest-match-ready',
+        tag: payload.tag || 'joinquest-seat-held',
         renotify: true,
         // The seat has a deadline, so this must survive a glance.
         requireInteraction: true,

@@ -32,8 +32,10 @@ const (
 type PushDeliveryEvent struct {
 	UserID string             `json:"userId"`
 	Status PushDeliveryStatus `json:"status"`
-	// SessionID ties the outcome to a match, so a late event is discardable.
-	SessionID string `json:"sessionId,omitempty"`
+	// HoldID ties the outcome to the hold it belongs to, so a late event is
+	// discardable. Not a session id: the hold runs before the match is
+	// announced, so no session exists yet.
+	HoldID string `json:"holdId,omitempty"`
 	// Attempted and Delivered count installs, so a partial success is visible.
 	Attempted int `json:"attempted"`
 	Delivered int `json:"delivered"`

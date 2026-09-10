@@ -54,7 +54,7 @@ func newPushTestUser(t *testing.T, ctx context.Context, env *queueIntegrationEnv
 	return user.ID
 }
 
-func TestPushMatchReadyReportsDeliveryAndRecordsIt(t *testing.T) {
+func TestPushSeatHeldReportsDeliveryAndRecordsIt(t *testing.T) {
 	env := newQueueIntegrationEnv(t)
 	ctx := context.Background()
 	cleaner := env.newCleaner(t)
@@ -63,7 +63,7 @@ func TestPushMatchReadyReportsDeliveryAndRecordsIt(t *testing.T) {
 	endpoints := subscribeUser(t, ctx, env, userID, 2)
 	env.resolver.Push = &fakeSender{publicKey: "test-key"}
 
-	outcome := env.resolver.PushMatchReady(ctx, userID, "session-1", push.Notification{Title: "ready", TTL: 45 * time.Second})
+	outcome := env.resolver.PushSeatHeld(ctx, userID, "session-1", push.Notification{Title: "ready", TTL: 45 * time.Second})
 
 	if outcome.Status != pubsub.PushDelivered {
 		t.Fatalf("expected DELIVERED, got %q", outcome.Status)
@@ -86,7 +86,7 @@ func TestPushMatchReadyReportsDeliveryAndRecordsIt(t *testing.T) {
 // The behaviour JQ-199's tier depends on: a 410 must collapse reachability
 // immediately, because the hold was taken on the belief the player was
 // reachable and nothing will otherwise correct it before the ceiling expires.
-func TestPushMatchReadyCollapsesToUndeliverableWhenEveryInstallIsGone(t *testing.T) {
+func TestPushSeatHeldCollapsesToUndeliverableWhenEveryInstallIsGone(t *testing.T) {
 	env := newQueueIntegrationEnv(t)
 	ctx := context.Background()
 	cleaner := env.newCleaner(t)
@@ -105,7 +105,7 @@ func TestPushMatchReadyCollapsesToUndeliverableWhenEveryInstallIsGone(t *testing
 		t.Fatalf("precondition: expected reachable, got %v (err %v)", reachable, err)
 	}
 
-	outcome := env.resolver.PushMatchReady(ctx, userID, "session-1", push.Notification{Title: "ready", TTL: 45 * time.Second})
+	outcome := env.resolver.PushSeatHeld(ctx, userID, "session-1", push.Notification{Title: "ready", TTL: 45 * time.Second})
 
 	if outcome.Status != pubsub.PushUndeliverable {
 		t.Fatalf("expected UNDELIVERABLE, got %q", outcome.Status)
@@ -133,7 +133,7 @@ func TestPushMatchReadyCollapsesToUndeliverableWhenEveryInstallIsGone(t *testing
 	}
 }
 
-func TestPushMatchReadyKeepsSubscriptionsWhenTheFailureIsTransient(t *testing.T) {
+func TestPushSeatHeldKeepsSubscriptionsWhenTheFailureIsTransient(t *testing.T) {
 	env := newQueueIntegrationEnv(t)
 	ctx := context.Background()
 	cleaner := env.newCleaner(t)
@@ -145,7 +145,7 @@ func TestPushMatchReadyKeepsSubscriptionsWhenTheFailureIsTransient(t *testing.T)
 		results:   map[string]error{endpoints[0]: errors.New("push service returned 503")},
 	}
 
-	outcome := env.resolver.PushMatchReady(ctx, userID, "session-1", push.Notification{Title: "ready", TTL: 45 * time.Second})
+	outcome := env.resolver.PushSeatHeld(ctx, userID, "session-1", push.Notification{Title: "ready", TTL: 45 * time.Second})
 
 	// FAILED, not UNDELIVERABLE: a push-service hiccup says nothing about
 	// whether the player can be reached, and evicting them over it would be a
@@ -161,7 +161,7 @@ func TestPushMatchReadyKeepsSubscriptionsWhenTheFailureIsTransient(t *testing.T)
 	}
 }
 
-func TestPushMatchReadyTreatsOneLiveInstallAsSuccess(t *testing.T) {
+func TestPushSeatHeldTreatsOneLiveInstallAsSuccess(t *testing.T) {
 	env := newQueueIntegrationEnv(t)
 	ctx := context.Background()
 	cleaner := env.newCleaner(t)
@@ -173,7 +173,7 @@ func TestPushMatchReadyTreatsOneLiveInstallAsSuccess(t *testing.T) {
 		results:   map[string]error{endpoints[0]: push.ErrSubscriptionGone},
 	}
 
-	outcome := env.resolver.PushMatchReady(ctx, userID, "session-1", push.Notification{Title: "ready", TTL: 45 * time.Second})
+	outcome := env.resolver.PushSeatHeld(ctx, userID, "session-1", push.Notification{Title: "ready", TTL: 45 * time.Second})
 
 	// The old phone is dead but the desktop rang. The player can still come
 	// back, so the hold should not collapse.
@@ -188,7 +188,7 @@ func TestPushMatchReadyTreatsOneLiveInstallAsSuccess(t *testing.T) {
 	}
 }
 
-func TestPushMatchReadySkipsWhenThereIsNothingToSendTo(t *testing.T) {
+func TestPushSeatHeldSkipsWhenThereIsNothingToSendTo(t *testing.T) {
 	env := newQueueIntegrationEnv(t)
 	ctx := context.Background()
 	cleaner := env.newCleaner(t)
@@ -197,7 +197,7 @@ func TestPushMatchReadySkipsWhenThereIsNothingToSendTo(t *testing.T) {
 		userID := newPushTestUser(t, ctx, env, cleaner, "notify-none")
 		env.resolver.Push = &fakeSender{publicKey: "test-key"}
 
-		outcome := env.resolver.PushMatchReady(ctx, userID, "s", push.Notification{Title: "ready", TTL: 45 * time.Second})
+		outcome := env.resolver.PushSeatHeld(ctx, userID, "s", push.Notification{Title: "ready", TTL: 45 * time.Second})
 		if outcome.Status != pubsub.PushSkipped || outcome.Attempted != 0 {
 			t.Fatalf("expected SKIPPED with nothing attempted, got %q / %d", outcome.Status, outcome.Attempted)
 		}
@@ -209,7 +209,7 @@ func TestPushMatchReadySkipsWhenThereIsNothingToSendTo(t *testing.T) {
 		sender := &fakeSender{publicKey: ""}
 		env.resolver.Push = sender
 
-		outcome := env.resolver.PushMatchReady(ctx, userID, "s", push.Notification{Title: "ready", TTL: 45 * time.Second})
+		outcome := env.resolver.PushSeatHeld(ctx, userID, "s", push.Notification{Title: "ready", TTL: 45 * time.Second})
 		if outcome.Status != pubsub.PushSkipped {
 			t.Fatalf("expected SKIPPED, got %q", outcome.Status)
 		}
@@ -223,7 +223,7 @@ func TestPushMatchReadySkipsWhenThereIsNothingToSendTo(t *testing.T) {
 
 // The hold subscribes to the outcome rather than polling, so it has to actually
 // be published -- including in the cases where nothing was sent.
-func TestPushMatchReadyPublishesTheOutcomeForTheSeatHold(t *testing.T) {
+func TestPushSeatHeldPublishesTheOutcomeForTheSeatHold(t *testing.T) {
 	env := newQueueIntegrationEnv(t)
 	ctx := context.Background()
 	cleaner := env.newCleaner(t)
@@ -243,7 +243,7 @@ func TestPushMatchReadyPublishesTheOutcomeForTheSeatHold(t *testing.T) {
 		publicKey: "test-key",
 		results:   map[string]error{endpoints[0]: push.ErrSubscriptionGone},
 	}
-	env.resolver.PushMatchReady(ctx, userID, "session-42", push.Notification{Title: "ready", TTL: 45 * time.Second})
+	env.resolver.PushSeatHeld(ctx, userID, "session-42", push.Notification{Title: "ready", TTL: 45 * time.Second})
 
 	select {
 	case payload := <-messages:
@@ -258,8 +258,8 @@ func TestPushMatchReadyPublishesTheOutcomeForTheSeatHold(t *testing.T) {
 			t.Fatalf("wrong user on the event: %q", event.UserID)
 		}
 		// The session id lets a late event for a previous match be discarded.
-		if event.SessionID != "session-42" {
-			t.Fatalf("expected the session id to ride along, got %q", event.SessionID)
+		if event.HoldID != "session-42" {
+			t.Fatalf("expected the hold id to ride along, got %q", event.HoldID)
 		}
 	case <-time.After(5 * time.Second):
 		// Bounded rather than waiting on ctx.Done(): the test context has no
@@ -270,7 +270,7 @@ func TestPushMatchReadyPublishesTheOutcomeForTheSeatHold(t *testing.T) {
 
 // Best-effort by contract: this runs inside match-formation fan-out, and a
 // match that formed correctly must not fail because a push service hiccupped.
-func TestPushMatchReadyNeverReturnsAnErrorThatCouldAbortAMatch(t *testing.T) {
+func TestPushSeatHeldNeverReturnsAnErrorThatCouldAbortAMatch(t *testing.T) {
 	env := newQueueIntegrationEnv(t)
 	ctx := context.Background()
 	cleaner := env.newCleaner(t)
@@ -286,14 +286,14 @@ func TestPushMatchReadyNeverReturnsAnErrorThatCouldAbortAMatch(t *testing.T) {
 
 	// The signature has no error return by design; this asserts it also does
 	// not panic with everything failing at once.
-	outcome := env.resolver.PushMatchReady(ctx, userID, "s", push.Notification{Title: "ready", TTL: 45 * time.Second})
+	outcome := env.resolver.PushSeatHeld(ctx, userID, "s", push.Notification{Title: "ready", TTL: 45 * time.Second})
 	if outcome.Status != pubsub.PushFailed {
 		t.Fatalf("expected FAILED, got %q", outcome.Status)
 	}
 }
 
-func TestMatchReadyNotificationCarriesTheRemainingBudget(t *testing.T) {
-	note, ok := MatchReadyNotification("https://joinquest.cc/launch/abc", 40*time.Second)
+func TestSeatHeldNotificationCarriesTheRemainingBudget(t *testing.T) {
+	note, ok := SeatHeldNotification("https://joinquest.cc/launch/abc", 40*time.Second)
 	if !ok {
 		t.Fatal("a seat with budget left should be notifiable")
 	}
@@ -311,9 +311,9 @@ func TestMatchReadyNotificationCarriesTheRemainingBudget(t *testing.T) {
 	}
 }
 
-func TestMatchReadyNotificationRefusesAnExpiredBudget(t *testing.T) {
+func TestSeatHeldNotificationRefusesAnExpiredBudget(t *testing.T) {
 	for _, remaining := range []time.Duration{0, -1 * time.Second} {
-		if _, ok := MatchReadyNotification("https://joinquest.cc/launch/abc", remaining); ok {
+		if _, ok := SeatHeldNotification("https://joinquest.cc/launch/abc", remaining); ok {
 			// The seat is already gone. Telling the player to claim it lands
 			// them on a released seat -- the dead end JQ-199 AC #5 exists to
 			// prevent, and worse than sending nothing.
@@ -322,7 +322,7 @@ func TestMatchReadyNotificationRefusesAnExpiredBudget(t *testing.T) {
 	}
 }
 
-func TestPushMatchReadyRefusesAnUnboundedNotification(t *testing.T) {
+func TestPushSeatHeldRefusesAnUnboundedNotification(t *testing.T) {
 	env := newQueueIntegrationEnv(t)
 	ctx := context.Background()
 	cleaner := env.newCleaner(t)
@@ -335,12 +335,12 @@ func TestPushMatchReadyRefusesAnUnboundedNotification(t *testing.T) {
 	// No TTL. Without the guard the push service applies its own retention,
 	// which can be days -- the player would be told to claim a seat that was
 	// released long ago.
-	outcome := env.resolver.PushMatchReady(ctx, userID, "s", push.Notification{Title: "ready"})
+	outcome := env.resolver.PushSeatHeld(ctx, userID, "s", push.Notification{Title: "ready"})
 
 	if outcome.Status != pubsub.PushSkipped {
 		t.Fatalf("expected SKIPPED, got %q", outcome.Status)
 	}
 	if len(sender.sent) != 0 {
-		t.Fatal("an unbounded match-ready notification must never reach the push service")
+		t.Fatal("an unbounded seat-held notification must never reach the push service")
 	}
 }

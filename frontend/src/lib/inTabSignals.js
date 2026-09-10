@@ -144,15 +144,15 @@ export function playChime() {
  * Fires every in-tab signal and returns their teardown. Bundled so a caller
  * cannot leave the title flashing after the player has come back.
  */
-export function startMatchReadySignals(title = 'Your match is ready') {
+export function startSeatHeldSignals(title = 'Your game is nearly ready') {
   startTitleFlash(title)
   showFaviconBadge()
   playChime()
-  return stopMatchReadySignals
+  return stopSeatHeldSignals
 }
 
 /** Clears every in-tab signal. Safe to call when none are running. */
-export function stopMatchReadySignals() {
+export function stopSeatHeldSignals() {
   stopTitleFlash()
   clearFaviconBadge()
 }
