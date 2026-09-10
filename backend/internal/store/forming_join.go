@@ -193,13 +193,30 @@ func (s *Store) fireFormingMatchTx(
 		// Never hold two chairs at once. One held chair cannot disappoint anybody:
 		// the held player's return is itself the fire condition. Two can — tell both
 		// to come back, one does, and they arrive to a match that never formed.
+		//
+		// But a window already running has very likely been announced to that player
+		// ("come back now to keep your spot"), and vacating them because somebody
+		// else then wandered off would make that message retroactively false. So the
+		// running hold stands and only the new absences give up their chairs.
+		holding, err := heldUserIDTx(ctx, tx, fm.ID)
+		if err != nil {
+			return nil, err
+		}
+		kept := false
 		for _, userID := range away {
+			if holding != nil && *holding == userID {
+				kept = true
+				continue
+			}
 			if err := s.releaseFormingSlotsForUserTx(ctx, tx, userID); err != nil {
 				return nil, err
 			}
 		}
-		if err := clearHoldTx(ctx, tx, fm.ID); err != nil {
-			return nil, err
+		if !kept {
+			// Nobody had been promised anything yet, so there is no window to keep.
+			if err := clearHoldTx(ctx, tx, fm.ID); err != nil {
+				return nil, err
+			}
 		}
 		return nil, nil
 

@@ -86,3 +86,16 @@ func clearHoldTx(ctx context.Context, tx *sql.Tx, formingMatchID uuid.UUID) erro
 	}
 	return nil
 }
+
+// heldUserIDTx returns whose absence the running window is waiting out, or nil when
+// no window is running.
+func heldUserIDTx(ctx context.Context, tx *sql.Tx, formingMatchID uuid.UUID) (*uuid.UUID, error) {
+	var userID *uuid.UUID
+	err := tx.QueryRowContext(ctx, `
+		SELECT held_user_id FROM forming_matches WHERE id = $1
+	`, formingMatchID).Scan(&userID)
+	if err != nil {
+		return nil, fmt.Errorf("held user id: %w", err)
+	}
+	return userID, nil
+}

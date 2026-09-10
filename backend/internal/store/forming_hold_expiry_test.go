@@ -124,3 +124,38 @@ func TestHoldWindowRestartsWhenADifferentPlayerGoesAway(t *testing.T) {
 		t.Fatalf("second player's chair was vacated on the first player's stale window (%d seats)", n)
 	}
 }
+
+// A window already running was very likely announced to that player -- "your game
+// is nearly ready, come back to keep your spot". Vacating them because somebody
+// else then wandered off makes that message retroactively false, which is the one
+// thing it cannot survive. So the running hold is kept and only the new absence
+// gives up its chair.
+func TestASecondAbsenceDoesNotEvictThePlayerAlreadyBeingHeldFor(t *testing.T) {
+	st := openTestStore(t)
+	cleaner := st.NewTestCleaner(t)
+	ctx := context.Background()
+	queueID := newFourSeatQueue(t, st, cleaner, ctx)
+
+	held := newPresenceUser(t, st, cleaner, ctx)
+	later := newPresenceUser(t, st, cleaner, ctx)
+	joinPartyAndPlace(t, st, ctx, queueID, held, later)
+
+	// Away before the table completes, so completing it starts a window for `held`
+	// rather than firing.
+	goAway(t, st, ctx, held)
+
+	third := newPresenceUser(t, st, cleaner, ctx)
+	fourth := newPresenceUser(t, st, cleaner, ctx)
+	joinPartyAndPlace(t, st, ctx, queueID, third, fourth)
+
+	// A second player wanders off while the first is still being waited for.
+	goAway(t, st, ctx, later)
+	mustReconcileForming(t, st, ctx, queueID)
+
+	if n := assignedSeatCount(t, st, ctx, held); n != 1 {
+		t.Fatalf("the player already being held for lost their chair (%d seats); a promise already sent must stand", n)
+	}
+	if n := assignedSeatCount(t, st, ctx, later); n != 0 {
+		t.Fatalf("the newly absent player kept their chair (%d seats), so two chairs are held at once", n)
+	}
+}
