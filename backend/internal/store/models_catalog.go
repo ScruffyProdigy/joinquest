@@ -81,10 +81,17 @@ type GameMode struct {
 	// PreQueue is the mode's option-group declaration, or nil when the mode has
 	// no pre-queue step. The choices inside the groups are per player and never
 	// stored here — see internal/prequeue.
-	PreQueue  json.RawMessage
-	Status    string
-	CreatedAt time.Time
-	UpdatedAt time.Time
+	PreQueue json.RawMessage
+	// SkillMatchingEnabled is the mode's opt-out from skill-aware lobby
+	// formation (JQ-226). On by default, and deliberately not a population
+	// threshold: a thin queue is already handled by the arrival-rate gate,
+	// which fires immediately and unbiased when nobody is arriving. This is for
+	// the other case — a mode whose skill signal says little about whether its
+	// players enjoy each other, which is true however busy the mode is.
+	SkillMatchingEnabled bool
+	Status               string
+	CreatedAt            time.Time
+	UpdatedAt            time.Time
 }
 
 type GameModeSeat struct {

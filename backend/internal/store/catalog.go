@@ -325,7 +325,7 @@ func (s *Store) GetGameBySlug(ctx context.Context, slug string) (*Game, error) {
 
 func listGameModes(ctx context.Context, q sqlQueryRowContext, gameID uuid.UUID) ([]GameMode, error) {
 	rows, err := q.QueryContext(ctx, `
-		SELECT id, game_id, mode_key, display_name, min_players, max_players, social_mode, typical_minutes, pre_queue, status, created_at, updated_at
+		SELECT id, game_id, mode_key, display_name, min_players, max_players, social_mode, typical_minutes, pre_queue, skill_matching_enabled, status, created_at, updated_at
 		FROM game_modes
 		WHERE game_id = $1
 		ORDER BY mode_key ASC
@@ -355,7 +355,7 @@ func scanGameModes(rows *sql.Rows) ([]GameMode, error) {
 		var preQueue []byte
 		if err := rows.Scan(
 			&mode.ID, &mode.GameID, &mode.ModeKey, &mode.DisplayName,
-			&mode.MinPlayers, &mode.MaxPlayers, &socialMode, &typicalMinutes, &preQueue, &mode.Status,
+			&mode.MinPlayers, &mode.MaxPlayers, &socialMode, &typicalMinutes, &preQueue, &mode.SkillMatchingEnabled, &mode.Status,
 			&mode.CreatedAt, &mode.UpdatedAt,
 		); err != nil {
 			return nil, err
@@ -370,6 +370,10 @@ func scanGameModes(rows *sql.Rows) ([]GameMode, error) {
 	return modes, rows.Err()
 }
 
+// skill_matching_enabled is deliberately absent from both the insert and the
+// update below. It is an operator's setting rather than a manifest's, so a game
+// re-registering must not be able to switch it back on -- the column takes its
+// default on first insert and is left alone from then on.
 func upsertGameModeTx(ctx context.Context, tx *sql.Tx, gameID uuid.UUID, modeKey, displayName string, minPlayers, maxPlayers int, socialMode *string, typicalMinutes *int, seatTemplate, preQueue json.RawMessage) (*GameMode, error) {
 	row := tx.QueryRowContext(ctx, `
 		INSERT INTO game_modes (game_id, mode_key, display_name, min_players, max_players, social_mode, typical_minutes, seat_template, pre_queue, status)
@@ -384,7 +388,7 @@ func upsertGameModeTx(ctx context.Context, tx *sql.Tx, gameID uuid.UUID, modeKey
 			pre_queue = EXCLUDED.pre_queue,
 			status = 'active',
 			updated_at = NOW()
-		RETURNING id, game_id, mode_key, display_name, min_players, max_players, social_mode, typical_minutes, seat_template, pre_queue, status, created_at, updated_at
+		RETURNING id, game_id, mode_key, display_name, min_players, max_players, social_mode, typical_minutes, seat_template, pre_queue, skill_matching_enabled, status, created_at, updated_at
 	`, gameID, modeKey, displayName, minPlayers, maxPlayers, socialMode, typicalMinutes, seatTemplate, nullJSONColumn(preQueue))
 	return scanGameModeRow(row)
 }
@@ -405,7 +409,7 @@ func scanGameModeRow(row *sql.Row) (*GameMode, error) {
 	var preQueue []byte
 	if err := row.Scan(
 		&mode.ID, &mode.GameID, &mode.ModeKey, &mode.DisplayName,
-		&mode.MinPlayers, &mode.MaxPlayers, &socialMode, &typicalMinutes, &mode.SeatTemplate, &preQueue, &mode.Status,
+		&mode.MinPlayers, &mode.MaxPlayers, &socialMode, &typicalMinutes, &mode.SeatTemplate, &preQueue, &mode.SkillMatchingEnabled, &mode.Status,
 		&mode.CreatedAt, &mode.UpdatedAt,
 	); err != nil {
 		return nil, err

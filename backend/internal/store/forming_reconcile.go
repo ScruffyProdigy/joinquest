@@ -2,6 +2,7 @@ package store
 
 import (
 	"context"
+	"time"
 
 	"github.com/google/uuid"
 	"github.com/scruffyprodigy/joinquest/internal/lfg"
@@ -93,6 +94,47 @@ func (s *Store) ReconcileFormingModeQueue(ctx context.Context, modeQueueID uuid.
 	gaps, err := s.FormingPathGapsTx(ctx, tx, fm)
 	if err != nil {
 		return nil, err
+	}
+
+	if lfg.ReadyToFire(gaps) {
+		// The map being full is now the first of two terms, not the whole fire
+		// condition. The second asks whether this is a lobby worth firing or
+		// whether waiting could still buy a better one -- and answers "fire" on
+		// its own whenever waiting cannot pay, which is every thin queue and
+		// every mode that has opted out.
+		decision, err := s.skillFireDecisionTx(ctx, tx, joinCtx, fm, waiting, time.Now())
+		if err != nil {
+			return nil, err
+		}
+		if !decision.Fire {
+			// Spend the choice the deferral bought. Holding accumulates
+			// candidates in the waiting pool, but placement is greedy and
+			// nothing moves a player already seated -- so without this the
+			// budget expires on the identical lobby and the wait bought
+			// nothing.
+			improved, err := s.improveDeferredLobbyTx(ctx, tx, joinCtx, fm)
+			if err != nil {
+				return nil, err
+			}
+			if improved {
+				// Ask again rather than waiting a tick. The deferral is an
+				// upper bound, never a delay spent for its own sake: a lobby
+				// that has just become good enough should fire now.
+				decision, err = s.skillFireDecisionTx(ctx, tx, joinCtx, fm, waiting, time.Now())
+				if err != nil {
+					return nil, err
+				}
+			}
+		}
+		if !decision.Fire {
+			// Not an error and not a stall. The map keeps its players, nobody
+			// has been told a match formed, and the next tick asks again with a
+			// smaller budget -- so this can only repeat until the budget runs
+			// out, at which point the same call fires regardless of dispersion.
+			// Fall through to the not-ready path, which commits any swap above
+			// and reports the queue as still forming.
+			gaps = nil
+		}
 	}
 
 	if lfg.ReadyToFire(gaps) {
