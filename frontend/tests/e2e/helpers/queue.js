@@ -1,7 +1,8 @@
 import { expect } from '@playwright/test'
 import {
   FINDING_PLAYERS,
-  FIND_A_GAME_HEADING,
+  WAITING_REGION_LABEL,
+  APP_TAGLINE,
   LAUNCH_GAME,
   READY_TO_LAUNCH,
   RESULTS_LEAVE_MATCH,
@@ -23,13 +24,13 @@ function demoGameCardLink(page) {
 export async function joinDemoGameQueue(page) {
   await demoGameCardLink(page).click()
   await expect(page.getByRole('heading', { name: DEMO_GAME_NAME, level: 1 })).toBeVisible()
-  await page.getByRole('button', { name: 'Look for group' }).click()
+  await page.getByRole('button', { name: 'Jump in' }).click()
 }
 
 // The queued state is its own page now (JQ-197), not a banner over the catalog.
 export async function expectWaitingPage(page) {
   await expect(page).toHaveURL(/\/waiting\/?$/)
-  const card = page.getByRole('region', { name: 'Looking for a group' })
+  const card = page.getByRole('region', { name: WAITING_REGION_LABEL })
   await expect(card).toBeVisible()
   await expect(card).toContainText(FINDING_PLAYERS)
 }
@@ -106,7 +107,7 @@ export async function returnFromMatch(page, matchId) {
 
   await page.getByRole('button', { name: RESULTS_LEAVE_MATCH }).click()
 
-  await expect(page.getByRole('heading', { level: 1, name: FIND_A_GAME_HEADING })).toBeVisible({
+  await expect(page.getByRole('heading', { level: 1, name: APP_TAGLINE })).toBeVisible({
     timeout: 20000,
   })
 }

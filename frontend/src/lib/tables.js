@@ -6,7 +6,7 @@ import { prefetchSubscriptionAuth } from './queue'
 import { displayNameOrFallback } from './viewer'
 
 // Everyone on a table card is a PublicPlayer, not a User. A table admits strangers — the
-// king's Look for group backfill and the catalog queue both seat people who were never
+// king's look-for-group backfill and the catalog queue both seat people who were never
 // invited — so no seat, king or roster entry may carry an email (JQ-174).
 export const TABLE_FIELDS = `
   id

@@ -6,7 +6,7 @@ import {
   DISCARD,
   formatFormingGapsFromLobbyLine,
   KING_LABEL,
-  LOOK_FOR_GROUP,
+  JUMP_IN,
   START_GAME,
 } from '../../lib/playerCopy'
 import {
@@ -289,7 +289,7 @@ export default function TableCard({ table, busy, onSit, onLeave, onStart, onLook
                   disabled={busy || !opt.enabled || enriched.backfillActive}
                   onClick={() => onLookForGroup?.(opt.queueId)}
                 >
-                  {LOOK_FOR_GROUP} ({opt.queueName})
+                  {JUMP_IN} ({opt.queueName})
                 </Button>
               ))
           : null}

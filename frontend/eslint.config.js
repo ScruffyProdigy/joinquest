@@ -41,12 +41,14 @@ const ANCHOR_ALLOWED = [
 
 /**
  * Controls that are not Buttons: a tab reporting `aria-selected` inside a tablist,
- * and card-shaped choices holding a heading and a paragraph. Each is a named
+ * card-shaped choices holding a heading and a paragraph, and a 6px carousel dot
+ * that must not carry Button's pill geometry (BenefitDot). Each is a named
  * component (TabButton, RouteCard, OptionCard, ClientTabs) rather than markup
  * inline in a page, which is the bar for being here -- an anonymous <button> in
  * the middle of a render is a missing component, not an exception.
  */
 const BUTTON_ALLOWED = [
+  'src/components/auth/SignInBenefits.jsx',
   'src/components/games/PreQueueOptionsSheet.jsx',
   'src/components/developers/DeveloperMcpWizard.jsx',
   'src/components/developers/DeveloperLandingPage.jsx',
