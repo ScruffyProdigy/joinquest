@@ -556,10 +556,13 @@ func (r *subscriptionResolver) QueueUpdated(ctx context.Context, queueID string)
 		initialStatus,
 	)
 
+	releasePresence := r.Presence.Track(ctx, userID)
+
 	updates := make(chan *model.QueueUpdate, 2)
 	go func() {
 		defer close(updates)
 		defer unsubscribe()
+		defer releasePresence()
 
 		if initial != nil {
 			select {

@@ -60,6 +60,23 @@ func main() {
 	resolver.SpiritAnimal = spiritanimal.NewRunnerFromEnv(dataStore, auth.LobbyPublicURL())
 	go resolver.SpiritAnimal.ResumeAllStale(context.Background())
 
+	// A fresh process holds no sockets, so any count left in user_presence belongs to
+	// a previous life of this server. Zeroing them is pessimistic in the safe
+	// direction: Postgres has no TTL, so without this a pod that died without running
+	// its defers would leave absent players reading as present indefinitely, and
+	// genuinely-live players re-increment within seconds when their client reconnects.
+	if cleared, err := dataStore.ResetPresenceOnBoot(context.Background()); err != nil {
+		log.Printf("presence: boot reset failed: %v", err)
+	} else if cleared > 0 {
+		log.Printf("presence: boot reset cleared %d stale rows", cleared)
+	}
+	resolver.Presence = graph.NewPresenceTracker(
+		dataStore,
+		broker,
+		store.DefaultQueueDisconnectGrace,
+		resolver.OnGraceExpired,
+	)
+
 	formingTick := 30 * time.Second
 	if v := strings.TrimSpace(os.Getenv("FORMING_RECONCILE_INTERVAL")); v != "" {
 		if d, err := time.ParseDuration(v); err == nil && d > 0 {

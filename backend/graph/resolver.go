@@ -43,6 +43,11 @@ type Resolver struct {
 	QueueOptionsCache *gameclient.QueueOptionsCache
 	// LiveCountsCache serves Game.playerActivity; nil queries the store on every field read.
 	LiveCountsCache *catalogstats.Cache
+	// Presence turns per-user subscription lifetimes into presence edges, and is what
+	// makes a dropped socket a departure signal rather than a debug line. Nil disables
+	// presence entirely, which is what tests without a database want; Track is
+	// nil-safe, so the subscription resolvers need no special casing.
+	Presence *PresenceTracker
 	// WaitEstimates serves ModeQueue.estimatedWaitSeconds from one whole-catalog
 	// snapshot, so a page of mode cards costs a single estimate rather than one
 	// per card; nil builds the default cache over the median strategy. Swapping

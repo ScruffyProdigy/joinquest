@@ -289,10 +289,13 @@ func (r *subscriptionResolver) RoomUpdated(ctx context.Context, roomID string) (
 		return nil, err
 	}
 
+	releasePresence := r.Presence.Track(ctx, userID)
+
 	updates := make(chan *model.Room, 4)
 	go func() {
 		defer close(updates)
 		defer unsubscribe()
+		defer releasePresence()
 
 		if initial != nil {
 			select {
@@ -356,10 +359,13 @@ func (r *subscriptionResolver) RoomMessageAdded(ctx context.Context, roomID stri
 		return nil, err
 	}
 
+	releasePresence := r.Presence.Track(ctx, userID)
+
 	updates := make(chan *model.RoomMessage, 8)
 	go func() {
 		defer close(updates)
 		defer unsubscribe()
+		defer releasePresence()
 
 		for {
 			select {
