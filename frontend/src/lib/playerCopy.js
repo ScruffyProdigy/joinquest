@@ -392,6 +392,9 @@ export const RESULTS_YOU = 'You'
 export const RESULTS_YOUR_RESULT_SO_FAR = 'Your result so far'
 
 export const REGROUP_TITLE = 'Who’s playing again?'
+// The card with no roster on it: a solo player has nobody to regroup with, and a player who
+// left the match before it ended did not stay for the group's decision either (JQ-233).
+export const REGROUP_TITLE_SIMPLE = 'Play again?'
 export const REGROUP_IN = 'In'
 export const REGROUP_OUT = 'Out'
 export const REGROUP_PENDING = 'Not back yet'

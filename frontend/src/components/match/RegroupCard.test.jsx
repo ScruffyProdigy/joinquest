@@ -3,11 +3,13 @@ import userEvent from '@testing-library/user-event'
 import { describe, expect, it, vi } from 'vitest'
 import RegroupCard from './RegroupCard'
 
+// Group play, and nobody left early: the one combination that still gets the roster.
 const base = {
   game: { name: 'Word Hunt', modes: [{ id: '1' }, { id: '2' }] },
+  groupPlay: true,
   participants: [
-    { user: { id: 'a', displayName: 'Ada' }, regroup: 'IN' },
-    { user: { id: 'b', displayName: 'Bo' }, regroup: 'PENDING' },
+    { user: { id: 'a', displayName: 'Ada' }, regroup: 'IN', reason: 'COMPLETED' },
+    { user: { id: 'b', displayName: 'Bo' }, regroup: 'PENDING', reason: 'COMPLETED' },
   ],
 }
 
@@ -45,14 +47,19 @@ describe('RegroupCard', () => {
     expect(screen.queryByRole('button', { name: 'Another round' })).not.toBeInTheDocument()
   })
 
-  it('offers the mode switch only for multi-mode games', () => {
+  /**
+   * The `modes.length > 1` gate is gone (JQ-233). It used to leave a single-mode game — an
+   * RPSLR duel — with no way back into the game at all: wait for someone who had already
+   * left, or go to the catalog. That is the case that needs the way back most.
+   */
+  it('offers the way back into the game however many modes it has', () => {
     const { unmount } = render(<RegroupCard result={base} viewerId="a" minPlayers={2} />)
     expect(screen.getByRole('button', { name: 'Back to Word Hunt' })).toBeInTheDocument()
     unmount()
 
     const singleMode = { ...base, game: { ...base.game, modes: [{ id: '1' }] } }
     render(<RegroupCard result={singleMode} viewerId="a" minPlayers={2} />)
-    expect(screen.queryByRole('button', { name: 'Back to Word Hunt' })).not.toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Back to Word Hunt' })).toBeInTheDocument()
   })
 
   it('counts only IN, and still lets an opted-out player change their mind', () => {
@@ -156,6 +163,102 @@ describe('RegroupCard', () => {
 
       expect(onChooseAgain).toHaveBeenCalledTimes(1)
       expect(onBackToGame).not.toHaveBeenCalled()
+    })
+  })
+  /**
+   * The matrix JQ-233 asks for: solo/group × played-out/exited-early. Exactly one cell shows
+   * the roster, and the tests below pin all four so neither axis is later collapsed into the
+   * other.
+   *
+   * Solo is not an oversight — a solo player has nobody to regroup with. They queued alone,
+   * and the other names here are strangers they never agreed to come back with. A group came
+   * in through a room, by QR code in the same place or by share link from different ones, and
+   * going back to that room together is the whole expectation.
+   */
+  describe('who sees the roster', () => {
+    const withViewerReason = (result, reason) => ({
+      ...result,
+      participants: result.participants.map((p) => (p.user.id === 'a' ? { ...p, reason } : p)),
+    })
+    const group = { ...allPending, groupPlay: true }
+    const solo = { ...allPending, groupPlay: false }
+
+    const expectRoster = () => {
+      expect(screen.getByText('Who’s playing again?')).toBeInTheDocument()
+      expect(screen.getByTestId('regroup-count')).toBeInTheDocument()
+      expect(screen.getByText('You')).toBeInTheDocument()
+    }
+    const expectNoRoster = () => {
+      expect(screen.getByText('Play again?')).toBeInTheDocument()
+      expect(screen.queryByTestId('regroup-count')).not.toBeInTheDocument()
+      expect(screen.queryByText('You')).not.toBeInTheDocument()
+      expect(screen.queryByText('Bo')).not.toBeInTheDocument()
+    }
+
+    it('shows it to a group who played the match out', () => {
+      render(<RegroupCard result={withViewerReason(group, 'COMPLETED')} viewerId="a" minPlayers={2} />)
+      expectRoster()
+    })
+
+    it('withholds it from a group player who was eliminated', () => {
+      render(<RegroupCard result={withViewerReason(group, 'ELIMINATED')} viewerId="a" minPlayers={2} />)
+      expectNoRoster()
+    })
+
+    it('withholds it from a solo player who played the match out', () => {
+      render(<RegroupCard result={withViewerReason(solo, 'COMPLETED')} viewerId="a" minPlayers={2} />)
+      expectNoRoster()
+    })
+
+    it('withholds it from a solo player who was eliminated', () => {
+      render(<RegroupCard result={withViewerReason(solo, 'ELIMINATED')} viewerId="a" minPlayers={2} />)
+      expectNoRoster()
+    })
+
+    it('keys on the viewer’s own exit, not on somebody else’s', () => {
+      const othersLeftEarly = {
+        ...group,
+        participants: group.participants.map((p) => ({
+          ...p,
+          reason: p.user.id === 'a' ? 'COMPLETED' : 'ELIMINATED',
+        })),
+      }
+      render(<RegroupCard result={othersLeftEarly} viewerId="a" minPlayers={2} />)
+      expectRoster()
+    })
+
+    it('treats a forfeit as an early exit too', () => {
+      render(<RegroupCard result={withViewerReason(group, 'FORFEIT')} viewerId="a" minPlayers={2} />)
+      expectNoRoster()
+    })
+
+    // A drop is usually an accident. Losing the roster as well as the match would be a
+    // second punishment for it.
+    it('keeps the roster for a disconnect', () => {
+      render(<RegroupCard result={withViewerReason(group, 'DISCONNECT')} viewerId="a" minPlayers={2} />)
+      expectRoster()
+    })
+
+    // Null means the game never reported this player, which is not evidence of anything.
+    it('keeps the roster when the game reported no reason at all', () => {
+      render(<RegroupCard result={withViewerReason(group, null)} viewerId="a" minPlayers={2} />)
+      expectRoster()
+    })
+
+    /**
+     * The one thing that must survive every cell. `playAgain` is the only writer of IN, and
+     * this button is its only caller, so a disabled primary is a deadlock wherever it appears
+     * — quorum or no quorum, roster or no roster (JQ-183, *Do not copy the prototype here*).
+     */
+    it.each([
+      ['group, played out', withViewerReason(group, 'COMPLETED')],
+      ['group, exited early', withViewerReason(group, 'ELIMINATED')],
+      ['solo, played out', withViewerReason(solo, 'COMPLETED')],
+      ['solo, exited early', withViewerReason(solo, 'ELIMINATED')],
+    ])('leaves the primary action enabled and the exits intact — %s', (_label, result) => {
+      render(<RegroupCard result={result} viewerId="a" minPlayers={2} />)
+      expect(screen.getByRole('button', { name: 'Another round' })).toBeEnabled()
+      expect(screen.getByRole('button', { name: 'Find something new' })).toBeInTheDocument()
     })
   })
 })
