@@ -133,6 +133,9 @@ neither. Pick the one a player would use to find you.
 
 Declared on each mode in `GET /api/v1/game-modes`, not through
 `updateMyGameMetadata` — see [seat manifest](#4-seat-manifest-seattemplate) below.
+Co-op carries its own `reportMatchResult` contract — see
+[§14 Match results](#14-match-results-reportmatchresult) for how a co-op match
+reports its outcome.
 
 ### `typicalMinutes` — how long a round runs (per **mode**, optional)
 
@@ -601,6 +604,8 @@ crew was up against, so a co-op result must also name the scenario:
 }
 ```
 
+A single string is accepted where one scenario is enough: `"scenarios": "hard"`.
+
 `scenarios` is one or more short identifiers of your choosing — a difficulty
 tier, a map, an active modifier. They are opaque to JoinQuest: **you name them,
 we rate them.** Each identifier accumulates its own strength estimate from how
@@ -617,8 +622,14 @@ Two consequences worth designing around:
   opponent than `["hard"]` alone, with each part's contribution learned
   separately — provided both appear on their own often enough to be told apart.
 
+Only a string or an array of strings counts as `scenarios`. Any other JSON
+type — a number, an object, a boolean — silently contributes no scenarios at
+all, and so does an empty string, a whitespace-only string, or an empty array.
+None of this is rejected: `reportMatchResult` still succeeds, so the failure
+mode is indistinguishable from reporting no `scenarios` in the first place —
+the match resolves normally but comes back **unrated**, with nothing in the
+response to tell you why.
+
 A co-op match that reports no `scenarios` produces **no rating change at all**.
 That is deliberate: "everybody won" with no idea what they beat is not
 information, and a guessed difficulty would be worse than none.
-
-A single string is accepted where one scenario is enough: `"scenarios": "hard"`.
