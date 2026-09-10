@@ -160,11 +160,27 @@ func (s *Store) ClaimRegroupTable(ctx context.Context, sessionID, userID uuid.UU
 	return table, room, nil
 }
 
-// loadFormingRegroupTableTx returns the claimed table only if it still exists, is forming,
-// and lives in a room that is still open. A swept or started table reads as unclaimed so
-// the caller creates a fresh one.
+// liveRegroupTableClause is the one test for "this regroup offer is still real": the table
+// still exists, is still forming, and its room is still open.
 //
-// The room-status join is load-bearing, not defensive. leaveRoomTx closes a room once the
+// One constant rather than a copy per caller, for the reason roomHasLivePlayClause gives —
+// two hand-maintained copies of a liveness test drift, and the drift reads as correct in
+// review. That is not hypothetical here. The claim path applied this test and
+// GetRegroupTableID did not, so a finished match went on handing out the invite code of a
+// table its own playAgain would refuse to adopt: the code looked live, and following it
+// failed. Anything that answers "where is this match's regroup offer" goes through here.
+//
+// REQUIRES the caller to alias room_tables as `t` and rooms as `r`, so the correlation
+// cannot be rewritten differently at each site.
+const liveRegroupTableClause = `
+	t.status = 'forming'
+	  AND r.status = 'open'`
+
+// loadFormingRegroupTableTx returns the claimed table only if the offer is still live by
+// liveRegroupTableClause. A swept, started or closed-room table reads as unclaimed so the
+// caller creates a fresh one.
+//
+// The room-status half is load-bearing, not defensive. leaveRoomTx closes a room once the
 // last member leaves but the table survives, and regroup_table_id still points at it.
 // Adopting that table would insert the claimant into a closed room, and sitAtTableTx's
 // isRoomMemberTx requires r.status = open — so the claim fails with ErrNotFound, which
@@ -178,8 +194,7 @@ func (s *Store) loadFormingRegroupTableTx(ctx context.Context, tx *sql.Tx, regro
 		SELECT `+roomTableColumnsT+`
 		FROM room_tables t
 		INNER JOIN rooms r ON r.id = t.room_id
-		WHERE t.id = $1 AND t.status = $2 AND r.status = $3
-	`, *regroupID, TableStatusForming, RoomStatusOpen)
+		WHERE t.id = $1 AND `+liveRegroupTableClause, *regroupID)
 	table, err := scanRoomTable(row)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) || errors.Is(err, ErrNotFound) {
@@ -365,11 +380,30 @@ func (s *Store) DeclineRegroup(ctx context.Context, sessionID, userID uuid.UUID,
 	return &release, nil
 }
 
-// GetRegroupTableID returns the claimed regroup table, or nil when none exists yet.
+// GetRegroupTableID returns the claimed regroup table, or nil when there is no live offer —
+// none claimed yet, or one that has since stopped being real.
+//
+// The liveRegroupTableClause subquery is the whole point, and reading regroup_table_id bare
+// was the bug. This feeds regroupInviteCode, so a raw pointer put the room code of a swept,
+// started or closed-room table on the results screen of every participant: an invite that
+// rendered as live and dead-ended on use, because ClaimRegroupTable applies this same test
+// and would build a fresh table instead. The two answers have to agree, and now they are
+// the same string.
+//
+// Nil-versus-error is unchanged and load-bearing: a session that does not exist is
+// ErrNotFound, while a session whose offer is not live is (nil, nil) — the caller renders
+// no invite code, exactly as it does before anyone claims.
 func (s *Store) GetRegroupTableID(ctx context.Context, sessionID uuid.UUID) (*uuid.UUID, error) {
 	var id *uuid.UUID
 	err := s.db.QueryRowContext(ctx, `
-		SELECT regroup_table_id FROM game_sessions WHERE id = $1
+		SELECT (
+			SELECT t.id
+			FROM room_tables t
+			INNER JOIN rooms r ON r.id = t.room_id
+			WHERE t.id = gs.regroup_table_id AND `+liveRegroupTableClause+`
+		)
+		FROM game_sessions gs
+		WHERE gs.id = $1
 	`, sessionID).Scan(&id)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {

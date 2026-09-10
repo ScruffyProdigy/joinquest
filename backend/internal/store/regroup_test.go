@@ -491,3 +491,69 @@ func TestDeclineRegroupReportsTheFreedSeat(t *testing.T) {
 		t.Fatalf("second decline reported a freed seat: %+v", again)
 	}
 }
+
+// TestGetRegroupTableIDStopsAdvertisingAClosedRoomsOffer is the read half of
+// TestClaimRegroupTableRebuildsWhenTheRoomClosed, and the two used to disagree.
+//
+// Same setup: the table a match converged on outlives its room, and regroup_table_id still
+// points at it. ClaimRegroupTable has always read that as unclaimed. GetRegroupTableID read
+// the column bare, so regroupInviteCode kept putting the dead table's room code on every
+// participant's results screen — an invite that rendered as live and dead-ended on use,
+// because following it lands in ClaimRegroupTable, which refuses the table and builds
+// another. Both now apply liveRegroupTableClause, so there is one answer to "where is this
+// match's regroup offer" instead of two.
+func TestGetRegroupTableIDStopsAdvertisingAClosedRoomsOffer(t *testing.T) {
+	st := openTestStore(t)
+	cleaner := st.NewTestCleaner(t)
+	ctx := context.Background()
+
+	sessionID, userA, _ := seedMatchedSession(t, st, ctx, cleaner)
+	if err := st.CompleteSession(ctx, sessionID, time.Now()); err != nil {
+		t.Fatalf("CompleteSession: %v", err)
+	}
+
+	claimed, _, err := st.ClaimRegroupTable(ctx, sessionID, userA)
+	if err != nil {
+		t.Fatalf("ClaimRegroupTable: %v", err)
+	}
+
+	// While the offer is live the lookup must still answer, or this test would pass on a
+	// function that had simply stopped working.
+	live, err := st.GetRegroupTableID(ctx, sessionID)
+	if err != nil {
+		t.Fatalf("GetRegroupTableID while live: %v", err)
+	}
+	if live == nil || *live != claimed.ID {
+		t.Fatalf("live lookup = %v, want the claimed table %s", live, claimed.ID)
+	}
+
+	// A is the room's only member, so leaving closes it while the table survives.
+	if _, err := st.LeaveRoom(ctx, userA); err != nil {
+		t.Fatalf("LeaveRoom A: %v", err)
+	}
+	room, err := st.GetRoomByID(ctx, claimed.RoomID)
+	if err != nil {
+		t.Fatalf("GetRoomByID: %v", err)
+	}
+	if room.Status != RoomStatusClosed {
+		t.Fatalf("room status = %q, want %q — the test's premise did not hold", room.Status, RoomStatusClosed)
+	}
+	if _, err := st.GetRoomTableByID(ctx, claimed.ID); err != nil {
+		t.Fatalf("GetRoomTableByID: %v — the table must outlive the room for this to bite", err)
+	}
+
+	got, err := st.GetRegroupTableID(ctx, sessionID)
+	if err != nil {
+		t.Fatalf("GetRegroupTableID after the room closed: %v", err)
+	}
+	if got != nil {
+		t.Fatalf("lookup = %s, want nil: the offer died with its room, so no invite code"+
+			" should reach the results screen", *got)
+	}
+
+	// A session that does not exist is still an error, not a quiet nil — the caller
+	// distinguishes "no live offer" from "no such match".
+	if _, err := st.GetRegroupTableID(ctx, uuid.New()); !errors.Is(err, ErrNotFound) {
+		t.Fatalf("GetRegroupTableID for an unknown session = %v, want ErrNotFound", err)
+	}
+}

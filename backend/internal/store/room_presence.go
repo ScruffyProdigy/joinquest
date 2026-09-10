@@ -56,12 +56,19 @@ const DefaultRoomDisconnectGrace = 5 * time.Minute
 // table of rooms nobody has opened in years, which is the real cost of making every
 // Play with friends click mint a fresh room.
 //
-// The delay is not caution for its own sake. A closed room's tables deliberately
-// outlive it: game_sessions.regroup_table_id points at a room_table, room_tables
-// cascade-deletes with its room, and loadFormingRegroupTableTx reads a forming table
-// through a closed room on purpose (see its comment — adopting one through an open-room
-// join is a bricked-forever bug). Deleting the room at close time would therefore take
-// "play again with the same group" down with it.
+// The delay is not caution for its own sake, but it is NOT about preserving regroup, and
+// this comment used to say it was. The claim of record was that loadFormingRegroupTableTx
+// "reads a forming table through a closed room on purpose", so deleting a room at close
+// time would take "play again with the same group" down with it. It does the opposite: a
+// closed room's table reads as unclaimed (liveRegroupTableClause) precisely so the next
+// claim builds a fresh one, because adopting a table in a closed room is the
+// bricked-forever bug. Closing a room already ends its offer; deleting it later takes
+// nothing further away.
+//
+// What the delay actually buys is that nothing has to be careful about ordering. Rooms
+// close on a 5-minute presence window while sessions, tables and seats hang off them by
+// foreign key, so a row deleted the instant its room closed would be deleted underneath
+// whatever was still reading it.
 //
 // So the floor is "past any possible regroup", and regroup is a post-match flow measured
 // in minutes — the session sweep completes an abandoned session at
