@@ -557,3 +557,117 @@ func TestGetRegroupTableIDStopsAdvertisingAClosedRoomsOffer(t *testing.T) {
 		t.Fatalf("GetRegroupTableID for an unknown session = %v, want ErrNotFound", err)
 	}
 }
+
+// TestAbandonedRegroupOfferStopsBeingOffered walks JQ-179 end to end, because every piece
+// of it is tested separately and none of those tests says the pieces compose. The ticket
+// asked for exactly this: the behaviour exercised by a test rather than inferred from the
+// stale-empty-table sweep's existing coverage.
+//
+// One player presses Another round and goes away. Three separate mechanisms then have to
+// hand off correctly — the seat window frees the seat, the room window closes the room, and
+// liveRegroupTableClause stops advertising the offer — and each is owned by a different
+// file with its own reasoning. That is precisely the arrangement where two things that look
+// aligned turn out not to be.
+//
+// The middle assertion is the one worth keeping. Between the two windows the offer is empty
+// but still live, and that is correct rather than a gap: another participant can still come
+// back to it, and dissolving it the moment its first claimant's seat freed would break "a
+// group actively assembling is never dissolved out from under them".
+func TestAbandonedRegroupOfferStopsBeingOffered(t *testing.T) {
+	st := openTestStore(t)
+	cleaner := st.NewTestCleaner(t)
+	ctx := context.Background()
+
+	sessionID, userA, userB := seedMatchedSession(t, st, ctx, cleaner)
+	if err := st.CompleteSession(ctx, sessionID, time.Now()); err != nil {
+		t.Fatalf("CompleteSession: %v", err)
+	}
+
+	// A comes back, which builds the offer and seats them at it.
+	claimed, _, err := st.ClaimRegroupTable(ctx, sessionID, userA)
+	if err != nil {
+		t.Fatalf("ClaimRegroupTable A: %v", err)
+	}
+	offered, err := st.GetRegroupTableID(ctx, sessionID)
+	if err != nil {
+		t.Fatalf("GetRegroupTableID while live: %v", err)
+	}
+	if offered == nil || *offered != claimed.ID {
+		t.Fatalf("offer = %v, want the claimed table %s", offered, claimed.ID)
+	}
+	seats, err := st.ListTableSeats(ctx, claimed.ID)
+	if err != nil {
+		t.Fatalf("ListTableSeats: %v", err)
+	}
+	if len(seats) != 1 || seats[0].UserID != userA {
+		t.Fatalf("seats = %+v, want A alone — the premise is that one player is holding this", seats)
+	}
+
+	// ...and then walks away. Their last socket closes.
+	if _, err := st.PresenceConnected(ctx, userA); err != nil {
+		t.Fatalf("A connect: %v", err)
+	}
+	dropped, err := st.PresenceDisconnected(ctx, userA)
+	if err != nil {
+		t.Fatalf("A disconnect: %v", err)
+	}
+	if dropped.DisconnectedAt == nil {
+		t.Fatal("disconnect did not stamp")
+	}
+	stamp := *dropped.DisconnectedAt
+
+	// Seat window first. The seat goes; nothing else does.
+	release, err := st.ReleaseDisconnectedTableSeat(ctx, userA, stamp)
+	if err != nil {
+		t.Fatalf("ReleaseDisconnectedTableSeat: %v", err)
+	}
+	if !release.Acted {
+		t.Fatal("the abandoned seat was not released — AC 2 of JQ-179")
+	}
+	seats, err = st.ListTableSeats(ctx, claimed.ID)
+	if err != nil {
+		t.Fatalf("ListTableSeats after release: %v", err)
+	}
+	if len(seats) != 0 {
+		t.Fatalf("seats = %+v, want the table empty", seats)
+	}
+
+	// Still offered, on purpose: empty is not abandoned, and B may yet come back to it.
+	stillOffered, err := st.GetRegroupTableID(ctx, sessionID)
+	if err != nil {
+		t.Fatalf("GetRegroupTableID between the windows: %v", err)
+	}
+	if stillOffered == nil || *stillOffered != claimed.ID {
+		t.Fatalf("offer = %v between the windows, want it still live: an empty offer is"+
+			" still joinable, and dissolving it here would dissolve assembling groups too",
+			stillOffered)
+	}
+
+	// Room window. A was the only member, so the room goes with them.
+	eviction, err := st.EvictDisconnectedRoomMember(ctx, userA, stamp)
+	if err != nil {
+		t.Fatalf("EvictDisconnectedRoomMember: %v", err)
+	}
+	if !eviction.Acted || !eviction.RoomClosed {
+		t.Fatalf("eviction = %+v, want the last member removed and the room closed", eviction)
+	}
+
+	// And the offer is gone: no invite code reaches anyone's results screen. AC 1.
+	gone, err := st.GetRegroupTableID(ctx, sessionID)
+	if err != nil {
+		t.Fatalf("GetRegroupTableID after the room closed: %v", err)
+	}
+	if gone != nil {
+		t.Fatalf("offer = %s, want nil: the abandoned offer should no longer be advertised", *gone)
+	}
+
+	// B pressing Another round later gets a working table rather than the dead one —
+	// the offer expired, it did not brick.
+	rebuilt, _, err := st.ClaimRegroupTable(ctx, sessionID, userB)
+	if err != nil {
+		t.Fatalf("ClaimRegroupTable B after the offer expired: %v", err)
+	}
+	if rebuilt.ID == claimed.ID {
+		t.Fatal("B was seated at the abandoned table; want a fresh one")
+	}
+}
