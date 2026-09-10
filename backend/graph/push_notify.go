@@ -122,9 +122,11 @@ func (r *Resolver) publishPushDelivery(ctx context.Context, event pubsub.PushDel
 // would tap through to nothing.
 //
 // The hold happens BEFORE the match is announced, so there is no formed match
-// yet and the copy must not claim one. It is loss-framed instead -- the chair
-// really is released if they do not return -- which carries more pull than a
-// vaguer promise would.
+// yet and the copy must not claim one.
+//
+// The loss-framing is licensed by that mechanic: the chair really is vacated if
+// the player does not return. Do not reuse this phrasing anywhere the seat is
+// already theirs -- there it would be a dark pattern.
 //
 // `remaining` is the time left at SEND time, not the ceiling. There is no
 // default: an unset TTL outlives the hold.
