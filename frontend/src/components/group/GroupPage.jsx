@@ -1,20 +1,32 @@
-import { useState } from 'react'
-import { useAuth } from '../auth/AuthProvider'
-import { useActiveRoom } from '../rooms/ActiveRoomProvider'
-import { navigateTo } from '../../lib/usePathname'
-import { discardTable, leaveTable, sitAtTable, startTable } from '../../lib/tables'
+import { useState } from "react";
+import { useAuth } from "../auth/AuthProvider";
+import { useActiveRoom } from "../rooms/ActiveRoomProvider";
+import { navigateTo } from "../../lib/usePathname";
+import {
+  discardTable,
+  leaveTable,
+  sitAtTable,
+  startTable,
+} from "../../lib/tables";
+import { fetchModeQueueOptions } from "../../lib/games";
+import {
+  GROUP_FIND_SOMETHING_NEW,
+  GROUP_TAKE_SEAT,
+  GROUP_TAKING_SEAT,
+} from "../../lib/playerCopy";
 import {
   groupCtaState,
   isLastSeatedPlayer,
   playersPickingASeat,
   selectGroupTable,
-} from '../../lib/group'
-import GroupHeader from './GroupHeader'
-import GroupInviteCard from './GroupInviteCard'
-import GroupSeatList from './GroupSeatList'
-import GroupSpectatorList from './GroupSpectatorList'
-import GroupStartBar from './GroupStartBar'
-import { Link } from '../ui/link'
+} from "../../lib/group";
+import GroupHeader from "./GroupHeader";
+import GroupInviteCard from "./GroupInviteCard";
+import GroupSeatList from "./GroupSeatList";
+import GroupSpectatorList from "./GroupSpectatorList";
+import GroupStartBar from "./GroupStartBar";
+import PreQueueOptionsSheet from "../games/PreQueueOptionsSheet";
+import { Link } from "../ui/link";
 
 /**
  * One table in a room the player never had to think about (JQ-132). Chat, the invite
@@ -22,12 +34,16 @@ import { Link } from '../ui/link'
  * this view simply does not surface them.
  */
 export default function GroupPage() {
-  const { user } = useAuth()
-  const { room, refresh } = useActiveRoom()
-  const [busy, setBusy] = useState(false)
-  const [error, setError] = useState('')
+  const { user } = useAuth();
+  const { room, refresh } = useActiveRoom();
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState("");
+  // The seat the player has asked for but not yet paid the picker for. Holding it here
+  // is what lets the sheet's confirm finish a claim the click only started.
+  const [pendingSeatKey, setPendingSeatKey] = useState(null);
+  const [queueOptions, setQueueOptions] = useState(null);
 
-  const table = selectGroupTable(room, user?.id)
+  const table = selectGroupTable(room, user?.id);
 
   if (!table) {
     return (
@@ -40,20 +56,67 @@ export default function GroupPage() {
           Back to the catalog
         </Link>
       </main>
-    )
+    );
   }
 
+  const preQueueGroups = table.mode?.preQueueGroups ?? [];
+
   async function run(action) {
-    setBusy(true)
-    setError('')
+    setBusy(true);
+    setError("");
     try {
-      await action()
-      await refresh?.()
+      await action();
+      await refresh?.();
     } catch (err) {
-      setError(err.message || 'Something went wrong.')
+      setError(err.message || "Something went wrong.");
     } finally {
-      setBusy(false)
+      setBusy(false);
     }
+  }
+
+  /**
+   * A mode with option groups routes every seat claim through the picker first: each
+   * player answers it for themselves as they sit down, because nobody may choose another
+   * player's champion, kit or deck. Nothing is pre-selected, including for a group that
+   * has just come back from a round — mixing up who brings what is most of the point
+   * (JQ-232).
+   */
+  async function handleClaim(seatKey) {
+    if (preQueueGroups.length === 0) {
+      await run(() => sitAtTable(table.id, seatKey));
+      return;
+    }
+    setError("");
+    setQueueOptions(null);
+    setPendingSeatKey(seatKey);
+    try {
+      const options = await fetchModeQueueOptions(
+        table.game?.id,
+        table.mode?.id,
+        user?.id,
+      );
+      setQueueOptions(options);
+    } catch (err) {
+      // The roster comes only from the game, so a failure to reach it is the sheet's
+      // own "unavailable" state rather than an error on the page behind it: there is no
+      // safe fallback that would let this player sit down anyway.
+      setQueueOptions({
+        available: false,
+        unavailableReason: err.message || "",
+        groups: [],
+      });
+    }
+  }
+
+  function closePicker() {
+    setPendingSeatKey(null);
+    setQueueOptions(null);
+  }
+
+  async function handleOptionsConfirmed(selections) {
+    const seatKey = pendingSeatKey;
+    closePicker();
+    await run(() => sitAtTable(table.id, seatKey, selections));
   }
 
   /**
@@ -62,30 +125,35 @@ export default function GroupPage() {
    * no unload handler here on purpose.
    */
   async function handleLeaveGroup() {
-    setBusy(true)
-    setError('')
-    const lastOut = isLastSeatedPlayer(table, user?.id)
+    setBusy(true);
+    setError("");
+    const lastOut = isLastSeatedPlayer(table, user?.id);
     try {
-      await leaveTable(table.id)
+      await leaveTable(table.id);
       if (lastOut) {
         // leaveTable only deletes the seat; without this the emptied table lingers
         // in the player's room forever.
-        await discardTable(table.id).catch(() => {})
+        await discardTable(table.id).catch(() => {});
       }
-      await refresh?.()
+      await refresh?.();
     } catch {
       // leaving must never trap the player on this page
     } finally {
-      setBusy(false)
-      navigateTo('/', { replace: true })
+      setBusy(false);
+      navigateTo("/", { replace: true });
     }
   }
 
-  const cta = groupCtaState(table, user?.id)
+  const cta = groupCtaState(table, user?.id);
 
   return (
     <main className="app-shell app-shell--group">
-      <GroupHeader table={table} room={room} busy={busy} onLeave={handleLeaveGroup} />
+      <GroupHeader
+        table={table}
+        room={room}
+        busy={busy}
+        onLeave={handleLeaveGroup}
+      />
 
       {error ? (
         <p className="status-message status-message-error" role="status">
@@ -99,24 +167,49 @@ export default function GroupPage() {
         table={table}
         userId={user?.id}
         busy={busy}
-        onClaim={(seatKey) => run(() => sitAtTable(table.id, seatKey))}
+        onClaim={handleClaim}
         onLeaveSeat={() => run(() => leaveTable(table.id))}
       />
 
-      <GroupSpectatorList players={playersPickingASeat(room, table, user?.id)} userId={user?.id} />
+      <GroupSpectatorList
+        players={playersPickingASeat(room, table, user?.id)}
+        userId={user?.id}
+      />
+
+      {/*
+        A rejoining group lands here, and for some of them the answer is "not this again".
+        The header's back arrow already leaves, but it reads as undo rather than as a
+        choice, so the way back to matchmaking is named (JQ-232).
+      */}
+      <p className="px-4 pb-2">
+        <Link href="/">{GROUP_FIND_SOMETHING_NEW}</Link>
+      </p>
 
       <GroupStartBar
         cta={cta}
         busy={busy}
         onStart={() =>
           run(async () => {
-            const result = await startTable(table.id)
+            const result = await startTable(table.id);
             if (result?.joinUrl) {
-              window.location.href = result.joinUrl
+              window.location.href = result.joinUrl;
             }
           })
         }
       />
+
+      <PreQueueOptionsSheet
+        open={pendingSeatKey !== null}
+        gameName={table.game?.name}
+        modeName={table.mode?.displayName}
+        groups={preQueueGroups}
+        queueOptions={queueOptions}
+        busy={busy}
+        confirmLabel={GROUP_TAKE_SEAT}
+        busyLabel={GROUP_TAKING_SEAT}
+        onConfirm={handleOptionsConfirmed}
+        onClose={closePicker}
+      />
     </main>
-  )
+  );
 }

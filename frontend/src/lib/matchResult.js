@@ -1,9 +1,9 @@
-import { createClient } from 'graphql-ws'
-import { getGraphQLWsUrl } from './env'
-import { graphqlRequest } from './graphql'
-import { prefetchSubscriptionAuth } from './queue'
-import { PUBLIC_PLAYER_FIELDS } from './avatars'
-import { TABLE_FIELDS } from './tables'
+import { createClient } from "graphql-ws";
+import { getGraphQLWsUrl } from "./env";
+import { graphqlRequest } from "./graphql";
+import { prefetchSubscriptionAuth } from "./queue";
+import { PUBLIC_PLAYER_FIELDS } from "./avatars";
+import { TABLE_FIELDS } from "./tables";
 
 // PublicPlayer (not User): a queue match introduces strangers, so the roster
 // must not expose contact details — no email, no avatarKey.
@@ -14,6 +14,10 @@ const MATCH_RESULT_FIELDS = `
   complete
   endedAt
   regroupInviteCode
+  # The lobby's isGroupPlay, per viewer: did this player reach the match from a table
+  # they were sitting at with a group, or from the catalog queue on their own. The
+  # rejoin rules differ by design (JQ-232).
+  groupPlay
   game {
     id
     slug
@@ -31,6 +35,10 @@ const MATCH_RESULT_FIELDS = `
     modeKey
     displayName
     minPlayers
+    # Whether there is anything to choose here at all: a role select, or pre-queue
+    # options. A solo player whose mode has neither gets no "choose again" action,
+    # because there would be nothing behind it.
+    hasPreMatchChoice
   }
   participants {
     user {
@@ -44,7 +52,7 @@ const MATCH_RESULT_FIELDS = `
     reason
     regroup
   }
-`
+`;
 
 const MATCH_RESULT_QUERY = `
   query MatchResult($matchId: ID!) {
@@ -52,7 +60,7 @@ const MATCH_RESULT_QUERY = `
       ${MATCH_RESULT_FIELDS}
     }
   }
-`
+`;
 
 const PLAY_AGAIN_MUTATION = `
   mutation PlayAgain($matchId: ID!) {
@@ -64,7 +72,7 @@ const PLAY_AGAIN_MUTATION = `
       seated
     }
   }
-`
+`;
 
 const DECLINE_PLAY_AGAIN_MUTATION = `
   mutation DeclinePlayAgain($matchId: ID!) {
@@ -73,7 +81,7 @@ const DECLINE_PLAY_AGAIN_MUTATION = `
       kind
     }
   }
-`
+`;
 
 const MATCH_RESULT_UPDATED_SUBSCRIPTION = `
   subscription MatchResultUpdated($matchId: ID!) {
@@ -81,22 +89,22 @@ const MATCH_RESULT_UPDATED_SUBSCRIPTION = `
       ${MATCH_RESULT_FIELDS}
     }
   }
-`
+`;
 
-let wsClient = null
+let wsClient = null;
 
 async function loadSubscriptionAuth() {
-  return prefetchSubscriptionAuth()
+  return prefetchSubscriptionAuth();
 }
 
 function getSubscriptionConnectionParams() {
   return async () => {
-    const header = await loadSubscriptionAuth()
+    const header = await loadSubscriptionAuth();
     if (!header) {
-      throw new Error('Sign in required for live updates')
+      throw new Error("Sign in required for live updates");
     }
-    return { Authorization: header }
-  }
+    return { Authorization: header };
+  };
 }
 
 function getWsClient() {
@@ -108,45 +116,48 @@ function getWsClient() {
       retryWait: async (retries) => Math.min(500 * retries, 5000),
       shouldRetry: () => true,
       lazy: false,
-    })
+    });
   }
-  return wsClient
+  return wsClient;
 }
 
 function formatSubscriptionError(err) {
   if (!err) {
-    return 'Live updates unavailable'
+    return "Live updates unavailable";
   }
-  if (typeof err === 'string') {
-    return err
+  if (typeof err === "string") {
+    return err;
   }
   if (Array.isArray(err)) {
-    return err[0]?.message || 'Live updates unavailable'
+    return err[0]?.message || "Live updates unavailable";
   }
   if (err.message) {
-    return err.message
+    return err.message;
   }
-  return 'Live updates unavailable'
+  return "Live updates unavailable";
 }
 
 export async function fetchMatchResult(matchId) {
-  const data = await graphqlRequest(MATCH_RESULT_QUERY, { matchId })
-  return data.matchResult
+  const data = await graphqlRequest(MATCH_RESULT_QUERY, { matchId });
+  return data.matchResult;
 }
 
 export async function playAgain(matchId) {
-  const data = await graphqlRequest(PLAY_AGAIN_MUTATION, { matchId })
-  return data.playAgain
+  const data = await graphqlRequest(PLAY_AGAIN_MUTATION, { matchId });
+  return data.playAgain;
 }
 
 export async function declinePlayAgain(matchId) {
-  const data = await graphqlRequest(DECLINE_PLAY_AGAIN_MUTATION, { matchId })
-  return data.declinePlayAgain
+  const data = await graphqlRequest(DECLINE_PLAY_AGAIN_MUTATION, { matchId });
+  return data.declinePlayAgain;
 }
 
-export async function subscribeToMatchResult(matchId, { onUpdate, onError } = {}) {
-  await loadSubscriptionAuth()
-  const client = getWsClient()
+export async function subscribeToMatchResult(
+  matchId,
+  { onUpdate, onError } = {},
+) {
+  await loadSubscriptionAuth();
+  const client = getWsClient();
 
   const unsubscribe = client.subscribe(
     {
@@ -156,21 +167,21 @@ export async function subscribeToMatchResult(matchId, { onUpdate, onError } = {}
     {
       next: (payload) => {
         if (payload?.errors?.length) {
-          onError?.(formatSubscriptionError(payload.errors))
-          return
+          onError?.(formatSubscriptionError(payload.errors));
+          return;
         }
         if (payload?.data?.matchResultUpdated) {
-          onUpdate?.(payload.data.matchResultUpdated)
+          onUpdate?.(payload.data.matchResultUpdated);
         }
       },
       error: (err) => onError?.(formatSubscriptionError(err)),
       complete: () => {},
     },
-  )
+  );
 
   return () => {
-    unsubscribe()
-  }
+    unsubscribe();
+  };
 }
 
 /**
@@ -179,23 +190,23 @@ export async function subscribeToMatchResult(matchId, { onUpdate, onError } = {}
  * code on this path, so the sent message text is all there is to match on.
  */
 export const REGROUP_ERROR = {
-  NO_MODE: 'NO_REGROUP_MODE',
-  NOT_FINISHED: 'SESSION_NOT_FINISHED',
-  TABLE_FULL: 'TABLE_FULL',
-  UNKNOWN: 'UNKNOWN',
-}
+  NO_MODE: "NO_REGROUP_MODE",
+  NOT_FINISHED: "SESSION_NOT_FINISHED",
+  TABLE_FULL: "TABLE_FULL",
+  UNKNOWN: "UNKNOWN",
+};
 
 export function classifyRegroupError(error) {
-  const message = typeof error === 'string' ? error : error?.message || ''
+  const message = typeof error === "string" ? error : error?.message || "";
   if (/no longer has a mode/i.test(message)) {
-    return REGROUP_ERROR.NO_MODE
+    return REGROUP_ERROR.NO_MODE;
   }
   // The server writes a straight apostrophe; tolerate a curly one in case the copy is retouched.
   if (/hasn['\u2019]t finished yet/i.test(message)) {
-    return REGROUP_ERROR.NOT_FINISHED
+    return REGROUP_ERROR.NOT_FINISHED;
   }
   if (/table is full/i.test(message)) {
-    return REGROUP_ERROR.TABLE_FULL
+    return REGROUP_ERROR.TABLE_FULL;
   }
-  return REGROUP_ERROR.UNKNOWN
+  return REGROUP_ERROR.UNKNOWN;
 }

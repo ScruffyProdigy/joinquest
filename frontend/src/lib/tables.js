@@ -1,9 +1,9 @@
-import { graphqlRequest } from './graphql'
-import { PUBLIC_PLAYER_FIELDS } from './avatars'
-import { createClient } from 'graphql-ws'
-import { getGraphQLWsUrl } from './env'
-import { prefetchSubscriptionAuth } from './queue'
-import { displayNameOrFallback } from './viewer'
+import { graphqlRequest } from "./graphql";
+import { PUBLIC_PLAYER_FIELDS } from "./avatars";
+import { createClient } from "graphql-ws";
+import { getGraphQLWsUrl } from "./env";
+import { prefetchSubscriptionAuth } from "./queue";
+import { displayNameOrFallback } from "./viewer";
 
 // Everyone on a table card is a PublicPlayer, not a User. A table admits strangers — the
 // king's Look for group backfill and the catalog queue both seat people who were never
@@ -30,6 +30,16 @@ export const TABLE_FIELDS = `
       queuePath
       minPlayers
       maxPlayers
+    }
+    # The declaration only — the labels and bounds of each group. The player's actual
+    # roster comes live from the game and is fetched when the picker opens, never on
+    # every table update (JQ-232).
+    preQueueGroups {
+      key
+      kind
+      label
+      min
+      max
     }
   }
   king {
@@ -74,7 +84,7 @@ export const TABLE_FIELDS = `
     role
     regroup
   }
-`
+`;
 
 export const MY_TABLE_SEAT_QUERY = `
   query MyTableSeat {
@@ -98,7 +108,7 @@ export const MY_TABLE_SEAT_QUERY = `
       }
     }
   }
-`
+`;
 
 const CREATE_PRIVATE_TABLE = `
   mutation CreatePrivateTable($gameId: ID!, $modeId: ID!) {
@@ -106,27 +116,27 @@ const CREATE_PRIVATE_TABLE = `
       ${TABLE_FIELDS}
     }
   }
-`
+`;
 
 const SIT_AT_TABLE = `
-  mutation SitAtTable($tableId: ID!, $seatKey: String!) {
-    sitAtTable(tableId: $tableId, seatKey: $seatKey) {
+  mutation SitAtTable($tableId: ID!, $seatKey: String!, $options: [QueueOptionSelectionInput!]) {
+    sitAtTable(tableId: $tableId, seatKey: $seatKey, options: $options) {
       ${TABLE_FIELDS}
     }
   }
-`
+`;
 
 const LEAVE_TABLE = `
   mutation LeaveTable($tableId: ID!) {
     leaveTable(tableId: $tableId)
   }
-`
+`;
 
 const DISCARD_TABLE = `
   mutation DiscardTable($tableId: ID!) {
     discardTable(tableId: $tableId)
   }
-`
+`;
 
 const START_TABLE = `
   mutation StartTable($tableId: ID!) {
@@ -136,7 +146,7 @@ const START_TABLE = `
       joinUrl
     }
   }
-`
+`;
 
 const START_TABLE_BACKFILL = `
   mutation StartTableBackfill($tableId: ID!, $queueId: ID!) {
@@ -147,41 +157,50 @@ const START_TABLE_BACKFILL = `
       queuedCount
     }
   }
-`
+`;
 
 export async function fetchMyTableSeat() {
-  const data = await graphqlRequest(MY_TABLE_SEAT_QUERY)
-  return data.myTableSeat ?? null
+  const data = await graphqlRequest(MY_TABLE_SEAT_QUERY);
+  return data.myTableSeat ?? null;
 }
 
 export async function createPrivateTable(gameId, modeId) {
-  const data = await graphqlRequest(CREATE_PRIVATE_TABLE, { gameId, modeId })
-  return data.createPrivateTable
+  const data = await graphqlRequest(CREATE_PRIVATE_TABLE, { gameId, modeId });
+  return data.createPrivateTable;
 }
 
-export async function sitAtTable(tableId, seatKey) {
-  const data = await graphqlRequest(SIT_AT_TABLE, { tableId, seatKey })
-  return data.sitAtTable
+/**
+ * Each player answers the picker for themselves on the way into the seat — nobody may
+ * choose another player's champion, kit or deck. `options` stays undefined for a mode
+ * that declares no groups.
+ */
+export async function sitAtTable(tableId, seatKey, options) {
+  const data = await graphqlRequest(SIT_AT_TABLE, {
+    tableId,
+    seatKey,
+    options: options ?? null,
+  });
+  return data.sitAtTable;
 }
 
 export async function leaveTable(tableId) {
-  const data = await graphqlRequest(LEAVE_TABLE, { tableId })
-  return data.leaveTable
+  const data = await graphqlRequest(LEAVE_TABLE, { tableId });
+  return data.leaveTable;
 }
 
 export async function discardTable(tableId) {
-  const data = await graphqlRequest(DISCARD_TABLE, { tableId })
-  return data.discardTable
+  const data = await graphqlRequest(DISCARD_TABLE, { tableId });
+  return data.discardTable;
 }
 
 export async function startTable(tableId) {
-  const data = await graphqlRequest(START_TABLE, { tableId })
-  return data.startTable
+  const data = await graphqlRequest(START_TABLE, { tableId });
+  return data.startTable;
 }
 
 export async function startTableBackfill(tableId, queueId) {
-  const data = await graphqlRequest(START_TABLE_BACKFILL, { tableId, queueId })
-  return data.startTableBackfill
+  const data = await graphqlRequest(START_TABLE_BACKFILL, { tableId, queueId });
+  return data.startTableBackfill;
 }
 
 const MY_TABLE_SEAT_UPDATED_SUBSCRIPTION = `
@@ -206,18 +225,18 @@ const MY_TABLE_SEAT_UPDATED_SUBSCRIPTION = `
       }
     }
   }
-`
+`;
 
-let wsClient = null
+let wsClient = null;
 
 function getSubscriptionConnectionParams() {
   return async () => {
-    const header = await prefetchSubscriptionAuth()
+    const header = await prefetchSubscriptionAuth();
     if (!header) {
-      throw new Error('Sign in required for live updates')
+      throw new Error("Sign in required for live updates");
     }
-    return { Authorization: header }
-  }
+    return { Authorization: header };
+  };
 }
 
 function getWsClient() {
@@ -229,30 +248,30 @@ function getWsClient() {
       retryWait: async (retries) => Math.min(500 * retries, 5000),
       shouldRetry: () => true,
       lazy: false,
-    })
+    });
   }
-  return wsClient
+  return wsClient;
 }
 
 function formatSubscriptionError(err) {
   if (!err) {
-    return 'Live updates unavailable'
+    return "Live updates unavailable";
   }
-  if (typeof err === 'string') {
-    return err
+  if (typeof err === "string") {
+    return err;
   }
   if (Array.isArray(err)) {
-    return err[0]?.message || 'Live updates unavailable'
+    return err[0]?.message || "Live updates unavailable";
   }
   if (err.message) {
-    return err.message
+    return err.message;
   }
-  return 'Live updates unavailable'
+  return "Live updates unavailable";
 }
 
 export async function subscribeToMyTableSeat({ onUpdate, onError } = {}) {
-  await prefetchSubscriptionAuth()
-  const client = getWsClient()
+  await prefetchSubscriptionAuth();
+  const client = getWsClient();
 
   return client.subscribe(
     {
@@ -261,74 +280,76 @@ export async function subscribeToMyTableSeat({ onUpdate, onError } = {}) {
     {
       next: (payload) => {
         if (payload?.errors?.length) {
-          onError?.(formatSubscriptionError(payload.errors))
-          return
+          onError?.(formatSubscriptionError(payload.errors));
+          return;
         }
         if (payload?.data?.myTableSeatUpdated) {
-          onUpdate?.(payload.data.myTableSeatUpdated)
+          onUpdate?.(payload.data.myTableSeatUpdated);
         }
       },
       error: (err) => onError?.(formatSubscriptionError(err)),
       complete: () => {},
     },
-  )
+  );
 }
 
 /** Group seat slots by team prefix for column layout (e.g. Team-1 vs Team-2). */
 export function groupSeatSlotsByTeam(seatSlots = []) {
-  const teams = new Map()
-  const ungrouped = []
+  const teams = new Map();
+  const ungrouped = [];
   for (const slot of seatSlots) {
-    const prefix = slot.teamPrefix?.trim()
+    const prefix = slot.teamPrefix?.trim();
     if (!prefix) {
-      ungrouped.push(slot)
-      continue
+      ungrouped.push(slot);
+      continue;
     }
     if (!teams.has(prefix)) {
-      teams.set(prefix, [])
+      teams.set(prefix, []);
     }
-    teams.get(prefix).push(slot)
+    teams.get(prefix).push(slot);
   }
-  const sortedTeams = [...teams.entries()].sort(([a], [b]) => a.localeCompare(b))
-  return { teams: sortedTeams, ungrouped }
+  const sortedTeams = [...teams.entries()].sort(([a], [b]) =>
+    a.localeCompare(b),
+  );
+  return { teams: sortedTeams, ungrouped };
 }
 
 /**
  * Layout helper: team columns, role sections (Word Hunt), or flat fifo seats.
  */
 export function groupSeatSlotsForDisplay(seatSlots = []) {
-  const { teams, ungrouped } = groupSeatSlotsByTeam(seatSlots)
+  const { teams, ungrouped } = groupSeatSlotsByTeam(seatSlots);
   if (teams.length > 0) {
-    return { kind: 'teams', teams, ungrouped }
+    return { kind: "teams", teams, ungrouped };
   }
 
-  const byRole = new Map()
-  const noPath = []
+  const byRole = new Map();
+  const noPath = [];
   for (const slot of seatSlots) {
-    const path = slot.queuePath?.trim()
+    const path = slot.queuePath?.trim();
     if (!path) {
-      noPath.push(slot)
-      continue
+      noPath.push(slot);
+      continue;
     }
     if (!byRole.has(path)) {
-      byRole.set(path, [])
+      byRole.set(path, []);
     }
-    byRole.get(path).push(slot)
+    byRole.get(path).push(slot);
   }
 
   if (byRole.size > 1) {
-    const roles = [...byRole.entries()].sort(([a], [b]) => a.localeCompare(b))
+    const roles = [...byRole.entries()].sort(([a], [b]) => a.localeCompare(b));
     return {
-      kind: 'roles',
+      kind: "roles",
       roles: roles.map(([path, slots]) => {
-        const title = slots[0]?.displayName?.split(' · ')[0]?.trim() || path
-        return [title, slots]
+        const title = slots[0]?.displayName?.split(" · ")[0]?.trim() || path;
+        return [title, slots];
       }),
       noPath,
-    }
+    };
   }
 
-  return { kind: 'flat', slots: seatSlots.length ? seatSlots : noPath }
+  return { kind: "flat", slots: seatSlots.length ? seatSlots : noPath };
 }
 
 /**
@@ -336,124 +357,135 @@ export function groupSeatSlotsForDisplay(seatSlots = []) {
  * Returns null when the section title carries enough context (numbered guesser seats).
  */
 export function seatLabelInSection(slot, sectionTitle) {
-  const full = slot?.displayName?.trim() || ''
+  const full = slot?.displayName?.trim() || "";
   if (!full) {
-    return null
+    return null;
   }
 
-  const parts = full.split(' · ').map((part) => part.trim()).filter(Boolean)
+  const parts = full
+    .split(" · ")
+    .map((part) => part.trim())
+    .filter(Boolean);
   if (parts.length >= 2) {
-    const role = parts[0]
-    const suffix = parts.slice(1).join(' · ')
-    if (sectionTitle && role.toLowerCase() === sectionTitle.trim().toLowerCase()) {
+    const role = parts[0];
+    const suffix = parts.slice(1).join(" · ");
+    if (
+      sectionTitle &&
+      role.toLowerCase() === sectionTitle.trim().toLowerCase()
+    ) {
       if (/^\d+$/.test(suffix)) {
-        return null
+        return null;
       }
-      return suffix
+      return suffix;
     }
     if (/^\d+$/.test(suffix)) {
-      return null
+      return null;
     }
-    return suffix
+    return suffix;
   }
 
   if (/^\d+$/.test(full)) {
-    return null
+    return null;
   }
 
-  if (sectionTitle && full.toLowerCase() === sectionTitle.trim().toLowerCase()) {
-    return null
+  if (
+    sectionTitle &&
+    full.toLowerCase() === sectionTitle.trim().toLowerCase()
+  ) {
+    return null;
   }
 
-  return full
+  return full;
 }
 
 export function sectionTitleForSeat(seatKey, seatSlots = []) {
-  const layout = groupSeatSlotsForDisplay(seatSlots)
-  if (layout.kind === 'roles') {
+  const layout = groupSeatSlotsForDisplay(seatSlots);
+  if (layout.kind === "roles") {
     for (const [title, slots] of layout.roles) {
       if (slots.some((slot) => slot.seatKey === seatKey)) {
-        return title
+        return title;
       }
     }
   }
-  if (layout.kind === 'teams') {
+  if (layout.kind === "teams") {
     for (const [prefix, slots] of layout.teams) {
       if (slots.some((slot) => slot.seatKey === seatKey)) {
-        return prefix.replace('-', ' ')
+        return prefix.replace("-", " ");
       }
     }
   }
-  return null
+  return null;
 }
 
 export function displayName(user) {
-  return displayNameOrFallback(user)
+  return displayNameOrFallback(user);
 }
 
 /** Merge table.seats users into seatSlots when slot.user is missing (partial updates). */
 export function enrichTableSeats(table) {
   if (!table) {
-    return table
+    return table;
   }
   const usersByKey = Object.fromEntries(
     (table.seats ?? []).map((seat) => [seat.seatKey, seat.user ?? null]),
-  )
+  );
   const seatSlots = (table.seatSlots ?? []).map((slot) => ({
     ...slot,
     user: slot.user ?? usersByKey[slot.seatKey] ?? null,
-  }))
-  return { ...table, seatSlots }
+  }));
+  return { ...table, seatSlots };
 }
 
 /** Merge a table subscription/mutation payload into prior room state. */
 export function mergeTableRecord(prevTable, updatedTable) {
   if (!updatedTable?.id) {
-    return prevTable
+    return prevTable;
   }
   if (!prevTable) {
-    return updatedTable
+    return updatedTable;
   }
   return {
     ...prevTable,
     ...updatedTable,
     ...(updatedTable.seats != null ? { seats: updatedTable.seats } : {}),
-    ...(updatedTable.seatSlots != null ? { seatSlots: updatedTable.seatSlots } : {}),
-  }
+    ...(updatedTable.seatSlots != null
+      ? { seatSlots: updatedTable.seatSlots }
+      : {}),
+  };
 }
 
 export function mySeatKeyOnTable(table, userId) {
   if (!userId) {
-    return ''
+    return "";
   }
   for (const seat of table?.seats ?? []) {
     if (seat.user?.id === userId) {
-      return seat.seatKey
+      return seat.seatKey;
     }
   }
   for (const slot of table?.seatSlots ?? []) {
     if (slot.user?.id === userId) {
-      return slot.seatKey
+      return slot.seatKey;
     }
   }
-  return ''
+  return "";
 }
 
 export function mySeatDisplayName(table, userId) {
-  const seatKey = mySeatKeyOnTable(table, userId)
+  const seatKey = mySeatKeyOnTable(table, userId);
   if (!seatKey) {
-    return ''
+    return "";
   }
-  const slot = (table?.seatSlots ?? []).find((s) => s.seatKey === seatKey)
+  const slot = (table?.seatSlots ?? []).find((s) => s.seatKey === seatKey);
   if (!slot) {
-    return seatKey
+    return seatKey;
   }
-  const sectionTitle = sectionTitleForSeat(seatKey, table?.seatSlots ?? [])
-  const short = seatLabelInSection(slot, sectionTitle)
+  const sectionTitle = sectionTitleForSeat(seatKey, table?.seatSlots ?? []);
+  const short = seatLabelInSection(slot, sectionTitle);
   if (short) {
-    return sectionTitle ? `${sectionTitle} · ${short}` : short
+    return sectionTitle ? `${sectionTitle} · ${short}` : short;
   }
-  return sectionTitle || slot.displayName?.trim() || seatKey
+  return sectionTitle || slot.displayName?.trim() || seatKey;
 }
 
 /**
@@ -462,43 +494,46 @@ export function mySeatDisplayName(table, userId) {
  */
 export function isPooledRoleGroup(slots) {
   if (!slots?.length) {
-    return false
+    return false;
   }
-  const path = slots[0]?.queuePath?.trim()
+  const path = slots[0]?.queuePath?.trim();
   if (path) {
-    return slots.every((slot) => slot.queuePath?.trim() === path)
+    return slots.every((slot) => slot.queuePath?.trim() === path);
   }
-  return slots.length > 1 && slots.every((slot) => !(slot.queuePath?.trim()))
+  return slots.length > 1 && slots.every((slot) => !slot.queuePath?.trim());
 }
 
 export function countSeatedInGroup(slots) {
-  return (slots ?? []).filter((slot) => slot.user).length
+  return (slots ?? []).filter((slot) => slot.user).length;
 }
 
 export function firstOpenSeatKey(slots) {
-  return (slots ?? []).find((slot) => !slot.user)?.seatKey ?? ''
+  return (slots ?? []).find((slot) => !slot.user)?.seatKey ?? "";
 }
 
 export function queuePathMeta(mode, queuePath) {
   if (!queuePath) {
-    return null
+    return null;
   }
-  return (mode?.queuePaths ?? []).find((path) => path.queuePath === queuePath) ?? null
+  return (
+    (mode?.queuePaths ?? []).find((path) => path.queuePath === queuePath) ??
+    null
+  );
 }
 
 export function formatGroupSeatCaption(seatedCount, meta) {
   if (!meta) {
-    return `${seatedCount} seated`
+    return `${seatedCount} seated`;
   }
-  const max = meta.maxPlayers
-  const min = meta.minPlayers
-  let text = `${seatedCount}/${max} seated`
+  const max = meta.maxPlayers;
+  const min = meta.minPlayers;
+  let text = `${seatedCount}/${max} seated`;
   if (min > 0 && seatedCount < min) {
-    text += ` · need ${min} to start`
+    text += ` · need ${min} to start`;
   } else if (min > 0 && seatedCount >= min) {
-    text += ` · ready`
+    text += ` · ready`;
   }
-  return text
+  return text;
 }
 
 /**
@@ -512,20 +547,22 @@ export function formatGroupSeatCaption(seatedCount, meta) {
  */
 export function tableShouldLeaveRoomList(table) {
   if (!table) {
-    return false
+    return false;
   }
-  const status = table.status?.trim?.()
+  const status = table.status?.trim?.();
   if (status) {
-    return status !== 'forming'
+    return status !== "forming";
   }
-  const enriched = enrichTableSeats(table)
-  const seatedFromSlots = (enriched.seatSlots ?? []).filter((slot) => slot.user).length
-  const seated = enriched.seats?.length ?? seatedFromSlots
-  return seated === 0 && !enriched.canStart
+  const enriched = enrichTableSeats(table);
+  const seatedFromSlots = (enriched.seatSlots ?? []).filter(
+    (slot) => slot.user,
+  ).length;
+  const seated = enriched.seats?.length ?? seatedFromSlots;
+  return seated === 0 && !enriched.canStart;
 }
 
-export const TABLE_UPDATED_EVENT = 'lobby:table-updated'
+export const TABLE_UPDATED_EVENT = "lobby:table-updated";
 
 export function isKing(table, userId) {
-  return Boolean(table?.king?.id && userId && table.king.id === userId)
+  return Boolean(table?.king?.id && userId && table.king.id === userId);
 }
