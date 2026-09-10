@@ -314,13 +314,31 @@ func getMatchedModeQueueEntryTx(ctx context.Context, tx *sql.Tx, modeQueueID, us
 	return scanQueueEntry(row)
 }
 
+// listWaitingModeQueueEntriesTx returns the pool a match forms from, connected
+// players first.
+//
+// A disconnected player inside their grace window keeps their place but sorts last.
+// Matching consumes this list in order up to a fixed PlayersToStart per path rather
+// than filling to max, so "sorts last" and "matchable only if the pool is otherwise
+// too thin to form" are the same thing here — no second matching pass is needed. A
+// brief background should not cost a player their place, but nor should it match them
+// into a game while their phone is in their pocket, which would only burn the
+// seat-hold window for everyone else in that match.
+//
+// A player with no presence row joins as NULL and therefore reads as present, which
+// is the right default: absence of evidence that they left is not evidence that they
+// did.
+//
+// FOR UPDATE OF gq, not FOR UPDATE: Postgres refuses to lock the nullable side of an
+// outer join, and it refuses at query time rather than review time.
 func listWaitingModeQueueEntriesTx(ctx context.Context, tx *sql.Tx, modeQueueID uuid.UUID) ([]QueueEntry, error) {
 	rows, err := tx.QueryContext(ctx, `
-		SELECT `+queueColumns+`
-		FROM game_queues
-		WHERE mode_queue_id = $1 AND status = 'waiting'
-		ORDER BY joined_at ASC
-		FOR UPDATE
+		SELECT `+queueColumnsGQ+`
+		FROM game_queues gq
+		LEFT JOIN user_presence up ON up.user_id = gq.user_id
+		WHERE gq.mode_queue_id = $1 AND gq.status = 'waiting'
+		ORDER BY (up.disconnected_at IS NOT NULL), gq.joined_at ASC
+		FOR UPDATE OF gq
 	`, modeQueueID)
 	if err != nil {
 		return nil, err

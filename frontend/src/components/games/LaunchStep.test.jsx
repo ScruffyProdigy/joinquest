@@ -92,7 +92,7 @@ describe('LaunchStep', () => {
       vi.advanceTimersByTime(MATCH_FOUND_BEAT_MS)
     })
 
-    expect(screen.getByRole('link', { name: 'Launch game' })).toHaveAttribute(
+    expect(screen.getByRole('link', { name: 'Launch Now' })).toHaveAttribute(
       'href',
       matchedIntent.joinUrl,
     )
@@ -108,7 +108,7 @@ describe('LaunchStep', () => {
     expect(
       screen.getByText('Countdown paused while you were away. Launch when you are ready.'),
     ).toBeInTheDocument()
-    expect(screen.getByRole('link', { name: 'Launch game' })).toBeInTheDocument()
+    expect(screen.getByRole('link', { name: 'Launch Now' })).toBeInTheDocument()
   })
 
   it('stops the countdown when the player leaves the tab mid-count', () => {
@@ -133,7 +133,7 @@ describe('LaunchStep', () => {
     runCountdown()
 
     expect(screen.getByText('Preparing your launch link…')).toBeInTheDocument()
-    expect(screen.queryByRole('link', { name: 'Launch game' })).toBeNull()
+    expect(screen.queryByRole('link', { name: 'Launch Now' })).toBeNull()
     expect(navigateToLaunchUrl).not.toHaveBeenCalled()
 
     // The banner polls for the URL; the countdown starts when it lands.

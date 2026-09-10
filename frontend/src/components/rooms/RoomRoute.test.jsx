@@ -43,7 +43,7 @@ describe('the /room/:inviteCode route', () => {
 
     render(<App />)
 
-    expect(await screen.findByRole('heading', { level: 1, name: 'Find a game' })).toBeInTheDocument()
+    expect(await screen.findByRole('heading', { level: 1, name: 'Solo or squad, just join.' })).toBeInTheDocument()
     expect(screen.queryByRole('heading', { name: 'Page not found' })).not.toBeInTheDocument()
   })
 
@@ -53,7 +53,7 @@ describe('the /room/:inviteCode route', () => {
 
     render(<App />)
 
-    await screen.findByRole('heading', { level: 1, name: 'Find a game' })
+    await screen.findByRole('heading', { level: 1, name: 'Solo or squad, just join.' })
     expect(screen.queryByRole('navigation', { name: 'Main navigation' })).not.toBeInTheDocument()
     expect(screen.queryByRole('complementary', { name: 'Room chat' })).not.toBeInTheDocument()
     expect(screen.queryByRole('dialog', { name: 'Room chat' })).not.toBeInTheDocument()

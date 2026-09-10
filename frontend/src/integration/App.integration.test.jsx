@@ -25,7 +25,7 @@ describe('App Integration Tests', () => {
       render(<App />)
 
       expect(await screen.findByRole('link', { name: /player/ })).toHaveAttribute('href', '/account')
-      expect(await screen.findByRole('heading', { level: 1, name: 'Find a game' })).toBeInTheDocument()
+      expect(await screen.findByRole('heading', { level: 1, name: 'Solo or squad, just join.' })).toBeInTheDocument()
       expect(
         await screen.findByRole('heading', { name: 'Rock Paper Scissors Lizard Robot' }),
       ).toBeInTheDocument()

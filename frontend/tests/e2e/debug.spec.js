@@ -15,7 +15,7 @@ test.describe('Debug Tests', () => {
       console.log('Page content preview:', content.substring(0, 500))
       
       console.log('Checking if the catalog heading exists...')
-      const hasCatalog = await page.getByRole('heading', { level: 1, name: 'Find a game' }).isVisible()
+      const hasCatalog = await page.getByRole('heading', { level: 1, name: 'Solo or squad, just join.' }).isVisible()
       console.log('Catalog heading visible:', hasCatalog)
       
       console.log('Checking page title...')

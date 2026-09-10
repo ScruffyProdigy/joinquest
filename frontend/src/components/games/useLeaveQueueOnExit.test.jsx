@@ -107,6 +107,26 @@ describe('useLeaveQueueOnExit', () => {
     await waitFor(() => expect(window.location.pathname).toBe('/waiting'))
   })
 
+  it('lets a resolved leave route away, including the one the server already handled', async () => {
+    // Named for what it can actually pin. A server-side eviction (JQ-216) reaches
+    // this hook as a leaveQueue that resolves normally — LeaveModeQueue swallows the
+    // missing-row case and still returns true — so there is no client-side input
+    // that distinguishes it from an ordinary successful leave, and no test here can
+    // fail specifically for the eviction. What it does pin is that the recovery
+    // above is failure-only: a resolved leave must not bounce the player back to the
+    // waiting page.
+    render(<Probe activeIntent={waitingIntent} />)
+
+    act(() => navigateTo('/games/word-hunt'))
+    await act(async () => {
+      await queue.leaveQueue.mock.results[0].value
+      await Promise.resolve()
+    })
+
+    expect(queue.leaveQueue).toHaveBeenCalledWith('q1')
+    expect(window.location.pathname).toBe('/games/word-hunt')
+  })
+
   it('survives a StrictMode remount without dropping the player', () => {
     // The dev double-mount unmounts and remounts with no route change. Keying off
     // the route rather than the unmount is what keeps this from leaving the queue.

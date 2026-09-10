@@ -11,7 +11,7 @@ test.describe('Basic App Functionality', () => {
       await page.waitForLoadState('networkidle', { timeout: 30000 })
       
       // Check that the basic content is present
-      await expect(page.getByRole('heading', { level: 1, name: 'Find a game' })).toBeVisible({ timeout: 10000 })
+      await expect(page.getByRole('heading', { level: 1, name: 'Solo or squad, just join.' })).toBeVisible({ timeout: 10000 })
     } catch (error) {
       // If the test fails, take a screenshot for debugging
       await page.screenshot({ path: 'test-failure.png' })

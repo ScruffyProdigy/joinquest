@@ -10,7 +10,8 @@ import {
   LEAVE_QUEUE_CONFIRM,
   LEAVE_QUEUE_TITLE,
   STAY_IN_QUEUE,
-  STOP_LOOKING,
+  STOP_FINDING,
+  WAITING_REGION_LABEL,
   bannerIntentWaitingHint,
   bannerLiveUpdatesPausedHint,
   formatFormingGapsNeedLine,
@@ -106,7 +107,7 @@ export default function WaitingPage({ intent }) {
         className="waiting-page__card"
         role="region"
         aria-live="polite"
-        aria-label="Looking for a group"
+        aria-label={WAITING_REGION_LABEL}
       >
         <span className="waiting-page__pulse" aria-hidden="true" />
 
@@ -133,7 +134,7 @@ export default function WaitingPage({ intent }) {
           onClick={() => setConfirmingLeave(true)}
           disabled={busy}
         >
-          {busy ? '…' : STOP_LOOKING}
+          {busy ? '…' : STOP_FINDING}
         </Button>
       </section>
 

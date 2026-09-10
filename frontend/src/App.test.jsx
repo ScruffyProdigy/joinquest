@@ -38,7 +38,7 @@ describe('App Component', () => {
     mockUnauthenticatedSession({ games: mockDemoGames })
     render(<App />)
 
-    expect(await screen.findByRole('heading', { level: 1, name: 'Find a game' })).toBeInTheDocument()
+    expect(await screen.findByRole('heading', { level: 1, name: 'Solo or squad, just join.' })).toBeInTheDocument()
     expect(
       await screen.findByRole('heading', { name: 'Rock Paper Scissors Lizard Robot' }),
     ).toBeInTheDocument()
@@ -57,10 +57,10 @@ describe('App Component', () => {
     expect(await screen.findByRole('link', { name: /player/ })).toHaveAttribute('href', '/account')
     expect(screen.queryByText('Welcome back')).not.toBeInTheDocument()
     expect(screen.queryByRole('button', { name: 'Log out' })).not.toBeInTheDocument()
-    expect(await screen.findByRole('heading', { level: 1, name: 'Find a game' })).toBeInTheDocument()
+    expect(await screen.findByRole('heading', { level: 1, name: 'Solo or squad, just join.' })).toBeInTheDocument()
     // The promo card sits inside the catalog list, so it only exists once the
     // games fetch resolves — the heading above it is static and arrives first.
-    expect(await screen.findByRole('link', { name: /get started for developers/i })).toBeInTheDocument()
+    expect(await screen.findByRole('link', { name: /building a game\? get started/i })).toBeInTheDocument()
     expect(screen.queryByRole('button', { name: 'Create room' })).not.toBeInTheDocument()
     expect(await screen.findByRole('heading', { name: 'Rock Paper Scissors Lizard Robot' })).toBeInTheDocument()
   })

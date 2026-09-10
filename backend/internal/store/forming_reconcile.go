@@ -100,17 +100,23 @@ func (s *Store) ReconcileFormingModeQueue(ctx context.Context, modeQueueID uuid.
 		if err != nil {
 			return nil, err
 		}
-		if err := tx.Commit(); err != nil {
-			return nil, err
+		// A nil result with no error means the fire declined: an assigned player had
+		// no waiting row left, so their seat was vacated instead. Fall through to the
+		// not-yet-ready path, which commits that vacate and reports the queue as
+		// still forming — the next reconcile refills the seat from the waiting pool.
+		if fired != nil {
+			if err := tx.Commit(); err != nil {
+				return nil, err
+			}
+			return &FormingReconcileResult{
+				GameID:        joinCtx.Game.ID,
+				ModeQueueID:   modeQueueID,
+				Fired:         true,
+				SessionID:     &fired.session.ID,
+				NotifyUserIDs: fired.notifyIDs,
+				TableIDs:      fired.tableIDs,
+			}, nil
 		}
-		return &FormingReconcileResult{
-			GameID:        joinCtx.Game.ID,
-			ModeQueueID:   modeQueueID,
-			Fired:         true,
-			SessionID:     &fired.session.ID,
-			NotifyUserIDs: fired.notifyIDs,
-			TableIDs:      fired.tableIDs,
-		}, nil
 	}
 
 	waiting, err = listWaitingModeQueueEntriesTx(ctx, tx, modeQueueID)

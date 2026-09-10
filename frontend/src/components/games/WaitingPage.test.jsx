@@ -60,7 +60,7 @@ describe('WaitingPage', () => {
     expect(screen.getByText('Word Hunt · Arena')).toBeInTheDocument()
     expect(screen.getByText('Looking for players… (3 players looking)')).toBeInTheDocument()
     expect(screen.getByText('We will notify you here when your group is ready.')).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: 'Stop looking' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Stop' })).toBeInTheDocument()
   })
 
   it('names the cohort and the roles still missing in composition games', () => {
@@ -118,7 +118,7 @@ describe('WaitingPage', () => {
     const user = userEvent.setup()
     render(<WaitingPage intent={intentState} />)
 
-    await user.click(screen.getByRole('button', { name: 'Stop looking' }))
+    await user.click(screen.getByRole('button', { name: 'Stop' }))
     expect(handleLeave).not.toHaveBeenCalled()
     expect(await screen.findByText('Leave the queue?')).toBeInTheDocument()
     expect(
@@ -135,7 +135,7 @@ describe('WaitingPage', () => {
     const user = userEvent.setup()
     render(<WaitingPage intent={intentState} />)
 
-    await user.click(screen.getByRole('button', { name: 'Stop looking' }))
+    await user.click(screen.getByRole('button', { name: 'Stop' }))
     await user.click(await screen.findByRole('button', { name: 'Stay in queue' }))
 
     expect(handleLeave).not.toHaveBeenCalled()
@@ -178,6 +178,32 @@ describe('WaitingPage', () => {
     render(<WaitingPage intent={intentState} />)
 
     await waitFor(() => expect(window.location.pathname).toBe('/'))
+  })
+
+  it('routes away when a queued intent it was already showing disappears', async () => {
+    // Distinct from the case above, which never got past loading: this one has
+    // rendered the queued state before the intent goes, so it pins that the page
+    // gives up a view it is already committed to rather than only declining to
+    // enter it.
+    //
+    // That is the transition a LEFT update produces — the server evicted a frozen
+    // tab, the reconnect's initial payload says LEFT, and useActiveIntent's refresh
+    // settles to no intent — but the LEFT payload itself is upstream of this
+    // component and is handled in useGameQueue, so nothing here mocks one.
+    sessionStorage.setItem('lobby.waitingReturnPath', '/games/word-hunt')
+    setIntentState({ loading: true })
+    const { rerender } = render(<WaitingPage intent={intentState} />)
+    expect(window.location.pathname).toBe('/waiting')
+
+    setIntentState({ activeIntent: waitingIntent })
+    rerender(<WaitingPage intent={intentState} />)
+    expect(screen.getByRole('heading', { name: 'Finding players…' })).toBeInTheDocument()
+
+    setIntentState({ activeIntent: null })
+    rerender(<WaitingPage intent={intentState} />)
+
+    await waitFor(() => expect(window.location.pathname).toBe('/games/word-hunt'))
+    expect(screen.queryByRole('heading', { name: 'Finding players…' })).toBeNull()
   })
 
   it('raises the same confirmation for a back gesture as for the button', async () => {

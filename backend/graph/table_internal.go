@@ -331,10 +331,13 @@ func (r *Resolver) myTableSeatUpdatedSubscription(ctx context.Context) (<-chan *
 		return nil, err
 	}
 
+	releasePresence := r.Presence.Track(ctx, userID)
+
 	updates := make(chan *model.MyTableSeat, 4)
 	go func() {
 		defer close(updates)
 		defer unsubscribe()
+		defer releasePresence()
 
 		if initial != nil {
 			select {

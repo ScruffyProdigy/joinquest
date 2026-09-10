@@ -2,6 +2,7 @@ import { useRef, useState } from 'react'
 import { isSoloMode, joinGroupOptionsForMode, modePlayerRangeLabel } from '../../lib/games'
 import { accentColorFor } from '../../lib/gameAccent'
 import { hasPlayingIntent, hasWaitingIntent } from '../../lib/intent'
+import { UserPlusIcon } from 'lucide-react'
 import { PLAY_WITH_FRIENDS } from '../../lib/playerCopy'
 import { createPrivateTable } from '../../lib/tables'
 import { useIdentityPrompt } from '../avatars/IdentityPromptProvider'
@@ -251,6 +252,7 @@ function ModeRow({
                 disabled={tableBusy || blockedByMatch}
                 onClick={handleCreatePrivate}
               >
+                <UserPlusIcon aria-hidden="true" focusable="false" />
                 {tableBusy ? '…' : PLAY_WITH_FRIENDS}
               </Button>
             )}

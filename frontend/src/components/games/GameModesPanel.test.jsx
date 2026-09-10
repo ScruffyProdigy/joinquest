@@ -285,6 +285,17 @@ describe('GameModesPanel friends action', () => {
     expect(screen.getByRole('button', { name: 'Play with friends' })).toBeInTheDocument()
   })
 
+  /** Same rule as the Jump in icon: decorative, and the label stays the label. */
+  it('leads Play with friends with a decorative icon that does not rename the button', () => {
+    render(<GameModesPanel game={friendsGame()} />)
+
+    const button = screen.getByRole('button', { name: 'Play with friends' })
+    const icon = button.querySelector('svg')
+    expect(icon).not.toBeNull()
+    expect(icon).toHaveAttribute('aria-hidden', 'true')
+    expect(button).toHaveAccessibleName('Play with friends')
+  })
+
   it('takes the player to their group instead of opening the room panel', async () => {
     const user = userEvent.setup()
     const { createPrivateTable } = await import('../../lib/tables')
@@ -425,7 +436,7 @@ describe('GameModesPanel identity at join time', () => {
   it('prompts instead of joining when the visitor has no name yet', async () => {
     renderPanel()
 
-    await userEvent.click(screen.getByRole('button', { name: 'Look for group' }))
+    await userEvent.click(screen.getByRole('button', { name: 'Jump in' }))
 
     expect(screen.getByTestId('identity-gate')).toBeInTheDocument()
     expect(joinQueue).not.toHaveBeenCalled()
@@ -434,7 +445,7 @@ describe('GameModesPanel identity at join time', () => {
   it('runs the join the visitor asked for once they have picked a name', async () => {
     const { rerender } = renderPanel()
 
-    await userEvent.click(screen.getByRole('button', { name: 'Look for group' }))
+    await userEvent.click(screen.getByRole('button', { name: 'Jump in' }))
     expect(joinQueue).not.toHaveBeenCalled()
 
     authState.user = identifiedUser()
@@ -448,14 +459,14 @@ describe('GameModesPanel identity at join time', () => {
     // groups, so nothing is sent.
     await waitFor(() => expect(joinQueue).toHaveBeenCalledWith('queue-1', undefined, undefined))
     expect(screen.queryByTestId('identity-gate')).not.toBeInTheDocument()
-    expect(await screen.findByText('Looking…')).toBeInTheDocument()
+    expect(await screen.findByText('Finding players…')).toBeInTheDocument()
   })
 
   it('joins straight away for a player who already has a name', async () => {
     authState.user = identifiedUser()
     renderPanel()
 
-    await userEvent.click(screen.getByRole('button', { name: 'Look for group' }))
+    await userEvent.click(screen.getByRole('button', { name: 'Jump in' }))
 
     // Third argument is the pre-queue selection; this mode declares no option
     // groups, so nothing is sent.

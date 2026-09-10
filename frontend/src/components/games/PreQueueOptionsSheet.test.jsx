@@ -66,7 +66,7 @@ describe('PreQueueOptionsSheet', () => {
 
   it('keeps the join button disabled until the group is satisfied', () => {
     renderSheet()
-    const join = screen.getByRole('button', { name: 'Look for group' })
+    const join = screen.getByRole('button', { name: 'Jump in' })
     expect(join).toBeDisabled()
 
     fireEvent.click(screen.getByRole('button', { name: /Ferrus/ }))
@@ -80,7 +80,7 @@ describe('PreQueueOptionsSheet', () => {
     const { onConfirm } = renderSheet()
     fireEvent.click(screen.getByRole('button', { name: /Ferrus/ }))
     fireEvent.click(screen.getByRole('button', { name: /Tempered/ }))
-    fireEvent.click(screen.getByRole('button', { name: 'Look for group' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Jump in' }))
 
     expect(onConfirm).toHaveBeenCalledWith([
       { groupKey: 'helpers', optionIds: ['ferrus', 'tempered'] },
@@ -99,7 +99,7 @@ describe('PreQueueOptionsSheet', () => {
     fireEvent.click(screen.getByRole('button', { name: /Ferrus/ }))
     fireEvent.click(screen.getByRole('button', { name: /Tempered/ }))
     fireEvent.click(screen.getByRole('button', { name: /Chimera/ }))
-    fireEvent.click(screen.getByRole('button', { name: 'Look for group' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Jump in' }))
 
     expect(onConfirm).toHaveBeenCalledWith([
       { groupKey: 'helpers', optionIds: ['tempered', 'chimera'] },
@@ -120,7 +120,7 @@ describe('PreQueueOptionsSheet', () => {
       queueOptions: { available: false, unavailableReason: 'Cannot reach the game', groups: [] },
     })
     expect(screen.getByText('Cannot reach the game')).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: 'Look for group' })).toBeDisabled()
+    expect(screen.getByRole('button', { name: 'Jump in' })).toBeDisabled()
   })
 
   it('satisfies an optional group with no picks at all', () => {
@@ -128,6 +128,6 @@ describe('PreQueueOptionsSheet', () => {
       groups: [{ ...helpersGroup, key: 'skin', label: 'Pick a skin', min: 0, max: 1 }],
       queueOptions: { available: true, groups: [{ key: 'skin', choices: [] }] },
     })
-    expect(screen.getByRole('button', { name: 'Look for group' })).toBeEnabled()
+    expect(screen.getByRole('button', { name: 'Jump in' })).toBeEnabled()
   })
 })

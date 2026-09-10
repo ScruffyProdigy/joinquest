@@ -192,3 +192,79 @@ func TestCountStaleMatchedQueuesMatchesSweep(t *testing.T) {
 		t.Fatalf("post-sweep stale count = %d, want 0", cleared)
 	}
 }
+
+// The crash backstop: a pod that died mid-window leaves a waiting row with nobody
+// watching it. The sweep is what stops that row outliving its player.
+func TestSweepStaleDisconnectedQueuesClearsAbandonedWaitingRow(t *testing.T) {
+	st := openTestStore(t)
+	cleaner := st.NewTestCleaner(t)
+	ctx := context.Background()
+
+	userID := newSweepUser(t, st, cleaner, ctx, "sweep-disconnected")
+	if _, err := st.JoinModeQueue(ctx, DemoDefaultQueueID, userID, "", nil); err != nil {
+		t.Fatalf("join: %v", err)
+	}
+	if _, err := st.PresenceConnected(ctx, userID); err != nil {
+		t.Fatalf("connect: %v", err)
+	}
+	if _, err := st.PresenceDisconnected(ctx, userID); err != nil {
+		t.Fatalf("disconnect: %v", err)
+	}
+	// Age the stamp past the window.
+	if _, err := st.db.ExecContext(ctx,
+		`UPDATE user_presence SET disconnected_at = NOW() - INTERVAL '10 minutes' WHERE user_id = $1`, userID,
+	); err != nil {
+		t.Fatalf("age stamp: %v", err)
+	}
+
+	result, err := st.SweepStaleDisconnectedQueues(ctx, DefaultQueueDisconnectGrace)
+	if err != nil {
+		t.Fatalf("SweepStaleDisconnectedQueues: %v", err)
+	}
+	if result.Cancelled < 1 {
+		t.Fatalf("expected at least one cancelled row, got %d", result.Cancelled)
+	}
+
+	var n int
+	if err := st.db.QueryRowContext(ctx,
+		`SELECT count(*) FROM game_queues WHERE user_id = $1 AND status = 'waiting'`, userID,
+	).Scan(&n); err != nil {
+		t.Fatalf("count: %v", err)
+	}
+	if n != 0 {
+		t.Fatalf("abandoned row survived the sweep: %d waiting rows", n)
+	}
+}
+
+// A player inside their window must survive the sweep — it is a backstop for
+// abandoned rows, not a second, coarser expiry.
+func TestSweepStaleDisconnectedQueuesSparesAPlayerInsideTheWindow(t *testing.T) {
+	st := openTestStore(t)
+	cleaner := st.NewTestCleaner(t)
+	ctx := context.Background()
+
+	userID := newSweepUser(t, st, cleaner, ctx, "sweep-inside-window")
+	if _, err := st.JoinModeQueue(ctx, DemoDefaultQueueID, userID, "", nil); err != nil {
+		t.Fatalf("join: %v", err)
+	}
+	if _, err := st.PresenceConnected(ctx, userID); err != nil {
+		t.Fatalf("connect: %v", err)
+	}
+	if _, err := st.PresenceDisconnected(ctx, userID); err != nil {
+		t.Fatalf("disconnect: %v", err)
+	}
+
+	if _, err := st.SweepStaleDisconnectedQueues(ctx, DefaultQueueDisconnectGrace); err != nil {
+		t.Fatalf("SweepStaleDisconnectedQueues: %v", err)
+	}
+
+	var n int
+	if err := st.db.QueryRowContext(ctx,
+		`SELECT count(*) FROM game_queues WHERE user_id = $1 AND status = 'waiting'`, userID,
+	).Scan(&n); err != nil {
+		t.Fatalf("count: %v", err)
+	}
+	if n != 1 {
+		t.Fatalf("player inside their grace window was swept: %d waiting rows", n)
+	}
+}

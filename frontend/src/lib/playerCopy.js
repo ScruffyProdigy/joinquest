@@ -1,29 +1,70 @@
 /** Player-facing strings (avoid “queue” in the shell UI). */
 
-export const APP_TAGLINE = 'Find your group. Play together.'
+export const APP_TAGLINE = 'Solo or squad, just join.'
 
-/** Home page: the greeting row and the heading that leads the catalog. */
+/** Home page: the greeting row, and the label the catalog gives itself. */
 export const GREETING_MORNING = 'Good morning'
 export const GREETING_AFTERNOON = 'Good afternoon'
 export const GREETING_EVENING = 'Good evening'
-export const FIND_A_GAME_HEADING = 'Find a game'
+export const ALL_GAMES_HEADING = 'All games'
 export const SIGN_IN_OR_JOIN = 'Sign in or Join'
 /** Chip label for a signed-in player who has not picked a name yet. */
 export const ACCOUNT_CHIP_FALLBACK = 'Account'
 export const SIGN_IN_DIALOG_TITLE = 'Sign in or create an account'
-export const SIGN_IN_DIALOG_HINT =
-  'Keep your name, avatar, and progress on every device you play from.'
+
+/**
+ * The prototype makes the case for an account with four rotating cards rather
+ * than one static line, so the reasons are a list here, not a sentence.
+ *
+ * House style is en-GB ("favourites"), which is both the prototype's own
+ * spelling and the spelling used throughout this repo's prose. It is the only
+ * -our/-or word in player-facing copy, so the whole convention rests here.
+ */
+export const SIGN_IN_BENEFITS = [
+  {
+    key: 'handle',
+    headline: 'Own your handle.',
+    body: 'Pick exactly what you want to be called — not something the randomizer handed you.',
+  },
+  {
+    key: 'history',
+    headline: 'Your history travels with you.',
+    body: 'Every win, every session — all in one place, across every device you play on.',
+  },
+  {
+    key: 'crew',
+    headline: 'Your people, always ready.',
+    body: 'Save your crew and jump back into a game without hunting them down first.',
+  },
+  {
+    key: 'preferences',
+    headline: 'Never re-enter your preferences.',
+    body: 'Your roles, settings, and favourites stay saved between every session.',
+  },
+]
+
+/**
+ * The prototype pairs the cards with "Create an account" / "Maybe later". Here the
+ * sign-in panel below the cards *is* the create-an-account affordance, so only the
+ * dismissal needs a button of its own.
+ */
+export const SIGN_IN_MAYBE_LATER = 'Maybe later'
+/** Names one dot for a screen reader, e.g. "Reason 2 of 4". */
+export function signInBenefitDotLabel(index, total) {
+  return `Reason ${index + 1} of ${total}`
+}
+export const SIGN_IN_BENEFITS_LABEL = 'Reasons to create an account'
 
 /** Catalog: the developer pitch that sits in the game list as its own card. */
 export const DEVELOPER_PROMO_TITLE = 'Your game could live here'
 /** Same card, retitled when a search or filter leaves nothing to show. */
 export const DEVELOPER_PROMO_TITLE_NO_RESULTS = 'Don’t see your game? Build it.'
 export const DEVELOPER_PROMO_BODY = 'List it on JoinQuest via the developer portal'
-export const DEVELOPER_PROMO_CTA = 'Get started for developers →'
+export const DEVELOPER_PROMO_CTA = 'Building a game? Get started'
 
 export const SIGN_IN_HEADING = 'Get in the game'
-export const JUMP_IN = 'Jump in'
-export const JUMP_IN_HINT = 'Play now, make your account later.'
+export const PLAY_AS_GUEST = 'Play as guest'
+export const PLAY_AS_GUEST_HINT = 'Play now, make your account later.'
 export const SIGN_IN_DIVIDER = 'Or'
 export const SIGN_IN_DIVIDER_LABEL = 'Or sign in with email or social'
 export const ACCOUNT_LINK_LABEL = 'Account settings'
@@ -81,11 +122,18 @@ export function formatMergeWarning(sourceDisplayName, currentDisplayName) {
 export const MERGE_CONFIRM = 'Yes, merge accounts'
 export const MERGE_CANCEL = 'Cancel'
 
-export const LOOK_FOR_GROUP = 'Look for group'
-export const LOOKING_FOR_GROUP = 'Looking…'
-export const STOP_LOOKING = 'Stop looking'
+/**
+ * The prototype's primary CTA. It used to name the guest-entry action, which is
+ * why that one is now PLAY_AS_GUEST -- two buttons with this label and unrelated
+ * behaviour would be worse than either wording on its own (JQ-249).
+ *
+ * "Look for group" survives as domain vocabulary (lib/tables.js backfill, the
+ * banner lines below); only the button verb changed.
+ */
+export const JUMP_IN = 'Jump in'
+export const STOP_FINDING = 'Stop'
 
-export const PLAY_SOLO = 'Play'
+export const PLAY_SOLO = 'Single player'
 export const STARTING_SOLO = 'Starting…'
 
 export function joinAsLabel(queuePath) {
@@ -93,10 +141,10 @@ export function joinAsLabel(queuePath) {
 }
 
 export function waitingAsRoleLine(queuePath) {
-  return `Looking as ${queuePath}…`
+  return `Finding players as ${queuePath}…`
 }
 
-export const LAUNCH_GAME = 'Launch game'
+export const LAUNCH_GAME = 'Launch Now'
 // The way back in after a closed tab, a dropped connection, or a phone call (JQ-86).
 // A player standing in the lobby with a live match is returning to it, not starting it.
 export const REJOIN_MATCH = 'Rejoin'
@@ -186,6 +234,10 @@ export function bannerIntentLaunchPendingHint() {
   return 'Preparing your launch link…'
 }
 
+/** Names the waiting page's card for assistive tech. */
+export const WAITING_REGION_LABEL = 'Finding players'
+
+/** The whole wait, wherever it shows: in-flight button, status line, waiting page. */
 export const FINDING_PLAYERS = 'Finding players…'
 
 // The launch moment (JQ-136): the match forming is an event, not a changed banner.
