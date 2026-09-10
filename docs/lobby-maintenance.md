@@ -413,22 +413,35 @@ So a room has to end when nobody is left in it, and the signal for "nobody" is J
 | | Window | Constant |
 |---|---|---|
 | Queue place | 90s | `store.DefaultQueueDisconnectGrace` |
-| Room membership | 30s | `store.DefaultRoomDisconnectGrace` |
+| Room membership | 5m | `store.DefaultRoomDisconnectGrace` |
 | Closed room retention | 6h | `store.DefaultClosedRoomRetention` |
 
-**The room's 30s is deliberately not the queue's 90s, and neither should be derived from
-the other.** The queue buys a backgrounded phone room to come back because losing your
-place costs a wait you already served. A private room is the opposite: its occupants
-scanned a QR code off each other's screens or followed a link a minute ago, so they are
-in the same space or already talking, and a roster that lies for 90 seconds makes the
-product look asleep while they sort it out themselves.
+**The room's 5m is deliberately not the queue's 90s, and neither should be derived from
+the other.** The difference is who pays for the wait. A queue place is rivalrous: every
+second you hold one, strangers behind you wait, so 90s is a ceiling imposed by people who
+are not you. A private room is not rivalrous at all — its members are the only people who
+can ever use it, and they are the same people coming back — so a room that waits keeps
+nobody waiting, and has no reason to be the impatient one.
 
-30s specifically because that is where the client stops trying — the room subscription
-retries 10 times at `min(500ms * n, 5s)` (`frontend/src/lib/rooms.js`), which is 27.5s of
-reconnect attempts. **Retune that backoff and this constant has to follow it**, or an
-ordinary reload starts costing people their room.
+This window used to be 30s, on the reasoning that a stale roster makes the product look
+asleep. In practice that turned ordinary behaviour into a departure: tab away to read a
+rule, take a call, or let a laptop sleep for a minute, and the room was gone. **The room
+window is now the longer of the two.** If you find yourself restoring the old ordering,
+read this paragraph first — the inversion is deliberate and pinned by a test.
 
-A deliberate `leaveRoom` is immediate and no window applies to it. The 30s governs only
+5m specifically because that is where the client stops trying — the room subscription
+retries `ROOM_RECONNECT_ATTEMPTS` (65) times at `min(500ms * n, 5s)`
+(`frontend/src/lib/rooms.js`), which is 297.5s of reconnect attempts, landing just under
+the server's window so the client is still asking when the server gives up. **Retune that
+backoff and this constant has to follow it, and vice versa** — raise one alone and either
+an ordinary reload costs people their room, or a room is held open for a browser that
+gave up minutes ago. Both numbers are pinned by tests that name each other.
+
+(`retryWait` is passed a 0-based retry count, so the first retry waits `min(500*0, 5s)` =
+0ms. The 27.5s this section used to quote for 10 attempts read the curve as 1-based; the
+real budget then was 22.5s. The conclusion drawn from it was unaffected.)
+
+A deliberate `leaveRoom` is immediate and no window applies to it. The 5m governs only
 presence loss — a socket that dropped without saying anything.
 
 ### What "removed" means
@@ -464,9 +477,9 @@ gone.
 All three always run; a failure in one is reported in the exit status rather than by
 skipping the others.
 
-1. **Stale memberships** — removes members past the 30s window and closes whichever rooms
+1. **Stale memberships** — removes members past the 5m window and closes whichever rooms
    that emptied. This is the crash backstop only: when the API pod survives, an
-   in-process timer (`graph.PresenceTracker`) does it at exactly 30s. Not tunable on the
+   in-process timer (`graph.PresenceTracker`) does it at exactly 5m. Not tunable on the
    CronJob — it reads the code constant, so the sweep and the timer cannot disagree.
 2. **Empty rooms** — closes open rooms with nobody in them and no live play. *Not* a
    coarser version of pass 1, and the reason it exists is easy to miss: a room whose
@@ -476,7 +489,7 @@ skipping the others.
 3. **Retention** — deletes rooms closed longer than `CLOSED_ROOM_RETENTION` (default 6h,
    tunable on the CronJob because it is a storage policy, not something a player feels).
 
-**The hourly cadence governs no window.** Memberships end at 30s by timer; retention is
+**The hourly cadence governs no window.** Memberships end at 5m by timer; retention is
 measured from when a room closed, not from when the job runs. The cadence only decides how
 promptly each backstop notices.
 

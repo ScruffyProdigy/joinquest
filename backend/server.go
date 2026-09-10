@@ -74,7 +74,7 @@ func main() {
 	}
 	// Two windows off one socket edge, on deliberately different clocks: a waiting
 	// player keeps their queue place for 90s, a room member keeps their seat in the
-	// room for 30s. See each constant for why they are not the same number.
+	// room for 5m. See each constant for why they are not the same number.
 	resolver.Presence = graph.NewPresenceTracker(
 		dataStore,
 		broker,

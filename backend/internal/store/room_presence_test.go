@@ -65,17 +65,23 @@ func backdateDisconnect(t *testing.T, st *Store, ctx context.Context, userID uui
 }
 
 // The room window is deliberately NOT the queue's. Pinning the number here is pinning
-// the reasoning in DefaultRoomDisconnectGrace: 30s is where the client's own reconnect
-// budget runs out (10 retries at min(500ms*n, 5s) ≈ 27.5s), so we hold a place for
-// exactly as long as the player's client is still asking for it. A change to either
-// number without the other is the bug this catches.
-func TestDefaultRoomDisconnectGraceIsThirtySeconds(t *testing.T) {
-	if DefaultRoomDisconnectGrace != 30*time.Second {
-		t.Fatalf("room grace window: got %s, want 30s", DefaultRoomDisconnectGrace)
+// the reasoning in DefaultRoomDisconnectGrace: 5m is where the client's own reconnect
+// budget runs out (65 retries at min(500ms*n, 5s), 0-based, = 297.5s), so we hold a
+// place for exactly as long as the player's client is still asking for it. A change to
+// either number without the other is the bug this catches — the other number lives in
+// ROOM_RECONNECT_ATTEMPTS (frontend/src/lib/rooms.js) and is pinned by its own test.
+func TestDefaultRoomDisconnectGraceIsFiveMinutes(t *testing.T) {
+	if DefaultRoomDisconnectGrace != 5*time.Minute {
+		t.Fatalf("room grace window: got %s, want 5m", DefaultRoomDisconnectGrace)
 	}
-	if DefaultRoomDisconnectGrace >= DefaultQueueDisconnectGrace {
-		t.Fatalf("room grace %s should be shorter than the queue's %s: a room has no waiting"+
-			" players to compensate, so showing the truth beats holding the slot",
+	// This ordering was inverted deliberately, so assert it rather than leave a later
+	// reader to "fix" the room window back below the queue's. A queue place is
+	// rivalrous — holding one makes strangers behind you wait, which is what caps it at
+	// 90s. A private room is not: its members are the only people who can use it and
+	// the same people coming back, so nothing is owed to anyone by letting it wait.
+	if DefaultRoomDisconnectGrace <= DefaultQueueDisconnectGrace {
+		t.Fatalf("room grace %s should now be longer than the queue's %s: a room keeps"+
+			" nobody else waiting, so it has no reason to be the impatient one",
 			DefaultRoomDisconnectGrace, DefaultQueueDisconnectGrace)
 	}
 }

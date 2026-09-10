@@ -13,28 +13,39 @@ import (
 // DefaultRoomDisconnectGrace is how long a room member's socket may stay down before
 // the room treats the disconnect as a departure.
 //
-// 30s, and deliberately NOT DefaultQueueDisconnectGrace's 90s. The two windows answer
-// different questions and the reasoning does not transfer: the queue's 90s buys a
-// backgrounded phone room to come back because losing your place costs you a wait you
-// already served. A private room is the opposite situation. The people in it scanned a
-// QR code off each other's screens or followed a link somebody sent them a minute ago,
-// so they are in the same physical space or already talking — a roster that briefly
-// disagrees with the room is something they resolve between themselves in seconds,
-// while a roster that lies for a minute and a half makes the product look asleep.
-// Showing what is currently true is worth more here than protecting a slot.
+// 5m, and deliberately LONGER than DefaultQueueDisconnectGrace's 90s. That ordering
+// was the other way round until this window was re-derived, and the inversion is the
+// point rather than an oversight, so do not "restore" it.
 //
-// 30s rather than something tighter because that is where the client stops trying.
-// The room subscription retries 10 times with min(500ms * n, 5s) backoff
-// (frontend/src/lib/rooms.js), which is 27.5s of reconnect attempts before it gives
-// up. Anything shorter would evict a player whose own client still believes it is
-// coming back — a reload or a tunnel would read as leaving. So the rule this number
-// encodes is: we hold your place for exactly as long as your client is still asking
-// for it, and not one window longer.
+// The old reasoning held that a room should expire faster than a queue place because a
+// stale roster makes the product look asleep, while a lost queue place costs a wait you
+// already served. What that missed is who pays. A queue place is rivalrous: every
+// second you hold one, strangers behind you wait, so 90s is a fairness ceiling imposed
+// by people who are not you. A private room is not rivalrous at all — its members are
+// the only people who can ever use it, and they are the same people coming back. Nobody
+// is kept waiting by a room that waits. So a room has no reason to be the impatient one,
+// and 30s turned ordinary behaviour into a departure: tab away to read a rule, take a
+// call, let a laptop sleep for a minute, and the room you were standing in is gone.
+//
+// 5m rather than something larger because that is where the client stops trying. The
+// room subscription retries 65 times with min(500ms * n, 5s) backoff
+// (frontend/src/lib/rooms.js), which is 297.5s of reconnect attempts before it gives
+// up. Anything longer would hold a room open for a browser that has already given up on
+// it, which is not a held place but a lie with a longer lifetime; anything shorter would
+// evict a player whose own client still believes it is coming back, so a reload or a
+// tunnel would read as leaving. So the rule this number encodes is unchanged, only its
+// value: we hold your place for exactly as long as your client is still asking for it,
+// and not one window longer.
+//
+// (The retry budget is 297.5s and not 302.5s because graphql-ws passes retryWait a
+// 0-based count — the first retry waits min(500*0, 5000) = 0ms. The 27.5s the previous
+// derivation quoted for 10 attempts was the 1-based reading of the same formula; the
+// real figure then was 22.5s. The conclusion it drew was unaffected.)
 //
 // Moving it means re-deriving it from that backoff, not nudging the constant: cut the
 // retry budget and this should follow it down; raise the retries and this has to
 // follow up or reconnects start losing rooms.
-const DefaultRoomDisconnectGrace = 30 * time.Second
+const DefaultRoomDisconnectGrace = 5 * time.Minute
 
 // DefaultClosedRoomRetention is how long a closed room's row survives before the
 // sweep deletes it outright.

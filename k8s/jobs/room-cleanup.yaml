@@ -1,9 +1,9 @@
 # Run the fleet-wide room sweeps (JQ-253).
 #
-# 1. Remove room memberships whose player's last socket closed longer ago than the 30s
+# 1. Remove room memberships whose player's last socket closed longer ago than the 5m
 #    room grace window, and close whichever rooms that emptied. Player-visible, but only
 #    ever in the crash case: when the API pod survives, an in-process timer removes the
-#    member at exactly 30s and this finds nothing. It exists for the windows whose timer
+#    member at exactly 5m and this finds nothing. It exists for the windows whose timer
 #    died with their pod.
 #
 # 2. Close open rooms that nothing is left in. Not a coarser version of the first: a
@@ -19,16 +19,19 @@
 #    with it. Every Play with friends click now mints a fresh room, so without this the
 #    table grows without bound.
 #
-# THE HOURLY CADENCE GOVERNS NO WINDOW. Memberships are removed at 30s by the
+# THE HOURLY CADENCE GOVERNS NO WINDOW. Memberships are removed at 5m by the
 # in-process timer, and a closed room's retention is measured from when it closed, not
 # from when this job runs — the cadence only decides how promptly each backstop notices.
 # Hourly rather than the queue sweep's */15 because neither consequence is urgent: a
 # membership this job removes belongs to a player whose pod died, and a room row an hour
 # past its retention costs a row.
 #
-# The 30s window is NOT tunable here: it is a code constant shared with the timer that
-# is the real removal path, so the two cannot disagree. CLOSED_ROOM_RETENTION is tunable,
-# because it is a storage policy rather than something a player feels.
+# The 5m window is NOT tunable here: it is a code constant shared with the timer that
+# is the real removal path, so the two cannot disagree — and it is paired with the
+# client's own reconnect budget (ROOM_RECONNECT_ATTEMPTS in frontend/src/lib/rooms.js),
+# which gives up at 297.5s so the server is never holding a room for a browser that
+# stopped asking. CLOSED_ROOM_RETENTION is tunable, because it is a storage policy
+# rather than something a player feels.
 #
 # Metrics per run: lobby.room.stale_members.{count,removed,remaining}, lobby.room.closed,
 # lobby.room.empty.count, lobby.room.empty_closed, and lobby.room.retired.{count,deleted}.
