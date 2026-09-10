@@ -41,7 +41,7 @@ export default function AvatarPrompt({ user, onSaved, onBusyChange }) {
         <p className="text-2xs text-muted-foreground">{AVATAR_PROMPT_SCOPE_HINT}</p>
       </div>
 
-      <ul className="grid grid-cols-3 gap-3 sm:grid-cols-6" role="list">
+      <ul className="m-0 grid list-none grid-cols-3 gap-3 p-0 sm:grid-cols-6" role="list">
         {identities.map((identity) => (
           <li key={identity.avatarKey}>
             <OptionButton
