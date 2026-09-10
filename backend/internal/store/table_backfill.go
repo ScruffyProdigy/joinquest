@@ -17,7 +17,7 @@ func (s *Store) StartTableBackfill(ctx context.Context, tableID, kingUserID, mod
 	}
 	defer tx.Rollback()
 
-	table, game, _, modeSeats, err := s.loadTableContext(ctx, tx, tableID)
+	table, game, mode, modeSeats, err := s.loadTableContext(ctx, tx, tableID)
 	if err != nil {
 		return nil, err
 	}
@@ -72,6 +72,14 @@ func (s *Store) StartTableBackfill(ctx context.Context, tableID, kingUserID, mod
 		path := seatRoles[seat.SeatKey]
 		// Each seated player's own picks ride into the queue with them, so a
 		// table that backfills does not lose what everyone already chose.
+		//
+		// They are re-checked on the way in rather than trusted because they were
+		// stored once already: a mode whose declaration changed while the table sat
+		// forming would otherwise carry a stale selection into matchmaking and only
+		// fail at provision, with strangers already matched to it (JQ-211).
+		if err := ensureSelectionsSatisfyMode(mode, seat.QueueOptions); err != nil {
+			return nil, err
+		}
 		members[i] = JoinPartyMemberInput{UserID: seat.UserID, QueuePath: path, QueueOptions: seat.QueueOptions}
 	}
 	tree := partytree.BuildFromPinnedSeats(pinned, seatRoles)

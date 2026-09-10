@@ -28,7 +28,9 @@ import (
 //
 // A template that will not expand, or a pre-queue block that will not parse, reads as
 // "there is a choice". That is the safe direction: it declines to seat anyone
-// automatically rather than guessing a seat for a mode nothing can describe.
+// automatically rather than guessing a seat for a mode nothing can describe — the same
+// posture modeOptionGroups and the roster fetch take on an unreadable declaration
+// (JQ-211), rather than a third opinion about the same broken row.
 func ModeOffersPreMatchChoice(mode *GameMode) bool {
 	if mode == nil {
 		return false

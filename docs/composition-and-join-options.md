@@ -159,9 +159,24 @@ never live in a manifest:
   the same requirement tree mode-eligibility uses.
 
 Unlike mode-eligibility this does **not** fail open — a mode whose roster cannot be loaded becomes
-unjoinable and says so, because neither an empty nor a permissive guess is safe. Selections travel
-on `joinQueue` and on `sitAtTable` (each player answers for themselves as they claim a seat), are
-validated server-side against the roster the player was actually served, and reach the game as
-`assignment.seats[].options`.
+unjoinable and says so, because neither an empty nor a permissive guess is safe. A `preQueue` block
+the lobby cannot parse is refused the same way (JQ-211): dropping the picker does not disable the
+mode, it provisions the match with an empty selection and tells nobody, which is the one outcome
+worth being loud about. Manifest sync rejects a bad declaration on the way in, so a row that fails
+this check predates that gate and wants a developer.
+
+Selections travel on `joinQueue` and on `sitAtTable` (each player answers for themselves as they
+claim a seat), are validated server-side against the roster the player was actually served, and
+reach the game as `assignment.seats[].options`.
+
+Validation is in two halves, because the two questions have different lifetimes. `prequeue.Validate`
+runs at pick time and is the only place the roster is consulted — whether an option exists and
+whether it is locked are facts only the game knows, about one player, at one moment.
+`prequeue.ValidateDeclared` asks the declaration alone (which groups exist, how many picks each
+takes, which are required) and so can run anywhere, including inside a transaction. The store calls
+it at the seat claim, at a table backfill, and at `addSessionParticipantTx` — the one place both
+provision paths meet — so no seat reaches a game with a selection its mode would not accept, by any
+path. Re-checking the roster there instead would fail a started match because somebody's unlocks
+moved while they waited.
 
 Contract details: [§13 of the developer integration guide](./developer-integration-guide.md#13-pre-queue-options-optional).

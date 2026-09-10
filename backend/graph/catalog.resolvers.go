@@ -167,7 +167,11 @@ func (r *gameModeResolver) PreQueueGroups(ctx context.Context, obj *model.GameMo
 	if err != nil {
 		return nil, err
 	}
-	return toGraphQLPreQueueGroups(declaredGroups(mode)), nil
+	groups, err := declaredGroups(mode)
+	if err != nil {
+		return nil, err
+	}
+	return toGraphQLPreQueueGroups(groups), nil
 }
 
 // QueueOptions is the resolver for the queueOptions field.
@@ -200,7 +204,12 @@ func (r *gameModeResolver) QueueOptions(ctx context.Context, obj *model.GameMode
 	if err != nil {
 		return nil, err
 	}
-	groups := declaredGroups(mode)
+	groups, err := declaredGroups(mode)
+	if err != nil {
+		// Same posture as an unreachable roster below: a picker that says it is
+		// broken, not a mode that quietly forgets it has one (JQ-211).
+		return unavailableQueueOptions("This mode's options can't be read right now. Try again in a moment."), nil
+	}
 	if len(groups) == 0 {
 		// Null rather than an empty roster: this mode has no pre-queue step at
 		// all, which is different from having one we could not load.
