@@ -173,6 +173,57 @@ describe('LaunchStep', () => {
     expect(navigateToLaunchUrl).not.toHaveBeenCalled()
   })
 
+  /*
+    A friend room has no surprise to mark: the whole group is already watching the
+    Start button, and a countdown only strands them behind whoever pressed it.
+  */
+  describe('immediate', () => {
+    it('carries the player in at once, with no beat and no countdown', () => {
+      renderLaunchStep({ immediate: true })
+
+      expect(navigateToLaunchUrl).toHaveBeenCalledWith(matchedIntent.joinUrl)
+      expect(screen.queryByText(/Entering in/)).toBeNull()
+    })
+
+    it('still refuses to yank a tab the player is not looking at', () => {
+      setVisibility('hidden')
+      renderLaunchStep({ immediate: true })
+
+      expect(navigateToLaunchUrl).not.toHaveBeenCalled()
+      expect(screen.getByRole('link', { name: 'Launch Now' })).toHaveAttribute(
+        'href',
+        matchedIntent.joinUrl,
+      )
+    })
+
+    it('waits for a launch URL that is still being provisioned', () => {
+      const { rerender, props } = renderLaunchStep({
+        immediate: true,
+        activeIntent: { ...matchedIntent, joinUrl: null },
+      })
+
+      expect(navigateToLaunchUrl).not.toHaveBeenCalled()
+      expect(screen.getByText('Preparing your launch link…')).toBeInTheDocument()
+
+      rerender(<LaunchStep {...props} activeIntent={matchedIntent} />)
+
+      expect(navigateToLaunchUrl).toHaveBeenCalledWith(matchedIntent.joinUrl)
+    })
+
+    it('stops carrying a player who has left', () => {
+      const onLeave = vi.fn()
+      renderLaunchStep({
+        immediate: true,
+        onLeave,
+        activeIntent: { ...matchedIntent, joinUrl: null },
+      })
+
+      fireEvent.click(screen.getByRole('button', { name: 'Leave game' }))
+      expect(onLeave).toHaveBeenCalledTimes(1)
+      expect(navigateToLaunchUrl).not.toHaveBeenCalled()
+    })
+  })
+
   it('surfaces a leave failure', () => {
     renderLaunchStep({ leaveError: 'Could not leave right now. Please try again.' })
 
