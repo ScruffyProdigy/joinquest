@@ -77,6 +77,12 @@ func newQueueIntegrationEnv(t *testing.T) *queueIntegrationEnv {
 	t.Cleanup(func() { _ = st.RestorePrimaryGameHandoffURLs(context.Background()) })
 
 	resolver := NewResolver(st, authService, pubsub.NewMemory())
+	// Presence is wired here, not only in the one test that asserts on it, because the
+	// six Track/release pairs are otherwise dead code to the whole suite: deleting any
+	// of them passes. onExpire stays nil so no grace timer outlives a test — the
+	// tracker declines to arm without one, and the eviction decision has its own
+	// coverage in the store.
+	resolver.Presence = NewPresenceTracker(st, resolver.PubSub, store.DefaultQueueDisconnectGrace, nil)
 	resolver.SpiritAnimal = spiritanimal.NewRunnerFromEnv(st, "https://joinquest.test")
 	resolver.FormingWorker = formingworker.New(st, resolver.HandleFormingReconciled, 5*time.Millisecond, time.Minute)
 	resolver.FormingWorker.SetProvisionHook(resolver.HandleUnprovisionedSession)
