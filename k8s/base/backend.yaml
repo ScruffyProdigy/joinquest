@@ -42,15 +42,27 @@ spec:
               value: /var/lib/spirit-avatars
             - name: REDIS_URL
               value: redis://lobby-redis:6379/0
+            # The joinquest-db-migrate Job owns migrations here. Two writers on
+            # schema_migrations race and can leave it dirty; local dev leaves
+            # this unset and migrates on boot.
+            - name: RUN_STARTUP_MIGRATIONS
+              value: "false"
           volumeMounts:
             - name: spirit-avatars
               mountPath: /var/lib/spirit-avatars
+          # The kubelet skips liveness and readiness until the startup probe
+          # succeeds, so a slow boot cannot be killed part-way through. 60 x 5s
+          # gives startup 5 minutes; liveness then guards the steady state.
+          startupProbe:
+            httpGet: { path: /healthz, port: 8080 }
+            periodSeconds: 5
+            failureThreshold: 60
           readinessProbe:
             httpGet: { path: /healthz, port: 8080 }
-            initialDelaySeconds: 3
+            periodSeconds: 10
           livenessProbe:
             httpGet: { path: /healthz, port: 8080 }
-            initialDelaySeconds: 5
+            periodSeconds: 10
           resources:
             requests: { cpu: "200m", memory: "256Mi" }
             limits:   { cpu: "1",    memory: "1Gi" }

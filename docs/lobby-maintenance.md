@@ -116,7 +116,16 @@ gcloud container clusters get-credentials joinquest --region us-east1 --project 
 ./scripts/deploy-joinquest.sh
 ```
 
-`deploy-joinquest.sh` applies `k8s/base/*` (namespace `joinquest`), runs migration job, patches game handoff URLs, and restarts deployments.
+`deploy-joinquest.sh` applies `k8s/base/*` (namespace `joinquest`), runs the
+migration job, patches game handoff URLs, and only then rolls `lobby-backend`.
+
+That order matters. The backend and the `joinquest-db-migrate` Job both write
+`schema_migrations`, so restarting the backend first makes them block on each
+other's locks; on 2026-09-10 that left the version dirty and the GraphQL API down
+for 15 minutes. `scripts/check-deploy-migration-order.sh` (run in CI) keeps the
+ordering from drifting back, and production sets `RUN_STARTUP_MIGRATIONS=false`
+so the Job is the only writer. If a deploy reports a dirty version, see
+[docs/database-migrations.md](database-migrations.md#migration-stuck-in-dirty-state).
 
 Post-deploy smoke:
 

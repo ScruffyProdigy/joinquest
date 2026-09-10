@@ -8,6 +8,10 @@ on:
       - 'k8s/**'
       - 'docker-compose.yml'
       - 'scripts/db.sh'
+      - 'scripts/deploy-joinquest.sh'
+      - 'scripts/fix-dirty-migration.sh'
+      - 'scripts/check-deploy-migration-order.sh'
+      - 'scripts/lib/**'
       - 'docs/environment-configuration.md'
       - '.github/workflows/environment-config-test.yml'
   pull_request:
@@ -17,6 +21,10 @@ on:
       - 'k8s/**'
       - 'docker-compose.yml'
       - 'scripts/db.sh'
+      - 'scripts/deploy-joinquest.sh'
+      - 'scripts/fix-dirty-migration.sh'
+      - 'scripts/check-deploy-migration-order.sh'
+      - 'scripts/lib/**'
       - 'docs/environment-configuration.md'
       - '.github/workflows/environment-config-test.yml'
 
@@ -211,10 +219,15 @@ jobs:
     - name: Test deployment scripts
       run: |
         # Test that deployment scripts are executable and valid
-        chmod +x scripts/deploy-*.sh scripts/install-joinquest-*.sh scripts/lib/joinquest-*.sh \
-          scripts/check-developer-docs-sync.sh scripts/ship-joinquest.sh scripts/sync-developer-docs.sh
-        for script in scripts/deploy-*.sh scripts/install-joinquest-*.sh scripts/lib/joinquest-*.sh \
-          scripts/check-developer-docs-sync.sh scripts/ship-joinquest.sh scripts/sync-developer-docs.sh; do
+        chmod +x scripts/deploy-*.sh scripts/install-joinquest-*.sh scripts/lib/*.sh \
+          scripts/check-developer-docs-sync.sh scripts/check-deploy-migration-order.sh \
+          scripts/fix-dirty-migration.sh scripts/ship-joinquest.sh scripts/sync-developer-docs.sh
+        for script in scripts/deploy-*.sh scripts/install-joinquest-*.sh scripts/lib/*.sh \
+          scripts/check-developer-docs-sync.sh scripts/check-deploy-migration-order.sh \
+          scripts/fix-dirty-migration.sh scripts/ship-joinquest.sh scripts/sync-developer-docs.sh; do
           echo "Validating $script"
           bash -n "$script" || (echo "Syntax error in $script" && exit 1)
         done
+
+    - name: Deploy must migrate before restarting the backend (JQ deploy outage 2026-09-10)
+      run: ./scripts/check-deploy-migration-order.sh

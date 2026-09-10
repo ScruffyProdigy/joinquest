@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"strings"
 	"time"
 
 	_ "github.com/lib/pq"
@@ -40,10 +41,25 @@ func Init() error {
 	return nil
 }
 
+// startupMigrationsEnabled reports whether the server migrates on boot.
+// On by default so local dev and tests need no extra setup. Production sets it
+// to "false" and lets the joinquest-db-migrate Job own migrations instead —
+// two writers racing schema_migrations can leave it dirty, which then blocks
+// every later start.
+func startupMigrationsEnabled() bool {
+	return !strings.EqualFold(strings.TrimSpace(os.Getenv("RUN_STARTUP_MIGRATIONS")), "false")
+}
+
 // InitWithMigrations initializes the database connection and runs migrations
+// unless RUN_STARTUP_MIGRATIONS is "false".
 func InitWithMigrations() error {
 	if err := Init(); err != nil {
 		return err
+	}
+
+	if !startupMigrationsEnabled() {
+		log.Println("RUN_STARTUP_MIGRATIONS=false: skipping startup migrations (expecting a migration job)")
+		return nil
 	}
 
 	// Run migrations on a separate connection. golang-migrate closes the *sql.DB
