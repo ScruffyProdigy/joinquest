@@ -570,3 +570,55 @@ you declared.
 At a table, each player answers the picker as they claim their seat; nobody
 chooses for anybody else. The picks travel with each player whether the table
 starts on its own or backfills through the lobby.
+
+---
+
+## 14. Match results (`reportMatchResult`)
+
+The full mutation signature, field semantics, and how it relates to
+`reportPlayerFinished` live in
+[match-lifecycle-callbacks.md](./match-lifecycle-callbacks.md). This section
+covers one shape of that call that deserves its own contract: what a
+cooperative mode sends.
+
+### Cooperative outcomes
+
+A co-op mode (`socialMode: "co-op"`) wins or loses as one, so `reportMatchResult`
+carries its outcome differently from a competitive match:
+
+* **Success** — pass every crew member's `lobbyUserId` in `winnerLobbyUserIds`.
+* **Failure** — pass an empty list.
+* **Neither** — report `CANCELLED` or `ABANDONED`, which leaves the match unrated.
+
+A shared outcome only says something about individual skill if we know what the
+crew was up against, so a co-op result must also name the scenario:
+
+```json
+{
+  "status": "COMPLETED",
+  "winnerLobbyUserIds": ["...", "..."],
+  "metadata": { "scenarios": ["hard", "night"] }
+}
+```
+
+`scenarios` is one or more short identifiers of your choosing — a difficulty
+tier, a map, an active modifier. They are opaque to JoinQuest: **you name them,
+we rate them.** Each identifier accumulates its own strength estimate from how
+crews actually fare against it, so you never declare a difficulty number, and a
+scenario that turns out to be harder than you intended is corrected by the data
+rather than by a manifest edit.
+
+Two consequences worth designing around:
+
+* **Reuse the same identifiers across matches.** A scenario seen once has no
+  meaningful rating. `"hard"` reported by every match teaches us a lot;
+  `"hard-run-8f3a"` teaches us nothing.
+* **Several identifiers compose.** `["hard", "night"]` is rated as a harder
+  opponent than `["hard"]` alone, with each part's contribution learned
+  separately — provided both appear on their own often enough to be told apart.
+
+A co-op match that reports no `scenarios` produces **no rating change at all**.
+That is deliberate: "everybody won" with no idea what they beat is not
+information, and a guessed difficulty would be worse than none.
+
+A single string is accepted where one scenario is enough: `"scenarios": "hard"`.

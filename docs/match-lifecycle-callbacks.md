@@ -64,6 +64,10 @@ mutation reportMatchResult(
 
 Lobby validates `matchId` against the game id embedded in `serviceToken`. All fields are persisted: `reportPlayerFinished` stores `reason`, `placement`, and `metadata` against that participant; `reportMatchResult` stores `status`, `winnerLobbyUserIds`, and `metadata` against the session (winner ids not seated in the match are dropped). The stored result is surfaced back to participants only — via the `matchResult` query, the `matchResultUpdated` subscription, and the standings shown on `/return` (see [player-return-routing.md](./player-return-routing.md)).
 
+**Cooperative matches (`socialMode: "co-op"`)** report success/failure and the scenario the crew faced differently from a competitive match — see [Cooperative outcomes](./developer-integration-guide.md#cooperative-outcomes) in the integration guide for the full contract.
+
+**Rating.** Of the four `PlayerFinishReason` values, two get special handling when a match is rated: `DISCONNECT` drops that player out of the match's rating inputs entirely, so their rating is left untouched — neither helped nor hurt by a match they didn't really finish. `FORFEIT` is rated as a loss: the player stays in the rated pool, and quitting counts against them. `COMPLETED` and `ELIMINATED` carry no special rating treatment of their own; where a player's side landed is read from `reportMatchResult` instead (placements, `winnerLobbyUserIds`, or, for co-op, the [scenario outcome](./developer-integration-guide.md#cooperative-outcomes) above).
+
 ---
 
 ## Lobby behavior
