@@ -76,6 +76,13 @@ func (s *Store) PresenceDisconnected(ctx context.Context, userID uuid.UUID) (Pre
 		return PresenceTransition{}, fmt.Errorf("presence disconnected: %w", err)
 	}
 	out.Edge = previous == 1 && out.ConnectionCount == 0
+	if out.ConnectionCount == 0 {
+		// The documents those reports came from are gone with the last socket.
+		// Leaving them behind would start the user's next session as away.
+		if err := s.clearDocumentVisibilityForUser(ctx, userID); err != nil {
+			return PresenceTransition{}, err
+		}
+	}
 	return out, nil
 }
 
