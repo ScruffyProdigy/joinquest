@@ -460,3 +460,161 @@ func TestDeleteRetiredRoomsNeverTakesAnOpenRoom(t *testing.T) {
 		t.Fatalf("open room status = %q, want it untouched at %q", got, RoomStatusOpen)
 	}
 }
+
+// The seat window is deliberately NOT the room's. Pinning both numbers here pins the
+// reasoning in DefaultTableSeatDisconnectGrace: a room that waits costs the people left
+// behind nothing, while a held seat is the one thing at a forming table somebody else
+// actively wants. Collapsing the two into one window is the bug this catches.
+func TestTableSeatGraceIsShorterThanTheRoomGrace(t *testing.T) {
+	if DefaultTableSeatDisconnectGrace != 30*time.Second {
+		t.Fatalf("table seat grace: got %s, want 30s", DefaultTableSeatDisconnectGrace)
+	}
+	if DefaultTableSeatDisconnectGrace >= DefaultRoomDisconnectGrace {
+		t.Fatalf("seat grace %s must stay shorter than the room's %s: the seat is what"+
+			" another player is waiting on, the room is not",
+			DefaultTableSeatDisconnectGrace, DefaultRoomDisconnectGrace)
+	}
+}
+
+// TestSeatIsReleasedWhileTheRoomSurvives is the case the two windows exist for. Alice's
+// phone dies at a forming table Bob is still sitting at. Her seat has to come free quickly
+// so Bob can fill it, and the room has to stay exactly where it was, because losing the
+// room costs the group while losing a seat costs Alice one tap when she comes back.
+func TestSeatIsReleasedWhileTheRoomSurvives(t *testing.T) {
+	st := openTestStore(t)
+	cleaner := st.NewTestCleaner(t)
+	ctx := context.Background()
+
+	game, mode := setupDuelMode(t, st, cleaner)
+	alice := newPresenceUser(t, st, cleaner, ctx)
+	bob := newPresenceUser(t, st, cleaner, ctx)
+
+	room, err := st.CreateRoom(ctx, alice)
+	if err != nil {
+		t.Fatalf("CreateRoom: %v", err)
+	}
+	if err := st.addRoomMemberDirect(ctx, room.ID, bob); err != nil {
+		t.Fatalf("add bob: %v", err)
+	}
+	table, err := st.CreateTable(ctx, room.ID, game.ID, mode.ID, alice)
+	if err != nil {
+		t.Fatalf("CreateTable: %v", err)
+	}
+	modeSeats, err := st.ListGameModeSeats(ctx, mode.ID)
+	if err != nil {
+		t.Fatalf("ListGameModeSeats: %v", err)
+	}
+	if len(modeSeats) < 2 {
+		t.Fatalf("duel mode has %d seats, want 2", len(modeSeats))
+	}
+	if _, err := st.SitAtTable(ctx, table.ID, alice, modeSeats[0].SeatKey); err != nil {
+		t.Fatalf("alice sit: %v", err)
+	}
+	if _, err := st.SitAtTable(ctx, table.ID, bob, modeSeats[1].SeatKey); err != nil {
+		t.Fatalf("bob sit: %v", err)
+	}
+
+	// Bob stays connected throughout; only Alice's socket goes.
+	if _, err := st.PresenceConnected(ctx, bob); err != nil {
+		t.Fatalf("bob connect: %v", err)
+	}
+	if _, err := st.PresenceConnected(ctx, alice); err != nil {
+		t.Fatalf("alice connect: %v", err)
+	}
+	dropped, err := st.PresenceDisconnected(ctx, alice)
+	if err != nil {
+		t.Fatalf("alice disconnect: %v", err)
+	}
+	if dropped.DisconnectedAt == nil {
+		t.Fatal("disconnect did not stamp")
+	}
+
+	release, err := st.ReleaseDisconnectedTableSeat(ctx, alice, *dropped.DisconnectedAt)
+	if err != nil {
+		t.Fatalf("ReleaseDisconnectedTableSeat: %v", err)
+	}
+	if !release.Acted {
+		t.Fatal("seat was not released")
+	}
+	if release.TableID != table.ID || release.RoomID != room.ID {
+		t.Fatalf("release = %+v, want table %s in room %s — the publish is addressed with these",
+			release, table.ID, room.ID)
+	}
+
+	seats, err := st.ListTableSeats(ctx, table.ID)
+	if err != nil {
+		t.Fatalf("ListTableSeats: %v", err)
+	}
+	if len(seats) != 1 || seats[0].UserID != bob {
+		t.Fatalf("seats = %+v, want bob alone", seats)
+	}
+
+	// The room is untouched: Alice is still a member, and it is still open. This is the
+	// half that used to fail — the seat and the room came off the same 30s window, so
+	// losing one meant losing the other.
+	if n := roomMemberCount(t, st, ctx, room.ID); n != 2 {
+		t.Fatalf("room members = %d, want 2: releasing a seat must not remove anyone", n)
+	}
+	if status := roomStatus(t, st, ctx, room.ID); status != RoomStatusOpen {
+		t.Fatalf("room status = %q, want %q — Bob is still here", status, RoomStatusOpen)
+	}
+
+	// Alice comes back and re-takes a seat, which is the whole reason 30s is affordable.
+	if _, err := st.SitAtTable(ctx, table.ID, alice, modeSeats[0].SeatKey); err != nil {
+		t.Fatalf("alice re-sit after coming back: %v", err)
+	}
+}
+
+// A reconnect inside the window keeps the seat, and the stamp guard — not a second lookup —
+// is what enforces it. Same discipline as TestReconnectInsideTheWindowKeepsRoomMembership.
+func TestReconnectInsideTheWindowKeepsTheSeat(t *testing.T) {
+	st := openTestStore(t)
+	cleaner := st.NewTestCleaner(t)
+	ctx := context.Background()
+
+	game, mode := setupDuelMode(t, st, cleaner)
+	player := newPresenceUser(t, st, cleaner, ctx)
+
+	room, err := st.CreateRoom(ctx, player)
+	if err != nil {
+		t.Fatalf("CreateRoom: %v", err)
+	}
+	table, err := st.CreateTable(ctx, room.ID, game.ID, mode.ID, player)
+	if err != nil {
+		t.Fatalf("CreateTable: %v", err)
+	}
+	modeSeats, err := st.ListGameModeSeats(ctx, mode.ID)
+	if err != nil {
+		t.Fatalf("ListGameModeSeats: %v", err)
+	}
+	if _, err := st.SitAtTable(ctx, table.ID, player, modeSeats[0].SeatKey); err != nil {
+		t.Fatalf("sit: %v", err)
+	}
+	if _, err := st.PresenceConnected(ctx, player); err != nil {
+		t.Fatalf("connect: %v", err)
+	}
+	dropped, err := st.PresenceDisconnected(ctx, player)
+	if err != nil {
+		t.Fatalf("disconnect: %v", err)
+	}
+
+	// Back before the timer fires. The armed timer then finds a stamp that no longer
+	// matches and must do nothing.
+	if _, err := st.PresenceConnected(ctx, player); err != nil {
+		t.Fatalf("reconnect: %v", err)
+	}
+	release, err := st.ReleaseDisconnectedTableSeat(ctx, player, *dropped.DisconnectedAt)
+	if err != nil {
+		t.Fatalf("ReleaseDisconnectedTableSeat: %v", err)
+	}
+	if release.Acted {
+		t.Fatal("a returned player lost their seat: the stamp guard did not hold")
+	}
+	seats, err := st.ListTableSeats(ctx, table.ID)
+	if err != nil {
+		t.Fatalf("ListTableSeats: %v", err)
+	}
+	if len(seats) != 1 || seats[0].UserID != player {
+		t.Fatalf("seats = %+v, want the returned player still seated", seats)
+	}
+}

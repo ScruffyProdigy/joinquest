@@ -414,7 +414,21 @@ So a room has to end when nobody is left in it, and the signal for "nobody" is J
 |---|---|---|
 | Queue place | 90s | `store.DefaultQueueDisconnectGrace` |
 | Room membership | 5m | `store.DefaultRoomDisconnectGrace` |
+| Forming-table seat | 30s | `store.DefaultTableSeatDisconnectGrace` |
 | Closed room retention | 6h | `store.DefaultClosedRoomRetention` |
+
+**The seat window is deliberately not the room's, and this is the pair most likely to get
+collapsed by someone tidying up.** Both fire off the same socket edge for the same player,
+so they look like duplicates. They are not: a room that waits costs the people left behind
+nothing, while a held seat is the one thing at a forming table another player is actively
+waiting for — while it is held the table cannot fill and the king cannot start. So the seat
+goes at 30s and the room waits 5m.
+
+The asymmetry costs the disconnected player almost nothing, which is what makes it
+affordable: coming back at two minutes they still have their room, their friends and the
+chat, and re-take a seat with one tap. Coming back to no room at all is the thing that
+actually hurts. Note this is *not* the seat-hold window for an already-formed match
+(JQ-199), which answers a different question and carries its own number.
 
 **The room's 5m is deliberately not the queue's 90s, and neither should be derived from
 the other.** The difference is who pays for the wait. A queue place is rivalrous: every

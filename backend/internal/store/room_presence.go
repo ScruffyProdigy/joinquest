@@ -47,6 +47,29 @@ import (
 // follow up or reconnects start losing rooms.
 const DefaultRoomDisconnectGrace = 5 * time.Minute
 
+// DefaultTableSeatDisconnectGrace is how long a player's socket may stay down before the
+// forming-table seat they are holding is released.
+//
+// 30s, and deliberately NOT DefaultRoomDisconnectGrace's 5m, even though both windows run
+// off the same socket edge for the same player. They are not the same question, because a
+// room and a seat cost the people left behind completely different amounts.
+//
+// A room that waits costs nobody anything: its members are the only people who can ever
+// use it and they are the same people coming back, which is why it waits five minutes. A
+// held seat is the opposite — it is the one thing at a forming table another player
+// actively wants, and while it is held the table cannot fill and the king cannot start.
+// Bob should not be staring at a seat he is not allowed to take because Alice's phone died.
+//
+// The asymmetry costs the disconnected player almost nothing, which is what makes it the
+// right trade rather than merely a defensible one: coming back at two minutes, Alice still
+// has her room, her friends and the chat, and re-takes a seat with one tap. Coming back to
+// no room at all is what actually hurts. So the seat goes early and the room waits.
+//
+// This is NOT the seat-hold window for an already-formed match (JQ-199), which answers how
+// long a match that has already been made waits for a player who is not there. Do not
+// borrow one for the other.
+const DefaultTableSeatDisconnectGrace = 30 * time.Second
+
 // DefaultClosedRoomRetention is how long a closed room's row survives before the
 // sweep deletes it outright.
 //
@@ -200,6 +223,13 @@ func (s *Store) EvictDisconnectedRoomMember(ctx context.Context, userID uuid.UUI
 	// against the friends still in the room, and it counts as live play in
 	// roomHasLivePlayClause, which would pin the room open on the strength of a
 	// player who is gone.
+	//
+	// In the ordinary case this now finds nothing to do: the seat went at
+	// DefaultTableSeatDisconnectGrace, ten times earlier in the same disconnect. It stays
+	// here because it is cheap and because "a member is removed" must never be able to
+	// leave a seat standing, whatever path got here — a seat timer that died with its pod,
+	// a membership removed by something other than the disconnect window, or a future
+	// caller that does not know about the seat window at all.
 	if _, _, err := s.leaveTableSeatTx(ctx, tx, userID); err != nil {
 		return RoomEviction{}, fmt.Errorf("vacate seat on room eviction: %w", err)
 	}
@@ -212,6 +242,80 @@ func (s *Store) EvictDisconnectedRoomMember(ctx context.Context, userID uuid.UUI
 
 	if err := tx.Commit(); err != nil {
 		return RoomEviction{}, fmt.Errorf("commit room eviction: %w", err)
+	}
+	return out, nil
+}
+
+// TableSeatRelease reports whether an expiry actually freed a seat, and names the table it
+// freed it at so the caller can tell the room's watchers.
+//
+// Everyone at /room/{code} and /group watches tableUpdated, not roomUpdated, so without the
+// ids there is nothing to address the publish to and the seat stays visibly occupied until
+// some unrelated table event fires. Same reason RegroupSeatRelease carries them.
+type TableSeatRelease struct {
+	Acted   bool
+	TableID uuid.UUID
+	RoomID  uuid.UUID
+}
+
+// ReleaseDisconnectedTableSeat frees the forming-table seat a user is holding if and only
+// if their socket is still down and the disconnect stamp still matches the one the caller
+// armed its timer on.
+//
+// Every safety condition is a predicate on the DELETE rather than a preceding SELECT, for
+// the reason EvictDisconnectedRoomMember gives: a read-then-write is check-then-act, and a
+// reconnect landing in the gap would cost a returned player the seat they are sitting in.
+// Zero rows affected means somebody got there first — a reconnect, a deliberate leave, a
+// table that started — which is exactly the outcome we want.
+//
+// It deliberately does NOT touch room membership. This window answers "should someone else
+// be allowed to take this seat", not "is this player still in the room", and the room's own
+// window is ten times longer on purpose (see DefaultTableSeatDisconnectGrace). A player who
+// comes back at two minutes finds their room, their friends and their chat exactly as they
+// left them, and re-takes a seat with one tap.
+//
+// Scoped to forming tables. A seat at a STARTED table is not a seat anyone is waiting for —
+// the match is under way and its players' sockets are on the game, not the lobby, so every
+// one of them looks disconnected from here. Freeing those would tear down the seating of a
+// live match, which is the same trap roomHasLivePlayClause exists to avoid.
+func (s *Store) ReleaseDisconnectedTableSeat(ctx context.Context, userID uuid.UUID, stamp time.Time) (TableSeatRelease, error) {
+	var out TableSeatRelease
+
+	tx, err := s.db.BeginTx(ctx, nil)
+	if err != nil {
+		return out, fmt.Errorf("begin table seat release: %w", err)
+	}
+	defer tx.Rollback()
+
+	err = tx.QueryRowContext(ctx, `
+		DELETE FROM table_seats ts
+		USING user_presence up, room_tables rt
+		WHERE ts.user_id = $1
+		  AND up.user_id = ts.user_id
+		  AND up.connection_count = 0
+		  AND up.disconnected_at = $2
+		  AND rt.id = ts.table_id
+		  AND rt.status = $3
+		RETURNING ts.table_id, rt.room_id
+	`, userID, stamp, TableStatusForming).Scan(&out.TableID, &out.RoomID)
+	if errors.Is(err, sql.ErrNoRows) {
+		return TableSeatRelease{}, nil
+	}
+	if err != nil {
+		return TableSeatRelease{}, fmt.Errorf("release disconnected table seat: %w", err)
+	}
+	out.Acted = true
+
+	// The table's own row carries the change, exactly as leaveTableSeatTx and LeaveTable
+	// do. A client that reconciles on updated_at would otherwise never see the seat go.
+	if _, err := tx.ExecContext(ctx, `
+		UPDATE room_tables SET updated_at = NOW() WHERE id = $1
+	`, out.TableID); err != nil {
+		return TableSeatRelease{}, fmt.Errorf("touch table on seat release: %w", err)
+	}
+
+	if err := tx.Commit(); err != nil {
+		return TableSeatRelease{}, fmt.Errorf("commit table seat release: %w", err)
 	}
 	return out, nil
 }
