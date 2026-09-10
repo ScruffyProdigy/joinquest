@@ -2,7 +2,7 @@ import { describe, expect, it, vi, beforeEach } from 'vitest'
 import { act, render, screen, waitFor } from '@testing-library/react'
 import { ActiveRoomProvider, useActiveRoom } from './ActiveRoomProvider'
 import { fetchMyRoom, subscribeToRoom } from '../../lib/rooms'
-import { fetchMyTableSeat } from '../../lib/tables'
+import { fetchMyTableSeat, TABLE_UPDATED_EVENT } from '../../lib/tables'
 
 const authState = { user: null, loading: false }
 
@@ -35,9 +35,11 @@ vi.mock('../../lib/tabVisibility', () => ({
   onTabVisible: vi.fn(() => () => {}),
 }))
 
-function room(inviteCode) {
-  return { id: `room-${inviteCode}`, inviteCode, members: [], tables: [], messages: [] }
+function room(inviteCode, tables = []) {
+  return { id: `room-${inviteCode}`, inviteCode, members: [], tables, messages: [] }
 }
+
+const formingTable = { id: 'table-1', status: 'forming', seats: [], seatSlots: [] }
 
 /** Holds on to the `refresh` from the very first render, the way a click handler does. */
 let capturedRefresh = null
@@ -111,6 +113,44 @@ describe('ActiveRoomProvider', () => {
 
     expect(renderedCodes.slice(mark)).not.toContain('none')
     expect(currentRoomCode()).toBe('WXYZ')
+  })
+
+  // The table leaves the room snapshot the moment the game starts, and between
+  // subscription messages a poll is what notices. Whoever is watching has to
+  // re-check their own seat then, or they sit on a page whose group vanished.
+  it('announces a table that a refreshed snapshot has dropped', async () => {
+    const seen = vi.fn()
+    window.addEventListener(TABLE_UPDATED_EVENT, seen)
+    fetchMyRoom.mockResolvedValue(room('ABCD', [formingTable]))
+    const { rerender } = renderProvider()
+    await signIn(rerender)
+    await waitFor(() => expect(currentRoomCode()).toBe('ABCD'))
+    seen.mockClear()
+
+    fetchMyRoom.mockResolvedValue(room('ABCD'))
+    await act(async () => {
+      await capturedRefresh()
+    })
+
+    expect(seen).toHaveBeenCalled()
+    window.removeEventListener(TABLE_UPDATED_EVENT, seen)
+  })
+
+  it('stays quiet when a refreshed snapshot still has every table', async () => {
+    const seen = vi.fn()
+    window.addEventListener(TABLE_UPDATED_EVENT, seen)
+    fetchMyRoom.mockResolvedValue(room('ABCD', [formingTable]))
+    const { rerender } = renderProvider()
+    await signIn(rerender)
+    await waitFor(() => expect(currentRoomCode()).toBe('ABCD'))
+    seen.mockClear()
+
+    await act(async () => {
+      await capturedRefresh()
+    })
+
+    expect(seen).not.toHaveBeenCalled()
+    window.removeEventListener(TABLE_UPDATED_EVENT, seen)
   })
 
   it('clears the room when the session goes away', async () => {

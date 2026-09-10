@@ -157,7 +157,10 @@ function MainLayout() {
   }), [])
 
   return onGroup ? (
-    <GroupPage />
+    // The group screen needs the intent for the same reason the waiting page does:
+    // a started table seat is how a player who did not press Start learns the game
+    // began, and the launch moment reads it.
+    <GroupPage intent={intent} />
   ) : onWaiting ? (
     <WaitingPage intent={intent} />
   ) : gameSlug ? (
