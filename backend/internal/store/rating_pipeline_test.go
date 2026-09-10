@@ -226,6 +226,25 @@ func TestPipelineTeamsMovesBothSidesTogether(t *testing.T) {
 			t.Fatalf("losing player %s matches played = %d, want 1", u, r.MatchesPlayed)
 		}
 	}
+
+	// The above only proves "every winner rose, every loser fell" — a pattern
+	// four solo sides (two tied at rank 0, two tied at rank 1) would also
+	// produce. Pin down that the seat template's affinity actually grouped
+	// each team onto one rated side, not four: the persisted rating input
+	// must have exactly two sides of two entrants each.
+	inputs, err := st.ListRatingInputs(ctx, gameID, rated.ModeKey)
+	if err != nil {
+		t.Fatalf("ListRatingInputs: %v", err)
+	}
+	row := findRatingInputBySession(t, inputs, sessionID)
+	if len(row.Sides) != 2 {
+		t.Fatalf("rated sides = %d, want 2 (teammates must share a side, not four solo sides)", len(row.Sides))
+	}
+	for _, side := range row.Sides {
+		if len(side.Entrants) != 2 {
+			t.Fatalf("side rank %d has %d entrants, want 2 (both teammates on one side)", side.Rank, len(side.Entrants))
+		}
+	}
 }
 
 // Co-op — crew vs the reported scenario keys; a cleared hard scenario raises
@@ -273,7 +292,7 @@ func TestPipelineCooperativeRatesCrewAgainstScenario(t *testing.T) {
 // row: an unrateable match writes no player_ratings rows at all.
 func TestPipelineNoReportedResultLeavesRatingsUntouched(t *testing.T) {
 	ctx := context.Background()
-	st, sessionID, gameID, _ := newCompetitiveSessionFixture(t, 2)
+	st, sessionID, gameID, users := newCompetitiveSessionFixture(t, 2)
 
 	// No RecordPlayerFinish, no RecordMatchResult: nothing was ever reported.
 	// gameAndModeForSession reads the (game, mode) back off the session row
@@ -289,6 +308,24 @@ func TestPipelineNoReportedResultLeavesRatingsUntouched(t *testing.T) {
 	}
 	if len(entities) != 0 {
 		t.Fatalf("entities = %v, want none for a match with no reported result", entities)
+	}
+
+	// On its own, the assertion above passes identically whether the
+	// record->replay->save path is alive and correctly wrote nothing, or is
+	// entirely dead: rating_match_inputs is empty by construction here either
+	// way. Anchor it: report a real result on this same session and confirm
+	// the pipeline actually produces rows when there is something to rate.
+	rated, err := st.RecordMatchResult(ctx, sessionID, "COMPLETED", []uuid.UUID{users[0]}, nil, time.Now())
+	if err != nil {
+		t.Fatalf("RecordMatchResult: %v", err)
+	}
+	if rated == nil {
+		t.Fatal("match was not rated once a result was reported")
+	}
+
+	players, entities = replayAndLoad(t, st, gameID, rated.ModeKey)
+	if len(players) != 2 {
+		t.Fatalf("players = %v, want 2 once a result was reported", players)
 	}
 }
 
@@ -308,6 +345,24 @@ func TestPipelineRepeatedReportDoesNotMoveRatingsTwice(t *testing.T) {
 	}
 
 	beforePlayers, beforeEntities := replayAndLoad(t, st, gameID, rated.ModeKey)
+
+	// Anchor the snapshot: rated != nil above only proves a rating input row
+	// was written, not that replay actually produced ratings from it. Without
+	// this, a dead ReplayMode/SaveAll/LoadPlayerRatings path would leave
+	// beforePlayers empty and afterPlayers empty, and the DeepEqual below
+	// would pass trivially over two empty maps.
+	if len(beforePlayers) != 2 {
+		t.Fatalf("beforePlayers = %v, want 2 rated players from the first report", beforePlayers)
+	}
+	for _, u := range users {
+		r, ok := beforePlayers[PlayerRatingKey(u)]
+		if !ok {
+			t.Fatalf("player %s has no rating after the first report", u)
+		}
+		if r.MatchesPlayed != 1 {
+			t.Fatalf("player %s matches played = %d, want 1 after the first report", u, r.MatchesPlayed)
+		}
+	}
 
 	if _, err := st.RecordMatchResult(ctx, sessionID, "COMPLETED", []uuid.UUID{winner}, nil, reportedAt); err != nil {
 		t.Fatalf("second report: %v", err)
