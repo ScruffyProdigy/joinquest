@@ -1,4 +1,5 @@
 import { render, screen } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import { describe, it, expect, vi } from 'vitest'
 import IntentBanner from './IntentBanner'
 import { LEAVE_GAME_FAILED } from '../../lib/playerCopy'
@@ -58,7 +59,7 @@ describe('IntentBanner', () => {
     expect(screen.queryByRole('alert')).toBeNull()
   })
 
-  it('shows playing intent with launch link and leave game', () => {
+  it('offers rejoin and leave game once a match is live', () => {
     render(
       <IntentBanner
         activeIntent={{
@@ -73,10 +74,10 @@ describe('IntentBanner', () => {
       />,
     )
     expect(screen.getByText(/Playing Demo Game/)).toBeInTheDocument()
-    expect(screen.getByRole('link', { name: 'Launch Now' })).toHaveAttribute(
-      'href',
-      'http://game.example/play',
-    )
+    // The rejoin URL is minted on click, so the banner shows an action rather than
+    // a link carrying a token that would be stale by the time it was used (JQ-86).
+    expect(screen.getByRole('button', { name: 'Rejoin' })).toBeInTheDocument()
+    expect(screen.queryByRole('link', { name: /rejoin|launch/i })).not.toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Leave game' })).toBeInTheDocument()
   })
 
@@ -138,13 +139,10 @@ describe('IntentBanner', () => {
       />,
     )
     expect(screen.getByText(/Playing Word Hunt \(Word Hunt Party\) as Guesser · 2/)).toBeInTheDocument()
-    expect(screen.getByRole('link', { name: 'Launch Now' })).toHaveAttribute(
-      'href',
-      'https://play.example.com/match?token=abc',
-    )
+    expect(screen.getByRole('button', { name: 'Rejoin' })).toBeInTheDocument()
   })
 
-  it('shows launch link from table seat when matched intent has no joinUrl', () => {
+  it('offers rejoin from a table seat when matched intent has no joinUrl', () => {
     render(
       <IntentBanner
         activeIntent={{
@@ -164,10 +162,7 @@ describe('IntentBanner', () => {
       />,
     )
     expect(screen.getByText(/Playing Word Hunt \(Word Hunt Party\) as Guesser · 2/)).toBeInTheDocument()
-    expect(screen.getByRole('link', { name: 'Launch Now' })).toHaveAttribute(
-      'href',
-      'https://play.example.com/table?token=xyz',
-    )
+    expect(screen.getByRole('button', { name: 'Rejoin' })).toBeInTheDocument()
   })
 
   it('shows playing banner for a started table session without catalog intent', () => {
@@ -185,14 +180,11 @@ describe('IntentBanner', () => {
       />,
     )
     expect(screen.getByText(/Playing Demo Game \(Classic\)/)).toBeInTheDocument()
-    expect(screen.getByRole('link', { name: 'Launch Now' })).toHaveAttribute(
-      'href',
-      'https://play.example.com/start',
-    )
+    expect(screen.getByRole('button', { name: 'Rejoin' })).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Leave game' })).toBeInTheDocument()
   })
 
-  it('shows leave game when matched without a launch link', () => {
+  it('holds back rejoin until the match has somewhere to send the player', () => {
     render(
       <IntentBanner
         activeIntent={{
@@ -207,7 +199,66 @@ describe('IntentBanner', () => {
     )
     expect(screen.getByText(/Playing Word Hunt/)).toBeInTheDocument()
     expect(screen.getByText(/Preparing your launch link/)).toBeInTheDocument()
-    expect(screen.queryByRole('link', { name: 'Launch Now' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Rejoin' })).not.toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Leave game' })).toBeInTheDocument()
+  })
+
+  it('asks for a fresh way in when rejoin is clicked', async () => {
+    const onRejoin = vi.fn()
+    render(
+      <IntentBanner
+        activeIntent={{
+          queueId: 'q1',
+          gameName: 'Demo Game',
+          status: 'MATCHED',
+          joinUrl: 'http://game.example/play',
+        }}
+        activeTableSeat={null}
+        busy={false}
+        onLeave={vi.fn()}
+        onRejoin={onRejoin}
+      />,
+    )
+    await userEvent.click(screen.getByRole('button', { name: 'Rejoin' }))
+    expect(onRejoin).toHaveBeenCalledTimes(1)
+  })
+
+  it('surfaces a rejoin failure without hiding the leave action', () => {
+    render(
+      <IntentBanner
+        activeIntent={{
+          queueId: 'q1',
+          gameName: 'Demo Game',
+          status: 'MATCHED',
+          joinUrl: 'http://game.example/play',
+        }}
+        activeTableSeat={null}
+        busy={false}
+        rejoinError="That match has finished, so there is nothing to rejoin."
+        onLeave={vi.fn()}
+        onRejoin={vi.fn()}
+      />,
+    )
+    expect(screen.getByRole('alert')).toHaveTextContent(/nothing to rejoin/)
+    expect(screen.getByRole('button', { name: 'Leave game' })).toBeInTheDocument()
+  })
+
+  it('disables rejoin while a rejoin is in flight', () => {
+    render(
+      <IntentBanner
+        activeIntent={{
+          queueId: 'q1',
+          gameName: 'Demo Game',
+          status: 'MATCHED',
+          joinUrl: 'http://game.example/play',
+        }}
+        activeTableSeat={null}
+        busy={false}
+        rejoining
+        onLeave={vi.fn()}
+        onRejoin={vi.fn()}
+      />,
+    )
+    expect(screen.getByRole('button', { name: '…' })).toBeDisabled()
   })
 })

@@ -145,6 +145,12 @@ export function waitingAsRoleLine(queuePath) {
 }
 
 export const LAUNCH_GAME = 'Launch Now'
+// The way back in after a closed tab, a dropped connection, or a phone call (JQ-86).
+// A player standing in the lobby with a live match is returning to it, not starting it.
+export const REJOIN_MATCH = 'Rejoin'
+export const REJOIN_FAILED = 'Could not get you back in. Try again in a moment.'
+export const REJOIN_OVER =
+  'That match has finished, so there is nothing to rejoin.'
 export const LEAVE_GAME = 'Leave game'
 export const LEAVE_MATCH = 'Leave match'
 export const LEAVE_GAME_FAILED = 'Could not leave right now. Please try again.'
@@ -221,7 +227,7 @@ export function bannerIntentPlayingLine(gameName, modeName, roleLabel) {
 }
 
 export function bannerIntentPlayingHint() {
-  return 'Launch when you are ready — your seat is reserved.'
+  return 'Your seat is held — rejoin whenever you are ready.'
 }
 
 export function bannerIntentLaunchPendingHint() {

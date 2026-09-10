@@ -230,8 +230,42 @@ Lobby mints seat JWTs (`iss`, `aud` = your API base URL, `matchId`, `seatKey`, `
 - Publish JWKS at `{lobbyIssuer}/.well-known/jwks.json`
 - **Claim:** `POST {apiBaseUrl}/api/v1/matches/{externalMatchId}/claim` with `Authorization: Bearer {jwt}`
 - Reject wrong `aud`, wrong `iss`, expired tokens, wrong reserved `seatKey`, unknown or mismatched match (`404`), malformed token (`401`/`403`)
-- **Claim must be repeatable:** JoinQuest's checklist claims the same seat more than once during checks (happy path, then again for the rotation check below) — treat a repeat claim of an already-claimed seat by the same player as success, not a conflict.
+- **Claim must be repeatable:** compare the token's `sub` against the player already assigned to that seat. Same `sub` → **`200`, success**; any other `sub` → **`409`**. This is what lets a player who lost their tab get back into their own seat while still keeping anyone else out of it. JoinQuest's checklist exercises both halves.
+- **Re-claim must not disturb the match:** the same player returning is "resend me the current state," not "join." No reset, no second join event, no re-deal, no turn advanced. Reply with a full authoritative snapshot rather than the deltas they missed.
 - **Key rotation:** Lobby's JWKS can contain more than one active key at once during a signing-key rotation. Verify tokens by matching the JWT's `kid` header against the matching key in the JWKS response — don't cache a single key. If you don't recognize a `kid`, refetch JWKS (rate-limited) before rejecting.
+
+---
+
+### Reconnecting a player
+
+Players close tabs, lose wifi, and take phone calls mid-match. For a casual audience
+that is routine, and a player who cannot get back in ruins the match for everyone
+still in it. Build **two independent paths back**, so one failing does not strand
+anybody:
+
+1. **Your own origin (primary).** On a successful claim, record browser → seat on
+   your domain — which `seatKey` of which `externalMatchId`, alongside the verified
+   `sub`. A later request with no `?token=` resumes from that binding. This covers a
+   refresh, the back button, and a tab crash, with no JoinQuest round trip. Check the
+   binding against the match; it names a seat, it does not authorize one.
+2. **Through JoinQuest (fallback).** A player returning via JoinQuest gets a
+   **Rejoin** action that mints a fresh seat token for the seat they already hold and
+   sends them to your launch URL, where the normal claim runs and hits the re-claim
+   rule above. This covers a player whose binding with you is gone.
+
+**Return players by navigation, not by POST.** JoinQuest's session cookie is
+`SameSite=Lax`: it rides along on a top-level navigation to
+`{returnUrl}?match={externalMatchId}`, and is *not* sent on a cross-site POST or a
+background `fetch`. A game that hands off by fetching or POSTing gets an anonymous
+request and a player who looks logged out.
+
+**While a player is away:** hold their seat, tell the remaining players someone is
+disconnected and the game is waiting, and decide up front what happens if they never
+return — a forfeit timeout or an abandon vote. An indefinite silent wait is worse for
+the people still there than a decided outcome. Do not forfeit on the first dropped
+socket, and do not fill the seat.
+
+Full rationale and the wire-level rule: [lobby-protocol-handoff.md](./lobby-protocol-handoff.md#reconnecting-a-player).
 
 ---
 
@@ -262,6 +296,7 @@ Suggested coverage (rpslr file names shown):
 | **Provision** | Happy path + `launchUrls` per seat; idempotent re-push; reject missing/invalid `Authorization` | `app.test.ts`, `provision.test.ts` |
 | **Launch URLs** | Per-player URLs; no `token=` in bases | `launchUrls.test.ts` |
 | **JWT claim** | Valid token; wrong `aud`/`iss`; expired; malformed; URL `:ref` ≠ token `matchId`; wrong reserved seat | `app.test.ts`, `jwksRotation.test.ts` |
+| **Re-claim** | Same `sub` re-claiming a held seat gets `200` and unchanged match state; a different `sub` still gets `409`; recovery from your own origin with no `?token=` | `app.test.ts` |
 | **JWKS rotation** | Verify tokens signed with either key while both are in JWKS; reject retired key | `jwksRotation.test.ts` |
 | **Banlist** | `403` + `bannedLobbyUserIds` when roster includes banned user | `app.test.ts` |
 | **Lifecycle** | `reportMatchResult` GraphQL call; return URL builder | `lobbyClient.test.ts`, `lobbyReturn.test.ts` |
@@ -315,6 +350,8 @@ When integration checks are green and catalog metadata is complete (`shortDescri
 | `jwt.expired` | §6 JWT |
 | `jwt.invalid_token` | §6 JWT |
 | `jwt.wrong_seat` | §6 JWT |
+| `jwt.reclaim_same_player` | [§6 Reconnecting a player](#reconnecting-a-player) |
+| `jwt.reclaim_seat_theft` | [§6 Reconnecting a player](#reconnecting-a-player) |
 | `jwt.rotation_overlap` | §6 JWT |
 
 ---

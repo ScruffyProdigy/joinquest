@@ -222,8 +222,42 @@ func (s *Signer) SignUserToken(userID uuid.UUID, ttl time.Duration) (string, err
 	return token.SignedString(s.privateKey)
 }
 
+// UserSession is a verified session token plus the window it was issued for.
+// Callers use the window to slide the session before it expires (JQ-86): both
+// SESSION_TTL and the cookie MaxAge are absolute from creation, so without a
+// renewal an active guest eventually expires out of the only identity they have.
+type UserSession struct {
+	UserID    uuid.UUID
+	IssuedAt  time.Time
+	ExpiresAt time.Time
+}
+
+// Lifetime is how long the token was minted for.
+func (u UserSession) Lifetime() time.Duration {
+	return u.ExpiresAt.Sub(u.IssuedAt)
+}
+
+// PastHalfLife reports whether more than half of the token's life has elapsed.
+func (u UserSession) PastHalfLife() bool {
+	lifetime := u.Lifetime()
+	if lifetime <= 0 {
+		return false
+	}
+	return time.Until(u.ExpiresAt) < lifetime/2
+}
+
 // VerifyUserToken validates a session JWT and returns the user ID.
 func (s *Signer) VerifyUserToken(tokenString string) (uuid.UUID, error) {
+	session, err := s.VerifyUserSession(tokenString)
+	if err != nil {
+		return uuid.Nil, err
+	}
+	return session.UserID, nil
+}
+
+// VerifyUserSession validates a session JWT and returns the user ID together with
+// the token's issue and expiry times.
+func (s *Signer) VerifyUserSession(tokenString string) (UserSession, error) {
 	issuer := LobbyIssuer()
 	audience := sessionTokenAudience()
 	token, err := jwt.Parse(tokenString, func(token *jwt.Token) (any, error) {
@@ -237,26 +271,34 @@ func (s *Signer) VerifyUserToken(tokenString string) (uuid.UUID, error) {
 		jwt.WithValidMethods([]string{jwt.SigningMethodEdDSA.Alg()}),
 	)
 	if err != nil {
-		return uuid.Nil, err
+		return UserSession{}, err
 	}
 
 	claims, ok := token.Claims.(jwt.MapClaims)
 	if !ok || !token.Valid {
-		return uuid.Nil, errors.New("auth: invalid token claims")
+		return UserSession{}, errors.New("auth: invalid token claims")
 	}
 	if typ, _ := claims["typ"].(string); typ != sessionTokenType {
-		return uuid.Nil, errors.New("auth: token is not a session token")
+		return UserSession{}, errors.New("auth: token is not a session token")
 	}
 
 	sub, err := claims.GetSubject()
 	if err != nil || sub == "" {
-		return uuid.Nil, errors.New("auth: token missing subject")
+		return UserSession{}, errors.New("auth: token missing subject")
 	}
 
 	userID, err := uuid.Parse(sub)
 	if err != nil {
-		return uuid.Nil, fmt.Errorf("auth: invalid subject: %w", err)
+		return UserSession{}, fmt.Errorf("auth: invalid subject: %w", err)
 	}
 
-	return userID, nil
+	session := UserSession{UserID: userID}
+	if issuedAt, err := claims.GetIssuedAt(); err == nil && issuedAt != nil {
+		session.IssuedAt = issuedAt.Time
+	}
+	if expiresAt, err := claims.GetExpirationTime(); err == nil && expiresAt != nil {
+		session.ExpiresAt = expiresAt.Time
+	}
+
+	return session, nil
 }

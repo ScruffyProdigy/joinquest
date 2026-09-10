@@ -259,6 +259,10 @@ export const CHECK_FIX_HINTS = {
   'jwt.expired': 'Reject expired seat tokens with 401/403.',
   'jwt.invalid_token': 'Reject malformed tokens with 401/403.',
   'jwt.wrong_seat': 'Reject tokens that claim another player\'s reserved seat.',
+  'jwt.reclaim_same_player':
+    'Compare the token sub against the player already in the seat: same sub is a reconnect (200), a different sub is the conflict (409). A flat 409 locks players out of their own match.',
+  'jwt.reclaim_seat_theft':
+    'A different player claiming an occupied seat must be refused with 409 (401/403 also fine).',
   'jwt.rotation_overlap':
     "On an unrecognized kid, refetch JWKS (rate-limited) before rejecting — don't verify against a single cached key.",
 }

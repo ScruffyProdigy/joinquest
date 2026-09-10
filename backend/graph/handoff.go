@@ -304,7 +304,7 @@ func (r *Resolver) finalizeMatchedSession(ctx context.Context, game *store.Game,
 		if !ok || base == "" {
 			return nil, fmt.Errorf("missing launch url base for user %s", p.UserID)
 		}
-		launch, err := signedLaunchURLFromBase(signer, audience, externalMatchID, base, p.UserID, p.SeatKey, p.DisplayName)
+		launch, err := signedLaunchURLFromBase(signer, audience, externalMatchID, base, p.UserID, p.SeatKey, p.DisplayName, 0)
 		if err != nil {
 			return nil, err
 		}
@@ -382,6 +382,7 @@ func signedLaunchURLFromBase(
 	audience, externalMatchID, base string,
 	userID uuid.UUID,
 	seatKey, displayName string,
+	seatTokenTTL time.Duration,
 ) (string, error) {
 	// The seat token is the second documented route to a name, so it holds the
 	// same invariant as the provision payload rather than signing a blank one.
@@ -389,7 +390,7 @@ func signedLaunchURLFromBase(
 	if name == "" {
 		return "", fmt.Errorf("%w: user %s seat %s", ErrPlayerIdentityMissing, userID, seatKey)
 	}
-	token, err := signer.SignSeatToken(userID, audience, externalMatchID, seatKey, name, 0)
+	token, err := signer.SignSeatToken(userID, audience, externalMatchID, seatKey, name, seatTokenTTL)
 	if err != nil {
 		return "", err
 	}
@@ -426,6 +427,21 @@ func urlHost(raw string) string {
 // signLaunchURL returns a signed launch URL from stored game-minted bases only.
 // Game provision is owned by the forming worker — not triggered from queries/subscriptions.
 func (r *Resolver) signLaunchURL(ctx context.Context, game *store.Game, sessionID, userID uuid.UUID) (string, error) {
+	return r.signLaunchURLWithTTL(ctx, game, sessionID, userID, 0)
+}
+
+// signRejoinURL mints a launch URL for a player returning to a match they are
+// already seated in. Same seat, same match, short-lived token (JQ-86).
+func (r *Resolver) signRejoinURL(ctx context.Context, game *store.Game, sessionID, userID uuid.UUID) (string, error) {
+	return r.signLaunchURLWithTTL(ctx, game, sessionID, userID, auth.RejoinSeatTokenTTL)
+}
+
+func (r *Resolver) signLaunchURLWithTTL(
+	ctx context.Context,
+	game *store.Game,
+	sessionID, userID uuid.UUID,
+	seatTokenTTL time.Duration,
+) (string, error) {
 	st, err := r.requireStore()
 	if err != nil {
 		return "", err
@@ -447,7 +463,7 @@ func (r *Resolver) signLaunchURL(ctx context.Context, game *store.Game, sessionI
 		return "", nil
 	}
 	log.Printf("handoff: launch url mint session=%s user=%s source=stored", sessionID, userID)
-	return r.mintLaunchURLForUserFromBase(ctx, game, sessionID, userID, base, participants)
+	return r.mintLaunchURLForUserFromBase(ctx, game, sessionID, userID, base, participants, seatTokenTTL)
 }
 
 func (r *Resolver) mintLaunchURLForUserFromBase(
@@ -456,6 +472,7 @@ func (r *Resolver) mintLaunchURLForUserFromBase(
 	sessionID, userID uuid.UUID,
 	base string,
 	participants []store.SessionParticipant,
+	seatTokenTTL time.Duration,
 ) (string, error) {
 	authService, err := r.requireAuth()
 	if err != nil {
@@ -464,7 +481,7 @@ func (r *Resolver) mintLaunchURLForUserFromBase(
 	audience := r.resolvedAPIBaseURL(game)
 	for _, p := range participants {
 		if p.UserID == userID {
-			return signedLaunchURLFromBase(authService.Signer(), audience, sessionID.String(), base, userID, p.SeatKey, p.DisplayName)
+			return signedLaunchURLFromBase(authService.Signer(), audience, sessionID.String(), base, userID, p.SeatKey, p.DisplayName, seatTokenTTL)
 		}
 	}
 	return "", fmt.Errorf("user is not seated in session")

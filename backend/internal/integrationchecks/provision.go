@@ -409,6 +409,12 @@ func (r *Runner) RunJWTChecks(ctx context.Context, game *store.Game, signer *aut
 		results = append(results, skipped("jwt.wrong_seat", "No second seat in test mode."))
 	}
 
+	// Re-claim (JQ-86). A player who lost the tab has to be able to get back into
+	// the seat they already hold, and nobody else may take it. The two halves are
+	// checked together because passing either one alone is the wrong behaviour:
+	// refusing both locks players out, accepting both is seat theft.
+	results = append(results, r.checkReClaim(ctx, signer, claimURL, audience, provisionMatchID, seatKey)...)
+
 	if kid, rotPriv, cleanup, rotErr := signer.AddRotationKey(); rotErr == nil {
 		func() {
 			defer cleanup()
@@ -568,6 +574,8 @@ func jwtSkippedAll(msg string) []Result {
 		skipped("jwt.expired", msg),
 		skipped("jwt.invalid_token", msg),
 		skipped("jwt.wrong_seat", msg),
+		skipped("jwt.reclaim_same_player", msg),
+		skipped("jwt.reclaim_seat_theft", msg),
 		skipped("jwt.rotation_overlap", msg),
 	}
 }
@@ -580,6 +588,8 @@ func jwtSkippedRest(msg string) []Result {
 		skipped("jwt.expired", msg),
 		skipped("jwt.invalid_token", msg),
 		skipped("jwt.wrong_seat", msg),
+		skipped("jwt.reclaim_same_player", msg),
+		skipped("jwt.reclaim_seat_theft", msg),
 		skipped("jwt.rotation_overlap", msg),
 	}
 }
@@ -587,4 +597,67 @@ func jwtSkippedRest(msg string) []Result {
 // JWTSkippedNoProvision returns skipped JWT rows when provision did not succeed.
 func JWTSkippedNoProvision() []Result {
 	return jwtSkippedAll("Fix provision checks first.")
+}
+
+// checkReClaim verifies the two halves of the re-claim rule (JQ-86): the player who
+// already holds a seat can claim it again, and a different player cannot.
+//
+// A game that returns a flat 409 on any second claim passes the theft half and fails
+// the return half — which is exactly the shape of the bug this check exists to catch,
+// because it looks correct until a real player closes their tab.
+func (r *Runner) checkReClaim(ctx context.Context, signer *auth.Signer, claimURL, audience, provisionMatchID, seatKey string) []Result {
+	results := make([]Result, 0, 2)
+
+	// The happy-path check above already claimed this seat as checkUserOne, so this
+	// is the same player arriving a second time with a fresh token.
+	samePlayer := uuid.MustParse(checkUserOne)
+	sameToken, err := signer.SignSeatToken(samePlayer, audience, provisionMatchID, seatKey, "JoinQuest Check", time.Hour)
+	if err != nil {
+		return append(results,
+			skipped("jwt.reclaim_same_player", "Could not mint a re-claim test token."),
+			skipped("jwt.reclaim_seat_theft", "Could not mint a re-claim test token."),
+		)
+	}
+	status, _ := r.postClaim(ctx, claimURL, sameToken)
+	switch {
+	case status >= 200 && status < 300:
+		results = append(results, Result{
+			CheckID: "jwt.reclaim_same_player",
+			Status:  StatusPass,
+			Message: "A player who already holds a seat can claim it again and get back into the match.",
+		})
+	case status == 409:
+		results = append(results, Result{
+			CheckID: "jwt.reclaim_same_player",
+			Status:  StatusFail,
+			Message: "Re-claiming your own seat returned 409. Compare the token's sub against the player already in the seat: same sub is a reconnect (200), a different sub is the conflict (409). Without this, a player who closes their tab is locked out of their own match.",
+		})
+	default:
+		results = append(results, Result{
+			CheckID: "jwt.reclaim_same_player",
+			Status:  StatusFail,
+			Message: fmt.Sprintf("Re-claiming your own seat should succeed, got HTTP %d.", status),
+		})
+	}
+
+	otherPlayer := uuid.MustParse(checkUserTwo)
+	theftToken, err := signer.SignSeatToken(otherPlayer, audience, provisionMatchID, seatKey, "JoinQuest Check", time.Hour)
+	if err != nil {
+		return append(results, skipped("jwt.reclaim_seat_theft", "Could not mint a seat-theft test token."))
+	}
+	status, _ = r.postClaim(ctx, claimURL, theftToken)
+	// 409 is the documented answer; 401/403 are also correct refusals, since a game
+	// may reject on the seat reservation before it ever compares sub.
+	if status == 401 || status == 403 || status == 409 {
+		return append(results, Result{
+			CheckID: "jwt.reclaim_seat_theft",
+			Status:  StatusPass,
+			Message: "Your game refused a different player's attempt to take an occupied seat.",
+		})
+	}
+	return append(results, Result{
+		CheckID: "jwt.reclaim_seat_theft",
+		Status:  StatusFail,
+		Message: fmt.Sprintf("A different player claiming an occupied seat should be refused with 409 (401/403 also fine), got HTTP %d.", status),
+	})
 }

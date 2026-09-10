@@ -35,7 +35,8 @@ import { Link } from './components/ui/link'
 
 function CatalogPage({ intent }) {
   const { user, loading: authLoading } = useAuth()
-  const { activeIntent, activeTableSeat, busy, leaveError, handleLeave } = intent
+  const { activeIntent, activeTableSeat, busy, leaveError, rejoinError, rejoining, handleLeave, handleRejoin } =
+    intent
 
   useEffect(() => {
     restoreCatalogScrollIfPending()
@@ -49,7 +50,10 @@ function CatalogPage({ intent }) {
           activeTableSeat={activeTableSeat}
           busy={busy}
           leaveError={leaveError}
+          rejoinError={rejoinError}
+          rejoining={rejoining}
           onLeave={handleLeave}
+          onRejoin={handleRejoin}
         />
       ) : null}
 
@@ -65,7 +69,18 @@ function CatalogPage({ intent }) {
 
 function GameDetailShell({ slug, intent }) {
   const { user, loading: authLoading } = useAuth()
-  const { activeIntent, activeTableSeat, busy, leaveError, refresh, notifyQueueJoined, handleLeave } = intent
+  const {
+    activeIntent,
+    activeTableSeat,
+    busy,
+    leaveError,
+    rejoinError,
+    rejoining,
+    refresh,
+    notifyQueueJoined,
+    handleLeave,
+    handleRejoin,
+  } = intent
 
   // Joining a queue is the only route onto the waiting page.
   function handleQueueJoined(queueId, result, meta) {
@@ -83,7 +98,10 @@ function GameDetailShell({ slug, intent }) {
           activeTableSeat={activeTableSeat}
           busy={busy}
           leaveError={leaveError}
+          rejoinError={rejoinError}
+          rejoining={rejoining}
           onLeave={handleLeave}
+          onRejoin={handleRejoin}
         />
       ) : null}
       <GameDetailPage
