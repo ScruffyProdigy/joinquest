@@ -380,3 +380,17 @@ func TestBuildSidesCooperativeWithoutScenarioKeysIsUnrateable(t *testing.T) {
 		t.Fatal("BuildSides succeeded without scenario keys; want an error rather than a guessed opponent")
 	}
 }
+
+func TestBuildSidesEveryoneWinsIsUnrateable(t *testing.T) {
+	shape := ModeShape{SeatClasses: map[string]string{"s1": "Player", "s2": "Player"}}
+	out := MatchOutcome{
+		Participants: []Participant{
+			{PlayerID: "a", SeatKey: "s1", IsWinner: true},
+			{PlayerID: "b", SeatKey: "s2", IsWinner: true},
+		},
+	}
+
+	if _, err := BuildSides(shape, out); err == nil {
+		t.Fatal("BuildSides succeeded with every side winning; want an error rather than a meaningless update")
+	}
+}

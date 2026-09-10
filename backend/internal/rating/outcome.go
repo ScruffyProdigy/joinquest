@@ -233,6 +233,7 @@ func deriveRanks(groups map[string][]Participant) (map[string]int, error) {
 		}
 
 	case hasWinner:
+		winningSides := 0
 		for key, ps := range groups {
 			rank := 1
 			for _, p := range ps {
@@ -241,7 +242,16 @@ func deriveRanks(groups map[string][]Participant) (map[string]int, error) {
 					break
 				}
 			}
+			if rank == 0 {
+				winningSides++
+			}
 			ranks[key] = rank
+		}
+		// Unlike equal placements, which state a draw, "everybody won" states
+		// no ordering: nobody was better than anybody. Rating it would move
+		// sigma on a report that carries no information.
+		if winningSides == len(groups) {
+			return nil, fmt.Errorf("rating: every side is marked a winner, so the outcome carries no ranking")
 		}
 
 	default:
