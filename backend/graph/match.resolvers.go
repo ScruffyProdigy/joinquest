@@ -97,7 +97,7 @@ func (r *mutationResolver) ReportMatchResult(ctx context.Context, matchID string
 		}
 		winnerIDs = append(winnerIDs, id)
 	}
-	if err := st.RecordMatchResult(ctx, sessionID, string(status), winnerIDs, metadata, time.Now()); err != nil {
+	if _, err := st.RecordMatchResult(ctx, sessionID, string(status), winnerIDs, metadata, time.Now()); err != nil {
 		return false, err
 	}
 

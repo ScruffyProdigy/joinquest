@@ -19,7 +19,7 @@ func TestRecordMatchResultPersistsWinnersAndStatus(t *testing.T) {
 	if err := st.RecordPlayerFinish(ctx, sessionID, userA, "COMPLETED", &placement, map[string]any{"score": 3}); err != nil {
 		t.Fatalf("RecordPlayerFinish: %v", err)
 	}
-	if err := st.RecordMatchResult(ctx, sessionID, "COMPLETED", []uuid.UUID{userA}, map[string]any{"rounds": 3}, time.Now()); err != nil {
+	if _, err := st.RecordMatchResult(ctx, sessionID, "COMPLETED", []uuid.UUID{userA}, map[string]any{"rounds": 3}, time.Now()); err != nil {
 		t.Fatalf("RecordMatchResult: %v", err)
 	}
 
@@ -69,7 +69,7 @@ func TestRecordMatchResultIgnoresNonParticipantWinners(t *testing.T) {
 	}
 	cleaner.TrackUser(outsider.ID)
 
-	if err := st.RecordMatchResult(ctx, sessionID, "COMPLETED", []uuid.UUID{userA, outsider.ID}, nil, time.Now()); err != nil {
+	if _, err := st.RecordMatchResult(ctx, sessionID, "COMPLETED", []uuid.UUID{userA, outsider.ID}, nil, time.Now()); err != nil {
 		t.Fatalf("RecordMatchResult: %v", err)
 	}
 

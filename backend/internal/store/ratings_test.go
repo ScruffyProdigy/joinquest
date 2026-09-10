@@ -2,10 +2,14 @@ package store
 
 import (
 	"context"
+	"encoding/json"
+	"fmt"
+	"reflect"
 	"testing"
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/scruffyprodigy/joinquest/internal/gameclient"
 )
 
 func TestAppendRatingInputRoundTrips(t *testing.T) {
@@ -332,7 +336,7 @@ func TestRecordMatchResultAppendsRatingInput(t *testing.T) {
 	sessionID, userA, userB := seedMatchedSession(t, st, ctx, cleaner)
 	gameID, modeKey := gameAndModeForSession(t, st, ctx, sessionID)
 
-	if err := st.RecordMatchResult(ctx, sessionID, "COMPLETED",
+	if _, err := st.RecordMatchResult(ctx, sessionID, "COMPLETED",
 		[]uuid.UUID{userA}, nil, time.Now()); err != nil {
 		t.Fatalf("RecordMatchResult: %v", err)
 	}
@@ -369,7 +373,7 @@ func TestRecordMatchResultTwiceAppendsOneRatingInput(t *testing.T) {
 	gameID, modeKey := gameAndModeForSession(t, st, ctx, sessionID)
 
 	for i := 0; i < 2; i++ {
-		if err := st.RecordMatchResult(ctx, sessionID, "COMPLETED",
+		if _, err := st.RecordMatchResult(ctx, sessionID, "COMPLETED",
 			[]uuid.UUID{userA}, nil, time.Now()); err != nil {
 			t.Fatalf("RecordMatchResult %d: %v", i, err)
 		}
@@ -401,7 +405,7 @@ func TestRecordMatchResultSurvivesUnrateableOutcome(t *testing.T) {
 	gameID, modeKey := gameAndModeForSession(t, st, ctx, sessionID)
 
 	// ABANDONED with no winners and no placements: nothing to rate.
-	if err := st.RecordMatchResult(ctx, sessionID, "ABANDONED", nil, nil, time.Now()); err != nil {
+	if _, err := st.RecordMatchResult(ctx, sessionID, "ABANDONED", nil, nil, time.Now()); err != nil {
 		t.Fatalf("RecordMatchResult must not fail on an unrateable outcome: %v", err)
 	}
 
@@ -421,5 +425,214 @@ func TestRecordMatchResultSurvivesUnrateableOutcome(t *testing.T) {
 		if row.SessionID == sessionID {
 			t.Errorf("found a rating input for session %s, want none for an unrateable match", sessionID)
 		}
+	}
+}
+
+// newSessionFixture registers a fresh game and mode good for n free-agent
+// players, matches all n through it, and returns the matched session
+// alongside the game id and the matched user ids. newCompetitiveSessionFixture
+// and newCooperativeSessionFixture are thin wrappers over this shared setup —
+// per the plan, the cooperative fixture differs from the competitive one only
+// in the mode's declared social mode.
+func newSessionFixture(t *testing.T, n int, socialMode string) (st *Store, sessionID uuid.UUID, gameID uuid.UUID, users []uuid.UUID) {
+	t.Helper()
+	st = openTestStore(t)
+	cleaner := st.NewTestCleaner(t)
+	ctx := context.Background()
+
+	slug := "rating-fixture-" + uuid.NewString()
+	manifest := &gameclient.Manifest{
+		Modes: []gameclient.ModeManifest{{
+			Key:          "arena",
+			DisplayName:  "Arena",
+			SocialMode:   socialMode,
+			SeatTemplate: json.RawMessage(fmt.Sprintf(`{"count":%d}`, n)),
+		}},
+		Status:     gameclient.StatusResponse{Game: "Rating Fixture", Version: "1.0.0"},
+		ETag:       `"rating-fixture"`,
+		RawJSON:    []byte(`{"modes":[{"key":"arena"}]}`),
+		SHA256Hash: uuid.NewString(),
+	}
+	result, err := st.RegisterGame(ctx, RegisterGameParams{
+		Slug:       slug,
+		IconURL:    "/games/default.svg",
+		HeroURL:    "/games/default-hero.svg",
+		APIBaseURL: "https://api.example.com/" + slug,
+	}, manifest)
+	if err != nil {
+		t.Fatalf("RegisterGame: %v", err)
+	}
+	cleaner.TrackGame(result.Game.ID)
+
+	modes, err := st.ListGameModesByGameID(ctx, result.Game.ID)
+	if err != nil {
+		t.Fatalf("ListGameModesByGameID: %v", err)
+	}
+	queues, err := st.ListModeQueuesByModeID(ctx, modes[0].ID)
+	if err != nil {
+		t.Fatalf("ListModeQueuesByModeID: %v", err)
+	}
+	queueID := queues[0].ID
+
+	users = make([]uuid.UUID, n)
+	for i := range users {
+		user, err := st.CreateUser(ctx, CreateUserParams{Email: fmt.Sprintf("fixture-%d-%s@example.com", i, uuid.NewString())})
+		if err != nil {
+			t.Fatalf("CreateUser: %v", err)
+		}
+		cleaner.TrackUser(user.ID)
+		users[i] = user.ID
+	}
+
+	var rec *FormingReconcileResult
+	for _, userID := range users {
+		if _, err := st.JoinModeQueue(ctx, queueID, userID, "", nil); err != nil {
+			t.Fatalf("JoinModeQueue: %v", err)
+		}
+		rec = mustReconcileForming(t, st, ctx, queueID)
+	}
+	if rec == nil || !rec.Fired || rec.SessionID == nil {
+		t.Fatalf("expected a match to fire after %d joins, got %+v", n, rec)
+	}
+
+	return st, *rec.SessionID, result.Game.ID, users
+}
+
+// newCompetitiveSessionFixture registers and matches an n-player session with
+// no declared social mode.
+func newCompetitiveSessionFixture(t *testing.T, n int) (*Store, uuid.UUID, uuid.UUID, []uuid.UUID) {
+	t.Helper()
+	return newSessionFixture(t, n, "")
+}
+
+// newCooperativeSessionFixture registers and matches a two-player session
+// whose mode declares game_modes.social_mode = 'co-op'.
+func newCooperativeSessionFixture(t *testing.T) (*Store, uuid.UUID, uuid.UUID, []uuid.UUID) {
+	t.Helper()
+	return newSessionFixture(t, 2, "co-op")
+}
+
+func TestRecordMatchResultCooperativeUsesReportedScenarioKeys(t *testing.T) {
+	// Build a co-op session (social_mode 'co-op') with two participants,
+	// mirroring the fixture setup in TestRecordMatchResultAppendsRatingInput.
+	st, sessionID, gameID, users := newCooperativeSessionFixture(t)
+
+	rated, err := st.RecordMatchResult(context.Background(), sessionID, "COMPLETED",
+		users, map[string]any{"scenarios": []any{"hard", "night"}}, time.Now())
+	if err != nil {
+		t.Fatalf("RecordMatchResult: %v", err)
+	}
+	if rated == nil {
+		t.Fatal("RecordMatchResult reported no rated mode; want the co-op match rated")
+	}
+	if rated.GameID != gameID {
+		t.Fatalf("rated game = %s, want %s", rated.GameID, gameID)
+	}
+
+	inputs, err := st.ListRatingInputs(context.Background(), gameID, rated.ModeKey)
+	if err != nil {
+		t.Fatalf("ListRatingInputs: %v", err)
+	}
+	if len(inputs) != 1 {
+		t.Fatalf("got %d inputs, want 1", len(inputs))
+	}
+
+	scenario := inputs[0].Sides[len(inputs[0].Sides)-1]
+	var keys []string
+	for _, e := range scenario.Entrants {
+		keys = append(keys, e.Key)
+	}
+	want := []string{"scenario:hard", "scenario:night"}
+	if !reflect.DeepEqual(keys, want) {
+		t.Fatalf("scenario entrants = %v, want %v", keys, want)
+	}
+}
+
+func TestRecordMatchResultCooperativeWithoutScenariosIsNotRated(t *testing.T) {
+	// gameID is unused here: this test only needs to prove the match stayed
+	// unrated, not which (game, mode) it would have landed under.
+	st, sessionID, _, users := newCooperativeSessionFixture(t)
+
+	rated, err := st.RecordMatchResult(context.Background(), sessionID, "COMPLETED", users, nil, time.Now())
+	if err != nil {
+		t.Fatalf("RecordMatchResult: %v", err)
+	}
+	if rated != nil {
+		t.Fatal("co-op match with no reported scenarios was rated; want it skipped")
+	}
+
+	var count int
+	if err := st.db.QueryRow(`SELECT count(*) FROM rating_match_inputs WHERE session_id = $1`, sessionID).Scan(&count); err != nil {
+		t.Fatalf("count inputs: %v", err)
+	}
+	if count != 0 {
+		t.Fatalf("got %d rating inputs, want 0", count)
+	}
+}
+
+func TestRecordMatchResultExcludesDisconnectedPlayers(t *testing.T) {
+	// A 1v1-shaped competitive session with three participants so that
+	// dropping one still leaves two rateable sides.
+	st, sessionID, gameID, users := newCompetitiveSessionFixture(t, 3)
+
+	if err := st.RecordPlayerFinish(context.Background(), sessionID, users[2], "DISCONNECT", nil, nil); err != nil {
+		t.Fatalf("RecordPlayerFinish: %v", err)
+	}
+
+	rated, err := st.RecordMatchResult(context.Background(), sessionID, "COMPLETED", users[:1], nil, time.Now())
+	if err != nil {
+		t.Fatalf("RecordMatchResult: %v", err)
+	}
+	if rated == nil {
+		t.Fatal("match was not rated")
+	}
+
+	inputs, err := st.ListRatingInputs(context.Background(), gameID, rated.ModeKey)
+	if err != nil {
+		t.Fatalf("ListRatingInputs: %v", err)
+	}
+	disconnected := PlayerRatingKey(users[2])
+	for _, side := range inputs[0].Sides {
+		for _, e := range side.Entrants {
+			if e.Key == disconnected {
+				t.Fatal("disconnected player appears in the rated sides")
+			}
+		}
+	}
+}
+
+func TestRecordMatchResultRatesForfeitAsALoss(t *testing.T) {
+	st, sessionID, gameID, users := newCompetitiveSessionFixture(t, 2)
+
+	if err := st.RecordPlayerFinish(context.Background(), sessionID, users[1], "FORFEIT", nil, nil); err != nil {
+		t.Fatalf("RecordPlayerFinish: %v", err)
+	}
+
+	rated, err := st.RecordMatchResult(context.Background(), sessionID, "COMPLETED", users[:1], nil, time.Now())
+	if err != nil {
+		t.Fatalf("RecordMatchResult: %v", err)
+	}
+	if rated == nil {
+		t.Fatal("forfeited match was not rated; a forfeit is a loss, not an exclusion")
+	}
+
+	inputs, err := st.ListRatingInputs(context.Background(), gameID, rated.ModeKey)
+	if err != nil {
+		t.Fatalf("ListRatingInputs: %v", err)
+	}
+	forfeiter := PlayerRatingKey(users[1])
+	found := false
+	for _, side := range inputs[0].Sides {
+		for _, e := range side.Entrants {
+			if e.Key == forfeiter {
+				found = true
+				if side.Rank == 0 {
+					t.Fatal("forfeiter is on the winning side")
+				}
+			}
+		}
+	}
+	if !found {
+		t.Fatal("forfeiter was dropped from the sides; want them rated as a loss")
 	}
 }

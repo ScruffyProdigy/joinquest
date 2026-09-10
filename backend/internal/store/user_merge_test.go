@@ -71,7 +71,7 @@ func seedFinishedMatchFor(t *testing.T, st *Store, ctx context.Context, cleaner 
 	}
 	sessionID := *view.SessionID
 
-	if err := st.RecordMatchResult(ctx, sessionID, "COMPLETED", []uuid.UUID{userID}, nil, time.Now()); err != nil {
+	if _, err := st.RecordMatchResult(ctx, sessionID, "COMPLETED", []uuid.UUID{userID}, nil, time.Now()); err != nil {
 		t.Fatalf("RecordMatchResult: %v", err)
 	}
 

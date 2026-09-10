@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"errors"
 	"log"
+	"strings"
 	"time"
 
 	"github.com/google/uuid"
@@ -52,6 +53,56 @@ func marshalMetadata(metadata map[string]any) (any, error) {
 	return json.Marshal(metadata)
 }
 
+// RatedMode names the (game, mode) whose rating history just changed, so the
+// caller can schedule a replay once the transaction has committed. Replaying
+// inside the transaction would hold it open across a recompute that grows
+// with the mode's whole history.
+type RatedMode struct {
+	GameID  uuid.UUID
+	ModeKey string
+}
+
+// scenarioKeysFromMetadata reads the cooperative scenario identifiers a game
+// reported alongside its match result. A single string and an array of
+// strings are both accepted, since "scenarios": "hard" is the shape an
+// integrator writes by hand first. Anything else yields no keys, which leaves
+// a cooperative match unrated rather than inventing a difficulty for it.
+func scenarioKeysFromMetadata(metadata map[string]any) []string {
+	raw, ok := metadata["scenarios"]
+	if !ok {
+		return nil
+	}
+	switch v := raw.(type) {
+	case string:
+		if s := strings.TrimSpace(v); s != "" {
+			return []string{s}
+		}
+		return nil
+	case []any:
+		out := make([]string, 0, len(v))
+		for _, item := range v {
+			s, ok := item.(string)
+			if !ok {
+				continue
+			}
+			if s = strings.TrimSpace(s); s != "" {
+				out = append(out, s)
+			}
+		}
+		return out
+	default:
+		return nil
+	}
+}
+
+// excludedFinishReasons names the finish reasons that remove a participant
+// from rating entirely. A disconnect says nothing about skill — the player
+// lost their connection, not the match — and the OpenSkill paper leaves
+// partial play and contribution weighting unimplemented, so the honest
+// handling is to leave that player's rating untouched rather than to invent a
+// weight. A FORFEIT is deliberately absent: choosing to quit is a loss.
+var excludedFinishReasons = map[string]bool{"DISCONNECT": true}
+
 // RecordPlayerFinish stores what the game reported about one player finishing.
 // Side effects (marking finished, releasing queue rows) stay in match_lifecycle.go.
 func (s *Store) RecordPlayerFinish(ctx context.Context, sessionID, userID uuid.UUID, reason string, placement *int, metadata map[string]any) error {
@@ -72,15 +123,17 @@ func (s *Store) RecordPlayerFinish(ctx context.Context, sessionID, userID uuid.U
 
 // RecordMatchResult stores the match outcome and flags winners. Winner ids that do not
 // belong to the session are silently ignored — the UPDATE simply matches no rows.
-func (s *Store) RecordMatchResult(ctx context.Context, sessionID uuid.UUID, status string, winnerUserIDs []uuid.UUID, metadata map[string]any, at time.Time) error {
+// It returns the (game, mode) a rating input was appended for, or nil if the
+// match was not rateable, so a caller can schedule a replay after commit.
+func (s *Store) RecordMatchResult(ctx context.Context, sessionID uuid.UUID, status string, winnerUserIDs []uuid.UUID, metadata map[string]any, at time.Time) (*RatedMode, error) {
 	raw, err := marshalMetadata(metadata)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	tx, err := s.db.BeginTx(ctx, nil)
 	if err != nil {
-		return err
+		return nil, err
 	}
 	defer func() { _ = tx.Rollback() }()
 
@@ -89,13 +142,13 @@ func (s *Store) RecordMatchResult(ctx context.Context, sessionID uuid.UUID, stat
 		SET result_status = $2, result_metadata = $3, result_reported_at = $4
 		WHERE id = $1
 	`, sessionID, status, raw, at); err != nil {
-		return err
+		return nil, err
 	}
 
 	if _, err := tx.ExecContext(ctx, `
 		UPDATE game_session_participants SET is_winner = false WHERE session_id = $1
 	`, sessionID); err != nil {
-		return err
+		return nil, err
 	}
 
 	for _, winnerID := range winnerUserIDs {
@@ -104,15 +157,18 @@ func (s *Store) RecordMatchResult(ctx context.Context, sessionID uuid.UUID, stat
 			SET is_winner = true
 			WHERE session_id = $1 AND user_id = $2
 		`, sessionID, winnerID); err != nil {
-			return err
+			return nil, err
 		}
 	}
 
-	if err := s.appendRatingInputForResultTx(ctx, tx, sessionID, status, winnerUserIDs, at); err != nil {
-		return err
+	rated, err := s.appendRatingInputForResultTx(ctx, tx, sessionID, status, winnerUserIDs, metadata, at)
+	if err != nil {
+		return nil, err
 	}
-
-	return tx.Commit()
+	if err := tx.Commit(); err != nil {
+		return nil, err
+	}
+	return rated, nil
 }
 
 // appendRatingInputForResultTx records a rating input for a just-finalized
@@ -122,7 +178,7 @@ func (s *Store) RecordMatchResult(ctx context.Context, sessionID uuid.UUID, stat
 // — it is logged and skipped, never treated as a failure of the transaction:
 // the game server has already applied its result report, and failing here
 // would make it retry a write that has already landed.
-func (s *Store) appendRatingInputForResultTx(ctx context.Context, tx *sql.Tx, sessionID uuid.UUID, status string, winnerUserIDs []uuid.UUID, at time.Time) error {
+func (s *Store) appendRatingInputForResultTx(ctx context.Context, tx *sql.Tx, sessionID uuid.UUID, status string, winnerUserIDs []uuid.UUID, metadata map[string]any, at time.Time) (*RatedMode, error) {
 	var (
 		gameID       uuid.UUID
 		modeKey      sql.NullString
@@ -136,20 +192,20 @@ func (s *Store) appendRatingInputForResultTx(ctx context.Context, tx *sql.Tx, se
 		WHERE gs.id = $1
 	`, sessionID).Scan(&gameID, &modeKey, &seatTemplate, &socialMode)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	// No mode row (mode_id was never set, or the mode has since been deleted)
 	// or no seat template means there is nothing to build a ModeShape from.
 	if !modeKey.Valid || len(seatTemplate) == 0 {
 		log.Printf("rating: session %s has no mode or seat template; skipping rating input", sessionID)
-		return nil
+		return nil, nil
 	}
 
 	leaves, err := seattemplate.Expand(seatTemplate)
 	if err != nil {
 		log.Printf("rating: session %s seat template did not expand: %v; skipping rating input", sessionID, err)
-		return nil
+		return nil, nil
 	}
 	seatClasses := make(map[string]string, len(leaves))
 	affinityBySeat := make(map[string]string, len(leaves))
@@ -162,12 +218,12 @@ func (s *Store) appendRatingInputForResultTx(ctx context.Context, tx *sql.Tx, se
 	shape := rating.ModeShape{SeatClasses: seatClasses, Cooperative: cooperative}
 
 	rows, err := tx.QueryContext(ctx, `
-		SELECT p.user_id, p.role, p.placement, p.is_winner, p.queue_options
+		SELECT p.user_id, p.role, p.placement, p.is_winner, p.queue_options, p.finish_reason
 		FROM game_session_participants p
 		WHERE p.session_id = $1
 	`, sessionID)
 	if err != nil {
-		return err
+		return nil, err
 	}
 	defer rows.Close()
 
@@ -189,9 +245,10 @@ func (s *Store) appendRatingInputForResultTx(ctx context.Context, tx *sql.Tx, se
 			placement    *int
 			isWinner     bool
 			queueOptions []byte
+			finishReason sql.NullString
 		)
-		if err := rows.Scan(&userID, &role, &placement, &isWinner, &queueOptions); err != nil {
-			return err
+		if err := rows.Scan(&userID, &role, &placement, &isWinner, &queueOptions, &finishReason); err != nil {
+			return nil, err
 		}
 		// role is nullable (migration 000001). NULL or empty means this
 		// participant has no seat key; leave SeatKey empty rather than
@@ -209,7 +266,7 @@ func (s *Store) appendRatingInputForResultTx(ctx context.Context, tx *sql.Tx, se
 			// not a transaction failure: log and skip the rating input so
 			// the match result itself still commits.
 			log.Printf("rating: session %s participant %s queue_options failed to decode: %v; skipping rating input", sessionID, userID, err)
-			return nil
+			return nil, nil
 		}
 		participants = append(participants, rating.Participant{
 			PlayerID:  userID.String(),
@@ -218,6 +275,7 @@ func (s *Store) appendRatingInputForResultTx(ctx context.Context, tx *sql.Tx, se
 			Placement: placement,
 			IsWinner:  isWinner,
 			PreQueue:  preQueueByGroup(selections),
+			Excluded:  excludedFinishReasons[finishReason.String],
 		})
 
 		if len(queueOptions) == 0 {
@@ -226,23 +284,24 @@ func (s *Store) appendRatingInputForResultTx(ctx context.Context, tx *sql.Tx, se
 		queueOptionsByPlayer[userID.String()] = json.RawMessage(queueOptions)
 	}
 	if err := rows.Err(); err != nil {
-		return err
+		return nil, err
 	}
 
 	queueOptionsJSON, err := json.Marshal(queueOptionsByPlayer)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	outcome := rating.MatchOutcome{
 		Participants:       participants,
 		CooperativeSuccess: cooperativeSuccess(cooperative, status, winnerUserIDs),
+		ScenarioKeys:       scenarioKeysFromMetadata(metadata),
 	}
 
 	sides, err := rating.BuildSides(shape, outcome)
 	if err != nil {
 		log.Printf("rating: session %s outcome is not rateable: %v; skipping rating input", sessionID, err)
-		return nil
+		return nil, nil
 	}
 
 	ratingSides := make([]RatingSideRow, len(sides))
@@ -254,14 +313,17 @@ func (s *Store) appendRatingInputForResultTx(ctx context.Context, tx *sql.Tx, se
 		ratingSides[i] = RatingSideRow{Rank: side.Rank, Entrants: entrants}
 	}
 
-	return s.AppendRatingInputTx(ctx, tx, RatingInput{
+	if err := s.AppendRatingInputTx(ctx, tx, RatingInput{
 		SessionID:    sessionID,
 		GameID:       gameID,
 		ModeKey:      modeKey.String,
 		Sides:        ratingSides,
 		QueueOptions: queueOptionsJSON,
 		RatedAt:      at,
-	})
+	}); err != nil {
+		return nil, err
+	}
+	return &RatedMode{GameID: gameID, ModeKey: modeKey.String}, nil
 }
 
 // preQueueByGroup turns a participant's stored queue selections into the
