@@ -102,6 +102,7 @@ func main() {
 	resolver.RatingWorker = ratingworker.New(func() ratingworker.Replayer {
 		return rating.NewReplayer(ratingEngine, dataStore.RatingSource())
 	}, ratingTick)
+	resolver.RatingWorker.SetSweeper(dataStore, 10*time.Minute)
 	go resolver.RatingWorker.Start(context.Background())
 
 	mux := http.NewServeMux()

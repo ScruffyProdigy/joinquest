@@ -10,6 +10,7 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/scruffyprodigy/joinquest/internal/gameclient"
+	"github.com/scruffyprodigy/joinquest/internal/rating"
 )
 
 func TestAppendRatingInputRoundTrips(t *testing.T) {
@@ -634,5 +635,66 @@ func TestRecordMatchResultRatesForfeitAsALoss(t *testing.T) {
 	}
 	if !found {
 		t.Fatal("forfeiter was dropped from the sides; want them rated as a loss")
+	}
+}
+
+// TestListModesNeedingReplayFindsUnappliedInputs covers the crash-recovery
+// case the sweep exists for: a result committed a rating input (via
+// RecordMatchResult, as the resolver would on a real match), but nothing
+// replayed it — the process died in the window between commit and the
+// scheduled replay running. newCompetitiveSessionFixture only matches the
+// session; it does not record a result, so RecordMatchResult here is what
+// actually appends the unapplied input.
+func TestListModesNeedingReplayFindsUnappliedInputs(t *testing.T) {
+	st, sessionID, gameID, users := newCompetitiveSessionFixture(t, 2)
+	if _, err := st.RecordMatchResult(context.Background(), sessionID, "COMPLETED", users[:1], nil, time.Now()); err != nil {
+		t.Fatalf("RecordMatchResult: %v", err)
+	}
+	// An input has been appended and nothing has replayed it yet.
+
+	modes, err := st.ListModesNeedingReplay(context.Background())
+	if err != nil {
+		t.Fatalf("ListModesNeedingReplay: %v", err)
+	}
+
+	found := false
+	for _, m := range modes {
+		if m.GameID == gameID {
+			found = true
+		}
+	}
+	if !found {
+		t.Fatal("a game with inputs and no ratings was not reported as needing replay")
+	}
+}
+
+// TestListModesNeedingReplaySkipsAppliedModes proves the sweep does not
+// re-report a mode whose replay already caught up to its inputs, which is
+// what keeps a healthy system's sweep a no-op rather than a source of
+// perpetual re-replay.
+func TestListModesNeedingReplaySkipsAppliedModes(t *testing.T) {
+	st, sessionID, gameID, users := newCompetitiveSessionFixture(t, 2)
+	if _, err := st.RecordMatchResult(context.Background(), sessionID, "COMPLETED", users[:1], nil, time.Now()); err != nil {
+		t.Fatalf("RecordMatchResult: %v", err)
+	}
+
+	engine, err := rating.NewWengLin("plackett-luce")
+	if err != nil {
+		t.Fatalf("NewWengLin: %v", err)
+	}
+	replayer := rating.NewReplayer(engine, st.RatingSource())
+	modeKey := "arena" // whatever the fixture uses
+	if _, err := replayer.ReplayMode(context.Background(), gameID.String(), modeKey); err != nil {
+		t.Fatalf("ReplayMode: %v", err)
+	}
+
+	modes, err := st.ListModesNeedingReplay(context.Background())
+	if err != nil {
+		t.Fatalf("ListModesNeedingReplay: %v", err)
+	}
+	for _, m := range modes {
+		if m.GameID == gameID && m.ModeKey == modeKey {
+			t.Fatal("an already-replayed mode was reported as needing replay")
+		}
 	}
 }

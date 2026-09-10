@@ -46,11 +46,17 @@ import (
 	"github.com/google/uuid"
 
 	"github.com/scruffyprodigy/joinquest/internal/rating"
+	"github.com/scruffyprodigy/joinquest/internal/store"
 )
 
 // Replayer is the narrow port this worker needs; *rating.Replayer satisfies it.
 type Replayer interface {
 	ReplayMode(ctx context.Context, gameID, modeKey string) (rating.Report, error)
+}
+
+// Sweeper reports modes whose ratings are behind their inputs.
+type Sweeper interface {
+	ListModesNeedingReplay(ctx context.Context) ([]store.RatedMode, error)
 }
 
 type modeKey struct {
@@ -62,6 +68,9 @@ type modeKey struct {
 type Worker struct {
 	newReplayer func() Replayer
 	tickEvery   time.Duration
+
+	sweeper    Sweeper
+	sweepEvery time.Duration
 
 	mu    sync.Mutex
 	dirty map[modeKey]struct{}
@@ -89,10 +98,29 @@ func (w *Worker) Schedule(gameID uuid.UUID, mode string) {
 	w.dirty[modeKey{gameID: gameID, modeKey: mode}] = struct{}{}
 }
 
+// SetSweeper enables the periodic catch-up sweep. Without one, the worker
+// replays only what it is told about.
+func (w *Worker) SetSweeper(s Sweeper, every time.Duration) {
+	w.sweeper = s
+	w.sweepEvery = every
+}
+
 // Start runs the tick loop until ctx is cancelled.
 func (w *Worker) Start(ctx context.Context) {
 	ticker := time.NewTicker(w.tickEvery)
 	defer ticker.Stop()
+
+	var sweep <-chan time.Time
+	if w.sweeper != nil {
+		// Sweep once before entering the loop, so a process that restarted
+		// after losing scheduled work repairs itself immediately rather than
+		// serving stale ratings for a whole interval.
+		w.sweepOnce(ctx)
+		sweepTicker := time.NewTicker(w.sweepEvery)
+		defer sweepTicker.Stop()
+		sweep = sweepTicker.C
+	}
+
 	for {
 		select {
 		case <-ctx.Done():
@@ -101,7 +129,26 @@ func (w *Worker) Start(ctx context.Context) {
 			if err := w.DrainNow(ctx); err != nil {
 				log.Printf("ratingworker: drain: %v", err)
 			}
+		case <-sweep:
+			w.sweepOnce(ctx)
 		}
+	}
+}
+
+// sweepOnce marks every mode whose ratings lag its inputs and leaves the next
+// drain to do the work, so a sweep and a freshly reported result coalesce
+// into one replay rather than racing each other. This also keeps DrainNow
+// the sole caller of a replay: sweepOnce only ever touches the dirty set
+// through Schedule, so two replays for the same mode can never be in flight
+// at once (see the package comment on DrainNow being the single drain path).
+func (w *Worker) sweepOnce(ctx context.Context) {
+	modes, err := w.sweeper.ListModesNeedingReplay(ctx)
+	if err != nil {
+		log.Printf("ratingworker: sweep: %v", err)
+		return
+	}
+	for _, m := range modes {
+		w.Schedule(m.GameID, m.ModeKey)
 	}
 }
 
