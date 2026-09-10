@@ -1,8 +1,8 @@
 import { renderHook, act, waitFor } from '@testing-library/react'
-import { describe, it, expect, vi, beforeEach } from 'vitest'
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { useActiveIntent } from './useActiveIntent'
 import * as intent from '../../lib/intent'
-import { LEAVE_GAME_FAILED, LEAVE_GAME_NOT_FOUND } from '../../lib/playerCopy'
+import { LEAVE_GAME_FAILED, LEAVE_GAME_NOT_FOUND, REJOIN_FAILED, REJOIN_OVER } from '../../lib/playerCopy'
 
 // One stable auth object for the whole file: the hooks key their callbacks on
 // `user` identity, so a fresh object per render re-runs every effect forever.
@@ -18,6 +18,7 @@ vi.mock('../../lib/intent', async (importOriginal) => {
     ...actual,
     fetchMyActiveIntent: vi.fn(),
     leaveActiveGame: vi.fn(),
+    rejoinActiveMatch: vi.fn(),
   }
 })
 
@@ -115,5 +116,69 @@ describe('useActiveIntent handleLeave', () => {
     })
 
     expect(result.current.leaveError).toBeNull()
+  })
+})
+
+describe('useActiveIntent handleRejoin', () => {
+  const originalLocation = window.location
+
+  beforeEach(() => {
+    vi.mocked(intent.fetchMyActiveIntent).mockReset()
+    vi.mocked(intent.fetchMyActiveIntent).mockResolvedValue(playingIntent)
+    vi.mocked(intent.rejoinActiveMatch).mockReset()
+    // jsdom refuses a real navigation, so the assign target is what we assert on.
+    Object.defineProperty(window, 'location', {
+      configurable: true,
+      value: { ...originalLocation, assign: vi.fn() },
+    })
+  })
+
+  afterEach(() => {
+    Object.defineProperty(window, 'location', { configurable: true, value: originalLocation })
+  })
+
+  it('sends the player to the URL minted at click time, not a cached one', async () => {
+    vi.mocked(intent.rejoinActiveMatch).mockResolvedValue('https://example.test/play?token=fresh')
+    const result = await renderPlaying()
+
+    await act(async () => {
+      await result.current.handleRejoin()
+    })
+
+    expect(intent.rejoinActiveMatch).toHaveBeenCalled()
+    expect(window.location.assign).toHaveBeenCalledWith('https://example.test/play?token=fresh')
+    expect(result.current.rejoinError).toBeNull()
+    expect(result.current.rejoining).toBe(false)
+  })
+
+  it('reports a failure and stays put when no URL comes back', async () => {
+    vi.mocked(intent.rejoinActiveMatch).mockResolvedValue(null)
+    const result = await renderPlaying()
+
+    await act(async () => {
+      await result.current.handleRejoin()
+    })
+
+    expect(window.location.assign).not.toHaveBeenCalled()
+    expect(result.current.rejoinError).toBe(REJOIN_FAILED)
+    expect(result.current.rejoining).toBe(false)
+  })
+
+  // The server refuses once the match is over, which means the banner we acted on
+  // was stale — so the refusal has to clear it rather than leave a dead action up.
+  it('clears a stale banner when the server refuses the rejoin', async () => {
+    vi.mocked(intent.rejoinActiveMatch).mockRejectedValue(new Error('no live match to rejoin'))
+    const result = await renderPlaying()
+
+    vi.mocked(intent.fetchMyActiveIntent).mockResolvedValue(null)
+    await act(async () => {
+      await result.current.handleRejoin()
+    })
+
+    expect(window.location.assign).not.toHaveBeenCalled()
+    expect(result.current.rejoinError).toBe(REJOIN_OVER)
+    await waitFor(() => {
+      expect(result.current.activeIntent).toBeNull()
+    })
   })
 })
