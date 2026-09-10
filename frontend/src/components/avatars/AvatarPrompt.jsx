@@ -3,12 +3,14 @@ import { updatePlayerProfile } from '../../lib/avatars'
 import { generateGuestIdentities } from '../../lib/guestIdentity'
 import { AVATAR_PROMPT_ERROR, AVATAR_PROMPT_SCOPE_HINT, playingAsLine } from '../../lib/playerCopy'
 import { chosenDisplayName } from '../../lib/viewer'
-import { OptionButton } from '../ui/option-button'
+import SigilChoiceGrid from './SigilChoiceGrid'
 
 /**
  * The mirror of DisplayNamePrompt: a name on file and no face to go with it.
- * The sigils are drawn the same way the guest picker draws them, minus their
- * generated names — the player keeps the one they already chose.
+ * The sigils come from the same SigilChoiceGrid the guest picker uses, so the
+ * two prompts are one screen with one row swapped: each face is offered under
+ * its colour and animal rather than a generated handle, because the player
+ * keeps the name they already chose.
  */
 export default function AvatarPrompt({ user, onSaved, onBusyChange }) {
   const [identities] = useState(() => generateGuestIdentities())
@@ -41,20 +43,13 @@ export default function AvatarPrompt({ user, onSaved, onBusyChange }) {
         <p className="text-2xs text-muted-foreground">{AVATAR_PROMPT_SCOPE_HINT}</p>
       </div>
 
-      <ul className="m-0 grid list-none grid-cols-3 gap-3 p-0 sm:grid-cols-6" role="list">
-        {identities.map((identity) => (
-          <li key={identity.avatarKey}>
-            <OptionButton
-              variant="tile"
-              disabled={Boolean(pendingKey)}
-              aria-label={identity.label}
-              onClick={() => void handlePick(identity)}
-            >
-              <img src={identity.imageUrl} alt="" className="size-10 shrink-0 rounded-full" />
-            </OptionButton>
-          </li>
-        ))}
-      </ul>
+      <SigilChoiceGrid
+        identities={identities}
+        pendingKey={pendingKey}
+        textOf={(identity) => identity.label}
+        labelOf={(identity) => identity.label}
+        onPick={handlePick}
+      />
 
       {error ? (
         <p className="status-message status-message-error" role="status">
