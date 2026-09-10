@@ -4,7 +4,11 @@ import { beforeEach, describe, expect, it } from 'vitest'
 import IdentityGate from './IdentityGate'
 import { AuthProvider } from '../auth/AuthProvider'
 import { GUEST_IDENTITY_CHOICES } from '../../lib/guestIdentity'
-import { mockAuthenticatedSession, mockUnauthenticatedSession } from '../../test/setup'
+import {
+  mockAuthenticatedSession,
+  mockUnauthenticatedSession,
+  waitForClickableDialog,
+} from '../../test/setup'
 
 const NAMELESS_GUEST = {
   id: 'guest-1',
@@ -57,15 +61,18 @@ function avatarChoices() {
 }
 
 async function waitForGate() {
-  await waitFor(() => {
-    expect(screen.getByRole('heading', { name: 'Welcome to JoinQuest' })).toBeInTheDocument()
-  })
+  await waitForHeading('Welcome to JoinQuest')
 }
 
+/**
+ * The gate is a modal dialog, so its heading lands in the DOM a render before
+ * the dialog becomes clickable. Wait for both, or a click here races the gate.
+ */
 async function waitForHeading(name) {
   await waitFor(() => {
     expect(screen.getByRole('heading', { name })).toBeInTheDocument()
   })
+  await waitForClickableDialog()
 }
 
 /** The variables of the updatePlayerProfile mutation, once one has been sent. */
