@@ -16,9 +16,25 @@
 // replay, not ten, and the tenth replay would have subsumed the other nine
 // anyway.
 //
-// Losing scheduled work is survivable: the log is already committed, so the
-// next match in that mode replays everything, and ListModesNeedingReplay
-// sweeps the case where no next match arrives.
+// Losing scheduled work is survivable for a new match: the log is already
+// committed, so the next match in that mode replays everything, and
+// ListModesNeedingReplay sweeps the case where no next match arrives. A
+// failed replay itself is retried — DrainNow re-queues a mode whose
+// ReplayMode call errors, so the next tick tries again.
+//
+// A *corrected* result is a narrower case. appendRatingInput deliberately
+// does not refresh rated_at when a match is re-reported (a correction is a
+// restatement of a match that already happened, not a new event — see its
+// comment for why bumping rated_at would reorder replay history). So a
+// correction never changes max(rated_at) for its mode, and a replay that
+// already ran for that correction leaves last_rated_at unchanged too — the
+// two already matched before the correction landed. If the correction's
+// replay is scheduled but then lost (process crash before the next tick) or
+// exhausts its retries, the mode looks clean to a sweep that compares
+// max-input against last-rated forever, and the stale ratings persist until
+// an unrelated new match happens to land in that mode. This is a known,
+// accepted limit of the replay-by-log design, not something this package
+// closes.
 package ratingworker
 
 import (
@@ -101,14 +117,27 @@ func (w *Worker) DrainNow(ctx context.Context) error {
 	w.dirty = make(map[modeKey]struct{})
 	w.mu.Unlock()
 
+	var failed []modeKey
 	for _, k := range pending {
 		replayer := w.newReplayer()
 		if _, err := replayer.ReplayMode(ctx, k.gameID.String(), k.modeKey); err != nil {
 			// Log and continue: one mode failing to replay must not stop the
-			// others, and the input log is intact either way, so the next
-			// match or sweep retries it.
+			// others. Re-queue it below so the next tick retries it — the
+			// input log is intact either way, but a failed replay must not
+			// be dropped on the floor, since a corrected result's replay
+			// failing here is not self-healing the way a new match's would
+			// be (see the package comment).
 			log.Printf("ratingworker: replay %s/%s: %v", k.gameID, k.modeKey, err)
+			failed = append(failed, k)
 		}
+	}
+
+	if len(failed) > 0 {
+		w.mu.Lock()
+		for _, k := range failed {
+			w.dirty[k] = struct{}{}
+		}
+		w.mu.Unlock()
 	}
 	return nil
 }
