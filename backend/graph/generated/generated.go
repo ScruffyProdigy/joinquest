@@ -69,6 +69,7 @@ type ComplexityRoot struct {
 	}
 
 	ActiveIntent struct {
+		EstimatedWaitSeconds func(childComplexity int) int
 		FormingGaps          func(childComplexity int) int
 		GameID               func(childComplexity int) int
 		GameName             func(childComplexity int) int
@@ -691,6 +692,7 @@ type ComplexityRoot struct {
 
 type ActiveIntentResolver interface {
 	FormingGaps(ctx context.Context, obj *model.ActiveIntent) ([]*model.QueuePathGap, error)
+	EstimatedWaitSeconds(ctx context.Context, obj *model.ActiveIntent) (*int, error)
 }
 type GameResolver interface {
 	ActiveSessions(ctx context.Context, obj *model.Game, limit *int) ([]*model.Session, error)
@@ -908,6 +910,12 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 
 		return e.complexity.Account.User(childComplexity), true
 
+	case "ActiveIntent.estimatedWaitSeconds":
+		if e.complexity.ActiveIntent.EstimatedWaitSeconds == nil {
+			break
+		}
+
+		return e.complexity.ActiveIntent.EstimatedWaitSeconds(childComplexity), true
 	case "ActiveIntent.formingGaps":
 		if e.complexity.ActiveIntent.FormingGaps == nil {
 			break
@@ -4665,6 +4673,12 @@ type ActiveIntent {
   """Remaining role needs for the active forming match (catalog wait)."""
   formingGaps: [QueuePathGap!]!
   """
+  How much longer this player is likely to wait, or null when there is nothing
+  honest to say. Per-player, not the catalog's cached per-line number: it
+  accounts for their own place in line. See internal/queuewait.
+  """
+  estimatedWaitSeconds: Int
+  """
   What this player picked before queueing, labelled as the game named it at the
   time, so the waiting banner can say "… as Clue Giver · Good Old Rock, Tempered".
   """
@@ -6656,6 +6670,35 @@ func (ec *executionContext) fieldContext_ActiveIntent_formingGaps(_ context.Cont
 				return ec.fieldContext_QueuePathGap_needed(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type QueuePathGap", field.Name)
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _ActiveIntent_estimatedWaitSeconds(ctx context.Context, field graphql.CollectedField, obj *model.ActiveIntent) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_ActiveIntent_estimatedWaitSeconds,
+		func(ctx context.Context) (any, error) {
+			return ec.resolvers.ActiveIntent().EstimatedWaitSeconds(ctx, obj)
+		},
+		nil,
+		ec.marshalOInt2ᚖint,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_ActiveIntent_estimatedWaitSeconds(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "ActiveIntent",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Int does not have child fields")
 		},
 	}
 	return fc, nil
@@ -15320,6 +15363,8 @@ func (ec *executionContext) fieldContext_Query_myActiveIntent(_ context.Context,
 				return ec.fieldContext_ActiveIntent_joinUrl(ctx, field)
 			case "formingGaps":
 				return ec.fieldContext_ActiveIntent_formingGaps(ctx, field)
+			case "estimatedWaitSeconds":
+				return ec.fieldContext_ActiveIntent_estimatedWaitSeconds(ctx, field)
 			case "selectedOptions":
 				return ec.fieldContext_ActiveIntent_selectedOptions(ctx, field)
 			}
@@ -24597,6 +24642,39 @@ func (ec *executionContext) _ActiveIntent(ctx context.Context, sel ast.Selection
 				if res == graphql.Null {
 					atomic.AddUint32(&fs.Invalids, 1)
 				}
+				return res
+			}
+
+			if field.Deferrable != nil {
+				dfs, ok := deferred[field.Deferrable.Label]
+				di := 0
+				if ok {
+					dfs.AddField(field)
+					di = len(dfs.Values) - 1
+				} else {
+					dfs = graphql.NewFieldSet([]graphql.CollectedField{field})
+					deferred[field.Deferrable.Label] = dfs
+				}
+				dfs.Concurrently(di, func(ctx context.Context) graphql.Marshaler {
+					return innerFunc(ctx, dfs)
+				})
+
+				// don't run the out.Concurrently() call below
+				out.Values[i] = graphql.Null
+				continue
+			}
+
+			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
+		case "estimatedWaitSeconds":
+			field := field
+
+			innerFunc := func(ctx context.Context, _ *graphql.FieldSet) (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._ActiveIntent_estimatedWaitSeconds(ctx, field, obj)
 				return res
 			}
 

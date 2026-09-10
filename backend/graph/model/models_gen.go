@@ -36,6 +36,10 @@ type ActiveIntent struct {
 	JoinURL              *string `json:"joinUrl,omitempty"`
 	// Remaining role needs for the active forming match (catalog wait).
 	FormingGaps []*QueuePathGap `json:"formingGaps"`
+	// How much longer this player is likely to wait, or null when there is nothing
+	// honest to say. Per-player, not the catalog's cached per-line number: it
+	// accounts for their own place in line. See internal/queuewait.
+	EstimatedWaitSeconds *int `json:"estimatedWaitSeconds,omitempty"`
 	// What this player picked before queueing, labelled as the game named it at the
 	// time, so the waiting banner can say "… as Clue Giver · Good Old Rock, Tempered".
 	SelectedOptions []*QueueOptionSelection `json:"selectedOptions"`

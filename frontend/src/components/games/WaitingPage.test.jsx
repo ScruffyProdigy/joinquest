@@ -63,6 +63,21 @@ describe('WaitingPage', () => {
     expect(screen.getByRole('button', { name: 'Stop' })).toBeInTheDocument()
   })
 
+  it('shows how much longer the player is likely to wait', () => {
+    setIntentState({ activeIntent: { ...waitingIntent, estimatedWaitSeconds: 90 } })
+    render(<WaitingPage intent={intentState} />)
+
+    expect(screen.getByText('About 2 min left')).toBeInTheDocument()
+  })
+
+  // No estimate is no line, not a hedge: the backend already declined to guess.
+  it('shows no wait line when there is no estimate', () => {
+    setIntentState({ activeIntent: { ...waitingIntent, estimatedWaitSeconds: null } })
+    render(<WaitingPage intent={intentState} />)
+
+    expect(screen.queryByText(/left$/)).not.toBeInTheDocument()
+  })
+
   it('names the cohort and the roles still missing in composition games', () => {
     setIntentState({
       activeIntent: {

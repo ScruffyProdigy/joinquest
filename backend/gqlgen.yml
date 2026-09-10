@@ -87,6 +87,8 @@ models:
         resolver: true
   ActiveIntent:
     fields:
+      estimatedWaitSeconds:
+        resolver: true
       formingGaps:
         resolver: true
   MyTableSeat:
