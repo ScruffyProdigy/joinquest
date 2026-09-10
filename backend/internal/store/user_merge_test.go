@@ -413,3 +413,72 @@ func TestMergeUserIntoClearsStaleRatingCache(t *testing.T) {
 		t.Error("stale target rating survived; it must be dropped for recompute")
 	}
 }
+
+// A guest's per-role history has to survive account creation alongside their
+// mode-level history (JQ-229). It rides on the key grammar rather than on a
+// step of its own: "player:<uuid>@seat:<class>" contains the plain player key,
+// so the rewrite catches both. This pins that down, because the property is
+// invisible in carrySourceRatingHistoryTx's SQL.
+func TestMergeUserIntoCarriesPerRoleRatingHistory(t *testing.T) {
+	st := openTestStore(t)
+	cleaner := st.NewTestCleaner(t)
+	ctx := context.Background()
+
+	source, target := seedTwoUsers(t, st, ctx, cleaner)
+	sessionID, _, _ := seedMatchedSession(t, st, ctx, cleaner)
+	gameID, modeKey := gameAndModeForSession(t, st, ctx, sessionID)
+
+	sourceMode := PlayerRatingKey(source)
+	sourceSeat := PlayerSeatRatingKey(source, "ClueGiver")
+	targetMode := PlayerRatingKey(target)
+	targetSeat := PlayerSeatRatingKey(target, "ClueGiver")
+
+	if err := st.AppendRatingInput(ctx, RatingInput{
+		SessionID: sessionID,
+		GameID:    gameID,
+		ModeKey:   modeKey,
+		Sides: []RatingSideRow{
+			{Rank: 0, Entrants: []RatingEntrantRow{
+				{Key: sourceMode}, {Key: sourceSeat}, {Key: "seat:ClueGiver"},
+			}},
+			{Rank: 1, Entrants: []RatingEntrantRow{
+				{Key: "player:" + uuid.NewString()}, {Key: "seat:Guesser"},
+			}},
+		},
+		RatedAt: time.Now().UTC(),
+	}); err != nil {
+		t.Fatalf("AppendRatingInput: %v", err)
+	}
+
+	if err := st.MergeUserInto(ctx, source, target); err != nil {
+		t.Fatalf("MergeUserInto: %v", err)
+	}
+
+	inputs, err := st.ListRatingInputs(ctx, gameID, modeKey)
+	if err != nil {
+		t.Fatalf("ListRatingInputs: %v", err)
+	}
+
+	seen := map[string]bool{}
+	for _, in := range inputs {
+		for _, side := range in.Sides {
+			for _, e := range side.Entrants {
+				seen[e.Key] = true
+			}
+		}
+	}
+
+	for _, gone := range []string{sourceMode, sourceSeat} {
+		if seen[gone] {
+			t.Errorf("%q still references the merged-away user", gone)
+		}
+	}
+	for _, want := range []string{targetMode, targetSeat} {
+		if !seen[want] {
+			t.Errorf("%q is missing: the guest's history did not carry over at this granularity", want)
+		}
+	}
+	if !seen["seat:ClueGiver"] {
+		t.Error("the seat class entrant was damaged by the rewrite")
+	}
+}
