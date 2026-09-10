@@ -95,9 +95,9 @@ func awayAssignedUsersTx(ctx context.Context, tx *sql.Tx, assignments []FormingA
 		}
 		seen[userID] = struct{}{}
 
-		var isAway bool
-		if err := tx.QueryRowContext(ctx, `SELECT `+userIsAwayExpr, userID).Scan(&isAway); err != nil {
-			return nil, fmt.Errorf("away assigned users: %w", err)
+		isAway, err := userIsAwayTx(ctx, tx, userID)
+		if err != nil {
+			return nil, err
 		}
 		if isAway {
 			away = append(away, userID)
@@ -129,4 +129,13 @@ func (s *Store) WaitingModeQueueIDForUser(ctx context.Context, userID uuid.UUID)
 		return uuid.Nil, false, fmt.Errorf("waiting mode queue for user: %w", err)
 	}
 	return queueID, true, nil
+}
+
+// userIsAwayTx is UserIsAway inside a caller's transaction.
+func userIsAwayTx(ctx context.Context, tx *sql.Tx, userID uuid.UUID) (bool, error) {
+	var away bool
+	if err := tx.QueryRowContext(ctx, `SELECT `+userIsAwayExpr, userID).Scan(&away); err != nil {
+		return false, fmt.Errorf("user is away: %w", err)
+	}
+	return away, nil
 }

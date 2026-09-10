@@ -59,28 +59,31 @@ func TestHeldChairIsVacatedOnceTheWindowExpires(t *testing.T) {
 	}
 }
 
-// Holding two chairs at once is what makes a pre-announce notification
-// falsifiable: push both, one returns, the other does not, and the returner
-// arrives to find no match. One held chair cannot fail that way, because the
-// returning player's arrival is itself the fire condition.
+// Holding two chairs at once is what makes a "come back and keep your spot"
+// notification falsifiable: tell both, one returns, the other does not, and the
+// returner arrives to find no match. One held chair cannot fail that way, because
+// the returning player's arrival is itself the fire condition.
+//
+// Four seats, because both players have to be seated while present -- an away
+// player is never placed on a forming match in the first place.
 func TestTwoAwayPlayersVacateBothRatherThanHolding(t *testing.T) {
 	st := openTestStore(t)
 	cleaner := st.NewTestCleaner(t)
 	ctx := context.Background()
-	resetDemoQueue(t, st, ctx)
+	queueID := newFourSeatQueue(t, st, cleaner, ctx)
 
 	first := newPresenceUser(t, st, cleaner, ctx)
-	joinAndPlace(t, st, ctx, first)
-	goAway(t, st, ctx, first)
-
 	second := newPresenceUser(t, st, cleaner, ctx)
-	if _, err := st.JoinModeQueue(ctx, DemoDefaultQueueID, second, "", nil); err != nil {
-		t.Fatalf("join second player: %v", err)
-	}
+	joinPartyAndPlace(t, st, ctx, queueID, first, second)
+	goAway(t, st, ctx, first)
 	goAway(t, st, ctx, second)
 
-	if rec := mustReconcileForming(t, st, ctx, DemoDefaultQueueID); rec.Fired {
-		t.Fatal("match fired with two away players")
+	third := newPresenceUser(t, st, cleaner, ctx)
+	fourth := newPresenceUser(t, st, cleaner, ctx)
+	joinPartyAndPlace(t, st, ctx, queueID, third, fourth)
+
+	if rec := mustReconcileForming(t, st, ctx, queueID); rec.Fired {
+		t.Fatal("match fired with two away players in it")
 	}
 	for name, userID := range map[string]uuid.UUID{"first": first, "second": second} {
 		if n := assignedSeatCount(t, st, ctx, userID); n != 0 {
