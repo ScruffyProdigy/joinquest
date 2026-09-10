@@ -16,6 +16,7 @@ import {
   bannerIntentWaitingHint,
   bannerLiveUpdatesPausedHint,
   formatFormingGapsNeedLine,
+  estimatedWaitLine,
   waitingForGroupLine,
   waitingPageSubline,
 } from '../../lib/playerCopy'
@@ -101,6 +102,7 @@ export default function WaitingPage({ intent }) {
     activeIntent.selectedOptions,
   )
   const needLine = formatFormingGapsNeedLine(activeIntent.formingGaps)
+  const waitLine = estimatedWaitLine(activeIntent.estimatedWaitSeconds)
 
   return (
     <main className="app-shell waiting-page">
@@ -117,6 +119,7 @@ export default function WaitingPage({ intent }) {
 
         <p className="waiting-page__status">{waitingForGroupLine(activeIntent.queuedCount)}</p>
         {needLine ? <p className="waiting-page__need">{needLine}</p> : null}
+        {waitLine ? <p className="waiting-page__estimate">{waitLine}</p> : null}
 
         <p className="waiting-page__hint">
           {liveUpdatesConnected ? bannerIntentWaitingHint() : bannerLiveUpdatesPausedHint()}

@@ -33,10 +33,18 @@ func (s *Store) RecentQueueFlow(ctx context.Context, q queuewait.FlowQuery) (map
 	// the question is how fast players leave the line for a match, not whether
 	// the handoff afterwards worked.
 	//
-	// The three legs are OR'd so one scan serves all of them; each is backed by
-	// its own partial index (000066 for arrivals, 000058 for fills, 000015 for
-	// depth), which is what lets this plan as a bitmap union rather than a full
-	// scan.
+	// The three legs are OR'd so one scan serves all of them. Postgres does not
+	// turn that OR into a bitmap union over the three partial indexes — checked,
+	// rather than assumed — and applies it as a heap filter instead. What keeps
+	// that cheap is the narrowing above it: 000066's index leads with
+	// mode_queue_id, so naming queues plans as an index scan and the filter runs
+	// over one line's rows rather than the table.
+	//
+	// The consequence is worth knowing before adding a caller: asking about
+	// every queue at once has no such narrowing and degrades to a full scan.
+	// Nothing does that today — the per-player path always names one queue. A
+	// whole-catalog reader wants this split into two batch queries, rates and
+	// depth, each on its own index.
 	rows, err := s.db.QueryContext(ctx, `
 		SELECT
 			mode_queue_id,

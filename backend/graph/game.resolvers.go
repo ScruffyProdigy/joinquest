@@ -8,6 +8,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"time"
 
 	"github.com/scruffyprodigy/joinquest/graph/generated"
 	"github.com/scruffyprodigy/joinquest/graph/model"
@@ -28,6 +29,36 @@ func (r *activeIntentResolver) FormingGaps(ctx context.Context, obj *model.Activ
 		return []*model.QueuePathGap{}, nil
 	}
 	return gaps, nil
+}
+
+// EstimatedWaitSeconds is the resolver for the estimatedWaitSeconds field.
+//
+// Deliberately not served from the catalog's whole-catalog snapshot: that
+// number describes a line, and this one describes a player standing in it. One
+// player is one resolve, so there is no N+1 to avoid here — a page renders one
+// active intent, not a grid of them.
+func (r *activeIntentResolver) EstimatedWaitSeconds(ctx context.Context, obj *model.ActiveIntent) (*int, error) {
+	// A matched player has left the line, and an intent without a queue row was
+	// never standing in one. Both are null without asking.
+	if obj == nil || obj.Status != model.QueueStatusWaiting || obj.QueueID == nil {
+		return nil, nil
+	}
+	queueID, err := parseUUID(*obj.QueueID, "queue id")
+	if err != nil {
+		return nil, err
+	}
+
+	wait, ok, err := r.liveWait().EstimateForPlayer(ctx, queueID, time.Now())
+	if err != nil {
+		// Errors propagate rather than failing open to null, so a broken query
+		// stays distinguishable from a line with nothing to say.
+		return nil, err
+	}
+	if !ok {
+		return nil, nil
+	}
+	seconds := int(wait.Round(time.Second) / time.Second)
+	return &seconds, nil
 }
 
 // ActiveSessions is the resolver for the activeSessions field.

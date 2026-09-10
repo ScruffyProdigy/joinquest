@@ -185,6 +185,26 @@ export function waitingForGroupLine(count) {
   return `Looking for players… (${n} ${n === 1 ? 'player' : 'players'} looking)`
 }
 
+/**
+ * How much longer this player is likely to wait, or null when the API declined
+ * to say. Null is the API's honest answer whenever throughput is not measurable
+ * and there is no usable history, or when the number came out too large to be
+ * useful — so it renders as no line at all rather than as a hedge.
+ *
+ * Rounds to minutes once past one, because a live estimate that ticks between
+ * "97 sec" and "104 sec" reads as noise rather than information.
+ */
+export function estimatedWaitLine(seconds) {
+  if (seconds === null || seconds === undefined) {
+    return null
+  }
+  if (seconds < 60) {
+    // A queue about to pop should not read as "0 sec left".
+    return `About ${Math.max(1, Math.round(seconds))} sec left`
+  }
+  return `About ${Math.round(seconds / 60)} min left`
+}
+
 export function bannerWaitingLine(
   gameName,
   count,

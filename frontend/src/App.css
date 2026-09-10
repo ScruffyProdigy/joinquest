@@ -159,6 +159,7 @@
 }
 
 .waiting-page__need,
+.waiting-page__estimate,
 .waiting-page__hint {
   margin: 0.35rem 0 0;
   color: var(--secondary-foreground);

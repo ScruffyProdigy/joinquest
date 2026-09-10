@@ -61,6 +61,12 @@ type Resolver struct {
 	// meant to be the estimator inside this cache and nothing else. See
 	// internal/queuewait.
 	WaitEstimates *queuewait.Cache
+	// LiveWait serves ActiveIntent.estimatedWaitSeconds — the per-player
+	// number, which the whole-catalog snapshot cannot supply because it is
+	// keyed by line rather than by who is standing in one. nil builds the
+	// default live strategy with the median as its fallback. See
+	// internal/queuewait.
+	LiveWait queuewait.PlayerEstimator
 	// Emitter carries operational signals that have no GraphQL surface — conditions a
 	// caller cannot be told about because the call legitimately succeeded. nil emits
 	// to the log, so a resolver never has to nil-check it.
@@ -134,6 +140,77 @@ func (s storeFills) RecentFills(ctx context.Context, q queuewait.FillQuery) (map
 	return s.store.RecentModeQueueFills(ctx, q)
 }
 
+// liveWait returns the resolver's per-player estimator, building the default
+// live strategy when none was injected.
+func (r *Resolver) liveWait() queuewait.PlayerEstimator {
+	if r.LiveWait != nil {
+		return r.LiveWait
+	}
+	return newLiveEstimator(r.Store)
+}
+
+// newLiveEstimator builds the live strategy over the same store, with the
+// median strategy behind it for lines whose throughput is not measurable.
+func newLiveEstimator(st *store.Store) queuewait.LiveEstimator {
+	return queuewait.LiveEstimator{
+		Flow:        storeFlow{st},
+		Positions:   storeFlow{st},
+		Fallback:    newMedianEstimator(st),
+		Window:      liveWaitWindow(),
+		MinFills:    liveWaitMinFills(),
+		MaxEstimate: liveWaitMaxEstimate(),
+	}
+}
+
+// liveWaitWindow, liveWaitMinFills and liveWaitMaxEstimate retune the live
+// strategy from the environment, the same way waitEstimateWindow does for the
+// median. All three return zero on absent or nonsense input, leaving the
+// queuewait package's own defaults in charge.
+//
+// The crossover floor especially is expected to move: it cannot be tuned from
+// evidence until there is enough traffic for a line's rate to be stable, so it
+// ships as a defensible default behind a knob rather than as a constant.
+func liveWaitWindow() time.Duration {
+	if v, err := strconv.Atoi(os.Getenv("LOBBY_WAIT_LIVE_WINDOW_MINUTES")); err == nil && v > 0 {
+		return time.Duration(v) * time.Minute
+	}
+	return 0
+}
+
+func liveWaitMinFills() int {
+	if v, err := strconv.Atoi(os.Getenv("LOBBY_WAIT_LIVE_MIN_FILLS")); err == nil && v > 0 {
+		return v
+	}
+	return 0
+}
+
+func liveWaitMaxEstimate() time.Duration {
+	if v, err := strconv.Atoi(os.Getenv("LOBBY_WAIT_LIVE_MAX_SECONDS")); err == nil && v > 0 {
+		return time.Duration(v) * time.Second
+	}
+	return 0
+}
+
+// storeFlow adapts the store's flow and position queries to the queuewait
+// ports, keeping those generic names off the store itself — the same reason
+// storeFills exists. One type implements both because they read the same table
+// and share a nil-store guard.
+type storeFlow struct{ store *store.Store }
+
+func (s storeFlow) RecentFlow(ctx context.Context, q queuewait.FlowQuery) (map[queuewait.QueueKey]queuewait.Flow, error) {
+	if s.store == nil {
+		return nil, fmt.Errorf("database store is not configured")
+	}
+	return s.store.RecentQueueFlow(ctx, q)
+}
+
+func (s storeFlow) PositionOf(ctx context.Context, queueID uuid.UUID) (queuewait.Position, bool, error) {
+	if s.store == nil {
+		return queuewait.Position{}, false, fmt.Errorf("database store is not configured")
+	}
+	return s.store.PositionOnLine(ctx, queueID)
+}
+
 // signals returns the resolver's emitter, defaulting to the log emitter.
 func (r *Resolver) signals() observe.Emitter {
 	if r.Emitter == nil {
@@ -152,6 +229,7 @@ func NewResolver(st *store.Store, authService *auth.Service, broker pubsub.Broke
 		QueueOptionsCache: gameclient.NewQueueOptionsCache(gameclient.NewClient(), 5*time.Second),
 		LiveCountsCache:   catalogstats.NewCache(liveCountsSource(st), 5*time.Second),
 		WaitEstimates:     queuewait.NewCache(newMedianEstimator(st), waitEstimateTTL),
+		LiveWait:          newLiveEstimator(st),
 		Push:              push.SenderFromEnv(),
 	}
 }

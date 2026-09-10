@@ -15,6 +15,7 @@ const MY_ACTIVE_INTENT_QUERY = `
       queuePath
       queuePathDisplayName
       joinUrl
+      estimatedWaitSeconds
       formingGaps {
         queuePath
         displayName
