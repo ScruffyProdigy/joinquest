@@ -426,12 +426,16 @@ func (s *Store) appendRatingInputForResultTx(ctx context.Context, tx *sql.Tx, se
 	}
 
 	if err := s.AppendRatingInputTx(ctx, tx, RatingInput{
-		SessionID:    sessionID,
-		GameID:       gameID,
-		ModeKey:      modeKey.String,
-		Sides:        ratingSides,
-		QueueOptions: queueOptionsJSON,
-		RatedAt:      at,
+		SessionID: sessionID,
+		GameID:    gameID,
+		ModeKey:   modeKey.String,
+		Sides:     ratingSides,
+		// Stamped from the package that built the sides, so the row records
+		// which emission rules produced it rather than a number kept in sync
+		// by hand here.
+		InputsVersion: rating.InputsVersion,
+		QueueOptions:  queueOptionsJSON,
+		RatedAt:       at,
 	}); err != nil {
 		return nil, err
 	}

@@ -203,6 +203,7 @@ func printReport(w io.Writer, report ratingbacktest.Report) {
 			fmt.Fprintf(w, "  %-28s %8.4f %8s %8s %8d\n", es.EngineID, s.Accuracy, logLoss, brier, s.HeldOut)
 		}
 
+		printCategories(w, mode.Categories)
 		printModifiers(w, mode.Modifiers)
 		fmt.Fprintln(w)
 	}
@@ -229,10 +230,41 @@ func printModifiers(w io.Writer, mods map[string]rating.ModifierReport) {
 	for _, k := range keys {
 		m := mods[k]
 		note := ""
-		if m.PlayersWithMultipleValues == 0 {
+		if !m.Identifiable() {
 			note = "  ** confounded with player skill **"
 		}
-		fmt.Fprintf(w, "    %-26s matches=%-6d values=%-3d players-with-multiple-values=%-5d%s\n",
-			k, m.Matches, m.DistinctValues, m.PlayersWithMultipleValues, note)
+		fmt.Fprintf(w, "    %-26s matches=%-6d values=%-3d players=%-5d players-with-multiple-values=%-5d%s\n",
+			k, m.Matches, m.DistinctValues, m.DistinctPlayers, m.PlayersWithMultipleValues, note)
+	}
+}
+
+// printCategories prints the per-category roll-up above the per-key detail.
+//
+// The specialization rate is the headline number for a mode with more than
+// one seat class: at 1.0 every player has only ever sat in one seat, so the
+// seat's own rating and each player's rating in that seat explain the same
+// variation and only their sum is estimated. The per-key lines below can
+// still each look ordinary in that state, which is why this is printed
+// first rather than left to be inferred from them.
+func printCategories(w io.Writer, cats map[string]rating.CategoryReport) {
+	if len(cats) == 0 {
+		return
+	}
+
+	keys := make([]string, 0, len(cats))
+	for k := range cats {
+		keys = append(keys, k)
+	}
+	sort.Strings(keys)
+
+	fmt.Fprintf(w, "  identifiability by category:\n")
+	for _, k := range keys {
+		c := cats[k]
+		note := ""
+		if !c.Identifiable() {
+			note = "  ** main effect not identifiable **"
+		}
+		fmt.Fprintf(w, "    %-26s values=%-3d players=%-5d specialization=%.2f%s\n",
+			k, c.DistinctValues, c.Players, c.SpecializationRate(), note)
 	}
 }

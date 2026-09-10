@@ -65,9 +65,14 @@ func TestPrintReportShowsScoreAndCaveatTogether(t *testing.T) {
 			Matches:        20,
 			TrainMatches:   16,
 			HeldOutMatches: 4,
-			Modifiers: map[string]rating.ModifierReport{
-				"seat:White": {Matches: 20, DistinctValues: 2, PlayersWithMultipleValues: 0},
-				"seat:Black": {Matches: 20, DistinctValues: 2, PlayersWithMultipleValues: 7},
+			IdentifiabilityReport: rating.IdentifiabilityReport{
+				Modifiers: map[string]rating.ModifierReport{
+					"seat:White": {Matches: 20, DistinctValues: 2, DistinctPlayers: 9, PlayersWithMultipleValues: 0},
+					"seat:Black": {Matches: 20, DistinctValues: 2, DistinctPlayers: 9, PlayersWithMultipleValues: 7},
+				},
+				Categories: map[string]rating.CategoryReport{
+					"seat": {DistinctValues: 2, Players: 9, PlayersWithMultipleValues: 7},
+				},
 			},
 			Engines: []ratingbacktest.EngineScore{{
 				EngineID: "weng-lin/plackett-luce@1",

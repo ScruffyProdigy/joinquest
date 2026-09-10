@@ -5,11 +5,12 @@ import (
 	"database/sql"
 	"encoding/json"
 	"fmt"
-	"strings"
 	"time"
 
 	"github.com/google/uuid"
 	"github.com/lib/pq"
+
+	"github.com/scruffyprodigy/joinquest/internal/rating"
 )
 
 // sqlExecContext is satisfied by both *sql.DB and *sql.Tx, letting
@@ -19,17 +20,24 @@ type sqlExecContext interface {
 	ExecContext(context.Context, string, ...any) (sql.Result, error)
 }
 
-// playerRatingKeyPrefix namespaces a player_ratings row's user id inside the
-// flat string-keyed maps the rating engine works in. Non-player entities
-// (scenarios, seat classes, pre-queue options) use their own namespaced keys
-// and live in nonplayer_ratings instead — see the migration comment on that
-// table for the entity_key convention.
-const playerRatingKeyPrefix = "player:"
-
 // PlayerRatingKey returns the map key LoadPlayerRatings/SaveRatings use for a
-// user, so callers never have to build the "player:<uuid>" string by hand.
+// user's mode-level rating, so callers never have to build the
+// "player:<uuid>" string by hand.
+//
+// The grammar for every entrant key — player, per-seat player, seat class,
+// scenario, pre-queue option — lives in internal/rating, which is the package
+// that produces them. It is deliberately not restated here: this table and
+// that package have to agree exactly for a replay's output to land in the
+// right rows, and two copies of the same string constant is how they would
+// come to disagree.
 func PlayerRatingKey(userID uuid.UUID) string {
-	return playerRatingKeyPrefix + userID.String()
+	return rating.PlayerKey(userID.String())
+}
+
+// PlayerSeatRatingKey is PlayerRatingKey for a player's rating in one seat
+// class. An empty seatClass gives back the mode-level key.
+func PlayerSeatRatingKey(userID uuid.UUID, seatClass string) string {
+	return rating.PlayerSeatKey(userID.String(), seatClass)
 }
 
 // RatingValue is one entrant's current skill estimate, as cached in
@@ -162,7 +170,7 @@ func (s *Store) ListRatingInputs(ctx context.Context, gameID uuid.UUID, modeKey 
 // that key twice.
 func (s *Store) LoadPlayerRatings(ctx context.Context, gameID uuid.UUID, modeKey string) (map[string]RatingValue, error) {
 	rows, err := s.db.QueryContext(ctx, `
-		SELECT user_id, mu, sigma, matches_played
+		SELECT user_id, seat_class, mu, sigma, matches_played
 		FROM player_ratings
 		WHERE game_id = $1 AND mode_key = $2
 	`, gameID, modeKey)
@@ -174,11 +182,12 @@ func (s *Store) LoadPlayerRatings(ctx context.Context, gameID uuid.UUID, modeKey
 	out := make(map[string]RatingValue)
 	for rows.Next() {
 		var userID uuid.UUID
+		var seatClass string
 		var v RatingValue
-		if err := rows.Scan(&userID, &v.Mu, &v.Sigma, &v.MatchesPlayed); err != nil {
+		if err := rows.Scan(&userID, &seatClass, &v.Mu, &v.Sigma, &v.MatchesPlayed); err != nil {
 			return nil, err
 		}
-		out[PlayerRatingKey(userID)] = v
+		out[PlayerSeatRatingKey(userID, seatClass)] = v
 	}
 	return out, rows.Err()
 }
@@ -233,20 +242,20 @@ func (s *Store) SaveRatings(ctx context.Context, gameID uuid.UUID, modeKey, engi
 	}
 
 	for key, v := range players {
-		userID, ok := parsePlayerRatingKey(key)
+		userID, seatClass, ok := parsePlayerRatingKey(key)
 		if !ok {
-			return fmt.Errorf("store: SaveRatings player key %q is not %q<uuid>", key, playerRatingKeyPrefix)
+			return fmt.Errorf("store: SaveRatings player key %q is not player:<uuid> or player:<uuid>@seat:<class>", key)
 		}
 		if _, err := tx.ExecContext(ctx, `
-			INSERT INTO player_ratings (user_id, game_id, mode_key, mu, sigma, matches_played, engine_id, last_rated_at)
-			VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
-			ON CONFLICT (user_id, game_id, mode_key) DO UPDATE SET
+			INSERT INTO player_ratings (user_id, game_id, mode_key, seat_class, mu, sigma, matches_played, engine_id, last_rated_at)
+			VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+			ON CONFLICT (user_id, game_id, mode_key, seat_class) DO UPDATE SET
 				mu = EXCLUDED.mu,
 				sigma = EXCLUDED.sigma,
 				matches_played = EXCLUDED.matches_played,
 				engine_id = EXCLUDED.engine_id,
 				last_rated_at = EXCLUDED.last_rated_at
-		`, userID, gameID, modeKey, v.Mu, v.Sigma, v.MatchesPlayed, engineID, at); err != nil {
+		`, userID, gameID, modeKey, seatClass, v.Mu, v.Sigma, v.MatchesPlayed, engineID, at); err != nil {
 			return err
 		}
 	}
@@ -375,16 +384,19 @@ func (s *Store) ListModesNeedingReplay(ctx context.Context) ([]RatedMode, error)
 	return out, rows.Err()
 }
 
-func parsePlayerRatingKey(key string) (uuid.UUID, bool) {
-	rest, ok := strings.CutPrefix(key, playerRatingKeyPrefix)
+// parsePlayerRatingKey splits a player entrant key into the primary-key parts
+// of a player_ratings row: the user, and the seat class the rating is scoped
+// to (empty for the mode-level rating).
+func parsePlayerRatingKey(key string) (uuid.UUID, string, bool) {
+	playerID, seatClass, ok := rating.ParsePlayerKey(key)
 	if !ok {
-		return uuid.UUID{}, false
+		return uuid.UUID{}, "", false
 	}
-	id, err := uuid.Parse(rest)
+	id, err := uuid.Parse(playerID)
 	if err != nil {
-		return uuid.UUID{}, false
+		return uuid.UUID{}, "", false
 	}
-	return id, true
+	return id, seatClass, true
 }
 
 // GetPlayerRatings returns the cached rating for each of userIDs in one game
@@ -411,6 +423,7 @@ func (s *Store) GetPlayerRatings(ctx context.Context, gameID uuid.UUID, modeKey 
 		SELECT user_id, mu, sigma, matches_played
 		FROM player_ratings
 		WHERE game_id = $1 AND mode_key = $2 AND user_id = ANY($3::uuid[])
+		  AND seat_class = ''
 	`, gameID, modeKey, pq.Array(ids))
 	if err != nil {
 		return nil, err
