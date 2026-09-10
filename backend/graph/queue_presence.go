@@ -80,8 +80,8 @@ type armedWindows struct {
 // There is more than one because the same disconnect means different things to
 // different parts of the product, on different clocks: the queue gives a waiting player
 // 90s because losing a place costs them a wait they already served, and a room gives a
-// member 30s because the people in it are in the same physical space and would rather
-// see the truth. One socket edge, two answers — which is why the tracker holds a list
+// member 5m because a room that waits keeps nobody else waiting, so it has no reason to
+// be the impatient one. One socket edge, two answers — which is why the tracker holds a list
 // rather than a grace and an onExpire.
 type presenceExpiry struct {
 	grace time.Duration

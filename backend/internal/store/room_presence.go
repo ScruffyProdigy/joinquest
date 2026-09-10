@@ -13,28 +13,62 @@ import (
 // DefaultRoomDisconnectGrace is how long a room member's socket may stay down before
 // the room treats the disconnect as a departure.
 //
-// 30s, and deliberately NOT DefaultQueueDisconnectGrace's 90s. The two windows answer
-// different questions and the reasoning does not transfer: the queue's 90s buys a
-// backgrounded phone room to come back because losing your place costs you a wait you
-// already served. A private room is the opposite situation. The people in it scanned a
-// QR code off each other's screens or followed a link somebody sent them a minute ago,
-// so they are in the same physical space or already talking — a roster that briefly
-// disagrees with the room is something they resolve between themselves in seconds,
-// while a roster that lies for a minute and a half makes the product look asleep.
-// Showing what is currently true is worth more here than protecting a slot.
+// 5m, and deliberately LONGER than DefaultQueueDisconnectGrace's 90s. That ordering
+// was the other way round until this window was re-derived, and the inversion is the
+// point rather than an oversight, so do not "restore" it.
 //
-// 30s rather than something tighter because that is where the client stops trying.
-// The room subscription retries 10 times with min(500ms * n, 5s) backoff
-// (frontend/src/lib/rooms.js), which is 27.5s of reconnect attempts before it gives
-// up. Anything shorter would evict a player whose own client still believes it is
-// coming back — a reload or a tunnel would read as leaving. So the rule this number
-// encodes is: we hold your place for exactly as long as your client is still asking
-// for it, and not one window longer.
+// The old reasoning held that a room should expire faster than a queue place because a
+// stale roster makes the product look asleep, while a lost queue place costs a wait you
+// already served. What that missed is who pays. A queue place is rivalrous: every
+// second you hold one, strangers behind you wait, so 90s is a fairness ceiling imposed
+// by people who are not you. A private room is not rivalrous at all — its members are
+// the only people who can ever use it, and they are the same people coming back. Nobody
+// is kept waiting by a room that waits. So a room has no reason to be the impatient one,
+// and 30s turned ordinary behaviour into a departure: tab away to read a rule, take a
+// call, let a laptop sleep for a minute, and the room you were standing in is gone.
+//
+// 5m rather than something larger because that is where the client stops trying. The
+// room subscription retries 65 times with min(500ms * n, 5s) backoff
+// (frontend/src/lib/rooms.js), which is 297.5s of reconnect attempts before it gives
+// up. Anything longer would hold a room open for a browser that has already given up on
+// it, which is not a held place but a lie with a longer lifetime; anything shorter would
+// evict a player whose own client still believes it is coming back, so a reload or a
+// tunnel would read as leaving. So the rule this number encodes is unchanged, only its
+// value: we hold your place for exactly as long as your client is still asking for it,
+// and not one window longer.
+//
+// (The retry budget is 297.5s and not 302.5s because graphql-ws passes retryWait a
+// 0-based count — the first retry waits min(500*0, 5000) = 0ms. The 27.5s the previous
+// derivation quoted for 10 attempts was the 1-based reading of the same formula; the
+// real figure then was 22.5s. The conclusion it drew was unaffected.)
 //
 // Moving it means re-deriving it from that backoff, not nudging the constant: cut the
 // retry budget and this should follow it down; raise the retries and this has to
 // follow up or reconnects start losing rooms.
-const DefaultRoomDisconnectGrace = 30 * time.Second
+const DefaultRoomDisconnectGrace = 5 * time.Minute
+
+// DefaultTableSeatDisconnectGrace is how long a player's socket may stay down before the
+// forming-table seat they are holding is released.
+//
+// 30s, and deliberately NOT DefaultRoomDisconnectGrace's 5m, even though both windows run
+// off the same socket edge for the same player. They are not the same question, because a
+// room and a seat cost the people left behind completely different amounts.
+//
+// A room that waits costs nobody anything: its members are the only people who can ever
+// use it and they are the same people coming back, which is why it waits five minutes. A
+// held seat is the opposite — it is the one thing at a forming table another player
+// actively wants, and while it is held the table cannot fill and the king cannot start.
+// Bob should not be staring at a seat he is not allowed to take because Alice's phone died.
+//
+// The asymmetry costs the disconnected player almost nothing, which is what makes it the
+// right trade rather than merely a defensible one: coming back at two minutes, Alice still
+// has her room, her friends and the chat, and re-takes a seat with one tap. Coming back to
+// no room at all is what actually hurts. So the seat goes early and the room waits.
+//
+// This is NOT the seat-hold window for an already-formed match (JQ-199), which answers how
+// long a match that has already been made waits for a player who is not there. Do not
+// borrow one for the other.
+const DefaultTableSeatDisconnectGrace = 30 * time.Second
 
 // DefaultClosedRoomRetention is how long a closed room's row survives before the
 // sweep deletes it outright.
@@ -45,12 +79,19 @@ const DefaultRoomDisconnectGrace = 30 * time.Second
 // table of rooms nobody has opened in years, which is the real cost of making every
 // Play with friends click mint a fresh room.
 //
-// The delay is not caution for its own sake. A closed room's tables deliberately
-// outlive it: game_sessions.regroup_table_id points at a room_table, room_tables
-// cascade-deletes with its room, and loadFormingRegroupTableTx reads a forming table
-// through a closed room on purpose (see its comment — adopting one through an open-room
-// join is a bricked-forever bug). Deleting the room at close time would therefore take
-// "play again with the same group" down with it.
+// The delay is not caution for its own sake, but it is NOT about preserving regroup, and
+// this comment used to say it was. The claim of record was that loadFormingRegroupTableTx
+// "reads a forming table through a closed room on purpose", so deleting a room at close
+// time would take "play again with the same group" down with it. It does the opposite: a
+// closed room's table reads as unclaimed (liveRegroupTableClause) precisely so the next
+// claim builds a fresh one, because adopting a table in a closed room is the
+// bricked-forever bug. Closing a room already ends its offer; deleting it later takes
+// nothing further away.
+//
+// What the delay actually buys is that nothing has to be careful about ordering. Rooms
+// close on a 5-minute presence window while sessions, tables and seats hang off them by
+// foreign key, so a row deleted the instant its room closed would be deleted underneath
+// whatever was still reading it.
 //
 // So the floor is "past any possible regroup", and regroup is a post-match flow measured
 // in minutes — the session sweep completes an abandoned session at
@@ -182,6 +223,13 @@ func (s *Store) EvictDisconnectedRoomMember(ctx context.Context, userID uuid.UUI
 	// against the friends still in the room, and it counts as live play in
 	// roomHasLivePlayClause, which would pin the room open on the strength of a
 	// player who is gone.
+	//
+	// In the ordinary case this now finds nothing to do: the seat went at
+	// DefaultTableSeatDisconnectGrace, ten times earlier in the same disconnect. It stays
+	// here because it is cheap and because "a member is removed" must never be able to
+	// leave a seat standing, whatever path got here — a seat timer that died with its pod,
+	// a membership removed by something other than the disconnect window, or a future
+	// caller that does not know about the seat window at all.
 	if _, _, err := s.leaveTableSeatTx(ctx, tx, userID); err != nil {
 		return RoomEviction{}, fmt.Errorf("vacate seat on room eviction: %w", err)
 	}
@@ -194,6 +242,80 @@ func (s *Store) EvictDisconnectedRoomMember(ctx context.Context, userID uuid.UUI
 
 	if err := tx.Commit(); err != nil {
 		return RoomEviction{}, fmt.Errorf("commit room eviction: %w", err)
+	}
+	return out, nil
+}
+
+// TableSeatRelease reports whether an expiry actually freed a seat, and names the table it
+// freed it at so the caller can tell the room's watchers.
+//
+// Everyone at /room/{code} and /group watches tableUpdated, not roomUpdated, so without the
+// ids there is nothing to address the publish to and the seat stays visibly occupied until
+// some unrelated table event fires. Same reason RegroupSeatRelease carries them.
+type TableSeatRelease struct {
+	Acted   bool
+	TableID uuid.UUID
+	RoomID  uuid.UUID
+}
+
+// ReleaseDisconnectedTableSeat frees the forming-table seat a user is holding if and only
+// if their socket is still down and the disconnect stamp still matches the one the caller
+// armed its timer on.
+//
+// Every safety condition is a predicate on the DELETE rather than a preceding SELECT, for
+// the reason EvictDisconnectedRoomMember gives: a read-then-write is check-then-act, and a
+// reconnect landing in the gap would cost a returned player the seat they are sitting in.
+// Zero rows affected means somebody got there first — a reconnect, a deliberate leave, a
+// table that started — which is exactly the outcome we want.
+//
+// It deliberately does NOT touch room membership. This window answers "should someone else
+// be allowed to take this seat", not "is this player still in the room", and the room's own
+// window is ten times longer on purpose (see DefaultTableSeatDisconnectGrace). A player who
+// comes back at two minutes finds their room, their friends and their chat exactly as they
+// left them, and re-takes a seat with one tap.
+//
+// Scoped to forming tables. A seat at a STARTED table is not a seat anyone is waiting for —
+// the match is under way and its players' sockets are on the game, not the lobby, so every
+// one of them looks disconnected from here. Freeing those would tear down the seating of a
+// live match, which is the same trap roomHasLivePlayClause exists to avoid.
+func (s *Store) ReleaseDisconnectedTableSeat(ctx context.Context, userID uuid.UUID, stamp time.Time) (TableSeatRelease, error) {
+	var out TableSeatRelease
+
+	tx, err := s.db.BeginTx(ctx, nil)
+	if err != nil {
+		return out, fmt.Errorf("begin table seat release: %w", err)
+	}
+	defer tx.Rollback()
+
+	err = tx.QueryRowContext(ctx, `
+		DELETE FROM table_seats ts
+		USING user_presence up, room_tables rt
+		WHERE ts.user_id = $1
+		  AND up.user_id = ts.user_id
+		  AND up.connection_count = 0
+		  AND up.disconnected_at = $2
+		  AND rt.id = ts.table_id
+		  AND rt.status = $3
+		RETURNING ts.table_id, rt.room_id
+	`, userID, stamp, TableStatusForming).Scan(&out.TableID, &out.RoomID)
+	if errors.Is(err, sql.ErrNoRows) {
+		return TableSeatRelease{}, nil
+	}
+	if err != nil {
+		return TableSeatRelease{}, fmt.Errorf("release disconnected table seat: %w", err)
+	}
+	out.Acted = true
+
+	// The table's own row carries the change, exactly as leaveTableSeatTx and LeaveTable
+	// do. A client that reconciles on updated_at would otherwise never see the seat go.
+	if _, err := tx.ExecContext(ctx, `
+		UPDATE room_tables SET updated_at = NOW() WHERE id = $1
+	`, out.TableID); err != nil {
+		return TableSeatRelease{}, fmt.Errorf("touch table on seat release: %w", err)
+	}
+
+	if err := tx.Commit(); err != nil {
+		return TableSeatRelease{}, fmt.Errorf("commit table seat release: %w", err)
 	}
 	return out, nil
 }

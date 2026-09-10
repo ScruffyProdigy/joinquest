@@ -12,9 +12,9 @@ import (
 // reconnect, and takes them out of the room they are no longer in.
 //
 // It is a separate expiry from OnGraceExpired on a separate clock — see
-// store.DefaultRoomDisconnectGrace for why a room's 30s is not the queue's 90s — so a
-// player 40s into a disconnect has left the room and kept their queue place. Both fire
-// from the one socket edge, and a reconnect cancels both.
+// store.DefaultRoomDisconnectGrace for why a room's 5m is not the queue's 90s — so a player
+// two minutes into a disconnect has kept their room and lost their queue place. All three
+// expiries fire from the one socket edge, and a reconnect cancels all of them.
 func (r *Resolver) OnRoomGraceExpired(ctx context.Context, userID uuid.UUID, stamp time.Time) {
 	st, err := r.requireStore()
 	if err != nil {

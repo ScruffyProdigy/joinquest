@@ -72,9 +72,11 @@ func main() {
 	} else if cleared > 0 {
 		log.Printf("presence: boot reset cleared %d stale rows", cleared)
 	}
-	// Two windows off one socket edge, on deliberately different clocks: a waiting
-	// player keeps their queue place for 90s, a room member keeps their seat in the
-	// room for 30s. See each constant for why they are not the same number.
+	// Three windows off one socket edge, on deliberately different clocks: a waiting
+	// player keeps their queue place for 90s, their place in a room for 5m, and the seat
+	// they were holding at a forming table for only 30s. Ordered shortest-cost-to-others
+	// last: a seat is the one thing somebody else is waiting on, a room is not. See each
+	// constant for why they are not the same number.
 	resolver.Presence = graph.NewPresenceTracker(
 		dataStore,
 		broker,
@@ -83,6 +85,9 @@ func main() {
 	).WithExpiry(
 		store.DefaultRoomDisconnectGrace,
 		resolver.OnRoomGraceExpired,
+	).WithExpiry(
+		store.DefaultTableSeatDisconnectGrace,
+		resolver.OnTableSeatGraceExpired,
 	)
 
 	formingTick := 30 * time.Second

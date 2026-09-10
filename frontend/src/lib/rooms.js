@@ -112,6 +112,27 @@ const ROOM_MESSAGE_ADDED_SUBSCRIPTION = `
   }
 `
 
+/**
+ * How long this client keeps asking to come back before it gives up, expressed as a
+ * retry count because that is what graphql-ws takes.
+ *
+ * This number and `store.DefaultRoomDisconnectGrace`
+ * (backend/internal/store/room_presence.go) are one decision with two homes, and moving
+ * either alone is a bug: the server holds a member's place for exactly as long as their
+ * client is still asking for it. Raise the retries without the server window and a
+ * reconnect finds the room already gone; raise the server window without the retries and
+ * the room is held open for a browser that stopped trying minutes ago.
+ *
+ * graphql-ws passes `retryWait` a 0-based count, so the budget is
+ * sum(min(500 * i, 5000)) for i in 0..64 — 22.5s across the ramp, then 55 waits at the
+ * 5s ceiling, for 297.5s. That lands just under the server's 5 minutes, which is the
+ * right side to be on: the client is still asking at the moment the server gives up.
+ */
+export const ROOM_RECONNECT_ATTEMPTS = 65
+
+/** The backoff curve itself, exported so the budget above can be verified rather than asserted. */
+export const roomReconnectWaitMs = (retries) => Math.min(500 * retries, 5000)
+
 let wsClient = null
 
 async function loadSubscriptionAuth() {
@@ -133,8 +154,8 @@ function getWsClient() {
     wsClient = createClient({
       url: getGraphQLWsUrl(),
       connectionParams: getSubscriptionConnectionParams(),
-      retryAttempts: 10,
-      retryWait: async (retries) => Math.min(500 * retries, 5000),
+      retryAttempts: ROOM_RECONNECT_ATTEMPTS,
+      retryWait: async (retries) => roomReconnectWaitMs(retries),
       shouldRetry: () => true,
       lazy: false,
     })
