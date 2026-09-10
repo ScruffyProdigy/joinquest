@@ -359,6 +359,34 @@ describe('IdentityGate, when only the avatar is missing', () => {
       expect(button.getAttribute('aria-label')).toMatch(/^[A-Za-z]+ [A-Za-z]+$/)
     }
   })
+  // The face-only prompt used to draw its own grid, and drifted to a six-across
+  // row while the guest picker stayed two-up. Same six sigils, two screens --
+  // which half of an identity was missing decided which one a player got.
+  it('draws the faces in the grid the guest picker draws them in', async () => {
+    mockAuthenticatedSession(FACELESS_MEMBER)
+    const faceless = renderGate()
+    await waitForHeading('Pick your face')
+    const facesGrid = avatarChoices()[0].closest('ul').className
+    faceless.unmount()
+
+    mockUnauthenticatedSession()
+    renderGate()
+    await waitForGate()
+
+    expect(avatarChoices()[0].closest('ul').className).toBe(facesGrid)
+  })
+
+  // `label` exists for exactly this row (see generateGuestIdentity): someone who
+  // already has a name still has to be told which disc they are reaching for.
+  it('names each face on the row itself, not only for a screen reader', async () => {
+    mockAuthenticatedSession(FACELESS_MEMBER)
+    renderGate()
+    await waitForHeading('Pick your face')
+
+    for (const button of avatarChoices()) {
+      expect(button).toHaveTextContent(/^[A-Za-z]+ [A-Za-z]+$/)
+    }
+  })
 
   it('lays the faces out as a bare grid, with no list bullets', async () => {
     mockAuthenticatedSession(FACELESS_MEMBER)

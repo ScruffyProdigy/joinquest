@@ -48,6 +48,22 @@ describe('UserSessionCard', () => {
     expect(await screen.findByRole('button', { name: 'Change display' })).toBeInTheDocument()
   })
 
+  // Picking a face is one act, so it gets one component wherever it is offered.
+  // The editor's icon list used to be a single column of its own while the
+  // identity gate's two grids sat elsewhere, all drawn by hand.
+  it('offers the journey icons on the shared two-up avatar grid', async () => {
+    const person = userEvent.setup()
+    renderSessionCard()
+
+    await person.click(await screen.findByRole('button', { name: 'Change display' }))
+
+    const list = await screen.findByRole('list')
+    expect(list).toHaveClass('sm:grid-cols-2')
+    expect(list).toHaveClass('list-none')
+    expect(list).toHaveClass('p-0')
+    expect(list).toHaveClass('m-0')
+  })
+
   it('prompts new players to set up display', async () => {
     const newUser = {
       ...user,

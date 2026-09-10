@@ -3,7 +3,7 @@ import { createGuestSession } from '../../lib/auth'
 import { updatePlayerProfile } from '../../lib/avatars'
 import { generateGuestIdentities } from '../../lib/guestIdentity'
 import { IDENTITY_GATE_ERROR, IDENTITY_GATE_PROMPT, IDENTITY_GATE_SCOPE_HINT } from '../../lib/playerCopy'
-import { OptionButton } from '../ui/option-button'
+import AvatarChoiceGrid from './AvatarChoiceGrid'
 
 /**
  * The whole identity in one pick, for someone who has neither half. Each row is
@@ -11,14 +11,19 @@ import { OptionButton } from '../ui/option-button'
  */
 export default function GuestIdentityPicker({ user, onSaved, onBusyChange }) {
   const [identities] = useState(() => generateGuestIdentities())
-  const [pendingName, setPendingName] = useState('')
+  const [pendingKey, setPendingKey] = useState('')
   const [error, setError] = useState('')
 
+  /** Back from a picked row to the identity it was drawn from. */
+  function identityFor(choice) {
+    return identities.find((identity) => identity.avatarKey === choice.key)
+  }
+
   async function handlePick(identity) {
-    if (pendingName) {
+    if (pendingKey) {
       return
     }
-    setPendingName(identity.name)
+    setPendingKey(identity.avatarKey)
     onBusyChange?.(true)
     setError('')
     try {
@@ -30,7 +35,7 @@ export default function GuestIdentityPicker({ user, onSaved, onBusyChange }) {
     } catch (err) {
       setError(err.message || IDENTITY_GATE_ERROR)
     } finally {
-      setPendingName('')
+      setPendingKey('')
       onBusyChange?.(false)
     }
   }
@@ -42,21 +47,15 @@ export default function GuestIdentityPicker({ user, onSaved, onBusyChange }) {
         <p className="text-2xs text-muted-foreground">{IDENTITY_GATE_SCOPE_HINT}</p>
       </div>
 
-      <ul className="m-0 grid list-none gap-2 p-0 sm:grid-cols-2" role="list">
-        {identities.map((identity) => (
-          <li key={identity.name}>
-            <OptionButton
-              disabled={Boolean(pendingName)}
-              onClick={() => void handlePick(identity)}
-            >
-              <img src={identity.imageUrl} alt="" className="size-8 shrink-0 rounded-full" />
-              <span className="font-mono-display text-sm text-foreground">
-                {pendingName === identity.name ? 'Starting…' : identity.name}
-              </span>
-            </OptionButton>
-          </li>
-        ))}
-      </ul>
+      <AvatarChoiceGrid
+        choices={identities.map((identity) => ({
+          key: identity.avatarKey,
+          avatarUrl: identity.imageUrl,
+          displayName: identity.name,
+        }))}
+        busyKey={pendingKey}
+        onPick={(choice) => handlePick(identityFor(choice))}
+      />
 
       {error ? (
         <p className="status-message status-message-error" role="status">

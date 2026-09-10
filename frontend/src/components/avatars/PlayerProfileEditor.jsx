@@ -4,7 +4,7 @@ import { hasChosenAvatar, needsIdentity } from '../../lib/viewer'
 import { useAuth } from '../auth/AuthProvider'
 import { Button } from '../ui/button'
 import { Input } from '../ui/input'
-import { OptionButton } from '../ui/option-button'
+import AvatarChoiceGrid from './AvatarChoiceGrid'
 import PlayerAvatar from './PlayerAvatar'
 
 export default function PlayerProfileEditor({ user, required = false, onSaved, onCancel, onBeginSpiritAnimal }) {
@@ -96,24 +96,16 @@ export default function PlayerProfileEditor({ user, required = false, onSaved, o
         <p className="text-sm font-medium text-muted-foreground">
           {keepingCurrentAvatar ? 'Or choose a journey icon' : 'Journey icon'}
         </p>
-        <ul className="flex flex-col gap-2" role="list">
-          {options.map((option) => {
-            const selected = option.key === selectedKey
-            return (
-              <li key={option.key}>
-                <OptionButton
-                  selected={selected}
-                  disabled={busy}
-                  aria-label={`${option.name}${selected ? ' (selected)' : ''}`}
-                  onClick={() => setSelectedKey(option.key)}
-                >
-                  <img src={option.imageUrl} alt="" className="size-8 shrink-0 rounded-full object-cover" />
-                  <span className="text-sm font-medium text-foreground">{option.name}</span>
-                </OptionButton>
-              </li>
-            )
-          })}
-        </ul>
+        <AvatarChoiceGrid
+          choices={options.map((option) => ({
+            key: option.key,
+            avatarUrl: option.imageUrl,
+            displayName: option.name,
+          }))}
+          selectedKey={selectedKey}
+          disabled={busy}
+          onPick={(choice) => setSelectedKey(choice.key)}
+        />
       </div>
 
       <div className="flex flex-wrap gap-3">
