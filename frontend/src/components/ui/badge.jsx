@@ -13,6 +13,11 @@ const badgeVariants = cva(
         destructive:
           'border-transparent bg-destructive text-destructive-foreground [a&]:hover:bg-destructive/90 focus-visible:ring-destructive/20',
         outline: 'text-foreground [a&]:hover:bg-accent [a&]:hover:text-accent-foreground',
+        // Outcome badges: the accent as text on its own tinted surface, which is how the
+        // prototype draws both its "In" pill and its winner marker. Not filled like
+        // `default` — a result is being reported, not offered as something to press.
+        success: 'border-transparent bg-success-surface text-success',
+        warning: 'border-transparent bg-warning-surface text-warning',
       },
     },
     defaultVariants: {

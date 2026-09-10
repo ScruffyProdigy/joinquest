@@ -52,7 +52,9 @@ function StandingRow({ participant, viewerId, reported }) {
           ordinal(placement)
         ) : (
           <>
-            <span className="size-2 animate-pulse rounded-full bg-muted-foreground" aria-hidden="true" />
+            {/* Live, not absent: the prototype pulses this dot in --success for exactly that
+                reason, and a muted dot read as a blank slot. */}
+            <span className="size-2 animate-pulse rounded-full bg-success" aria-hidden="true" />
             {/* The "Still playing" badge already announces this for an unfinished row — only add
                 text here for the case that badge doesn't cover: reported-finished-but-unplaced. */}
             {finished ? <span className="sr-only">{RESULTS_PLACEMENT_UNKNOWN}</span> : null}
@@ -64,7 +66,7 @@ function StandingRow({ participant, viewerId, reported }) {
         <span className="truncate text-sm text-foreground">{name}</span>
         {role ? <span className="truncate text-xs text-muted-foreground">{role}</span> : null}
       </div>
-      {isWinner ? <Badge>{RESULTS_WINNER}</Badge> : null}
+      {isWinner ? <Badge variant="warning">{RESULTS_WINNER}</Badge> : null}
       {!finished ? <Badge variant="secondary">{RESULTS_STILL_PLAYING}</Badge> : null}
     </li>
   )
