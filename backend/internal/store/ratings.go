@@ -298,6 +298,37 @@ func clearRatingsTx(ctx context.Context, tx *sql.Tx, gameID uuid.UUID, modeKey s
 	return nil
 }
 
+// ListRatedModes returns every (game, mode) that has any retained rating
+// input, in a stable order.
+//
+// Unlike ListModesNeedingReplay this asks nothing about whether the cached
+// ratings are current: the backtest harness (internal/ratingbacktest) reads
+// the input log and never the cache, so a mode whose ratings are perfectly
+// up to date is exactly as backtestable as one whose replay is pending. The
+// ordering is fixed so that a report covering every mode lists them the same
+// way on every run, and two reports can be diffed.
+func (s *Store) ListRatedModes(ctx context.Context) ([]RatedMode, error) {
+	rows, err := s.db.QueryContext(ctx, `
+		SELECT DISTINCT game_id, mode_key
+		FROM rating_match_inputs
+		ORDER BY game_id, mode_key
+	`)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var out []RatedMode
+	for rows.Next() {
+		var m RatedMode
+		if err := rows.Scan(&m.GameID, &m.ModeKey); err != nil {
+			return nil, err
+		}
+		out = append(out, m)
+	}
+	return out, rows.Err()
+}
+
 // ListModesNeedingReplay returns every (game, mode) whose newest rating input
 // is newer than the ratings computed from it — modes whose replay was
 // scheduled but never ran, typically because the process restarted between

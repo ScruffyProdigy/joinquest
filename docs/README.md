@@ -50,6 +50,7 @@ Documentation for **JoinQuest** — the platform that connects players to third-
 - **[Architecture Overview](architecture.md)** — System design and components
 - **[API Documentation](api.md)** — GraphQL reference and examples
 - **[Pub/Sub](pubsub.md)** — Redis queue notifications
+- **[Rating backtesting](rating-backtesting.md)** — Scoring rating models against held-out match history
 
 ### Operations
 - **[Database Migrations](database-migrations.md)** — Schema migrations and CLI
