@@ -97,8 +97,12 @@ func (r *mutationResolver) ReportMatchResult(ctx context.Context, matchID string
 		}
 		winnerIDs = append(winnerIDs, id)
 	}
-	if _, err := st.RecordMatchResult(ctx, sessionID, string(status), winnerIDs, metadata, time.Now()); err != nil {
+	rated, err := st.RecordMatchResult(ctx, sessionID, string(status), winnerIDs, metadata, time.Now())
+	if err != nil {
 		return false, err
+	}
+	if rated != nil && r.RatingWorker != nil {
+		r.RatingWorker.Schedule(rated.GameID, rated.ModeKey)
 	}
 
 	table, _ := st.GetRoomTableBySessionID(ctx, sessionID)
