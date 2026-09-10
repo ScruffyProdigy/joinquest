@@ -41,8 +41,16 @@ func (r *mutationResolver) ReportPlayerFinished(ctx context.Context, matchID str
 	// The reported payload is persisted first, and it — not the mark below — is what
 	// validates the player: RecordPlayerFinish matches the participant row regardless of
 	// finished_at, so an unknown lobby user id still surfaces as ErrNotFound.
-	if err := st.RecordPlayerFinish(ctx, sessionID, playerID, string(reason), placement, metadata); err != nil {
+	rated, err := st.RecordPlayerFinish(ctx, sessionID, playerID, string(reason), placement, metadata)
+	if err != nil {
 		return false, err
+	}
+	// Non-nil when this finish landed after the match result and rewrote that
+	// match's rating input — a DISCONNECT reported at the expiry of a grace
+	// period, typically. The rewrite is committed; the replay that applies it
+	// is scheduled here, the same way ReportMatchResult schedules its own.
+	if rated != nil && r.RatingWorker != nil {
+		r.RatingWorker.Schedule(rated.GameID, rated.ModeKey)
 	}
 	// ErrNotFound here means the player already reached /return and AcknowledgePlayerReturn
 	// stamped finished_at first (MarkParticipantFinished has AND finished_at IS NULL). The
@@ -97,8 +105,12 @@ func (r *mutationResolver) ReportMatchResult(ctx context.Context, matchID string
 		}
 		winnerIDs = append(winnerIDs, id)
 	}
-	if err := st.RecordMatchResult(ctx, sessionID, string(status), winnerIDs, metadata, time.Now()); err != nil {
+	rated, err := st.RecordMatchResult(ctx, sessionID, string(status), winnerIDs, metadata, time.Now())
+	if err != nil {
 		return false, err
+	}
+	if rated != nil && r.RatingWorker != nil {
+		r.RatingWorker.Schedule(rated.GameID, rated.ModeKey)
 	}
 
 	table, _ := st.GetRoomTableBySessionID(ctx, sessionID)
