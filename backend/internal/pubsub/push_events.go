@@ -32,10 +32,11 @@ const (
 type PushDeliveryEvent struct {
 	UserID string             `json:"userId"`
 	Status PushDeliveryStatus `json:"status"`
-	// HoldID ties the outcome to the hold it belongs to, so a late event is
-	// discardable. Not a session id: the hold runs before the match is
-	// announced, so no session exists yet.
-	HoldID string `json:"holdId,omitempty"`
+	// FormingMatchID is the forming_matches row this notification was about, so
+	// a late event is discardable. Not a session id -- the notification goes out
+	// before the match is announced -- and not matchId, which means a match
+	// result elsewhere in the schema.
+	FormingMatchID string `json:"formingMatchId,omitempty"`
 	// Attempted and Delivered count installs, so a partial success is visible.
 	Attempted int `json:"attempted"`
 	Delivered int `json:"delivered"`

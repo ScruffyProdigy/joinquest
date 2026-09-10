@@ -25,11 +25,11 @@ import (
 //
 // Best-effort: it never returns an error. This runs inside match-formation
 // fan-out, so a push failure must not fail a match that formed correctly.
-func (r *Resolver) PushComeBack(ctx context.Context, userID uuid.UUID, holdID string, note push.Notification) pubsub.PushDeliveryEvent {
+func (r *Resolver) PushComeBack(ctx context.Context, userID uuid.UUID, formingMatchID string, note push.Notification) pubsub.PushDeliveryEvent {
 	event := pubsub.PushDeliveryEvent{
-		UserID: userID.String(),
-		HoldID: holdID,
-		Status: pubsub.PushSkipped,
+		UserID:         userID.String(),
+		FormingMatchID: formingMatchID,
+		Status:         pubsub.PushSkipped,
 	}
 
 	st, err := r.requireStore()

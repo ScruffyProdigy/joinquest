@@ -259,8 +259,8 @@ func TestPushComeBackPublishesTheOutcomeForTheSeatHold(t *testing.T) {
 			t.Fatalf("wrong user on the event: %q", event.UserID)
 		}
 		// The session id lets a late event for a previous match be discarded.
-		if event.HoldID != "session-42" {
-			t.Fatalf("expected the hold id to ride along, got %q", event.HoldID)
+		if event.FormingMatchID != "session-42" {
+			t.Fatalf("expected the forming match id to ride along, got %q", event.FormingMatchID)
 		}
 	case <-time.After(5 * time.Second):
 		// Bounded rather than waiting on ctx.Done(): the test context has no
