@@ -18,6 +18,7 @@ import { parseGroupRoute } from './lib/group'
 import GroupPage from './components/group/GroupPage'
 import { parseGameSlug } from './lib/games'
 import { navigateToWaiting, parseWaitingRoute } from './lib/waiting'
+import { listenForPushMessages } from './lib/pushMessages'
 import { usePathname } from './lib/usePathname'
 import { restoreCatalogScrollIfPending } from './lib/catalogNavigation'
 import { parseDeveloperRoute } from './lib/developers'
@@ -141,6 +142,19 @@ function MainLayout() {
       root?.classList.remove('app-root--group')
     }
   }, [gameSlug, onGroup])
+
+  // The service worker cannot route or re-register on its own, so the shell
+  // listens for the whole session rather than only while on /waiting -- a push
+  // can land after the player has navigated away.
+  useEffect(() => listenForPushMessages({
+    // The worker navigates the tab itself where it can; this covers the case
+    // where it could not.
+    onNotificationClick: (url) => {
+      if (url && url !== window.location.pathname) {
+        window.location.assign(url)
+      }
+    },
+  }), [])
 
   return onGroup ? (
     <GroupPage />

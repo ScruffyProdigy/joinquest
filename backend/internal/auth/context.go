@@ -11,6 +11,7 @@ const (
 	userIDContextKey         contextKey = "authUserID"
 	sessionTokenContextKey   contextKey = "authSessionToken"
 	responseWriterContextKey contextKey = "authResponseWriter"
+	userAgentContextKey      contextKey = "authUserAgent"
 )
 
 // WithUserID attaches an authenticated user ID to the context.
@@ -44,4 +45,17 @@ func WithResponseWriter(ctx context.Context, w http.ResponseWriter) context.Cont
 func ResponseWriterFromContext(ctx context.Context) (http.ResponseWriter, bool) {
 	writer, ok := ctx.Value(responseWriterContextKey).(http.ResponseWriter)
 	return writer, ok && writer != nil
+}
+
+// WithUserAgent attaches the request's User-Agent header.
+func WithUserAgent(ctx context.Context, userAgent string) context.Context {
+	return context.WithValue(ctx, userAgentContextKey, userAgent)
+}
+
+// UserAgentFromContext returns the request's User-Agent when present. Recorded
+// against push subscriptions so the iOS/Android split can be read off real
+// registrations rather than guessed at (JQ-198).
+func UserAgentFromContext(ctx context.Context) string {
+	userAgent, _ := ctx.Value(userAgentContextKey).(string)
+	return userAgent
 }

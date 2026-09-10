@@ -193,6 +193,143 @@
   margin-top: 1.5rem;
 }
 
+/* Notifications: the way to leave the page without losing your place. */
+
+.notify-me {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.4rem;
+  width: 100%;
+  margin-top: 1.5rem;
+}
+
+.notify-me__action {
+  width: 100%;
+}
+
+.notify-me__value,
+.notify-me__state {
+  margin: 0;
+  font-size: 0.9rem;
+}
+
+.notify-me__value {
+  color: var(--secondary-foreground);
+}
+
+.notify-me__state {
+  font-weight: 600;
+  color: var(--accent-foreground);
+}
+
+.notify-me__error {
+  margin: 0;
+  color: #ffb4b4;
+  font-size: 0.9rem;
+}
+
+.notify-me__blocked {
+  margin: 1.5rem 0 0;
+  max-width: 22rem;
+  color: var(--muted-foreground);
+  font-size: 0.85rem;
+  line-height: 1.4;
+}
+
+.notify-me__off {
+  margin-top: 0.4rem;
+}
+
+/* The value line only appears once the control is promoted, so fade it rather
+   than having it snap in beside a button the player may be reading. */
+.notify-me--promoted .notify-me__value {
+  animation: notify-me-reveal 240ms ease-out both;
+}
+
+@keyframes notify-me-reveal {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .notify-me--promoted .notify-me__value {
+    animation: none;
+  }
+}
+
+/* Add to Home Screen instructions. */
+
+.install-sheet__body {
+  margin: 0.5rem 0 1.25rem;
+  color: var(--secondary-foreground);
+  font-size: 0.9rem;
+  line-height: 1.45;
+}
+
+.install-sheet__steps {
+  display: flex;
+  flex-direction: column;
+  gap: 0.9rem;
+  margin: 0 0 1.5rem;
+  padding: 0;
+  list-style: none;
+}
+
+.install-sheet__step {
+  display: flex;
+  align-items: center;
+  gap: 0.85rem;
+  text-align: left;
+}
+
+/* The glyph is the point of the instruction: people recognise the icon in
+   Safari's toolbar long before they know it is called Share. */
+.install-sheet__glyph {
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: 2.75rem;
+  height: 2.75rem;
+  border-radius: 12px;
+  border: 1px solid var(--border);
+  background: var(--input-background);
+  color: var(--primary);
+}
+
+.install-sheet__glyph svg {
+  width: 1.5rem;
+  height: 1.5rem;
+}
+
+.install-sheet__step-text {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  min-width: 0;
+}
+
+.install-sheet__step-action {
+  font-weight: 600;
+  font-size: 0.95rem;
+}
+
+.install-sheet__step-number {
+  margin-right: 0.4rem;
+  color: var(--muted-foreground);
+  font-variant-numeric: tabular-nums;
+}
+
+.install-sheet__step-where {
+  color: var(--muted-foreground);
+  font-size: 0.85rem;
+  line-height: 1.35;
+}
+
 /* The launch moment (JQ-136) reuses the waiting card so the match forming reads as
    the same screen resolving, not a different one. */
 .launch-step {

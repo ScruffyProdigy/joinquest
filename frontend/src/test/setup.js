@@ -51,6 +51,67 @@ global.ResizeObserver = vi.fn().mockImplementation(() => ({
   disconnect: vi.fn(),
 }))
 
+/*
+ * jsdom implements neither the service worker nor the Notification API, and the
+ * push module reads both at call time. Absent by default on purpose: that is
+ * what an unsupported browser looks like, and the default must not be the happy
+ * path. Tests that exercise push opt in with mockPushSupported().
+ */
+export function mockPushUnsupported() {
+  delete global.Notification
+  delete window.PushManager
+  if ('serviceWorker' in navigator) {
+    delete navigator.serviceWorker
+  }
+}
+
+/**
+ * Installs a working service worker + Notification stub. `permission` seeds
+ * Notification.permission; `requestResult` is what requestPermission() resolves
+ * to, so a test can drive grant, denial, and dismissal.
+ */
+export function mockPushSupported({
+  permission = 'default',
+  requestResult = 'granted',
+  existingSubscription = null,
+} = {}) {
+  const subscribe = vi.fn(async () => existingSubscription ?? makePushSubscription())
+  const getSubscription = vi.fn(async () => existingSubscription)
+  const registration = {
+    pushManager: { subscribe, getSubscription },
+    showNotification: vi.fn(),
+  }
+
+  Object.defineProperty(navigator, 'serviceWorker', {
+    writable: true,
+    configurable: true,
+    value: {
+      register: vi.fn(async () => registration),
+      getRegistration: vi.fn(async () => registration),
+      addEventListener: vi.fn(),
+      removeEventListener: vi.fn(),
+    },
+  })
+
+  window.PushManager = vi.fn()
+  global.Notification = {
+    permission,
+    requestPermission: vi.fn(async () => requestResult),
+  }
+
+  return { registration, subscribe, getSubscription }
+}
+
+/** A PushSubscription shaped like the browser's. */
+export function makePushSubscription(endpoint = 'https://push.example.com/test-endpoint') {
+  return {
+    endpoint,
+    options: { applicationServerKey: null },
+    unsubscribe: vi.fn(async () => true),
+    toJSON: () => ({ endpoint, keys: { p256dh: 'test-p256dh', auth: 'test-auth' } }),
+  }
+}
+
 export const mockDemoGames = [
   {
     id: 'game-1',
@@ -74,6 +135,14 @@ export const mockDemoGames = [
 
 const defaultQueueStatus = { queued: false, queuedCount: 0 }
 
+// A deployment with VAPID keys configured but this player not yet subscribed --
+// the state a signed-in player is in before pressing the notify control.
+const defaultPushCapability = {
+  reachable: false,
+  subscriptionCount: 0,
+  publicKey: 'BNcRdreALRFXTkOOUHK1EtK2wtaz5Ry4YfYCA_0QTpQtUbVlUls0VJXg7A8u-Ts1XbjhazAkj7I99e8QcYP7DkM',
+}
+
 function createFetchMock(handlers) {
   return vi.fn(async (_url, init) => {
     const body = JSON.parse(init?.body ?? '{}')
@@ -96,6 +165,24 @@ function createFetchMock(handlers) {
       data = { completeSignInWithCode: handlers.me ?? null }
     } else if (query.includes('completeSignInWithLink')) {
       data = { completeSignInWithLink: handlers.me ?? null }
+    } else if (query.includes('savePushSubscription')) {
+      // A save that succeeded leaves the player reachable -- returning the
+      // pre-save default here would make every registration test pass for the
+      // wrong reason.
+      data = {
+        savePushSubscription: handlers.pushCapabilityAfterSave ?? {
+          reachable: true,
+          subscriptionCount: 1,
+          publicKey: defaultPushCapability.publicKey,
+        },
+      }
+    } else if (query.includes('deletePushSubscription')) {
+      data = {
+        deletePushSubscription: handlers.pushCapabilityAfterDelete
+          ?? { reachable: false, subscriptionCount: 0, publicKey: defaultPushCapability.publicKey },
+      }
+    } else if (query.includes('pushCapability')) {
+      data = { pushCapability: handlers.pushCapability ?? defaultPushCapability }
     } else if (query.includes('logout')) {
       data = { logout: true }
     } else if (query.includes('subscriptionAuth')) {
