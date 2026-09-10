@@ -188,11 +188,48 @@ func (s *Store) fireFormingMatchTx(
 	if err != nil {
 		return nil, err
 	}
-	if len(away) > 0 {
-		// Declining leaves the assignments intact, so the held chairs survive to the
-		// next reconcile. Nobody has been told a match formed, so the players who are
-		// present are still simply queuing rather than watching a stall.
+	switch {
+	case len(away) > 1:
+		// Never hold two chairs at once. One held chair cannot disappoint anybody:
+		// the held player's return is itself the fire condition. Two can — tell both
+		// to come back, one does, and they arrive to a match that never formed.
+		for _, userID := range away {
+			if err := s.releaseFormingSlotsForUserTx(ctx, tx, userID); err != nil {
+				return nil, err
+			}
+		}
+		if err := clearHoldTx(ctx, tx, fm.ID); err != nil {
+			return nil, err
+		}
 		return nil, nil
+
+	case len(away) == 1:
+		expired, err := advanceHoldTx(ctx, tx, fm.ID, away[0], holdWindowFor(false))
+		if err != nil {
+			return nil, err
+		}
+		if !expired {
+			// Declining leaves the assignment intact, so the held chair survives to
+			// the next reconcile. Nobody has been told a match formed, so the players
+			// who are present are still simply queuing rather than watching a stall.
+			return nil, nil
+		}
+		// Out of time. Vacating the chair is not ejecting the player: their waiting
+		// row is untouched, so they stay in line for the next table. They were never
+		// told a match formed, so there is nothing to explain to them.
+		if err := s.releaseFormingSlotsForUserTx(ctx, tx, away[0]); err != nil {
+			return nil, err
+		}
+		if err := clearHoldTx(ctx, tx, fm.ID); err != nil {
+			return nil, err
+		}
+		return nil, nil
+	}
+
+	// Everyone is here. Drop any window left over from an absence that resolved,
+	// so the next one starts from scratch rather than inheriting a stale stamp.
+	if err := clearHoldTx(ctx, tx, fm.ID); err != nil {
+		return nil, err
 	}
 
 	session, err := createModeQueueSessionTx(ctx, tx, joinCtx.Game.ID, joinCtx.Mode.ID, joinCtx.ModeQueue.ID)
