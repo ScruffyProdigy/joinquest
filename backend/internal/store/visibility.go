@@ -2,6 +2,7 @@ package store
 
 import (
 	"context"
+	"database/sql"
 	"fmt"
 
 	"github.com/google/uuid"
@@ -73,4 +74,33 @@ func (s *Store) clearDocumentVisibilityForUser(ctx context.Context, userID uuid.
 		return fmt.Errorf("clear document visibility: %w", err)
 	}
 	return nil
+}
+
+// awayAssignedUsersTx returns the distinct assigned players who hold a live socket
+// with nothing visible behind it, in assignment order.
+//
+// Read inside the caller's transaction, which already holds the advisory lock on
+// the mode queue, so the answer cannot change under a decision made from it.
+func awayAssignedUsersTx(ctx context.Context, tx *sql.Tx, assignments []FormingAssignment) ([]uuid.UUID, error) {
+	seen := make(map[uuid.UUID]struct{}, len(assignments))
+	var away []uuid.UUID
+	for _, assignment := range assignments {
+		if assignment.UserID == nil {
+			continue
+		}
+		userID := *assignment.UserID
+		if _, ok := seen[userID]; ok {
+			continue
+		}
+		seen[userID] = struct{}{}
+
+		var isAway bool
+		if err := tx.QueryRowContext(ctx, `SELECT `+userIsAwayExpr, userID).Scan(&isAway); err != nil {
+			return nil, fmt.Errorf("away assigned users: %w", err)
+		}
+		if isAway {
+			away = append(away, userID)
+		}
+	}
+	return away, nil
 }

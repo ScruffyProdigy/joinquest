@@ -180,6 +180,21 @@ func (s *Store) fireFormingMatchTx(
 		return nil, nil
 	}
 
+	// Every chair is filled, but a filled chair is not an attentive player. Firing
+	// now would drop someone into a game they are not looking at, and the seat is
+	// only recoverable before this point -- once the session exists there is no
+	// chair left to put a replacement in.
+	away, err := awayAssignedUsersTx(ctx, tx, assignments)
+	if err != nil {
+		return nil, err
+	}
+	if len(away) > 0 {
+		// Declining leaves the assignments intact, so the held chairs survive to the
+		// next reconcile. Nobody has been told a match formed, so the players who are
+		// present are still simply queuing rather than watching a stall.
+		return nil, nil
+	}
+
 	session, err := createModeQueueSessionTx(ctx, tx, joinCtx.Game.ID, joinCtx.Mode.ID, joinCtx.ModeQueue.ID)
 	if err != nil {
 		return nil, err
