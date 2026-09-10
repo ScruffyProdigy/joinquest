@@ -8,6 +8,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"log"
 
 	"github.com/scruffyprodigy/joinquest/graph/generated"
 	"github.com/scruffyprodigy/joinquest/graph/model"
@@ -226,8 +227,11 @@ func (r *mutationResolver) StartTableBackfill(ctx context.Context, tableID strin
 		return nil, err
 	}
 
+	// Best-effort, like every other publishQueueResult call site: the backfill is
+	// already committed, so a broker failure is logged rather than surfaced as a
+	// failed mutation for work that did happen.
 	if err := r.publishQueueResult(ctx, result, nil); err != nil {
-		return nil, err
+		log.Printf("table backfill: publish result for queue %s: %v", result.ModeQueueID, err)
 	}
 
 	r.scheduleFormingReconcile(result.ModeQueueID)

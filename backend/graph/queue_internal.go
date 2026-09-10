@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"log"
 
 	"github.com/google/uuid"
 	"github.com/scruffyprodigy/joinquest/graph/model"
@@ -52,14 +53,18 @@ func (r *mutationResolver) joinQueueInternal(ctx context.Context, modeQueueID uu
 		return nil, err
 	}
 
+	// Both publishes are best-effort: the join — and the switch that preceded it —
+	// are committed by the time either runs, so failing the mutation here would
+	// report an error for a queue entry that exists. Log and let the player have
+	// their join; the reconcile loop re-publishes the count shortly after.
 	if result.SwitchedFrom != nil {
 		if err := r.publishQueueSwitchFrom(ctx, st, result.SwitchedFrom, userID); err != nil {
-			return nil, err
+			log.Printf("join queue: publish switch-from for %s: %v", userID, err)
 		}
 	}
 
 	if err := r.publishQueueResult(ctx, result, nil); err != nil {
-		return nil, err
+		log.Printf("join queue: publish result for queue %s: %v", result.ModeQueueID, err)
 	}
 
 	r.scheduleFormingReconcile(result.ModeQueueID)
