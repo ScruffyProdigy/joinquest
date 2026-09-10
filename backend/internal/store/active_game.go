@@ -128,6 +128,17 @@ func resetRoomTableAfterSessionTx(ctx context.Context, tx *sql.Tx, sessionID uui
 		return err
 	}
 
+	var modeID uuid.UUID
+	if err := tx.QueryRowContext(ctx, `
+		SELECT mode_id FROM room_tables WHERE id = $1
+	`, tableID).Scan(&modeID); err != nil {
+		return err
+	}
+	mode, err := getGameModeByID(ctx, tx, modeID)
+	if err != nil {
+		return err
+	}
+
 	if _, err := tx.ExecContext(ctx, `DELETE FROM table_seats WHERE table_id = $1`, tableID); err != nil {
 		return err
 	}
@@ -139,12 +150,19 @@ func resetRoomTableAfterSessionTx(ctx context.Context, tx *sql.Tx, sessionID uui
 		return err
 	}
 
-	for _, p := range participants {
-		if _, err := tx.ExecContext(ctx, `
-			INSERT INTO table_seats (table_id, user_id, seat_key)
-			VALUES ($1, $2, $3)
-		`, tableID, p.UserID, p.SeatKey); err != nil {
-			return err
+	// Re-seating a returning group pre-empts the choice they came back to make: who
+	// plays spymaster this round, which character to bring. So it happens only where
+	// there is nothing to choose at all — one seat class and no pre-queue options — and
+	// is then pure convenience (JQ-232). Everywhere else the table comes back empty and
+	// every returner appears on the "Picking a seat" card until they answer.
+	if !ModeOffersPreMatchChoice(mode) {
+		for _, p := range participants {
+			if _, err := tx.ExecContext(ctx, `
+				INSERT INTO table_seats (table_id, user_id, seat_key)
+				VALUES ($1, $2, $3)
+			`, tableID, p.UserID, p.SeatKey); err != nil {
+				return err
+			}
 		}
 	}
 

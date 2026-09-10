@@ -30,7 +30,11 @@ func (r *Resolver) publishMatchEvent(ctx context.Context, sessionID uuid.UUID, e
 // loadMatchResultModel maps a match's stored outcome onto the GraphQL model. It is
 // deliberately free of resolver state and does no authorization of its own — every caller
 // gates on requireMatchParticipant first.
-func loadMatchResultModel(ctx context.Context, st *store.Store, sessionID uuid.UUID) (*model.MatchResult, error) {
+//
+// viewerID is the caller, and it is only ever used for the fields that are answers to
+// "how does *this* player get back in" — today that is groupPlay. The standings do not
+// vary by viewer.
+func loadMatchResultModel(ctx context.Context, st *store.Store, sessionID, viewerID uuid.UUID) (*model.MatchResult, error) {
 	result, err := st.GetMatchResult(ctx, sessionID)
 	if err != nil {
 		return nil, err
@@ -61,6 +65,18 @@ func loadMatchResultModel(ctx context.Context, st *store.Store, sessionID uuid.U
 		return nil, err
 	}
 
+	// The return context is the lobby's isGroupPlay: "room" means this player reached the
+	// match from a table they were sitting at with a group, anything else means they came
+	// through the catalog queue on their own (JQ-232). It is stamped when the session
+	// starts and never rewritten, which is what makes it usable here — room_tables.
+	// session_id is cleared by the post-match reset, and game_sessions.regroup_table_id is
+	// stamped by whichever player claims first, so neither can answer this per player.
+	returnCtx, err := st.GetParticipantReturnContext(ctx, sessionID, viewerID)
+	if err != nil && !errors.Is(err, store.ErrNotFound) {
+		return nil, err
+	}
+	groupPlay := returnCtx.Kind == store.ReturnKindRoom
+
 	out := &model.MatchResult{
 		MatchID:           sessionID.String(),
 		Game:              ToGraphQLGame(game),
@@ -71,6 +87,7 @@ func loadMatchResultModel(ctx context.Context, st *store.Store, sessionID uuid.U
 		EndedAt:           result.EndedAt,
 		Participants:      make([]*model.MatchParticipantResult, 0, len(result.Participants)),
 		RegroupInviteCode: inviteCode,
+		GroupPlay:         groupPlay,
 	}
 
 	for i := range result.Participants {

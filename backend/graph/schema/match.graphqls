@@ -54,6 +54,15 @@ type MatchResult {
   participants: [MatchParticipantResult!]!
   """Set once a regroup table exists, so the client can route to it."""
   regroupInviteCode: String
+  """
+  Whether the viewer reached this match through a room table rather than the catalog
+  queue — the lobby's answer to the prototype's `isGroupPlay` prop.
+
+  Read from the viewer's own return context, which is stamped when the session starts
+  and never rewritten. Per viewer, not per match: a stranger backfilled into a group's
+  table did queue alone, and their rejoin is a solo one.
+  """
+  groupPlay: Boolean!
 }
 
 type PlayAgainResult {

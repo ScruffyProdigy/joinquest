@@ -4,9 +4,11 @@ import (
 	"context"
 	"database/sql"
 	"errors"
+	"strings"
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/scruffyprodigy/joinquest/internal/prequeue"
 )
 
 // ErrNoRegroupMode is returned when a finished session has no mode to rebuild a table from.
@@ -103,17 +105,39 @@ func (s *Store) ClaimRegroupTable(ctx context.Context, sessionID, userID uuid.UU
 		return nil, nil, err
 	}
 
-	// A full table is an error, not a silent seatless opt-in: the stamp below must only
-	// ever mark a real seat holder, or the roster reads IN for someone the king cannot
-	// actually start with.
-	seatKey, err := s.firstOpenSeatKeyTx(ctx, tx, table, userID)
+	mode, err := getGameModeByID(ctx, tx, table.ModeID)
 	if err != nil {
 		return nil, nil, err
 	}
-	if seatKey != "" {
-		// A regroup seats the player where they already were; they re-open the
-		// picker themselves before the table starts.
-		if _, err := s.sitAtTableTx(ctx, tx, table.ID, userID, seatKey, nil); err != nil {
+	previous, err := loadParticipantSeatingTx(ctx, tx, sessionID, userID)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	// Three rules, one principle: a selection is carried forward only where the player
+	// would not plausibly re-make it (JQ-232).
+	//
+	//	nothing to choose	seat them — re-clicking an identical seat is friction
+	//	a choice, group play	seat nobody — the group chooses again on /group
+	//	a choice, solo play	replay the seat and the options they just had
+	//
+	// The solo and the group rule are different by design, not by oversight: a solo
+	// player almost always wants exactly what they just had, while a group came back
+	// to rotate the spymaster or bring a different character. Tests assert both, so
+	// neither is later "fixed" into the other.
+	switch {
+	case !ModeOffersPreMatchChoice(mode):
+		if err := s.seatRegroupClaimantTx(ctx, tx, table, userID, "", nil); err != nil {
+			return nil, nil, err
+		}
+	case previous.GroupPlay:
+		// Seatless on purpose, and the opt-in stamp below still records them as back.
+		// An IN who holds no seat is not a broken state here — it is exactly "returned,
+		// still picking", which is what the "Picking a seat" card renders. Starting is
+		// gated on seats by canStart, never on this stamp, so the king cannot start on
+		// the strength of someone who has not sat down.
+	default:
+		if err := s.seatRegroupClaimantTx(ctx, tx, table, userID, previous.SeatKey, previous.Options); err != nil {
 			return nil, nil, err
 		}
 	}
@@ -166,14 +190,35 @@ func (s *Store) loadFormingRegroupTableTx(ctx context.Context, tx *sql.Tx, regro
 	return table, nil
 }
 
-// firstOpenSeatKeyTx picks the first unoccupied seat key.
+// seatRegroupClaimantTx seats a claimant the rules say should be seated, preferring the
+// seat they name. A caller who already holds a seat is left where they are.
+func (s *Store) seatRegroupClaimantTx(ctx context.Context, tx *sql.Tx, table *RoomTable, userID uuid.UUID, preferred string, options []prequeue.Selection) error {
+	seatKey, err := s.regroupSeatKeyTx(ctx, tx, table, userID, preferred)
+	if err != nil {
+		return err
+	}
+	if seatKey == "" {
+		return nil
+	}
+	if _, err := s.sitAtTableTx(ctx, tx, table.ID, userID, seatKey, options); err != nil {
+		return err
+	}
+	return nil
+}
+
+// regroupSeatKeyTx picks the seat a claimant takes: the one they ask for when it is still
+// theirs to take, otherwise another seat in the same role, otherwise the first open one.
+//
+// The preference is what makes a solo replay honest. Falling back within the role first
+// matters for a mode whose seats are per-role rather than pooled: "you had a Guesser seat"
+// survives even though "you had Guesser-3" did not.
 //
 // The two "no seat key to take" outcomes are deliberately distinct. A caller who already
-// holds a seat here gets ("", nil) — a room-table group is re-seated by
-// resetRoomTableAfterSessionTx, so opting in must not move anyone. A caller who cannot be
-// seated because every seat is taken gets ErrTableFull, because the regroup table lives in
-// a pre-existing room whose other members can take its seats through SitAtTable.
-func (s *Store) firstOpenSeatKeyTx(ctx context.Context, tx *sql.Tx, table *RoomTable, userID uuid.UUID) (string, error) {
+// holds a seat here gets ("", nil), so claiming twice never moves anyone. A caller who
+// cannot be seated because every seat is taken gets ErrTableFull, because the regroup
+// table lives in a pre-existing room whose other members can take its seats through
+// SitAtTable.
+func (s *Store) regroupSeatKeyTx(ctx context.Context, tx *sql.Tx, table *RoomTable, userID uuid.UUID, preferred string) (string, error) {
 	modeSeats, err := listGameModeSeats(ctx, tx, table.ModeID)
 	if err != nil {
 		return "", err
@@ -189,6 +234,26 @@ func (s *Store) firstOpenSeatKeyTx(ctx context.Context, tx *sql.Tx, table *RoomT
 		}
 		taken[seat.SeatKey] = true
 	}
+
+	preferred = strings.TrimSpace(preferred)
+	preferredPath := ""
+	for _, seat := range modeSeats {
+		if seat.SeatKey != preferred {
+			continue
+		}
+		if !taken[seat.SeatKey] {
+			return seat.SeatKey, nil
+		}
+		preferredPath = seatQueuePathValue(seat)
+	}
+	if preferredPath != "" {
+		for _, seat := range modeSeats {
+			if !taken[seat.SeatKey] && seatQueuePathValue(seat) == preferredPath {
+				return seat.SeatKey, nil
+			}
+		}
+	}
+
 	for _, seat := range modeSeats {
 		if !taken[seat.SeatKey] {
 			return seat.SeatKey, nil

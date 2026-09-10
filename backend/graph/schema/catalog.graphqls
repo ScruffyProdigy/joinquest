@@ -72,6 +72,16 @@ type GameMode {
   """
   preQueueGroups: [PreQueueGroup!]!
   """
+  True when this mode asks a player to choose something before play: more than one
+  seat class, or any pre-queue option group.
+
+  Rejoin seating keys on this, and so does the return screen (JQ-232). A mode with
+  nothing to choose re-seats its returning players automatically; a mode with a choice
+  leaves a returning group unseated so they can make it again, and gives a returning
+  solo player a way to re-open the choices instead of replaying them.
+  """
+  hasPreMatchChoice: Boolean!
+  """
   This player's actual choices, live from the game. Null when the mode declares
   no groups; unavailable (rather than empty) when the game cannot be reached.
   """
