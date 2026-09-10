@@ -162,8 +162,11 @@ func TestTableSitStart(t *testing.T) {
 	if err != nil {
 		t.Fatalf("ListTableSeats after complete: %v", err)
 	}
-	if len(seatedAfter) != 4 {
-		t.Fatalf("seated after complete = %d, want 4", len(seatedAfter))
+	// Word Hunt has a Clue Giver and Guessers, so there is a role to rotate and the
+	// table comes back empty for the group to choose again (JQ-232). Only a mode with
+	// nothing to choose re-seats — see rejoin_seating_test.go for both halves.
+	if len(seatedAfter) != 0 {
+		t.Fatalf("seated after complete = %d, want 0", len(seatedAfter))
 	}
 
 	for _, userID := range []uuid.UUID{host.ID, guest.ID, third.ID, fourth.ID} {

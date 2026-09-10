@@ -94,6 +94,13 @@ export default function PreQueueOptionsSheet({
   queueOptions,
   busy = false,
   error = null,
+  // The same picker answers two questions. From the catalog it is the last step before
+  // matchmaking, so it keeps that CTA whole — "Jump in" behind its zap (JQ-249). From the
+  // group screen it is how a seat is claimed, where that label would be a lie and the
+  // surrounding Claim/Leave buttons carry no icons, so both are overridden (JQ-232).
+  confirmLabel = JUMP_IN,
+  busyLabel = FINDING_PLAYERS,
+  confirmIcon = <ZapIcon aria-hidden="true" focusable="false" />,
   onConfirm,
   onClose,
 }) {
@@ -178,8 +185,8 @@ export default function PreQueueOptionsSheet({
             disabled={!ready || busy}
             onClick={() => onConfirm(selectionsFromPicks(groups, picks))}
           >
-            <ZapIcon aria-hidden="true" focusable="false" />
-            {busy ? FINDING_PLAYERS : JUMP_IN}
+            {confirmIcon}
+            {busy ? busyLabel : confirmLabel}
           </Button>
         </footer>
       </section>

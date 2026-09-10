@@ -9,6 +9,7 @@ import {
   formatRegroupInCount,
   REGROUP_ANOTHER_ROUND,
   REGROUP_BACK_TO_TABLE,
+  REGROUP_CHOOSE_AGAIN,
   REGROUP_FIND_SOMETHING_NEW,
   REGROUP_IN,
   REGROUP_OUT,
@@ -25,9 +26,10 @@ const STATE_LABEL = {
 
 /**
  * Only `IN` counts. `PENDING` means the player has not returned or has not chosen yet, and
- * the table's seat count is no substitute either: a room-table group is re-seated
- * automatically when their match completes, so seats read as full before anyone has
- * actually opted in.
+ * the table's seat count is no substitute either, in both directions. A group whose mode has
+ * nothing to choose is re-seated the moment their match completes, so seats read as full
+ * before anyone has opted in; a group whose mode has a role or an option to pick is left
+ * standing on purpose, so an opted-in player can hold no seat at all (JQ-232).
  *
  * This number is reported, never enforced. `playAgain` is the only thing in the whole
  * system that moves a participant to IN, and this card's primary button is its only
@@ -71,8 +73,9 @@ function RegroupRow({ participant, viewerId }) {
 }
 
 /**
- * The regroup roster and the three ways out of it: another round with this group,
- * back to the game's other modes, or away entirely.
+ * The regroup roster and the ways out of it: another round with this group, back to the
+ * game — or, for a solo player whose selections would otherwise be replayed, back to the
+ * game to make them again — and away entirely.
  */
 export default function RegroupCard({
   result,
@@ -82,6 +85,7 @@ export default function RegroupCard({
   onPlayAgain,
   onDecline,
   onBackToGame,
+  onChooseAgain,
 }) {
   const participants = result?.participants ?? []
   const game = result?.game
@@ -89,7 +93,14 @@ export default function RegroupCard({
   // Already IN means the seat is claimed and the table exists: opting in again is not a
   // thing to ask for, so the same button becomes the way back to that table.
   const viewerIn = viewerRegroup(participants, viewerId) === 'IN'
-  const showBackToGame = (game?.modes?.length ?? 0) > 1
+  // A solo player's primary action replays the role and options they just had, so they are
+  // the only ones who need a way to reach those choices again — a group was never given
+  // them back (JQ-232).
+  const showChooseAgain =
+    result?.groupPlay === false && Boolean(result?.mode?.hasPreMatchChoice) && !viewerIn
+  // Both lead back to the game, so only one is offered; the more specific promise wins. The
+  // `modes.length > 1` gate on the general one is JQ-233's to revisit, not this change's.
+  const showBackToGame = !showChooseAgain && (game?.modes?.length ?? 0) > 1
 
   return (
     <Card>
@@ -113,6 +124,11 @@ export default function RegroupCard({
           <Button type="button" disabled={busy} onClick={onPlayAgain}>
             {viewerIn ? REGROUP_BACK_TO_TABLE : REGROUP_ANOTHER_ROUND}
           </Button>
+          {showChooseAgain ? (
+            <Button type="button" variant="outline" disabled={busy} onClick={onChooseAgain}>
+              {REGROUP_CHOOSE_AGAIN}
+            </Button>
+          ) : null}
           {showBackToGame ? (
             <Button type="button" variant="outline" disabled={busy} onClick={onBackToGame}>
               {formatBackToGame(game?.name)}

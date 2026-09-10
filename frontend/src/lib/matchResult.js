@@ -14,6 +14,9 @@ const MATCH_RESULT_FIELDS = `
   complete
   endedAt
   regroupInviteCode
+  # Did this viewer reach the match from a table they sat at with a group, or from the
+  # catalog queue on their own. The rejoin rules differ by design (JQ-232).
+  groupPlay
   game {
     id
     slug
@@ -31,6 +34,9 @@ const MATCH_RESULT_FIELDS = `
     modeKey
     displayName
     minPlayers
+    # Is there anything to choose here at all: a role select, or pre-queue options. A
+    # solo player whose mode has neither gets no "choose again" action.
+    hasPreMatchChoice
   }
   participants {
     user {

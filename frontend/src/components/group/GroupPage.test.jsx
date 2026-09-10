@@ -18,6 +18,12 @@ vi.mock('../../lib/tables', async (importOriginal) => ({
   startTable: (...args) => mutations.startTable(...args),
 }))
 
+const fetchModeQueueOptions = vi.fn()
+vi.mock('../../lib/games', async (importOriginal) => ({
+  ...(await importOriginal()),
+  fetchModeQueueOptions: (...args) => fetchModeQueueOptions(...args),
+}))
+
 const navigateTo = vi.fn()
 vi.mock('../../lib/usePathname', () => ({
   navigateTo: (...args) => navigateTo(...args),
@@ -51,8 +57,13 @@ function makeTable(overrides = {}) {
   return {
     id: 'table-1',
     createdAt: '2026-09-01T00:00:00Z',
-    game: { name: 'Word Hunt', accentColor: '#f2b134' },
-    mode: { displayName: 'Arena', queuePaths: [{ queuePath: 'Player', minPlayers: 2, maxPlayers: 2 }] },
+    game: { id: 'game-1', name: 'Word Hunt', accentColor: '#f2b134' },
+    mode: {
+      id: 'mode-1',
+      displayName: 'Arena',
+      queuePaths: [{ queuePath: 'Player', minPlayers: 2, maxPlayers: 2 }],
+      preQueueGroups: [],
+    },
     king,
     canStart: false,
     seats: [],
@@ -254,5 +265,108 @@ describe('GroupPage', () => {
     const players = screen.getByRole('region', { name: 'Players' })
     expect(players).toHaveTextContent('Player × 2')
     expect(players).not.toHaveTextContent('1 × 2')
+  })
+
+  // The rejoin surface is a destination, not a trap: a player who would rather go back to
+  // matchmaking must be able to say so here, in words (JQ-232).
+  it('offers a named way back to matchmaking', () => {
+    render(<GroupPage />)
+
+    expect(screen.getByRole('link', { name: 'Find something new' })).toHaveAttribute('href', '/')
+  })
+
+  describe('a mode with pre-queue options', () => {
+    function tableWithOptions(overrides = {}) {
+      return makeTable({
+        mode: {
+          id: 'mode-1',
+          displayName: 'Duel',
+          queuePaths: [{ queuePath: 'Player', minPlayers: 2, maxPlayers: 2 }],
+          preQueueGroups: [
+            { key: 'helpers', kind: 'LOADOUT', label: 'Choose your two helpers', min: 2, max: 2 },
+          ],
+        },
+        ...overrides,
+      })
+    }
+
+    const roster = {
+      available: true,
+      unavailableReason: null,
+      groups: [
+        {
+          key: 'helpers',
+          choices: [
+            { id: 'ferrus', label: 'Ferrus', description: null, locked: false },
+            { id: 'tempered', label: 'Tempered', description: null, locked: false },
+          ],
+        },
+      ],
+    }
+
+    it('opens the picker instead of seating the player straight away', async () => {
+      const user = userEvent.setup()
+      fetchModeQueueOptions.mockResolvedValue(roster)
+      currentRoom = makeRoom(tableWithOptions())
+      render(<GroupPage />)
+
+      await user.click(screen.getAllByRole('button', { name: /claim/i })[0])
+
+      expect(await screen.findByRole('dialog')).toHaveTextContent('Choose your two helpers')
+      expect(mutations.sitAtTable).not.toHaveBeenCalled()
+      expect(fetchModeQueueOptions).toHaveBeenCalledWith('game-1', 'mode-1', 'u1')
+    })
+
+    it('passes the picks through to sitAtTable', async () => {
+      const user = userEvent.setup()
+      fetchModeQueueOptions.mockResolvedValue(roster)
+      currentRoom = makeRoom(tableWithOptions())
+      render(<GroupPage />)
+
+      await user.click(screen.getAllByRole('button', { name: /claim/i })[0])
+      await screen.findByRole('dialog')
+      await user.click(screen.getByRole('button', { name: 'Ferrus' }))
+      await user.click(screen.getByRole('button', { name: 'Tempered' }))
+      await user.click(screen.getByRole('button', { name: 'Take this seat' }))
+
+      await waitFor(() =>
+        expect(mutations.sitAtTable).toHaveBeenCalledWith('table-1', 'p-1', [
+          { groupKey: 'helpers', optionIds: ['ferrus', 'tempered'] },
+        ]),
+      )
+    })
+
+    // Whatever the group brought last round, the sheet opens blank. Pre-selecting last
+    // round's character pre-empts the re-choosing just as firmly as pre-seating does.
+    it('pre-selects nothing, so the seat cannot be claimed without answering', async () => {
+      const user = userEvent.setup()
+      fetchModeQueueOptions.mockResolvedValue(roster)
+      currentRoom = makeRoom(
+        tableWithOptions({
+          regroupRoster: [{ user: { id: 'u1', displayName: 'Pat' }, role: 'p-1', regroup: 'PENDING' }],
+        }),
+      )
+      render(<GroupPage />)
+
+      await user.click(screen.getAllByRole('button', { name: /claim/i })[0])
+      await screen.findByRole('dialog')
+
+      expect(screen.getByRole('button', { name: 'Ferrus' })).toHaveAttribute('aria-pressed', 'false')
+      expect(screen.getByRole('button', { name: 'Take this seat' })).toBeDisabled()
+    })
+
+    // The roster comes only from the game, so an unreachable game must say so rather than
+    // seating the player with no picks at all.
+    it('says so when the roster cannot be reached', async () => {
+      const user = userEvent.setup()
+      fetchModeQueueOptions.mockRejectedValue(new Error('Word Hunt is not answering.'))
+      currentRoom = makeRoom(tableWithOptions())
+      render(<GroupPage />)
+
+      await user.click(screen.getAllByRole('button', { name: /claim/i })[0])
+
+      expect(await screen.findByRole('dialog')).toHaveTextContent('Word Hunt is not answering.')
+      expect(screen.getByRole('button', { name: 'Take this seat' })).toBeDisabled()
+    })
   })
 })

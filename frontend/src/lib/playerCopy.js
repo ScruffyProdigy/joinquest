@@ -352,6 +352,16 @@ export const REGROUP_ANOTHER_ROUND = 'Another round'
 /** Shown instead of "Another round" once you are already in: the seat is claimed, so go sit in it. */
 export const REGROUP_BACK_TO_TABLE = 'Back to the table'
 export const REGROUP_FIND_SOMETHING_NEW = 'Find something new'
+// A solo player's primary action replays the role and options they just had, so this is
+// how they reach those choices instead. Absent, not disabled, when there is nothing to
+// choose (JQ-232).
+export const REGROUP_CHOOSE_AGAIN = 'Choose again'
+
+// Confirms the pre-queue picker when it is claiming a seat rather than joining a queue.
+export const GROUP_TAKE_SEAT = 'Take this seat'
+export const GROUP_TAKING_SEAT = 'Taking your seat…'
+// The way off the group screen that is not "leave": the rejoin surface is a destination.
+export const GROUP_FIND_SOMETHING_NEW = 'Find something new'
 
 export function formatBackToGame(gameName) {
   return `Back to ${gameName}`

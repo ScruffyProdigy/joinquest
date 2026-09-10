@@ -251,6 +251,12 @@ export default function ReturnPage() {
                 onPlayAgain={handlePlayAgain}
                 onDecline={() => declineThenLeave(null)}
                 onBackToGame={() => declineThenLeave(gameDetailPath)}
+                // Same destination as "Back to <game>", and only ever offered in its
+                // place: the mode's picker lives on the game page, so re-opening the
+                // choices means going there rather than duplicating the sheet here.
+                // Declining first is right — this player is not taking the fast path
+                // back to this table, and the others should see that (JQ-232).
+                onChooseAgain={() => declineThenLeave(gameDetailPath)}
               />
               {regroupError ? (
                 <p className="status-message status-message-error" role="alert">

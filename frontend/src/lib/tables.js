@@ -31,6 +31,15 @@ export const TABLE_FIELDS = `
       minPlayers
       maxPlayers
     }
+    # The declaration only. The player's own roster comes live from the game and is
+    # fetched when the picker opens, not on every table update (JQ-232).
+    preQueueGroups {
+      key
+      kind
+      label
+      min
+      max
+    }
   }
   king {
     ${PUBLIC_PLAYER_FIELDS}
@@ -109,8 +118,8 @@ const CREATE_PRIVATE_TABLE = `
 `
 
 const SIT_AT_TABLE = `
-  mutation SitAtTable($tableId: ID!, $seatKey: String!) {
-    sitAtTable(tableId: $tableId, seatKey: $seatKey) {
+  mutation SitAtTable($tableId: ID!, $seatKey: String!, $options: [QueueOptionSelectionInput!]) {
+    sitAtTable(tableId: $tableId, seatKey: $seatKey, options: $options) {
       ${TABLE_FIELDS}
     }
   }
@@ -159,8 +168,10 @@ export async function createPrivateTable(gameId, modeId) {
   return data.createPrivateTable
 }
 
-export async function sitAtTable(tableId, seatKey) {
-  const data = await graphqlRequest(SIT_AT_TABLE, { tableId, seatKey })
+// Each player answers the picker for themselves on the way into the seat, so options is
+// per claim. Left null for a mode that declares no groups.
+export async function sitAtTable(tableId, seatKey, options) {
+  const data = await graphqlRequest(SIT_AT_TABLE, { tableId, seatKey, options: options ?? null })
   return data.sitAtTable
 }
 
