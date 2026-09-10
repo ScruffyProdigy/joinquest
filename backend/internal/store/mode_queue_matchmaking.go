@@ -115,7 +115,7 @@ func (s *Store) GetGameModeByID(ctx context.Context, modeID uuid.UUID) (*GameMod
 
 func getGameModeByID(ctx context.Context, q sqlQueryRowContext, modeID uuid.UUID) (*GameMode, error) {
 	row := q.QueryRowContext(ctx, `
-		SELECT id, game_id, mode_key, display_name, min_players, max_players, social_mode, typical_minutes, seat_template, pre_queue, status, created_at, updated_at
+		SELECT id, game_id, mode_key, display_name, min_players, max_players, social_mode, typical_minutes, seat_template, pre_queue, skill_matching_enabled, status, created_at, updated_at
 		FROM game_modes
 		WHERE id = $1
 	`, modeID)
