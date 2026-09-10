@@ -31,7 +31,7 @@ export default function GroupPage() {
 
   if (!table) {
     return (
-      <main className="app-shell">
+      <main className="app-shell px-6 py-8">
         <h1>Your Group</h1>
         <p className="status-message" role="status">
           This group has ended.
@@ -88,12 +88,12 @@ export default function GroupPage() {
       <GroupHeader table={table} room={room} busy={busy} onLeave={handleLeaveGroup} />
 
       {error ? (
-        <p className="status-message status-message-error" role="status">
+        <p className="status-message status-message-error px-4 pt-4" role="status">
           {error}
         </p>
       ) : null}
 
-      <GroupInviteCard room={room} />
+      <GroupInviteCard room={room} game={table.game} />
 
       <GroupSeatList
         table={table}

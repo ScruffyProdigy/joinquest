@@ -1,4 +1,4 @@
-import { displayName, isKing, mySeatKeyOnTable } from './tables'
+import { displayName, isKing, mySeatKeyOnTable, seatSectionTitle } from './tables'
 
 /**
  * The group screen is a presentation over the room+table substrate: one table in a
@@ -16,13 +16,39 @@ function seatCounts(table) {
   return { total: slots.length, seated: slots.filter((slot) => slot.user).length }
 }
 
-/** Header status: the roles still missing, else readiness. */
-export function groupStatusLine(table) {
-  const { total, seated } = seatCounts(table)
-  const missing = (table?.formingGaps ?? [])
+/**
+ * The roles a table is still short of. `formingGaps` is the API's answer and is
+ * preferred, but it is empty for a private table nobody is queueing to fill — and the
+ * header still has to name what is missing rather than count seats. The open slots
+ * carry it: a mode that names no roles leaves them numbered, and `seatSectionTitle`
+ * turns that into "Player".
+ */
+function missingRoleNames(table) {
+  const gaps = (table?.formingGaps ?? [])
     .filter((gap) => (gap.needed ?? 0) > (gap.assigned ?? 0))
     .map((gap) => gap.displayName || gap.queuePath)
     .filter(Boolean)
+  if (gaps.length > 0) {
+    return gaps
+  }
+
+  const names = []
+  for (const slot of table?.seatSlots ?? []) {
+    if (slot.user) {
+      continue
+    }
+    const name = seatSectionTitle([slot])
+    if (!names.includes(name)) {
+      names.push(name)
+    }
+  }
+  return names
+}
+
+/** Header status: the roles still missing, else readiness. */
+export function groupStatusLine(table) {
+  const { total, seated } = seatCounts(table)
+  const missing = missingRoleNames(table)
 
   if (missing.length > 0) {
     return `Still need: ${missing.join(', ')}`

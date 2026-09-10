@@ -228,4 +228,31 @@ describe('GroupPage', () => {
     expect(screen.getByRole('region', { name: /invite friends/i })).toBeInTheDocument()
     expect(screen.queryByText(/room code/i)).not.toBeInTheDocument()
   })
+
+  it('invites with a QR and one Share Link, not a row of ways to send a URL', async () => {
+    render(<GroupPage />)
+
+    const invite = screen.getByRole('region', { name: /invite friends/i })
+    expect(await screen.findByRole('img', { name: /qr code to join/i })).toBeInTheDocument()
+    const labels = [...invite.querySelectorAll('button')].map((button) =>
+      button.textContent.trim(),
+    )
+    expect(labels).toEqual(['Share Link'])
+  })
+
+  it('names the role on the seat row even when the seats are only numbered', () => {
+    currentRoom = makeRoom(
+      makeTable({
+        seatSlots: [
+          { seatKey: 'p-1', queuePath: 'Player', displayName: '1', user: null },
+          { seatKey: 'p-2', queuePath: 'Player', displayName: '2', user: null },
+        ],
+      }),
+    )
+    render(<GroupPage />)
+
+    const players = screen.getByRole('region', { name: 'Players' })
+    expect(players).toHaveTextContent('Player × 2')
+    expect(players).not.toHaveTextContent('1 × 2')
+  })
 })

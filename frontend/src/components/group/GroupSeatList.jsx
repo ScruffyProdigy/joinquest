@@ -3,34 +3,33 @@ import {
   firstOpenSeatKey,
   groupSeatSlotsForDisplay,
   isPooledRoleGroup,
+  seatSectionTitle,
 } from '../../lib/tables'
+import { accentBaseFor } from '../../lib/gameAccent'
 import PlayerAvatar from '../avatars/PlayerAvatar'
 import { Button } from '../ui/button'
 import { Card, CardContent } from '../ui/card'
 
-function sectionTitle(slots, fallback) {
-  return slots[0]?.displayName?.split(' · ')[0]?.trim() || fallback
-}
-
-function SeatGroup({ title, slots, userId, busy, onClaim, onLeaveSeat }) {
+function SeatGroup({ title, slots, accent, userId, busy, onClaim, onLeaveSeat }) {
   const seatedHere = slots.some((slot) => slot.user?.id && slot.user.id === userId)
   const openSeatKey = firstOpenSeatKey(slots)
   const pooled = isPooledRoleGroup(slots)
 
   return (
     <div className="flex items-center justify-between gap-3 border-t px-4 py-3 first:border-t-0">
-      <p className="text-sm font-medium">
-        {title} <span className="text-muted-foreground">× {slots.length}</span>
+      <p className="text-sm font-semibold">
+        {title} <span className="font-normal text-muted-foreground">× {slots.length}</span>
       </p>
-      <div className="flex items-center gap-2">
-        <div className="flex -space-x-2">
+      <div className="flex items-center gap-3">
+        <div className="flex gap-1">
           {slots.map((slot) =>
             slot.user ? (
               <PlayerAvatar key={slot.seatKey} user={slot.user} size="sm" />
             ) : (
               <span
                 key={slot.seatKey}
-                className="size-8 rounded-full border border-dashed border-muted-foreground/40"
+                className="box-border size-8 rounded-full border-2 border-dashed"
+                style={{ borderColor: `color-mix(in oklab, ${accent} 45%, transparent)` }}
                 aria-label="Open seat"
               />
             ),
@@ -56,6 +55,7 @@ function SeatGroup({ title, slots, userId, busy, onClaim, onLeaveSeat }) {
 }
 
 export default function GroupSeatList({ table, userId, busy, onClaim, onLeaveSeat }) {
+  const accent = accentBaseFor(table?.game?.slug, table?.game?.accentColor)
   const slots = table?.seatSlots ?? []
   const layout = groupSeatSlotsForDisplay(slots)
   const seated = countSeatedInGroup(slots)
@@ -66,7 +66,7 @@ export default function GroupSeatList({ table, userId, busy, onClaim, onLeaveSea
   } else if (layout.kind === 'teams') {
     groups = layout.teams.map(([prefix, teamSlots]) => [prefix.replace('-', ' '), teamSlots])
   } else {
-    groups = layout.slots.length ? [[sectionTitle(layout.slots, 'Players'), layout.slots]] : []
+    groups = layout.slots.length ? [[seatSectionTitle(layout.slots), layout.slots]] : []
   }
 
   return (
@@ -74,7 +74,12 @@ export default function GroupSeatList({ table, userId, busy, onClaim, onLeaveSea
       <Card className="gap-0 py-0">
         <CardContent className="px-0">
           <div className="flex items-center justify-between px-4 py-3">
-            <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+            <p className="flex items-center gap-3 text-sm font-semibold">
+              <span
+                aria-hidden="true"
+                className="size-2.5 shrink-0 rounded-full"
+                style={{ background: accent }}
+              />
               Players
             </p>
             <p className="text-sm text-muted-foreground">
@@ -86,6 +91,7 @@ export default function GroupSeatList({ table, userId, busy, onClaim, onLeaveSea
               key={title}
               title={title}
               slots={groupSlots}
+              accent={accent}
               userId={userId}
               busy={busy}
               onClaim={onClaim}

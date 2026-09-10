@@ -115,10 +115,14 @@ function MainLayout() {
   useEffect(() => {
     const root = document.getElementById('root')
     root?.classList.toggle('app-root--game-detail', Boolean(gameSlug))
+    // The group screen bleeds to the edges: its header is the top of the screen and
+    // every block below carries its own gutter (JQ-251).
+    root?.classList.toggle('app-root--group', onGroup)
     return () => {
       root?.classList.remove('app-root--game-detail')
+      root?.classList.remove('app-root--group')
     }
-  }, [gameSlug])
+  }, [gameSlug, onGroup])
 
   return onGroup ? (
     <GroupPage />
