@@ -107,11 +107,31 @@ func (s *Store) ReconcileFormingModeQueue(ctx context.Context, modeQueueID uuid.
 			return nil, err
 		}
 		if !decision.Fire {
+			// Spend the choice the deferral bought. Holding accumulates
+			// candidates in the waiting pool, but placement is greedy and
+			// nothing moves a player already seated -- so without this the
+			// budget expires on the identical lobby and the wait bought
+			// nothing.
+			improved, err := s.improveDeferredLobbyTx(ctx, tx, joinCtx, fm)
+			if err != nil {
+				return nil, err
+			}
+			if improved {
+				// Ask again rather than waiting a tick. The deferral is an
+				// upper bound, never a delay spent for its own sake: a lobby
+				// that has just become good enough should fire now.
+				decision, err = s.skillFireDecisionTx(ctx, tx, joinCtx, fm, waiting, time.Now())
+				if err != nil {
+					return nil, err
+				}
+			}
+		}
+		if !decision.Fire {
 			// Not an error and not a stall. The map keeps its players, nobody
 			// has been told a match formed, and the next tick asks again with a
 			// smaller budget -- so this can only repeat until the budget runs
 			// out, at which point the same call fires regardless of dispersion.
-			// Fall through to the not-ready path, which commits the sync above
+			// Fall through to the not-ready path, which commits any swap above
 			// and reports the queue as still forming.
 			gaps = nil
 		}

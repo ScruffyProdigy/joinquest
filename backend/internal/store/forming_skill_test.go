@@ -14,13 +14,20 @@ import (
 // duelQueueForSkill registers a two-seat mode and returns its queue.
 func duelQueueForSkill(t *testing.T, st *Store, cleaner *TestCleaner, ctx context.Context) (uuid.UUID, uuid.UUID) {
 	t.Helper()
+	return seatedQueueForSkill(t, st, cleaner, ctx, 2)
+}
+
+// seatedQueueForSkill registers a single-path mode of the given size.
+func seatedQueueForSkill(t *testing.T, st *Store, cleaner *TestCleaner, ctx context.Context, seats int) (uuid.UUID, uuid.UUID) {
+	t.Helper()
 
 	slug := "skilldu-" + uuid.NewString()
 	manifest := &gameclient.Manifest{
 		Modes: []gameclient.ModeManifest{{
-			Key:          "duel",
-			DisplayName:  "Duel",
-			SeatTemplate: json.RawMessage(`{"Player":{"count":2,"min":2,"max":2,"sizeForQueue":2}}`),
+			Key:         "duel",
+			DisplayName: "Duel",
+			SeatTemplate: json.RawMessage(fmt.Sprintf(
+				`{"Player":{"count":%d,"min":%d,"max":%d,"sizeForQueue":%d}}`, seats, seats, seats, seats)),
 		}},
 		Status:     gameclient.StatusResponse{Game: "Skill Duel", Version: "1.0.0"},
 		ETag:       `"skilldu"`,
@@ -44,12 +51,18 @@ func duelQueueForSkill(t *testing.T, st *Store, cleaner *TestCleaner, ctx contex
 	return result.Game.ID, queue.ID
 }
 
-// rateUser pins a player's mu for this game and mode.
-func rateUser(t *testing.T, st *Store, ctx context.Context, gameID uuid.UUID, userID uuid.UUID, mu float64) {
+// rateUsers pins every player's mu for this game and mode in one call.
+//
+// One call, deliberately: SaveRatings clears the whole (game, mode) before
+// writing, so rating players one at a time leaves only the last one rated and
+// silently sends every other player into the test at the unrated prior.
+func rateUsers(t *testing.T, st *Store, ctx context.Context, gameID uuid.UUID, mus map[uuid.UUID]float64) {
 	t.Helper()
-	if err := st.SaveRatings(ctx, gameID, "duel", "test-engine@1", time.Now(), map[string]RatingValue{
-		PlayerRatingKey(userID): {Mu: mu, Sigma: 1, MatchesPlayed: 20},
-	}, nil); err != nil {
+	players := make(map[string]RatingValue, len(mus))
+	for userID, mu := range mus {
+		players[PlayerRatingKey(userID)] = RatingValue{Mu: mu, Sigma: 1, MatchesPlayed: 20}
+	}
+	if err := st.SaveRatings(ctx, gameID, "duel", "test-engine@1", time.Now(), players, nil); err != nil {
 		t.Fatalf("SaveRatings: %v", err)
 	}
 }
@@ -97,8 +110,7 @@ func TestABusyQueueDefersAWideLobbyAndFiresAnywayOnceTheBudgetIsSpent(t *testing
 	cleaner.TrackUser(high.ID)
 
 	// Far outside both the band and the hard cap.
-	rateUser(t, st, ctx, gameID, low.ID, 5)
-	rateUser(t, st, ctx, gameID, high.ID, 45)
+	rateUsers(t, st, ctx, gameID, map[uuid.UUID]float64{low.ID: 5, high.ID: 45})
 
 	for _, id := range []uuid.UUID{low.ID, high.ID} {
 		if _, err := st.JoinModeQueue(ctx, queueID, id, "", nil); err != nil {
@@ -146,8 +158,7 @@ func TestAThinQueueFiresAWideLobbyImmediately(t *testing.T) {
 	}
 	cleaner.TrackUser(high.ID)
 
-	rateUser(t, st, ctx, gameID, low.ID, 5)
-	rateUser(t, st, ctx, gameID, high.ID, 45)
+	rateUsers(t, st, ctx, gameID, map[uuid.UUID]float64{low.ID: 5, high.ID: 45})
 
 	for _, id := range []uuid.UUID{low.ID, high.ID} {
 		if _, err := st.JoinModeQueue(ctx, queueID, id, "", nil); err != nil {
@@ -193,8 +204,7 @@ func TestAModeWithSkillMatchingOffFiresAWideLobbyOnABusyQueue(t *testing.T) {
 	}
 	cleaner.TrackUser(high.ID)
 
-	rateUser(t, st, ctx, gameID, low.ID, 5)
-	rateUser(t, st, ctx, gameID, high.ID, 45)
+	rateUsers(t, st, ctx, gameID, map[uuid.UUID]float64{low.ID: 5, high.ID: 45})
 
 	for _, id := range []uuid.UUID{low.ID, high.ID} {
 		if _, err := st.JoinModeQueue(ctx, queueID, id, "", nil); err != nil {
