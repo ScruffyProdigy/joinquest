@@ -5,6 +5,7 @@ import GameCard from './GameCard'
 import DeveloperPromoCard from '../developers/DeveloperPromoCard'
 import { Input } from '../ui/input'
 import {
+  ALL_GAMES_HEADING,
   GAMES_SEARCH_EMPTY,
   GAMES_SEARCH_EMPTY_HINT,
   GAMES_SEARCH_LABEL,
@@ -15,7 +16,10 @@ import {
 // games or thirty. Clamped below, so a shorter catalog still ends with it.
 const DEVELOPER_PROMO_SLOT = 3
 
-export default function GameLobby({ headingId }) {
+/** The catalog labels itself, so anything that needs to point at it can. */
+export const CATALOG_HEADING_ID = 'all-games-heading'
+
+export default function GameLobby() {
   const { user, loading: authLoading } = useAuth()
   const [games, setGames] = useState([])
   const [status, setStatus] = useState('idle')
@@ -64,9 +68,13 @@ export default function GameLobby({ headingId }) {
   const promoSlot = Math.min(DEVELOPER_PROMO_SLOT, visibleGames.length)
 
   return (
-    // The visible heading lives in the page header above, so point at it rather
-    // than repeating it here.
-    <section className="game-lobby" aria-labelledby={headingId}>
+    <section className="game-lobby" aria-labelledby={CATALOG_HEADING_ID}>
+      {/* Small and uppercased by CSS, the way the prototype labels the grid. The
+          constant stays sentence case so the accessible name is "All games". */}
+      <h2 id={CATALOG_HEADING_ID} className="catalog-heading">
+        {ALL_GAMES_HEADING}
+      </h2>
+
       {status === 'idle' || status === 'loading' ? (
         <p className="status-message" role="status">
           Loading games…

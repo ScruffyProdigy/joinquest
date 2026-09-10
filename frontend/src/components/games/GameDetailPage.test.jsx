@@ -75,7 +75,7 @@ describe('GameDetailPage', () => {
 
     // Browsing stays open, and the name and avatar are asked for when the
     // visitor acts on one of these rather than on the way in.
-    expect(await screen.findByRole('button', { name: 'Look for group' })).toBeInTheDocument()
+    expect(await screen.findByRole('button', { name: 'Jump in' })).toBeInTheDocument()
     expect(screen.queryByRole('heading', { name: 'Ready to play?' })).not.toBeInTheDocument()
   })
 
@@ -106,7 +106,7 @@ describe('GameDetailPage', () => {
       'src',
       '/games/word-hunt-hero.jpg?v=1',
     )
-    expect(screen.getByRole('button', { name: 'Look for group' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Jump in' })).toBeInTheDocument()
   })
 
   it('shows not found when the slug is unknown', async () => {

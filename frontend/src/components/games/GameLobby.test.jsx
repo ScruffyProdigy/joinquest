@@ -21,7 +21,7 @@ function renderGameLobby() {
   return render(
     <AuthProvider>
       <ActiveRoomProvider>
-        <GameLobby headingId="find-a-game-heading" />
+        <GameLobby />
       </ActiveRoomProvider>
     </AuthProvider>,
   )
@@ -203,7 +203,7 @@ describe('GameLobby', () => {
     }
 
     function promoLink() {
-      return screen.queryByRole('link', { name: /get started for developers/i })
+      return screen.queryByRole('link', { name: /building a game\? get started/i })
     }
 
     it('shows the promo to a signed-out visitor', async () => {

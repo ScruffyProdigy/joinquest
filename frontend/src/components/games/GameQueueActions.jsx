@@ -1,15 +1,25 @@
+import { ZapIcon } from 'lucide-react'
 import {
+  FINDING_PLAYERS,
+  JUMP_IN,
   LAUNCH_GAME,
   LEAVE_MATCH,
-  LOOKING_FOR_GROUP,
-  LOOK_FOR_GROUP,
   PLAY_SOLO,
   STARTING_SOLO,
-  STOP_LOOKING,
+  STOP_FINDING,
   joinAsLabel,
   waitingAsRoleLine,
 } from '../../lib/playerCopy'
 import { Button } from '../ui/button'
+
+/**
+ * The prototype leads its primary CTA with a lucide `zap`. `buttonVariants`
+ * already sizes a slotted svg (`[&_svg]:size-4`), so the icon needs no styling
+ * of its own -- only hiding, so the button's accessible name stays the label.
+ */
+function JumpInIcon() {
+  return <ZapIcon aria-hidden="true" focusable="false" />
+}
 
 function pathOption(path) {
   if (typeof path === 'string') {
@@ -29,7 +39,7 @@ function JoinPathButton({ path, busy, disabled, onJoin, prominent = false }) {
       onClick={() => onJoin(queuePath)}
       disabled={busy || disabled}
     >
-      {busy ? LOOKING_FOR_GROUP : joinAsLabel(displayName)}
+      {busy ? FINDING_PLAYERS : joinAsLabel(displayName)}
     </Button>
   )
 }
@@ -38,9 +48,9 @@ function JoinGroupPanel({ children, prominent = false }) {
   return (
     <section
       className={`join-group-panel${prominent ? ' join-group-panel--prominent' : ''}`}
-      aria-label={LOOK_FOR_GROUP}
+      aria-label={JUMP_IN}
     >
-      <p className="join-group-panel__label">{LOOK_FOR_GROUP}</p>
+      <p className="join-group-panel__label">{JUMP_IN}</p>
       <div className="join-group-panel__actions">{children}</div>
     </section>
   )
@@ -51,9 +61,9 @@ function FifoQueueActions({ queueState, busy, disabled, onJoin, onLeave, promine
   if (queueState === 'waiting') {
     return (
       <div className="game-list-actions game-list-actions--stack">
-        <p className="queue-status-line">{LOOKING_FOR_GROUP}</p>
+        <p className="queue-status-line">{FINDING_PLAYERS}</p>
         <Button size={size} onClick={onLeave} disabled={busy}>
-          {STOP_LOOKING}
+          {STOP_FINDING}
         </Button>
       </div>
     )
@@ -62,7 +72,8 @@ function FifoQueueActions({ queueState, busy, disabled, onJoin, onLeave, promine
   return (
     <div className="game-list-actions">
       <Button size={size} onClick={() => onJoin()} disabled={busy || disabled}>
-        {busy ? LOOKING_FOR_GROUP : LOOK_FOR_GROUP}
+        <JumpInIcon />
+        {busy ? FINDING_PLAYERS : JUMP_IN}
       </Button>
     </div>
   )
@@ -130,7 +141,7 @@ export default function GameQueueActions({
             <p className="queue-status-line">
               {selectedQueuePath
                 ? waitingAsRoleLine(selectedDisplayName || selectedQueuePath)
-                : LOOKING_FOR_GROUP}
+                : FINDING_PLAYERS}
             </p>
             {alternatePaths.map((path) => (
               <JoinPathButton
@@ -143,7 +154,7 @@ export default function GameQueueActions({
               />
             ))}
             <Button size={size} onClick={onLeave} disabled={busy}>
-              {STOP_LOOKING}
+              {STOP_FINDING}
             </Button>
           </>
         ) : (

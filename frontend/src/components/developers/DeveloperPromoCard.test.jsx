@@ -15,7 +15,7 @@ describe('DeveloperPromoCard', () => {
   it('links to the developer portal', () => {
     renderPromoCard()
 
-    expect(screen.getByRole('link', { name: /get started for developers/i })).toHaveAttribute(
+    expect(screen.getByRole('link', { name: /building a game\? get started/i })).toHaveAttribute(
       'href',
       '/developers',
     )
@@ -51,7 +51,7 @@ describe('DeveloperPromoCard', () => {
   it('keeps the same destination in both states', () => {
     renderPromoCard({ noResults: true })
 
-    expect(screen.getByRole('link', { name: /get started for developers/i })).toHaveAttribute(
+    expect(screen.getByRole('link', { name: /building a game\? get started/i })).toHaveAttribute(
       'href',
       '/developers',
     )

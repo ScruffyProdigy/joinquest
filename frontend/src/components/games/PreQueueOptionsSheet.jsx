@@ -1,7 +1,8 @@
 import { useEffect, useMemo, useState } from 'react'
+import { ZapIcon } from 'lucide-react'
 import {
-  LOOK_FOR_GROUP,
-  LOOKING_FOR_GROUP,
+  FINDING_PLAYERS,
+  JUMP_IN,
   OPTIONS_UNAVAILABLE,
   optionsChosenCount,
 } from '../../lib/playerCopy'
@@ -177,7 +178,8 @@ export default function PreQueueOptionsSheet({
             disabled={!ready || busy}
             onClick={() => onConfirm(selectionsFromPicks(groups, picks))}
           >
-            {busy ? LOOKING_FOR_GROUP : LOOK_FOR_GROUP}
+            <ZapIcon aria-hidden="true" focusable="false" />
+            {busy ? FINDING_PLAYERS : JUMP_IN}
           </Button>
         </footer>
       </section>

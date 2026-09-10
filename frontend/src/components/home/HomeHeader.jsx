@@ -1,15 +1,16 @@
 import { homeGreetingLine } from '../../lib/greeting'
-import { FIND_A_GAME_HEADING } from '../../lib/playerCopy'
+import { APP_TAGLINE } from '../../lib/playerCopy'
 import { chosenDisplayName } from '../../lib/viewer'
 import { useAuth } from '../auth/AuthProvider'
 import AccountChip from './AccountChip'
 
-/** The id the catalog grid points at, so the two stay in sync. */
-export const HOME_HEADING_ID = 'find-a-game-heading'
-
 /**
  * Home opens on the catalog, so this header is deliberately small: who you are
- * on the left, the one auth control on the right, and the catalog's heading.
+ * on the left, the one auth control on the right, and the tagline.
+ *
+ * The tagline is the h1 because that is what the prototype leads with (JQ-249).
+ * The catalog names itself with its own heading, in `GameLobby`, so the section
+ * label sits with the section rather than being borrowed from up here.
  */
 export default function HomeHeader() {
   const { user, loading } = useAuth()
@@ -23,9 +24,7 @@ export default function HomeHeader() {
         <p className="home-header__greeting">{homeGreetingLine(name)}</p>
         <AccountChip />
       </div>
-      <h1 id={HOME_HEADING_ID} className="home-header__heading">
-        {FIND_A_GAME_HEADING}
-      </h1>
+      <h1 className="home-header__heading">{APP_TAGLINE}</h1>
     </header>
   )
 }
