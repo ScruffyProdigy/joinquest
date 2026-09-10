@@ -298,6 +298,52 @@ func clearRatingsTx(ctx context.Context, tx *sql.Tx, gameID uuid.UUID, modeKey s
 	return nil
 }
 
+// ListModesNeedingReplay returns every (game, mode) whose newest rating input
+// is newer than the ratings computed from it — modes whose replay was
+// scheduled but never ran, typically because the process restarted between
+// the result committing and the worker's next tick.
+//
+// The comparison is exact because SaveRatings stamps last_rated_at with the
+// newest input the replay consumed, not with wall-clock time. A correction to
+// an older session keeps its original rated_at and so is invisible here; it
+// is scheduled directly by the result path instead.
+//
+// The join is against player_ratings only, not nonplayer_ratings because
+// every stored input carries at least one player: entrant (BuildSides/buildSide),
+// so any replay of a mode in this query writes at least one player_ratings row;
+// a NULL therefore means "not currently cached" — never replayed, or invalidated
+// by ClearRatings or a user merge — and one replay clears it either way.
+func (s *Store) ListModesNeedingReplay(ctx context.Context) ([]RatedMode, error) {
+	rows, err := s.db.QueryContext(ctx, `
+		SELECT i.game_id, i.mode_key
+		FROM (
+			SELECT game_id, mode_key, MAX(rated_at) AS last_input
+			FROM rating_match_inputs
+			GROUP BY game_id, mode_key
+		) i
+		LEFT JOIN (
+			SELECT game_id, mode_key, MAX(last_rated_at) AS last_rated
+			FROM player_ratings
+			GROUP BY game_id, mode_key
+		) r ON r.game_id = i.game_id AND r.mode_key = i.mode_key
+		WHERE r.last_rated IS NULL OR r.last_rated < i.last_input
+	`)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var out []RatedMode
+	for rows.Next() {
+		var m RatedMode
+		if err := rows.Scan(&m.GameID, &m.ModeKey); err != nil {
+			return nil, err
+		}
+		out = append(out, m)
+	}
+	return out, rows.Err()
+}
+
 func parsePlayerRatingKey(key string) (uuid.UUID, bool) {
 	rest, ok := strings.CutPrefix(key, playerRatingKeyPrefix)
 	if !ok {

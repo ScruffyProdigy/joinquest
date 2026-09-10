@@ -16,6 +16,8 @@ import (
 	"github.com/scruffyprodigy/joinquest/internal/avatars"
 	"github.com/scruffyprodigy/joinquest/internal/formingworker"
 	"github.com/scruffyprodigy/joinquest/internal/pubsub"
+	"github.com/scruffyprodigy/joinquest/internal/rating"
+	"github.com/scruffyprodigy/joinquest/internal/ratingworker"
 	"github.com/scruffyprodigy/joinquest/internal/spiritanimal"
 	"github.com/scruffyprodigy/joinquest/internal/store"
 )
@@ -70,11 +72,17 @@ func main() {
 	} else if cleared > 0 {
 		log.Printf("presence: boot reset cleared %d stale rows", cleared)
 	}
+	// Two windows off one socket edge, on deliberately different clocks: a waiting
+	// player keeps their queue place for 90s, a room member keeps their seat in the
+	// room for 30s. See each constant for why they are not the same number.
 	resolver.Presence = graph.NewPresenceTracker(
 		dataStore,
 		broker,
 		store.DefaultQueueDisconnectGrace,
 		resolver.OnGraceExpired,
+	).WithExpiry(
+		store.DefaultRoomDisconnectGrace,
+		resolver.OnRoomGraceExpired,
 	)
 
 	formingTick := 30 * time.Second
@@ -86,6 +94,22 @@ func main() {
 	resolver.FormingWorker = formingworker.New(dataStore, resolver.HandleFormingReconciled, 25*time.Millisecond, formingTick)
 	resolver.FormingWorker.SetProvisionHook(resolver.HandleUnprovisionedSession)
 	go resolver.FormingWorker.Start(context.Background())
+
+	ratingTick := 5 * time.Second
+	if v := strings.TrimSpace(os.Getenv("RATING_REPLAY_INTERVAL")); v != "" {
+		if d, err := time.ParseDuration(v); err == nil && d > 0 {
+			ratingTick = d
+		}
+	}
+	ratingEngine, err := rating.NewWengLin("plackett-luce")
+	if err != nil {
+		log.Fatalf("rating engine: %v", err)
+	}
+	resolver.RatingWorker = ratingworker.New(func() ratingworker.Replayer {
+		return rating.NewReplayer(ratingEngine, dataStore.RatingSource())
+	}, ratingTick)
+	resolver.RatingWorker.SetSweeper(dataStore, 10*time.Minute)
+	go resolver.RatingWorker.Start(context.Background())
 
 	mux := http.NewServeMux()
 

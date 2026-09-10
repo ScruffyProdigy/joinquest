@@ -33,6 +33,8 @@ Social **rooms** for friends to gather; **tables** are forming private games ins
 | **Step 3 — Table LFG** (shipped) | King **Look for group** backfill; `formingGaps` on TableCard; catalog fills remaining roles. |
 | **Step 4+** | Phase C: affinity-aware weighted dequeue. |
 
+Phase C has two dimensions. **Affinity** (variable team sizes, balance within N) is JQ-88. **Skill** is JQ-142, whose design lives in Notion — [Skill-aware matchmaking — design (JQ-142)](https://app.notion.com/p/3d7c637d78a581c1a83bfe722967062a) — and is implemented by JQ-226.
+
 ---
 
 ## Step 1: Rooms (chat + invite)

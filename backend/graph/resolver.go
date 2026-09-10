@@ -15,6 +15,7 @@ import (
 	"github.com/scruffyprodigy/joinquest/internal/observe"
 	"github.com/scruffyprodigy/joinquest/internal/pubsub"
 	"github.com/scruffyprodigy/joinquest/internal/queuewait"
+	"github.com/scruffyprodigy/joinquest/internal/ratingworker"
 	"github.com/scruffyprodigy/joinquest/internal/spiritanimal"
 	"github.com/scruffyprodigy/joinquest/internal/store"
 )
@@ -34,6 +35,10 @@ type Resolver struct {
 	ManifestFetcher *gameclient.ManifestFetcher
 	SpiritAnimal    *spiritanimal.Runner
 	FormingWorker   *formingworker.Worker
+	// RatingWorker replays a mode's ratings after RecordMatchResult writes a new
+	// input; nil skips scheduling entirely, which is what tests without a
+	// database want.
+	RatingWorker *ratingworker.Worker
 	// GameProvisioner pushes match rosters to game APIs; nil uses the default HTTP client.
 	GameProvisioner gameclient.MatchProvisioner
 	// EligibilityCache resolves GameMode.eligibility; nil uses a default 5s in-memory cache.
