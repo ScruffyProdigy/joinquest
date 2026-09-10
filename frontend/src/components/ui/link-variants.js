@@ -22,9 +22,10 @@ import { cva } from 'class-variance-authority'
  *
  * Every colour here is a token -- `text-link`, `border-primary`, `text-primary`,
  * `text-muted-foreground` -- so repainting is a change in tailwind.css and nothing
- * in this file. Worth keeping that way: the prototype already mixes teal with a
- * magenta it uses for chrome, so the brand accent is not settled. `--link` is a
- * separate token precisely so that repaint does not sweep links along with it.
+ * in this file. That held: JQ-222 repainted the brand from teal to the designer's
+ * magenta without touching this file. `--link` being separate is what stopped the
+ * repaint sweeping links along -- though it did have to be re-picked, since the
+ * indigo it carried was nearly indistinguishable from the new accent.
  */
 export const linkVariants = cva(
   'appearance-none border-0 p-0 [font-family:inherit] bg-transparent no-underline cursor-pointer transition-opacity outline-none focus-visible:ring-ring/50 focus-visible:ring-[3px] disabled:pointer-events-none disabled:opacity-50',

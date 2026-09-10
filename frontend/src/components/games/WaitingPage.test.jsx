@@ -1,7 +1,8 @@
-import { render, screen, waitFor } from '@testing-library/react'
+import { render, screen, waitFor, act } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { describe, it, expect, beforeEach, vi } from 'vitest'
 import WaitingPage from './WaitingPage'
+import { useLeaveQueueOnExit } from './useLeaveQueueOnExit'
 import { LEAVE_GAME_FAILED } from '../../lib/playerCopy'
 
 const authState = { user: { id: 'u1' }, loading: false }
@@ -43,7 +44,13 @@ describe('WaitingPage', () => {
     authState.user = { id: 'u1' }
     authState.loading = false
     setIntentState()
+    vi.mocked(useLeaveQueueOnExit).mockClear()
   })
+
+  /** What the hook calls when it has undone a back gesture and needs the player asked. */
+  function backGestureHandler() {
+    return vi.mocked(useLeaveQueueOnExit).mock.calls.at(-1)?.[1]
+  }
 
   it('shows the queued game, how many are looking, and the way out', () => {
     setIntentState({ activeIntent: waitingIntent })
@@ -197,5 +204,30 @@ describe('WaitingPage', () => {
 
     await waitFor(() => expect(window.location.pathname).toBe('/games/word-hunt'))
     expect(screen.queryByRole('heading', { name: 'Finding players…' })).toBeNull()
+  })
+
+  it('raises the same confirmation for a back gesture as for the button', async () => {
+    setIntentState({ activeIntent: waitingIntent })
+    render(<WaitingPage intent={intentState} />)
+
+    act(() => backGestureHandler()())
+
+    expect(await screen.findByText('Leave the queue?')).toBeInTheDocument()
+    expect(screen.getByText("You'll lose your spot and have to start over.")).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Stay in queue' })).toBeInTheDocument()
+  })
+
+  it('gives up the queue only once the back-gesture confirmation is accepted', async () => {
+    const handleLeave = vi.fn()
+    setIntentState({ activeIntent: waitingIntent, handleLeave })
+    const user = userEvent.setup()
+    render(<WaitingPage intent={intentState} />)
+
+    act(() => backGestureHandler()())
+    expect(handleLeave).not.toHaveBeenCalled()
+
+    await user.click(await screen.findByRole('button', { name: 'Leave queue' }))
+
+    expect(handleLeave).toHaveBeenCalled()
   })
 })

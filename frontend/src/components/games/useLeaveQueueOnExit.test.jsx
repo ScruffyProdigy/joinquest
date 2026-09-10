@@ -3,15 +3,35 @@ import { describe, it, expect, beforeEach, vi } from 'vitest'
 import { useLeaveQueueOnExit } from './useLeaveQueueOnExit'
 import * as queue from '../../lib/queue'
 import { navigateTo } from '../../lib/usePathname'
+import { navigateOutOfWaiting, rememberWaitingReturnPath } from '../../lib/waiting'
 
 vi.mock('../../lib/queue', () => ({
   leaveQueue: vi.fn(() => Promise.resolve(true)),
   leaveQueueOnExit: vi.fn(),
 }))
 
-function Probe({ activeIntent }) {
-  useLeaveQueueOnExit(activeIntent)
+function Probe({ activeIntent, onBackGesture }) {
+  useLeaveQueueOnExit(activeIntent, onBackGesture)
   return null
+}
+
+/** A real browser Back — the iOS edge swipe raises exactly this. jsdom traverses
+ * history for real, so nothing here has to pretend to be a pop. */
+async function pressBack() {
+  await act(async () => {
+    const popped = new Promise((resolve) => {
+      window.addEventListener('popstate', resolve, { once: true })
+    })
+    window.history.back()
+    await popped
+  })
+}
+
+/** Arrive on the waiting page the way a player does: from somewhere else. */
+function arriveOnWaiting() {
+  window.history.replaceState(null, '', '/games/word-hunt')
+  rememberWaitingReturnPath()
+  window.history.pushState(null, '', '/waiting')
 }
 
 const waitingIntent = { queueId: 'q1', status: 'WAITING' }
@@ -125,5 +145,105 @@ describe('useLeaveQueueOnExit', () => {
     act(() => navigateTo('/games/word-hunt'))
 
     expect(queue.leaveQueue).not.toHaveBeenCalled()
+  })
+
+  describe('a browser Back while queued', () => {
+    beforeEach(() => {
+      arriveOnWaiting()
+    })
+
+    it('asks before giving up the place in the queue', async () => {
+      const onBackGesture = vi.fn()
+      render(<Probe activeIntent={waitingIntent} onBackGesture={onBackGesture} />)
+
+      await pressBack()
+
+      expect(onBackGesture).toHaveBeenCalledTimes(1)
+      expect(queue.leaveQueue).not.toHaveBeenCalled()
+    })
+
+    it('leaves the player on the waiting page, still queued, when they decline', async () => {
+      render(<Probe activeIntent={waitingIntent} onBackGesture={vi.fn()} />)
+
+      await pressBack()
+
+      expect(window.location.pathname).toBe('/waiting')
+      expect(queue.leaveQueue).not.toHaveBeenCalled()
+      expect(queue.leaveQueueOnExit).not.toHaveBeenCalled()
+    })
+
+    it('asks again on a second back gesture rather than letting it escape', async () => {
+      const onBackGesture = vi.fn()
+      render(<Probe activeIntent={waitingIntent} onBackGesture={onBackGesture} />)
+
+      await pressBack()
+      await pressBack()
+
+      expect(onBackGesture).toHaveBeenCalledTimes(2)
+      expect(window.location.pathname).toBe('/waiting')
+      expect(queue.leaveQueue).not.toHaveBeenCalled()
+    })
+
+    it('adds nothing to history just by being on the page, so reloads cannot pile up', () => {
+      // Nothing is pushed on arrival, which is what makes a refresh while queued
+      // cost nothing: there is no entry to reload into and duplicate.
+      const before = window.history.length
+
+      render(<Probe activeIntent={waitingIntent} onBackGesture={vi.fn()} />)
+
+      expect(window.history.length).toBe(before)
+      expect(window.location.pathname).toBe('/waiting')
+    })
+
+    it('leaves no stray waiting entry behind on an ordinary exit', async () => {
+      // Stop looking, with no back gesture involved. Anything the page pushed on
+      // arrival is still underneath at this point, and Back would land on it.
+      const { rerender } = render(<Probe activeIntent={waitingIntent} onBackGesture={vi.fn()} />)
+
+      rerender(<Probe activeIntent={null} onBackGesture={vi.fn()} />)
+      act(() => navigateOutOfWaiting())
+
+      await pressBack()
+
+      expect(window.location.pathname).toBe('/games/word-hunt')
+    })
+
+    it('leaves no stray waiting entry behind once the player confirms', async () => {
+      const { rerender } = render(<Probe activeIntent={waitingIntent} onBackGesture={vi.fn()} />)
+
+      await pressBack()
+      // Confirmed: the leave lands, the intent clears, and the page routes out.
+      rerender(<Probe activeIntent={null} onBackGesture={vi.fn()} />)
+      act(() => navigateOutOfWaiting())
+      expect(window.location.pathname).toBe('/games/word-hunt')
+
+      await pressBack()
+
+      // Back must not drop the player onto a waiting page they have already left.
+      expect(window.location.pathname).toBe('/games/word-hunt')
+    })
+
+    it('lets a matched player back out without being asked', async () => {
+      // The queue place is already spent: there is nothing left to lose.
+      const onBackGesture = vi.fn()
+      render(<Probe activeIntent={{ queueId: 'q1', status: 'MATCHED' }} onBackGesture={onBackGesture} />)
+
+      await pressBack()
+
+      expect(onBackGesture).not.toHaveBeenCalled()
+      expect(window.location.pathname).toBe('/games/word-hunt')
+    })
+
+    it('still leaves without asking when the app itself routes away', async () => {
+      // Stop looking, or the dead-end guard: the app navigating is not a gesture to
+      // second-guess, and the sheet has either been answered already or never applied.
+      const onBackGesture = vi.fn()
+      render(<Probe activeIntent={waitingIntent} onBackGesture={onBackGesture} />)
+
+      act(() => navigateTo('/games/word-hunt'))
+
+      expect(onBackGesture).not.toHaveBeenCalled()
+      expect(queue.leaveQueue).toHaveBeenCalledWith('q1')
+    })
   })
 })

@@ -12,11 +12,27 @@ export function usePathname() {
   return pathname
 }
 
+let appNavigating = false
+
+/**
+ * True only while the app's own navigation is dispatching its popstate. A pop the
+ * browser raised — a Back press, or the iOS edge swipe — never sets it, which is the
+ * only thing that tells the two apart: `navigateTo` synthesises the same event.
+ */
+export function isAppNavigation() {
+  return appNavigating
+}
+
 export function navigateTo(path, { replace = false } = {}) {
   if (replace) {
     window.history.replaceState(null, '', path)
   } else {
     window.history.pushState(null, '', path)
   }
-  window.dispatchEvent(new PopStateEvent('popstate'))
+  appNavigating = true
+  try {
+    window.dispatchEvent(new PopStateEvent('popstate'))
+  } finally {
+    appNavigating = false
+  }
 }

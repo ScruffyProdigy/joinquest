@@ -1,7 +1,8 @@
 import { useEffect, useRef } from 'react'
 import { lobbyDebug } from '../../lib/lobbyDebug'
 import { leaveQueue, leaveQueueOnExit } from '../../lib/queue'
-import { navigateToWaiting, parseWaitingRoute } from '../../lib/waiting'
+import { navigateToWaiting, parseWaitingRoute, restoreWaitingRoute } from '../../lib/waiting'
+import { isAppNavigation } from '../../lib/usePathname'
 
 /**
  * Leaving the waiting page gives up the player's place in the queue.
@@ -10,17 +11,36 @@ import { navigateToWaiting, parseWaitingRoute } from '../../lib/waiting'
  * (pagehide), where no cleanup runs and the request has to survive on its own.
  * Both check the intent is still WAITING so the ordinary exits — Stop looking, a
  * match forming — do not leave twice.
+ *
+ * A back gesture is the exception: it does not get to spend the place silently.
+ * `onBackGesture` raises the same confirmation the Stop looking button does, and the
+ * queue is left only once the player says so (JQ-218).
  */
-export function useLeaveQueueOnExit(activeIntent) {
+export function useLeaveQueueOnExit(activeIntent, onBackGesture) {
   const stateRef = useRef({ queueId: null, waiting: false })
   stateRef.current = {
     queueId: activeIntent?.queueId ?? null,
     waiting: activeIntent?.status === 'WAITING',
   }
+  // The listeners are bound once, so the current callback has to be reachable
+  // through a ref rather than closed over.
+  const backGestureRef = useRef(onBackGesture)
+  backGestureRef.current = onBackGesture
 
   useEffect(() => {
     function onRouteChange() {
       const { queueId, waiting } = stateRef.current
+
+      // A pop the browser raised — a Back press, or the iOS edge swipe that is far
+      // too easy to catch by accident — is one gesture away from spending a queue
+      // place that cannot be got back. Undo it and ask, the same way the button
+      // asks. Only the app's own navigations are taken at face value.
+      if (waiting && queueId && !isAppNavigation()) {
+        restoreWaitingRoute()
+        backGestureRef.current?.()
+        return
+      }
+
       if (!waiting || !queueId || parseWaitingRoute()) {
         return
       }

@@ -58,7 +58,7 @@ export default function WaitingPage({ intent }) {
   const settled = useIntentSettled(loading, authLoading, user)
   const liveUpdatesConnected = !activeIntent?.queueId || !waiting || queueWsConnected
 
-  useLeaveQueueOnExit(activeIntent)
+  useLeaveQueueOnExit(activeIntent, () => setConfirmingLeave(true))
 
   // No intent at all means this route is a dead end — hand control back.
   useEffect(() => {
@@ -137,8 +137,9 @@ export default function WaitingPage({ intent }) {
         </Button>
       </section>
 
-      {/* Leaving costs the player their place, so the button asks first. Browser Back
-          cannot be intercepted this way and leaves without asking. */}
+      {/* Leaving costs the player their place, so every way out asks first — the
+          button here, and a back gesture, which `useLeaveQueueOnExit` undoes so it
+          arrives at this same sheet rather than leaving on its own (JQ-218). */}
       <Sheet open={confirmingLeave} onOpenChange={setConfirmingLeave}>
         <SheetContent side="bottom" aria-label={LEAVE_QUEUE_TITLE}>
           <SheetTitle>{LEAVE_QUEUE_TITLE}</SheetTitle>
