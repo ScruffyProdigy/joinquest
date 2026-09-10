@@ -23,6 +23,10 @@ const (
 	metricStaleBefore = "lobby.queue.stale_matched.count"
 	metricCancelled   = "lobby.queue.stale_matched.cancelled"
 	metricRemaining   = "lobby.queue.stale_matched.remaining"
+
+	metricStaleDisconnected     = "lobby.queue.stale_disconnected.count"
+	metricDisconnectedCancelled = "lobby.queue.stale_disconnected.cancelled"
+	metricDisconnectedRemaining = "lobby.queue.stale_disconnected.remaining"
 )
 
 func main() {
@@ -72,6 +76,13 @@ func main() {
 		}
 		emitter.Gauge(metricStaleBefore, float64(count), tags)
 		log.Printf("dry run: %d stale matched queue rows older than %s", count, threshold)
+
+		disconnectedCount, err := st.CountStaleDisconnectedQueues(ctx, store.DefaultQueueDisconnectGrace)
+		if err != nil {
+			log.Fatalf("Failed to count stale disconnected queues: %v", err)
+		}
+		emitter.Gauge(metricStaleDisconnected, float64(disconnectedCount), tags)
+		log.Printf("dry run: %d stale disconnected queue rows older than %s", disconnectedCount, store.DefaultQueueDisconnectGrace)
 		return
 	}
 
@@ -91,6 +102,25 @@ func main() {
 	// Fail the job so the CronJob's failure count is itself a signal.
 	if result.StaleAfter > 0 {
 		log.Fatalf("%d stale matched queue rows survived the sweep", result.StaleAfter)
+	}
+
+	// The disconnected sweep is the crash backstop for the timer in Task 2, not a
+	// tunable window like the matched sweep above — so it always runs against
+	// DefaultQueueDisconnectGrace, never -older-than.
+	disconnectedResult, err := st.SweepStaleDisconnectedQueues(ctx, store.DefaultQueueDisconnectGrace)
+	if err != nil {
+		log.Fatalf("Failed to sweep stale disconnected queues: %v", err)
+	}
+
+	emitter.Gauge(metricStaleDisconnected, float64(disconnectedResult.StaleBefore), tags)
+	emitter.Count(metricDisconnectedCancelled, float64(disconnectedResult.Cancelled), tags)
+	emitter.Gauge(metricDisconnectedRemaining, float64(disconnectedResult.StaleAfter), tags)
+
+	log.Printf("stale disconnected queue sweep: found=%d cancelled=%d remaining=%d threshold=%s",
+		disconnectedResult.StaleBefore, disconnectedResult.Cancelled, disconnectedResult.StaleAfter, store.DefaultQueueDisconnectGrace)
+
+	if disconnectedResult.StaleAfter > 0 {
+		log.Fatalf("%d stale disconnected queue rows survived the sweep", disconnectedResult.StaleAfter)
 	}
 }
 
