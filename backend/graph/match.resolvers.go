@@ -303,10 +303,13 @@ func (r *subscriptionResolver) MatchResultUpdated(ctx context.Context, matchID s
 		return nil, err
 	}
 
+	releasePresence := r.Presence.Track(ctx, userID)
+
 	updates := make(chan *model.MatchResult, 4)
 	go func() {
 		defer close(updates)
 		defer unsubscribe()
+		defer releasePresence()
 
 		if initial != nil {
 			select {

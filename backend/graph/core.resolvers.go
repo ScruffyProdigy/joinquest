@@ -533,10 +533,29 @@ func (r *subscriptionResolver) QueueUpdated(ctx context.Context, queueID string)
 		}
 	}
 	initial := queueUpdateFromView(view, initialLaunchURL)
-	if initial != nil {
-		if err := r.enrichQueueUpdateGaps(ctx, initial); err != nil {
-			return nil, err
+	if initial == nil {
+		// The subscriber is not in this queue. Saying nothing leaves a restored tab
+		// claiming it is still queued — which is exactly what happens to a player
+		// evicted while their page was frozen. Tell them instead; the client's
+		// existing LEFT handling routes them out.
+		//
+		// This also fires for a subscriber who was never queued at all: browsing a
+		// game's modes (GameModesPanel) subscribes via useGameQueue for every mode
+		// whose queue isn't already owned by the intent banner
+		// (frontend/src/components/games/useGameQueue.js, skipSubscription check in
+		// GameModesPanel.jsx), so a visitor who hasn't joined gets this LEFT initial
+		// too. That's safe: applyQueueUpdate's LEFT branch sets queueState 'idle',
+		// joinUrl '', queuedCount 0, selectedQueuePath '', and error '' — exactly
+		// useGameQueue's default state — so the payload is a no-op there.
+		initial = &model.QueueUpdate{
+			GameID:      gameMode.GameID.String(),
+			QueueID:     modeQueueID.String(),
+			Status:      model.QueueStatusLeft,
+			FormingGaps: []*model.QueuePathGap{},
 		}
+	}
+	if err := r.enrichQueueUpdateGaps(ctx, initial); err != nil {
+		return nil, err
 	}
 
 	messages, unsubscribe, err := r.PubSub.Subscribe(ctx, pubsub.UserQueueChannel(userID.String()))
@@ -544,37 +563,36 @@ func (r *subscriptionResolver) QueueUpdated(ctx context.Context, queueID string)
 		return nil, err
 	}
 
-	initialStatus := "none"
-	if initial != nil {
-		initialStatus = string(initial.Status)
-	}
 	pubsub.DebugLog(
 		"subscription open user=%s queue=%s channel=%s initial=%s",
 		userID,
 		modeQueueID,
 		pubsub.UserQueueChannel(userID.String()),
-		initialStatus,
+		initial.Status,
 	)
+
+	releasePresence := r.Presence.Track(ctx, userID)
 
 	updates := make(chan *model.QueueUpdate, 2)
 	go func() {
 		defer close(updates)
 		defer unsubscribe()
+		defer releasePresence()
 
-		if initial != nil {
-			select {
-			case updates <- initial:
-				pubsub.DebugLog(
-					"subscription initial user=%s queue=%s status=%s hasJoinUrl=%t",
-					userID,
-					modeQueueID,
-					initial.Status,
-					initial.JoinURL != nil && *initial.JoinURL != "",
-				)
-			case <-ctx.Done():
-				pubsub.DebugLog("subscription cancelled before initial user=%s queue=%s", userID, modeQueueID)
-				return
-			}
+		// Always an initial payload: a subscriber who is not in this queue gets a
+		// LEFT one rather than silence.
+		select {
+		case updates <- initial:
+			pubsub.DebugLog(
+				"subscription initial user=%s queue=%s status=%s hasJoinUrl=%t",
+				userID,
+				modeQueueID,
+				initial.Status,
+				initial.JoinURL != nil && *initial.JoinURL != "",
+			)
+		case <-ctx.Done():
+			pubsub.DebugLog("subscription cancelled before initial user=%s queue=%s", userID, modeQueueID)
+			return
 		}
 
 		for {

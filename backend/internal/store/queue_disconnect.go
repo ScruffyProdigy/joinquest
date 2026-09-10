@@ -1,0 +1,175 @@
+package store
+
+import (
+	"context"
+	"database/sql"
+	"errors"
+	"fmt"
+	"time"
+
+	"github.com/google/uuid"
+)
+
+// DefaultQueueDisconnectGrace is how long a waiting player's socket may stay down
+// before the queue treats the disconnect as a departure.
+//
+// 90s is chosen against mobile backgrounding behaviour rather than measured: glancing
+// at a notification, a tunnel, a lift, a closed laptop lid are all ordinary and all
+// shorter than this. Tune it on how often the window actually expires versus how
+// often players reconnect inside it — a high expiry rate on short queues would say it
+// is still too aggressive.
+//
+// This is NOT the seat-hold window for an already-formed match, which answers a
+// different question (how long a formed match waits for a player who is not there)
+// and carries its own number. Do not borrow one for the other.
+//
+// What you are really trading against, when you tune this: a bfcache freeze, not a
+// network blip. The client deliberately does NOT give up the queue on a pagehide
+// whose persisted flag is set, because a frozen page comes back with its state
+// intact (useLeaveQueueOnExit) — and JQ-218 goes further, intercepting the iOS
+// back-swipe so it raises a confirmation sheet rather than silently costing the
+// player their place. But a frozen page's WebSocket closes, so this window starts
+// anyway, and the page is not running to show any sheet. Past 90s the server
+// therefore overrides both of those client-side judgements silently.
+//
+// That is a deliberate trade, not an oversight (decided 2026-09-10): a player absent
+// past this window has arguably left however it started, and holding the slot longer
+// costs every other player in the queue. But it means raising this number protects a
+// backgrounded player's place, and lowering it makes JQ-218's confirmation easier to
+// bypass. Measure both before moving it.
+const DefaultQueueDisconnectGrace = 90 * time.Second
+
+// EvictionResult reports whether an expiry actually removed a player, and what the
+// caller needs in order to publish the same queue update a deliberate leave publishes.
+type EvictionResult struct {
+	Acted       bool
+	ModeQueueID uuid.UUID
+	GameID      uuid.UUID
+	// QueuedCount is the count AFTER the removal, which is what the remaining
+	// players' queued counts should show.
+	QueuedCount int
+}
+
+// EvictDisconnectedWaitingEntry cancels a user's waiting queue row if and only if
+// their socket is still down and the disconnect stamp still matches the one the
+// caller armed its timer on.
+//
+// Every safety condition is a predicate on the UPDATE rather than a preceding SELECT.
+// A read-then-write here would be check-then-act: the row can flip waiting -> matched
+// in the gap, and the advisory lock the forming path takes does not exclude a plain
+// SELECT, because a plain SELECT never contends for it. Zero rows affected means
+// somebody got there first — a reconnect, a deliberate leave, or a match forming —
+// which is exactly the outcome we want.
+//
+// It deliberately does NOT reuse LeaveModeQueue. That helper also calls
+// cancelUserMatchedModeQueue, whose UPDATE is unconditionally scoped to
+// status = 'matched'. Reusing it would cancel a held seat through the *action* even
+// though the guard above never let a matched row through the *check* — the failure
+// would read as correct in review. LeaveModeQueue stays right for a deliberate leave,
+// where the player does want out of both states.
+func (s *Store) EvictDisconnectedWaitingEntry(ctx context.Context, userID uuid.UUID, stamp time.Time) (EvictionResult, error) {
+	var out EvictionResult
+
+	tx, err := s.db.BeginTx(ctx, nil)
+	if err != nil {
+		return out, fmt.Errorf("begin disconnect eviction: %w", err)
+	}
+	defer tx.Rollback()
+
+	err = tx.QueryRowContext(ctx, `
+		UPDATE game_queues gq
+		SET status = 'cancelled'
+		FROM user_presence up
+		WHERE gq.user_id = $1
+		  AND gq.status = 'waiting'
+		  AND gq.mode_queue_id IS NOT NULL
+		  AND up.user_id = gq.user_id
+		  AND up.connection_count = 0
+		  AND up.disconnected_at = $2
+		RETURNING gq.mode_queue_id, gq.game_id
+	`, userID, stamp).Scan(&out.ModeQueueID, &out.GameID)
+	if errors.Is(err, sql.ErrNoRows) {
+		return EvictionResult{}, nil
+	}
+	if err != nil {
+		return EvictionResult{}, fmt.Errorf("evict disconnected waiting entry: %w", err)
+	}
+	out.Acted = true
+
+	// Cancelling the row is only half the removal. The forming worker places a
+	// waiting player onto the filling match within ~25ms of the join, and that
+	// assignment is keyed by user, not by queue row — so a cancel that leaves it
+	// behind hands fireFormingMatchTx an assigned user with no waiting entry. It
+	// hard-errors on that, rolling back every reconcile of this mode queue for as
+	// long as the filling match lives, which is forever: there is no expiry. Same
+	// transaction as the cancel, because a queue wedged by a half-applied removal is
+	// worse than no removal at all.
+	if err := s.releaseFormingSlotsForUserTx(ctx, tx, userID); err != nil {
+		return EvictionResult{}, fmt.Errorf("release forming slot on eviction: %w", err)
+	}
+
+	if err := tx.QueryRowContext(ctx, `
+		SELECT count(*) FROM game_queues WHERE mode_queue_id = $1 AND status = 'waiting'
+	`, out.ModeQueueID).Scan(&out.QueuedCount); err != nil {
+		return EvictionResult{}, fmt.Errorf("count waiting after eviction: %w", err)
+	}
+
+	if err := tx.Commit(); err != nil {
+		return EvictionResult{}, fmt.Errorf("commit disconnect eviction: %w", err)
+	}
+
+	// Mirrors leaveModeQueueWaiting: a party left behind by the removed player is
+	// reconciled the same way a deliberate leave reconciles it. Deliberately after
+	// the commit, so a party problem cannot roll back an eviction that already
+	// decided correctly.
+	if err := s.reconcileStalePartiesForUser(ctx, userID); err != nil {
+		return out, fmt.Errorf("reconcile parties after eviction: %w", err)
+	}
+	return out, nil
+}
+
+// ReleaseFormingSlotsForDisconnectedUser vacates any forming-match seat the user
+// holds, at the moment their last socket closes rather than at the end of the grace
+// window.
+//
+// Deprioritisation is otherwise inert in the case it was written for. The forming
+// worker places a waiting player onto the filling match within ~25ms of the join, and
+// syncWaitingPartiesOnFormingTx skips a party that is already assigned — so by the
+// time a player backgrounds their phone they are already on the map, and the ORDER BY
+// that sorts disconnected players last never gets to express an opinion about them.
+// The match fires with their phone in their pocket, which is the outcome the window
+// exists to prevent.
+//
+// Vacating the seat here puts them back in the pool they can be re-picked from, last:
+// still queued, still counted, and re-assigned if the pool is otherwise too thin.
+// The accepted costs are that a brief disconnect un-assigns and re-assigns them, and
+// that a nearly-ready match un-forms.
+//
+// For a player in a MULTI-MEMBER PARTY the cost is sharper than that, and worth saying
+// plainly: partyAssignedOnFormingTx still sees the party as assigned through its other
+// members, so the vacated seat is fillable by a solo and the match can fire with the
+// connected member plus strangers while the disconnected member stays queued. In other
+// words a briefly-disconnected player can be split from their party. It self-heals —
+// the reconnecting member is re-placed on a later reconcile, thanks to
+// fireFormingMatchTx tolerating a vacated seat — so this is a bad minute rather than a
+// wedge. Releasing the whole party's seats instead would punish the member who did
+// nothing wrong, which is why it is not done here.
+//
+// Guarded on the stamp for the same reason the eviction is: a reconnect landing
+// between the edge and this write owns the presence row now, and must not have their
+// seat pulled out from under them.
+func (s *Store) ReleaseFormingSlotsForDisconnectedUser(ctx context.Context, userID uuid.UUID, stamp time.Time) error {
+	_, err := s.db.ExecContext(ctx, `
+		UPDATE forming_match_assignments fma
+		SET user_id = NULL, party_id = NULL, source = 'solo', table_id = NULL
+		FROM user_presence up
+		WHERE fma.user_id = $1
+		  AND up.user_id = $1
+		  AND up.connection_count = 0
+		  AND up.disconnected_at = $2
+	`, userID, stamp)
+	if err != nil {
+		return fmt.Errorf("release forming slots for disconnected user: %w", err)
+	}
+	return nil
+}

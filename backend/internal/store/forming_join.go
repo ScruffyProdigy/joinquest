@@ -143,6 +143,43 @@ func (s *Store) fireFormingMatchTx(
 		return nil, err
 	}
 
+	// Resolve every assigned player's waiting row BEFORE anything is written, because
+	// one of them may no longer have one. Every removal path is supposed to release
+	// the player's assignment in the same transaction as the cancel, but a path that
+	// forgets must not be able to wedge the whole mode queue: a hard error here rolls
+	// back the reconcile, and since nothing expires a filling forming match, it rolls
+	// back every future reconcile too. So vacate the orphaned seat and decline to
+	// fire — the next reconcile refills it from the waiting pool.
+	entries := make(map[uuid.UUID]*QueueEntry, len(assignments))
+	vacated := false
+	for _, assignment := range assignments {
+		if assignment.UserID == nil {
+			continue
+		}
+		userID := *assignment.UserID
+		if _, ok := entries[userID]; ok {
+			continue
+		}
+		entry, err := getWaitingQueueEntryForUserTx(ctx, tx, joinCtx.ModeQueue.ID, userID)
+		if errors.Is(err, ErrNotFound) {
+			if err := s.releaseFormingSlotsForUserTx(ctx, tx, userID); err != nil {
+				return nil, err
+			}
+			vacated = true
+			continue
+		}
+		if err != nil {
+			return nil, err
+		}
+		entries[userID] = entry
+	}
+	if vacated {
+		// Declining is not an error: the caller commits the vacate and reports an
+		// unfired reconcile, exactly as it would for a match that is merely still
+		// short of players.
+		return nil, nil
+	}
+
 	session, err := createModeQueueSessionTx(ctx, tx, joinCtx.Game.ID, joinCtx.Mode.ID, joinCtx.ModeQueue.ID)
 	if err != nil {
 		return nil, err
@@ -166,20 +203,21 @@ func (s *Store) fireFormingMatchTx(
 			continue
 		}
 		userID := *assignment.UserID
-		entry, err := getWaitingQueueEntryForUserTx(ctx, tx, joinCtx.ModeQueue.ID, userID)
-		if err != nil {
-			return nil, err
-		}
-		if err := markQueueEntryMatchedTx(ctx, tx, entry.ID); err != nil {
-			return nil, err
-		}
-		returnCtx := CatalogLFGReturnContext(joinCtx.Game.ID, joinCtx.ModeQueue.ID)
-		if err := addSessionParticipantTx(ctx, tx, session.ID, userID, assignment.SeatKey, returnCtx, entry.QueueOptions); err != nil {
-			return nil, err
-		}
 		if _, ok := seen[userID]; !ok {
+			// One row per player, even in the shouldn't-happen case of a player
+			// holding two seats: the pre-pass resolved their waiting row once, and
+			// marking it matched twice would add them to the session twice.
 			seen[userID] = struct{}{}
 			notifyIDs = append(notifyIDs, userID)
+
+			entry := entries[userID]
+			if err := markQueueEntryMatchedTx(ctx, tx, entry.ID); err != nil {
+				return nil, err
+			}
+			returnCtx := CatalogLFGReturnContext(joinCtx.Game.ID, joinCtx.ModeQueue.ID)
+			if err := addSessionParticipantTx(ctx, tx, session.ID, userID, assignment.SeatKey, returnCtx, entry.QueueOptions); err != nil {
+				return nil, err
+			}
 		}
 		if assignment.PartyID != nil {
 			if _, ok := partySeen[*assignment.PartyID]; !ok {

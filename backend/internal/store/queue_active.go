@@ -167,19 +167,7 @@ func (s *Store) reconcileStaleMatchedQueuesForUserTx(ctx context.Context, tx *sq
 		WHERE gq.user_id = $1
 		  AND gq.status = 'matched'
 		  AND gq.mode_queue_id IS NOT NULL
-		  AND NOT EXISTS (
-		    SELECT 1
-		    FROM game_session_participants gsp
-		    INNER JOIN game_sessions gs
-		      ON gs.id = gsp.session_id
-		     AND gs.status = 'active'
-		     AND gs.game_id = gq.game_id
-		     AND gs.mode_queue_id = gq.mode_queue_id
-		    WHERE gsp.user_id = gq.user_id
-		      AND gsp.left_at IS NULL
-		      AND gsp.finished_at IS NULL
-		  )
-	`, userID)
+		  AND `+activeSessionParticipationClause, userID)
 	return err
 }
 

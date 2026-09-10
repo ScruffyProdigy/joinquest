@@ -317,10 +317,13 @@ func (r *subscriptionResolver) TableUpdated(ctx context.Context, roomID string) 
 		return nil, err
 	}
 
+	releasePresence := r.Presence.Track(ctx, userID)
+
 	updates := make(chan *model.Table, 8)
 	go func() {
 		defer close(updates)
 		defer unsubscribe()
+		defer releasePresence()
 
 		for {
 			select {

@@ -36,6 +36,29 @@ describe('groupStatusLine', () => {
     expect(groupStatusLine(table)).toBe('Still need: Player')
   })
 
+  it('names the role from the open seats when the API reports no forming gaps', () => {
+    // A private table nobody is queueing for has no formingGaps, and a mode that names
+    // no roles numbers its seats — the header still has to say what is missing.
+    const table = {
+      seatSlots: [
+        { seatKey: 'p-1', queuePath: 'Player', displayName: '1', user: { id: 'u1' } },
+        { seatKey: 'p-2', queuePath: 'Player', displayName: '2', user: null },
+      ],
+      formingGaps: [],
+    }
+
+    expect(groupStatusLine(table)).toBe('Still need: Player')
+  })
+
+  it('never counts seats at the player when one is still open', () => {
+    const table = {
+      seatSlots: [slot('p-1', 'Sheriff · 1'), slot('p-2', 'Outlaw · 1')],
+      formingGaps: [],
+    }
+
+    expect(groupStatusLine(table)).toBe('Still need: Sheriff, Outlaw')
+  })
+
   it('reports readiness once every seat is taken', () => {
     const table = {
       seatSlots: [slot('p-1', 'Player · 1', { id: 'u1' }), slot('p-2', 'Player · 2', { id: 'u2' })],
