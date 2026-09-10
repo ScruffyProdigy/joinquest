@@ -1,15 +1,12 @@
 /*
- * JoinQuest service worker (JQ-198).
+ * JoinQuest service worker: receives push and routes the tap.
  *
- * Its only job is receiving push and routing the tap. It deliberately does NOT
- * cache anything: a stale shell would be far worse than a slow one here, and
- * /env.js is generated at build time, so precaching it would pin a deployment
- * to whichever API base URL it was built against.
+ * It caches nothing. A stale shell would be worse than a slow one, and /env.js
+ * is generated per deployment, so precaching it would pin the API base URL.
  */
 
-// Take over immediately rather than waiting for every tab to close. A player
-// who just granted permission must be pushable now, not after their next
-// full browser restart.
+// Take over immediately: a player who just granted permission must be
+// pushable now, not after every tab has closed.
 self.addEventListener('install', () => self.skipWaiting())
 self.addEventListener('activate', (event) => event.waitUntil(self.clients.claim()))
 
@@ -24,10 +21,8 @@ function parsePayload(event) {
   try {
     return event.data.json() ?? {}
   } catch {
-    // A push whose body is not our JSON is still a real signal that something
-    // happened. Showing the default beats showing nothing -- and on some
-    // platforms a push handler that shows no notification at all costs the
-    // site its push permission.
+    // Still a real signal. Show the default: on some platforms a push handler
+    // that shows nothing at all costs the site its permission.
     return {}
   }
 }
@@ -39,9 +34,8 @@ self.addEventListener('push', (event) => {
 
   event.waitUntil(
     (async () => {
-      // If a JoinQuest tab is already in front of the player, they can see the
-      // waiting page changing on its own and a system notification is just
-      // noise. The in-tab signals cover this case instead.
+      // A visible tab already shows the change, so a system notification is
+      // noise. The page fires the in-tab signals instead.
       const clients = await self.clients.matchAll({
         type: 'window',
         includeUncontrolled: true,
@@ -58,12 +52,10 @@ self.addEventListener('push', (event) => {
         body: payload.body || DEFAULT_BODY,
         icon: '/icons/icon-192.png',
         badge: '/icons/favicon-32.png',
-        // Collapses retries: a second push for the same match replaces the
-        // first rather than stacking identical alerts.
+        // Collapses retries into one alert.
         tag: payload.tag || 'joinquest-match-ready',
         renotify: true,
-        // The seat is being held on a deadline, so this must survive the
-        // player glancing at their phone and looking away.
+        // The seat has a deadline, so this must survive a glance.
         requireInteraction: true,
         data: { url },
       })
@@ -82,10 +74,8 @@ self.addEventListener('notificationclick', (event) => {
         includeUncontrolled: true,
       })
 
-      // Focus an existing tab rather than opening a second one. Opening a new
-      // window would leave the player with two JoinQuest tabs racing for the
-      // same seat, and the acceptance criteria require the tap to land on the
-      // launch step -- not on a fresh queue.
+      // Focus an existing tab; a second window would race the first for the
+      // same seat.
       for (const client of clients) {
         if ('focus' in client) {
           await client.focus()
@@ -93,8 +83,8 @@ self.addEventListener('notificationclick', (event) => {
             try {
               await client.navigate(target)
             } catch {
-              // Cross-origin or otherwise refused: the tab is focused, and the
-              // message below lets the app route itself.
+              // Refused. The tab is focused, and the message below lets the
+              // app route itself.
             }
           }
           client.postMessage({ type: 'joinquest:notification-click', url: target })
@@ -110,10 +100,9 @@ self.addEventListener('notificationclick', (event) => {
 })
 
 /*
- * The push service can rotate a subscription without the page being open. When
- * that happens the stored endpoint is dead, so the page must re-register. The
- * SW cannot call the GraphQL API itself (it has no session cookie context we
- * want to depend on), so it tells whatever tab is open to do it.
+ * The push service can rotate a subscription while no page is open, leaving the
+ * stored endpoint dead. The worker has no session to re-register with, so it
+ * asks whatever tab is open to do it.
  */
 self.addEventListener('pushsubscriptionchange', (event) => {
   event.waitUntil(

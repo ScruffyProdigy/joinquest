@@ -17,8 +17,7 @@ import (
 // SavePushSubscription is the resolver for the savePushSubscription field.
 func (r *mutationResolver) SavePushSubscription(ctx context.Context, input model.SavePushSubscriptionInput) (*model.PushCapability, error) {
 	// requireAuthUserID, not requireIdentityUserID: registering for
-	// notifications is not putting a player into play, and a guest who has not
-	// yet picked a name still needs to be told when their match is ready.
+	// notifications is not entering play, so a nameless guest still needs it.
 	userID, err := requireAuthUserID(ctx)
 	if err != nil {
 		return nil, err
@@ -63,21 +62,16 @@ func (r *mutationResolver) DeletePushSubscription(ctx context.Context, endpoint 
 func (r *queryResolver) PushCapability(ctx context.Context) (*model.PushCapability, error) {
 	userID, err := requireAuthUserID(ctx)
 	if err != nil {
-		// A signed-out visitor is simply unreachable. Returning the public key
-		// anyway would be useless -- there is no user to attach a subscription
-		// to -- so this is a plain "not available", not an error.
+		// No user to attach a subscription to, so this is "not available",
+		// not an error.
 		return &model.PushCapability{Reachable: false, SubscriptionCount: 0}, nil
 	}
 	return r.pushCapabilityFor(ctx, userID)
 }
 
-// pushCapabilityFor builds the capability snapshot the frontend gates the
-// "stay queued while I'm away" affordance on.
-//
-// The public key is reported only when this deployment can actually sign a
-// push. Reporting it while unconfigured would let the browser subscribe to an
-// endpoint nothing will ever send to, which is precisely the false
-// reachability the ticket warns is worse than offering nothing.
+// pushCapabilityFor builds the snapshot the frontend gates its notify control
+// on. The public key is reported only when this deployment can actually send,
+// so the browser cannot subscribe to an endpoint nothing will push to.
 func (r *Resolver) pushCapabilityFor(ctx context.Context, userID uuid.UUID) (*model.PushCapability, error) {
 	st, err := r.requireStore()
 	if err != nil {
@@ -94,8 +88,7 @@ func (r *Resolver) pushCapabilityFor(ctx context.Context, userID uuid.UUID) (*mo
 	}
 	if key := strings.TrimSpace(r.pushSender().PublicKey()); key != "" {
 		out.PublicKey = &key
-		// Reachability requires both a stored subscription and a deployment
-		// that can send to it. Either alone is not a delivered notification.
+		// Both halves are required: a stored subscription and a way to send.
 		out.Reachable = len(subs) > 0
 	}
 	return out, nil

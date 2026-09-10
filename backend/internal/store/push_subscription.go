@@ -9,9 +9,8 @@ import (
 	"github.com/google/uuid"
 )
 
-// ErrInvalidPushSubscription is returned when the browser hands us a
-// subscription missing the endpoint or either key -- all three are required to
-// encrypt a payload, so a partial one is not storable.
+// ErrInvalidPushSubscription means the endpoint or a key was missing. All
+// three are required to encrypt a payload.
 var ErrInvalidPushSubscription = errors.New("store: invalid push subscription")
 
 // PushSubscription is one browser install that has granted notification
@@ -26,8 +25,8 @@ type PushSubscription struct {
 	CreatedAt  time.Time
 	LastUsedAt *time.Time
 	// ExpiredAt is set when the push service permanently rejected this
-	// endpoint. Expired rows are kept, not deleted -- see
-	// GetPushReachability for why.
+	// endpoint. Expired rows are kept so GetPushReachability can tell
+	// "expired" from "never subscribed".
 	ExpiredAt *time.Time
 }
 
@@ -42,11 +41,8 @@ type SavePushSubscriptionParams struct {
 
 // SavePushSubscription records a browser install as reachable for a user.
 //
-// Conflict is on endpoint rather than (user_id, endpoint) deliberately: the
-// endpoint identifies the browser, not the account. When a shared or
-// re-signed-in browser subscribes again, the row must move to the new user
-// rather than leaving the previous owner able to receive that device's
-// notifications.
+// The endpoint identifies the browser, not the account, so re-subscribing moves
+// the row to the new user rather than leaving the old owner subscribed.
 func (s *Store) SavePushSubscription(ctx context.Context, params SavePushSubscriptionParams) (*PushSubscription, error) {
 	endpoint := strings.TrimSpace(params.Endpoint)
 	p256dh := strings.TrimSpace(params.P256dh)
@@ -63,9 +59,7 @@ func (s *Store) SavePushSubscription(ctx context.Context, params SavePushSubscri
 		    p256dh = EXCLUDED.p256dh,
 		    auth = EXCLUDED.auth,
 		    user_agent = EXCLUDED.user_agent,
-		    -- Resurrect a previously expired endpoint. A browser that
-		    -- re-subscribes to the same endpoint is reachable again, and
-		    -- leaving expired_at set would keep it invisible forever.
+		    -- A re-subscribed endpoint is reachable again.
 		    expired_at = NULL
 		RETURNING id, user_id, endpoint, p256dh, auth, user_agent, created_at, last_used_at, expired_at`
 
@@ -82,8 +76,8 @@ func (s *Store) SavePushSubscription(ctx context.Context, params SavePushSubscri
 	return &out, nil
 }
 
-// ListPushSubscriptions returns the installs still reachable for a user.
-// Expired rows are excluded: they are retained for diagnosis, not delivery.
+// ListPushSubscriptions returns the installs still deliverable for a user.
+// Expired rows are excluded.
 func (s *Store) ListPushSubscriptions(ctx context.Context, userID uuid.UUID) ([]PushSubscription, error) {
 	const query = `
 		SELECT id, user_id, endpoint, p256dh, auth, user_agent, created_at, last_used_at, expired_at
@@ -111,14 +105,10 @@ func (s *Store) ListPushSubscriptions(ctx context.Context, userID uuid.UUID) ([]
 	return out, rows.Err()
 }
 
-// HasPushSubscription reports whether a user has at least one reachable install.
+// HasPushSubscription reports whether a user has at least one live install.
 //
-// This is the capability check JQ-198's acceptance criteria gate on: whether
-// staying queued while away from the waiting page can actually be honoured.
-// It is deliberately a stored-subscription check rather than a
-// permission-was-granted-once check -- a granted permission on a platform that
-// cannot deliver, or a subscription the push service has since expired, is not
-// reachability.
+// Device state only. It does not know whether this deployment has VAPID keys,
+// so it is not the full reachability answer -- use graph.PushReachability.
 func (s *Store) HasPushSubscription(ctx context.Context, userID uuid.UUID) (bool, error) {
 	const query = `SELECT EXISTS (
 		SELECT 1 FROM push_subscriptions WHERE user_id = $1 AND expired_at IS NULL
@@ -130,10 +120,8 @@ func (s *Store) HasPushSubscription(ctx context.Context, userID uuid.UUID) (bool
 	return exists, nil
 }
 
-// DeletePushSubscription removes a single install, by endpoint.
-//
-// Scoped to the user so one account cannot unsubscribe another's device by
-// guessing an endpoint.
+// DeletePushSubscription removes one install. User-scoped, so one account
+// cannot unsubscribe another's device by guessing an endpoint.
 func (s *Store) DeletePushSubscription(ctx context.Context, userID uuid.UUID, endpoint string) error {
 	const query = `DELETE FROM push_subscriptions WHERE user_id = $1 AND endpoint = $2`
 	_, err := s.db.ExecContext(ctx, query, userID, strings.TrimSpace(endpoint))
@@ -141,17 +129,11 @@ func (s *Store) DeletePushSubscription(ctx context.Context, userID uuid.UUID, en
 }
 
 // MarkPushSubscriptionExpired records that the push service permanently
-// rejected an endpoint (HTTP 404/410).
+// rejected an endpoint (HTTP 404/410). Not user-scoped: the rejection names an
+// endpoint, not an owner.
 //
-// Not user-scoped, because the rejection comes from the push service against an
-// endpoint and the send path should not have to trust its own idea of who owns
-// it.
-//
-// Marked rather than deleted. The row must stop counting as reachable
-// immediately -- a hold taken on false reachability is worse than none -- but
-// deleting it would erase the difference between a player who never opted in
-// and one whose subscription died, and those have different fixes. See
-// GetPushReachability.
+// Marked, not deleted, so the row stops counting as reachable while still
+// distinguishing "expired" from "never subscribed".
 func (s *Store) MarkPushSubscriptionExpired(ctx context.Context, endpoint string) error {
 	const query = `
 		UPDATE push_subscriptions
@@ -161,17 +143,15 @@ func (s *Store) MarkPushSubscriptionExpired(ctx context.Context, endpoint string
 	return err
 }
 
-// DeletePushSubscriptionsForUser drops every install for a user. Called on
-// logout: the next person to use this browser must not inherit the last one's
-// match notifications.
+// DeletePushSubscriptionsForUser drops every install for a user, on logout, so
+// the next person to sign in on this browser does not inherit its notifications.
 func (s *Store) DeletePushSubscriptionsForUser(ctx context.Context, userID uuid.UUID) error {
 	const query = `DELETE FROM push_subscriptions WHERE user_id = $1`
 	_, err := s.db.ExecContext(ctx, query, userID)
 	return err
 }
 
-// TouchPushSubscription records a successful send, which is what separates a
-// subscription that still works from one that merely exists.
+// TouchPushSubscription records a successful send.
 func (s *Store) TouchPushSubscription(ctx context.Context, endpoint string) error {
 	const query = `UPDATE push_subscriptions SET last_used_at = NOW() WHERE endpoint = $1`
 	_, err := s.db.ExecContext(ctx, query, strings.TrimSpace(endpoint))

@@ -1,13 +1,10 @@
 /*
- * In-tab attention signals (JQ-198): title flash, favicon badge, and a chime
- * for a player whose JoinQuest tab is open but not in front of them.
+ * In-tab attention signals for a player whose tab is open but not in front of
+ * them: title flash, favicon badge, chime.
  *
- * These are a DESKTOP SUPPLEMENT, not a fallback tier for players who declined
- * push. The ticket is explicit about why: on mobile they mostly evaporate --
- * there is no visible tab strip for a title flash or a favicon badge to appear
- * in, and iOS Safari suspends JS in a backgrounded tab, so a timer-driven
- * sound never fires either. Nothing here should be described to a player as
- * "we'll let you know".
+ * A DESKTOP SUPPLEMENT, not a fallback for players who declined push. On mobile
+ * there is no tab strip to flash, and iOS Safari suspends JS in a backgrounded
+ * tab so the chime never fires. Do not promise a player these will reach them.
  */
 
 const FAVICON_SIZE = 64
@@ -25,10 +22,7 @@ function faviconLink() {
   return document.querySelector('link[rel~="icon"]')
 }
 
-/**
- * Starts alternating the document title so the tab strip catches the eye.
- * Idempotent: calling it twice does not stack two timers.
- */
+/** Flashes the document title. Idempotent: two calls do not stack timers. */
 export function startTitleFlash(message) {
   if (typeof document === 'undefined' || flashTimer) {
     return
@@ -39,8 +33,7 @@ export function startTitleFlash(message) {
     showingMessage = !showingMessage
     document.title = showingMessage ? message : originalTitle
   }, TITLE_FLASH_INTERVAL_MS)
-  // Flip immediately -- waiting a full interval makes the signal look broken
-  // to anyone glancing over right as it starts.
+  // Flip immediately; a full interval of nothing looks broken.
   document.title = message
   showingMessage = true
 }
@@ -58,11 +51,8 @@ export function stopTitleFlash() {
 }
 
 /**
- * Draws a dot over the favicon.
- *
- * Rendered rather than shipped as a second .ico so the badge can sit on
- * whatever the current favicon is, and so there is no second asset to keep in
- * sync with the icon set.
+ * Draws a dot over the favicon. Rendered rather than shipped as a second asset,
+ * so it sits on whatever the current favicon is.
  */
 export function showFaviconBadge() {
   const link = faviconLink()
@@ -93,11 +83,10 @@ export function showFaviconBadge() {
     try {
       link.setAttribute('href', canvas.toDataURL('image/png'))
     } catch {
-      // A tainted canvas (favicon served cross-origin) cannot be exported.
-      // The title flash and chime still carry the signal.
+      // A cross-origin favicon taints the canvas. The other signals still fire.
     }
   }
-  // Same-origin favicon, so this stays exportable.
+  // Same-origin, so the canvas stays exportable.
   image.src = originalFaviconHref || '/icons/favicon-32.png'
 }
 
@@ -111,15 +100,10 @@ export function clearFaviconBadge() {
 }
 
 /**
- * Plays a short chime.
+ * Plays a short chime, synthesised so there is no audio file to fetch first.
  *
- * Synthesised with WebAudio rather than loaded as an audio file: it is a few
- * lines against a network fetch that would have to succeed before the sound
- * could play, at exactly the moment the player's attention is worth the most.
- *
- * Autoplay policy means this only works if the player has already interacted
- * with the page. Every path that reaches here has -- they pressed something to
- * join a queue -- but it is still best-effort and must never throw.
+ * Autoplay policy requires a prior interaction with the page; every path here
+ * has one. Best-effort, and never throws.
  */
 export function playChime() {
   if (typeof window === 'undefined') {
@@ -132,7 +116,7 @@ export function playChime() {
   try {
     const context = new AudioContextClass()
     const now = context.currentTime
-    // Two notes a fifth apart: reads as a notification rather than an error.
+    // A fifth apart: reads as a notification, not an error.
     for (const [index, frequency] of [523.25, 783.99].entries()) {
       const oscillator = context.createOscillator()
       const gain = context.createGain()
@@ -148,7 +132,7 @@ export function playChime() {
       oscillator.start(start)
       oscillator.stop(start + 0.4)
     }
-    // Release the hardware; browsers cap how many contexts a page may hold.
+    // Browsers cap how many contexts a page may hold.
     setTimeout(() => context.close?.(), 1200)
     return true
   } catch {
@@ -157,11 +141,8 @@ export function playChime() {
 }
 
 /**
- * Fires every in-tab signal at once, and returns a function that clears them.
- *
- * Bundled deliberately: a title flash left running after the player returns is
- * worse than never flashing, so the caller is handed the cleanup rather than
- * being trusted to remember three separate teardowns.
+ * Fires every in-tab signal and returns their teardown. Bundled so a caller
+ * cannot leave the title flashing after the player has come back.
  */
 export function startMatchReadySignals(title = 'Your match is ready') {
   startTitleFlash(title)

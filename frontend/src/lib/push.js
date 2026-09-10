@@ -1,12 +1,11 @@
 import { graphqlRequest } from './graphql'
 
 /*
- * Web Push registration (JQ-198).
+ * Web Push registration.
  *
- * The whole point of this module is to never claim a player is reachable when
- * they are not. Every capability answer here is derived from something that
- * actually exists -- a registered service worker, a live PushSubscription, a
- * server that has VAPID keys -- and never from "permission was granted once".
+ * Every capability answer here comes from something that actually exists -- a
+ * registered service worker, a live PushSubscription, a server with VAPID keys
+ * -- never from "permission was granted once".
  */
 
 export const PUSH_CAPABILITY_QUERY = `
@@ -52,18 +51,15 @@ export function isPushSupported() {
 }
 
 /**
- * True when the app is running as an installed app rather than a browser tab.
+ * True when running as an installed app rather than a browser tab.
  *
- * This is the iOS gate: Safari delivers push only to a site added to the Home
- * Screen, so on iOS an uninstalled visit can never be made reachable no matter
- * what the player taps.
+ * The iOS gate: Safari delivers push only to a Home Screen install.
  */
 export function isStandalone() {
   if (typeof window === 'undefined') {
     return false
   }
-  // navigator.standalone is the iOS-specific signal; the media query is the
-  // standard one every other platform reports.
+  // navigator.standalone is iOS-only; the media query covers everything else.
   return (
     window.navigator?.standalone === true
     || window.matchMedia?.('(display-mode: standalone)')?.matches === true
@@ -79,7 +75,7 @@ export function isIOS() {
   if (/iPad|iPhone|iPod/.test(ua)) {
     return true
   }
-  // iPadOS 13+ reports a desktop Safari UA; touch points are what give it away.
+  // iPadOS 13+ reports a desktop Safari UA; touch points give it away.
   return /Macintosh/.test(ua) && (navigator.maxTouchPoints || 0) > 1
 }
 
@@ -92,24 +88,20 @@ export function notificationPermission() {
 }
 
 /**
- * Why this browser cannot be made reachable, or null when it can.
- *
- * Returned rather than thrown because the caller uses it to decide what to
- * *offer*, not to report a failure: a player on iOS Safari should be shown the
- * install instructions, not an error.
+ * Why this browser cannot be made reachable, or null when it can. The caller
+ * uses it to decide what to offer -- iOS Safari gets install instructions,
+ * not an error.
  */
 export function pushBlockedReason() {
   if (!isPushSupported()) {
-    // On iOS this is what an ordinary Safari tab looks like: PushManager is
-    // simply absent until the site is installed.
+    // On iOS, PushManager is simply absent until the site is installed.
     return isIOS() && !isStandalone() ? 'needs-install' : 'unsupported'
   }
   if (isIOS() && !isStandalone()) {
     return 'needs-install'
   }
   if (notificationPermission() === 'denied') {
-    // Sticky. Nothing the page does can re-prompt; only the player can, in
-    // browser settings.
+    // Sticky: only the player can undo this, in browser settings.
     return 'denied'
   }
   return null
@@ -121,8 +113,7 @@ export async function ensureServiceWorker() {
     return null
   }
   try {
-    // Reuse an existing registration rather than re-registering on every call;
-    // register() is idempotent but returns a promise that can outlive the page.
+    // Reuse an existing registration rather than re-registering each call.
     const existing = await navigator.serviceWorker.getRegistration(SERVICE_WORKER_PATH)
     if (existing) {
       return existing
@@ -139,9 +130,7 @@ export async function fetchPushCapability() {
   return data.pushCapability
 }
 
-/**
- * VAPID keys travel as base64url text but subscribe() wants raw bytes.
- */
+/** VAPID keys travel as base64url text; subscribe() wants raw bytes. */
 export function urlBase64ToUint8Array(base64String) {
   const padding = '='.repeat((4 - (base64String.length % 4)) % 4)
   const base64 = (base64String + padding).replace(/-/g, '+').replace(/_/g, '/')
@@ -165,11 +154,8 @@ function serializeSubscription(subscription) {
 /**
  * Asks for permission and registers this browser for match notifications.
  *
- * MUST be called from a user gesture -- browsers reject the prompt otherwise,
- * and a denial is sticky, so it cannot be spent casually. The acceptance
- * criteria are explicit that showing the affordance and spending the prompt are
- * separate things: the control is visible from the moment the player joins the
- * queue, and only pressing it gets here.
+ * MUST be called from a user gesture, or the browser rejects the prompt. A
+ * denial is sticky, so this is only reached by a deliberate press.
  *
  * Returns the server's capability snapshot, or a { blocked } reason.
  */
@@ -179,10 +165,8 @@ export async function enablePushNotifications() {
     return { blocked }
   }
 
-  // Ask the server first. If this deployment has no VAPID keys there is
-  // nothing to subscribe to, and spending the player's one permission prompt
-  // on a subscription nobody can send to is unrecoverable -- the denial
-  // persists long after the config is fixed.
+  // Ask the server first: with no VAPID keys there is nothing to subscribe to,
+  // and a denial would outlive the misconfiguration that caused it.
   const capability = await fetchPushCapability()
   if (!capability?.publicKey) {
     return { blocked: 'unsupported' }
@@ -200,9 +184,7 @@ export async function enablePushNotifications() {
 
   let subscription = await registration.pushManager.getSubscription()
   if (subscription) {
-    // An existing subscription may predate a VAPID key rotation, in which case
-    // it is bound to a key we can no longer sign with. Cheaper to drop and
-    // re-create than to detect.
+    // A subscription bound to a rotated-away key is silently undeliverable.
     const existingKey = subscription.options?.applicationServerKey
     if (existingKey && !applicationServerKeyMatches(existingKey, capability.publicKey)) {
       await subscription.unsubscribe()
@@ -212,8 +194,7 @@ export async function enablePushNotifications() {
 
   if (!subscription) {
     subscription = await registration.pushManager.subscribe({
-      // Required to be true by every browser: a push that shows no
-      // notification is not allowed.
+      // Required by every browser: a silent push is not allowed.
       userVisibleOnly: true,
       applicationServerKey: urlBase64ToUint8Array(capability.publicKey),
     })
@@ -225,7 +206,7 @@ export async function enablePushNotifications() {
   return data.savePushSubscription
 }
 
-/** Compares the key a subscription was created with against the current one. */
+/** True when a subscription was created with the current VAPID key. */
 export function applicationServerKeyMatches(existingKey, publicKey) {
   try {
     const current = urlBase64ToUint8Array(publicKey)
@@ -240,11 +221,8 @@ export function applicationServerKeyMatches(existingKey, publicKey) {
 }
 
 /**
- * Turns notifications off for this browser: unsubscribes locally and drops the
- * row server-side.
- *
- * Both halves matter. Unsubscribing alone would leave the server believing the
- * player is reachable, and the seat-hold tiering keys off that being honest.
+ * Turns notifications off: unsubscribes locally and drops the server row.
+ * Both halves matter, or the server still believes the player is reachable.
  */
 export async function disablePushNotifications() {
   if (!isPushSupported()) {
@@ -258,8 +236,7 @@ export async function disablePushNotifications() {
     try {
       await subscription.unsubscribe()
     } catch {
-      // Already gone as far as the browser is concerned; the server row is
-      // still ours to clear.
+      // Already gone locally; the server row is still ours to clear.
     }
   }
 
@@ -271,11 +248,8 @@ export async function disablePushNotifications() {
 }
 
 /**
- * Drops this browser's local subscription without calling the server.
- *
- * Used on logout, where the server clears its own rows as part of the logout
- * mutation and the session is already gone, so a DELETE call would just fail
- * as unauthenticated.
+ * Drops the local subscription without calling the server. For logout, where
+ * the server clears its own rows and the session is already gone.
  */
 export async function forgetLocalPushSubscription() {
   if (!isPushSupported()) {
@@ -286,14 +260,11 @@ export async function forgetLocalPushSubscription() {
     const subscription = await registration?.pushManager?.getSubscription()
     await subscription?.unsubscribe()
   } catch {
-    // Best effort: never block a sign-out on it.
+    // Never block a sign-out on it.
   }
 }
 
-/**
- * Re-registers after the push service rotates a subscription behind our back,
- * which the service worker reports via pushsubscriptionchange.
- */
+/** Re-registers after the push service rotates a subscription behind our back. */
 export async function resubscribeAfterChange() {
   const registration = await ensureServiceWorker()
   if (!registration) {

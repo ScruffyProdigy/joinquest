@@ -14,15 +14,9 @@ import (
 	webpush "github.com/SherClockHolmes/webpush-go"
 )
 
-// DefaultTTL is a backstop for callers that set no TTL, not a value any
-// seat-bound notification should rely on.
-//
-// The match-ready path always passes an explicit TTL derived from the stall
-// budget remaining at send time (see graph.MatchReadyNotification), because
-// under JQ-199's match-level budget the hold is not a fixed promise and a
-// constant would over-promise on a seat about to be released. This exists so a
-// caller that forgets gets something bounded rather than the push service's own
-// retention, which can be days.
+// DefaultTTL is a backstop for callers that set no TTL, so a forgotten one is
+// bounded rather than left to the push service's own retention (days).
+// Seat-bound notifications must pass an explicit TTL instead.
 const DefaultTTL = 5 * time.Minute
 
 // WebPushSender is the real sender, signing payloads with VAPID.
@@ -37,14 +31,12 @@ type WebPushSender struct {
 type Config struct {
 	PublicKey  string
 	PrivateKey string
-	// Subject is the mailto: or https: URL identifying us to the push service,
-	// required by the VAPID spec so an operator can contact us about abuse.
+	// Subject is the mailto: or https: contact URL the VAPID spec requires.
 	Subject string
 }
 
-// ConfigFromEnv loads VAPID settings. Returns ok=false when push is not
-// configured, which is the normal state in local development -- the caller
-// falls back to a logging sender rather than failing to boot.
+// ConfigFromEnv loads VAPID settings. ok=false when push is unconfigured, the
+// normal state in local development.
 func ConfigFromEnv() (Config, bool) {
 	cfg := Config{
 		PublicKey:  strings.TrimSpace(os.Getenv("VAPID_PUBLIC_KEY")),
@@ -66,9 +58,8 @@ func NewWebPushSender(cfg Config) *WebPushSender {
 		publicKey:  cfg.PublicKey,
 		privateKey: cfg.PrivateKey,
 		subject:    cfg.Subject,
-		// Bounded on purpose: this runs inside match formation's notify
-		// fan-out, and a push service that hangs must not stall the match for
-		// the players who are present.
+		// Bounded: this runs inside match formation, so a hanging push service
+		// must not stall the match for the players who are present.
 		client: &http.Client{Timeout: 10 * time.Second},
 	}
 }
@@ -81,7 +72,7 @@ func (s *WebPushSender) PublicKey() string {
 	return s.publicKey
 }
 
-// payload is the wire shape the service worker parses in its push handler.
+// payload is the wire shape frontend/public/sw.js parses.
 type payload struct {
 	Title string `json:"title"`
 	Body  string `json:"body"`
@@ -89,8 +80,8 @@ type payload struct {
 	Tag   string `json:"tag"`
 }
 
-// Send delivers one notification, translating a permanent rejection into
-// ErrSubscriptionGone so the caller can drop the dead endpoint.
+// Send delivers one notification. A permanent rejection becomes
+// ErrSubscriptionGone.
 func (s *WebPushSender) Send(ctx context.Context, sub Subscription, note Notification) error {
 	if s == nil || s.publicKey == "" || s.privateKey == "" {
 		return fmt.Errorf("push: sender not configured")
@@ -123,22 +114,19 @@ func (s *WebPushSender) Send(ctx context.Context, sub Subscription, note Notific
 		VAPIDPrivateKey: s.privateKey,
 		TTL:             int(ttl.Seconds()),
 		HTTPClient:      s.client,
-		// Urgency high: the player has a seat being held for them and a
-		// deadline to reach it. This is exactly the case the urgency header
-		// exists for, and a low-urgency push may be batched by the service
-		// until the seat is already gone.
+		// High urgency: the seat has a deadline, so the push must not be
+		// batched by the service.
 		Urgency: webpush.UrgencyHigh,
 	})
 	if err != nil {
 		return err
 	}
 	defer resp.Body.Close()
-	// Drain so the connection can be reused; the body is not otherwise useful.
+	// Drain so the connection can be reused.
 	_, _ = io.Copy(io.Discard, resp.Body)
 
-	// 404/410 mean the subscription is permanently gone -- the browser was
-	// uninstalled, or the user revoked permission. Anything else that failed is
-	// transient from our side and the row stays.
+	// 404/410 mean the subscription is permanently gone. Anything else is
+	// transient, so the row stays.
 	if resp.StatusCode == http.StatusNotFound || resp.StatusCode == http.StatusGone {
 		return ErrSubscriptionGone
 	}
@@ -148,10 +136,8 @@ func (s *WebPushSender) Send(ctx context.Context, sub Subscription, note Notific
 	return nil
 }
 
-// LogSender is the local-development sender: it reports what would have been
-// delivered without needing VAPID keys. It reports an empty public key, so the
-// frontend correctly treats push as unavailable rather than offering a control
-// that silently does nothing.
+// LogSender is the local-development sender. Its empty public key tells the
+// frontend push is unavailable.
 type LogSender struct{}
 
 // Send logs the notification.
