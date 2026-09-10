@@ -425,13 +425,18 @@ func TestBuildSidesWithFewerThanTwoSidesIsUnrateable(t *testing.T) {
 	shape := ModeShape{SeatClasses: map[string]string{"s1": "Player", "s2": "Player"}}
 	out := MatchOutcome{
 		Participants: []Participant{
-			{PlayerID: "a", SeatKey: "s1", IsWinner: true},
+			{PlayerID: "a", SeatKey: "s1", Placement: intp(1)},
 			{PlayerID: "b", SeatKey: "s2", Excluded: true},
 		},
 	}
 
-	if _, err := BuildSides(shape, out); err == nil {
+	_, err := BuildSides(shape, out)
+	if err == nil {
 		t.Fatal("BuildSides succeeded with one side left; a lone side has nothing to be rated against")
+	}
+	want := "rating: match has 1 rateable side(s), want at least 2"
+	if err.Error() != want {
+		t.Fatalf("BuildSides error = %q, want %q", err.Error(), want)
 	}
 }
 
