@@ -350,6 +350,8 @@ When integration checks are green and catalog metadata is complete (`shortDescri
 | `jwt.expired` | §6 JWT |
 | `jwt.invalid_token` | §6 JWT |
 | `jwt.wrong_seat` | §6 JWT |
+| `jwt.reclaim_same_player` | [§6 Reconnecting a player](#reconnecting-a-player) |
+| `jwt.reclaim_seat_theft` | [§6 Reconnecting a player](#reconnecting-a-player) |
 | `jwt.rotation_overlap` | §6 JWT |
 
 ---
