@@ -34,7 +34,7 @@ func TestListRatedModesReportsModesAlreadyReplayed(t *testing.T) {
 	}
 
 	// Caught up, so the replay sweep has nothing to say about it.
-	needing, err := st.ListModesNeedingReplay(ctx)
+	needing, err := st.ListModesNeedingReplay(ctx, defaultRatingEngineID(t))
 	if err != nil {
 		t.Fatalf("ListModesNeedingReplay: %v", err)
 	}

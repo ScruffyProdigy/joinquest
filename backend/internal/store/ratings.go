@@ -329,22 +329,39 @@ func (s *Store) ListRatedModes(ctx context.Context) ([]RatedMode, error) {
 	return out, rows.Err()
 }
 
-// ListModesNeedingReplay returns every (game, mode) whose newest rating input
-// is newer than the ratings computed from it — modes whose replay was
-// scheduled but never ran, typically because the process restarted between
-// the result committing and the worker's next tick.
+// ListModesNeedingReplay returns every (game, mode) whose cached ratings no
+// longer follow from the inputs and constants they should have been computed
+// from — modes whose replay was scheduled but never ran, typically because the
+// process restarted between the result committing and the worker's next tick,
+// and modes whose rating constants have since changed.
 //
-// The comparison is exact because SaveRatings stamps last_rated_at with the
-// newest input the replay consumed, not with wall-clock time. A correction to
-// an older session keeps its original rated_at and so is invisible here; it
-// is scheduled directly by the result path instead.
+// Two kinds of staleness, one sweep, because they need the identical repair: a
+// full replay of the mode.
+//
+// Newer inputs. The comparison is exact because SaveRatings stamps
+// last_rated_at with the newest input the replay consumed, not with wall-clock
+// time. A correction to an older session keeps its original rated_at and so is
+// invisible here; it is scheduled directly by the result path instead.
+//
+// Changed constants. defaultEngineID is the engine a mode with no measured
+// constants must be rated by, and mode_rating_constants.engine_id is the one a
+// measured mode must be rated by; either way, cached ratings carrying a
+// different engine id were computed under constants that no longer apply.
+// Ratings produced under two different betas are not on one scale and cannot
+// be compared, so a mode's whole history is replayed rather than continued —
+// which also means a beta can be written without holding a replay open, since
+// the next sweep picks it up. Both the minimum and the maximum engine id are
+// checked so a mode that somehow holds a mixture is caught as well: a mode
+// half-rated under old constants is the exact corruption this is here to
+// prevent, and it would otherwise pass whichever single row the query happened
+// to see.
 //
 // The join is against player_ratings only, not nonplayer_ratings because
 // every stored input carries at least one player: entrant (BuildSides/buildSide),
 // so any replay of a mode in this query writes at least one player_ratings row;
 // a NULL therefore means "not currently cached" — never replayed, or invalidated
 // by ClearRatings or a user merge — and one replay clears it either way.
-func (s *Store) ListModesNeedingReplay(ctx context.Context) ([]RatedMode, error) {
+func (s *Store) ListModesNeedingReplay(ctx context.Context, defaultEngineID string) ([]RatedMode, error) {
 	rows, err := s.db.QueryContext(ctx, `
 		SELECT i.game_id, i.mode_key
 		FROM (
@@ -353,12 +370,20 @@ func (s *Store) ListModesNeedingReplay(ctx context.Context) ([]RatedMode, error)
 			GROUP BY game_id, mode_key
 		) i
 		LEFT JOIN (
-			SELECT game_id, mode_key, MAX(last_rated_at) AS last_rated
+			SELECT game_id, mode_key,
+			       MAX(last_rated_at) AS last_rated,
+			       MIN(engine_id) AS engine_id_min,
+			       MAX(engine_id) AS engine_id_max
 			FROM player_ratings
 			GROUP BY game_id, mode_key
 		) r ON r.game_id = i.game_id AND r.mode_key = i.mode_key
-		WHERE r.last_rated IS NULL OR r.last_rated < i.last_input
-	`)
+		LEFT JOIN mode_rating_constants c
+			ON c.game_id = i.game_id AND c.mode_key = i.mode_key
+		WHERE r.last_rated IS NULL
+		   OR r.last_rated < i.last_input
+		   OR r.engine_id_min IS DISTINCT FROM COALESCE(c.engine_id, $1)
+		   OR r.engine_id_max IS DISTINCT FROM COALESCE(c.engine_id, $1)
+	`, defaultEngineID)
 	if err != nil {
 		return nil, err
 	}
