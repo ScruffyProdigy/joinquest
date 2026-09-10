@@ -21,6 +21,10 @@ type ExpiryFunc func(ctx context.Context, userID uuid.UUID, stamp time.Time)
 type presenceBackend interface {
 	Connected(ctx context.Context, userID uuid.UUID) (int, *time.Time, bool, error)
 	Disconnected(ctx context.Context, userID uuid.UUID) (int, *time.Time, bool, error)
+	// ReleaseFormingSlot deprioritises the player the moment their last socket
+	// closes. It is a store method rather than forming internals reached from here,
+	// so the graph layer keeps knowing nothing about seat assignments.
+	ReleaseFormingSlot(ctx context.Context, userID uuid.UUID, stamp time.Time) error
 }
 
 // storePresenceBackend adapts *store.Store to presenceBackend.
@@ -34,6 +38,10 @@ func (b storePresenceBackend) Connected(ctx context.Context, userID uuid.UUID) (
 func (b storePresenceBackend) Disconnected(ctx context.Context, userID uuid.UUID) (int, *time.Time, bool, error) {
 	t, err := b.st.PresenceDisconnected(ctx, userID)
 	return t.ConnectionCount, t.DisconnectedAt, t.Edge, err
+}
+
+func (b storePresenceBackend) ReleaseFormingSlot(ctx context.Context, userID uuid.UUID, stamp time.Time) error {
+	return b.st.ReleaseFormingSlotsForDisconnectedUser(ctx, userID, stamp)
 }
 
 // PresenceTracker turns per-user subscription lifetimes into presence edges.
@@ -119,6 +127,19 @@ func (t *PresenceTracker) release(userID uuid.UUID) {
 		return
 	}
 
+	// Deprioritisation starts here, not at expiry. A player is placed onto the
+	// filling match within ~25ms of joining, and nothing else un-places them — so
+	// without this the match fires with them in it while their phone is in their
+	// pocket, and the ordering that sorts disconnected players last never applies to
+	// the case it was written for. They stay queued and can be re-assigned if the
+	// pool is otherwise too thin, which is what the rule actually asks for.
+	if err := t.backend.ReleaseFormingSlot(ctx, userID, *stamp); err != nil {
+		// Not fatal to the disconnect: the expiry path releases the slot again when
+		// it removes the player, so a failure here costs deprioritisation, not
+		// correctness.
+		log.Printf("presence: release forming slot for %s: %v", userID, err)
+	}
+
 	t.publish(ctx, userID, pubsub.PresenceEvent{
 		Status:         pubsub.PresenceStatusDisconnected,
 		DisconnectedAt: stamp.UTC().Format(time.RFC3339Nano),
@@ -139,6 +160,16 @@ func (t *PresenceTracker) armTimer(userID uuid.UUID, stamp time.Time) {
 		existing.Stop()
 	}
 	t.timers[userID] = time.AfterFunc(t.grace, func() {
+		// time.AfterFunc runs this on its own goroutine, so a panic anywhere under
+		// onExpire — a publish, a nil store — takes the whole API process down and
+		// with it every other player's live socket. One player's expiry is not worth
+		// that.
+		defer func() {
+			if r := recover(); r != nil {
+				log.Printf("presence: expiry for %s panicked: %v", userID, r)
+			}
+		}()
+
 		t.mu.Lock()
 		delete(t.timers, userID)
 		t.mu.Unlock()

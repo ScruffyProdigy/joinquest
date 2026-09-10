@@ -4,6 +4,8 @@ import (
 	"context"
 	"fmt"
 	"time"
+
+	"github.com/google/uuid"
 )
 
 // DefaultStaleMatchedQueueAge is how long a `matched` queue row may sit without a
@@ -201,18 +203,45 @@ func (s *Store) SweepStaleDisconnectedQueues(ctx context.Context, olderThan time
 	}
 	defer tx.Rollback()
 
-	res, err := tx.ExecContext(ctx, `
+	// RETURNING the users rather than counting rows, because the cancel is only half
+	// the removal: each of these players may still hold a seat on the mode queue's
+	// filling forming match, and that assignment is keyed by user, not by queue row.
+	// Leaving one behind hands fireFormingMatchTx an assigned user with no waiting
+	// entry, which it hard-errors on — rolling back every reconcile of that mode
+	// queue for as long as the filling match lives, which is forever, since nothing
+	// expires it. That is the dead-pod case this sweep exists for: the pod died, so
+	// its timer never ran, but the forming match it built is still in Postgres.
+	rows, err := tx.QueryContext(ctx, `
 		UPDATE game_queues gq
 		SET status = 'cancelled'
-		WHERE `+staleDisconnectedWaitingPredicate, interval)
+		WHERE `+staleDisconnectedWaitingPredicate+`
+		RETURNING gq.user_id`, interval)
 	if err != nil {
 		return result, fmt.Errorf("sweep stale disconnected queues: %w", err)
 	}
-	affected, err := res.RowsAffected()
-	if err != nil {
-		return result, fmt.Errorf("sweep stale disconnected queues rows affected: %w", err)
+	var swept []uuid.UUID
+	for rows.Next() {
+		var userID uuid.UUID
+		if err := rows.Scan(&userID); err != nil {
+			rows.Close()
+			return result, fmt.Errorf("sweep stale disconnected queues scan: %w", err)
+		}
+		swept = append(swept, userID)
 	}
-	result.Cancelled = int(affected)
+	if err := rows.Err(); err != nil {
+		rows.Close()
+		return result, fmt.Errorf("sweep stale disconnected queues rows: %w", err)
+	}
+	if err := rows.Close(); err != nil {
+		return result, fmt.Errorf("sweep stale disconnected queues close: %w", err)
+	}
+	result.Cancelled = len(swept)
+
+	for _, userID := range swept {
+		if err := s.releaseFormingSlotsForUserTx(ctx, tx, userID); err != nil {
+			return result, fmt.Errorf("release forming slot on sweep: %w", err)
+		}
+	}
 
 	if err := tx.Commit(); err != nil {
 		return result, fmt.Errorf("commit stale disconnected queue sweep: %w", err)

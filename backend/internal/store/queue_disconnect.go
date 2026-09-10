@@ -81,6 +81,18 @@ func (s *Store) EvictDisconnectedWaitingEntry(ctx context.Context, userID uuid.U
 	}
 	out.Acted = true
 
+	// Cancelling the row is only half the removal. The forming worker places a
+	// waiting player onto the filling match within ~25ms of the join, and that
+	// assignment is keyed by user, not by queue row — so a cancel that leaves it
+	// behind hands fireFormingMatchTx an assigned user with no waiting entry. It
+	// hard-errors on that, rolling back every reconcile of this mode queue for as
+	// long as the filling match lives, which is forever: there is no expiry. Same
+	// transaction as the cancel, because a queue wedged by a half-applied removal is
+	// worse than no removal at all.
+	if err := s.releaseFormingSlotsForUserTx(ctx, tx, userID); err != nil {
+		return EvictionResult{}, fmt.Errorf("release forming slot on eviction: %w", err)
+	}
+
 	if err := tx.QueryRowContext(ctx, `
 		SELECT count(*) FROM game_queues WHERE mode_queue_id = $1 AND status = 'waiting'
 	`, out.ModeQueueID).Scan(&out.QueuedCount); err != nil {
@@ -99,4 +111,40 @@ func (s *Store) EvictDisconnectedWaitingEntry(ctx context.Context, userID uuid.U
 		return out, fmt.Errorf("reconcile parties after eviction: %w", err)
 	}
 	return out, nil
+}
+
+// ReleaseFormingSlotsForDisconnectedUser vacates any forming-match seat the user
+// holds, at the moment their last socket closes rather than at the end of the grace
+// window.
+//
+// Deprioritisation is otherwise inert in the case it was written for. The forming
+// worker places a waiting player onto the filling match within ~25ms of the join, and
+// syncWaitingPartiesOnFormingTx skips a party that is already assigned — so by the
+// time a player backgrounds their phone they are already on the map, and the ORDER BY
+// that sorts disconnected players last never gets to express an opinion about them.
+// The match fires with their phone in their pocket, which is the outcome the window
+// exists to prevent.
+//
+// Vacating the seat here puts them back in the pool they can be re-picked from, last:
+// still queued, still counted, and re-assigned if the pool is otherwise too thin.
+// The accepted costs are that a brief disconnect un-assigns and re-assigns them, and
+// that a nearly-ready match un-forms.
+//
+// Guarded on the stamp for the same reason the eviction is: a reconnect landing
+// between the edge and this write owns the presence row now, and must not have their
+// seat pulled out from under them.
+func (s *Store) ReleaseFormingSlotsForDisconnectedUser(ctx context.Context, userID uuid.UUID, stamp time.Time) error {
+	_, err := s.db.ExecContext(ctx, `
+		UPDATE forming_match_assignments fma
+		SET user_id = NULL, party_id = NULL, source = 'solo', table_id = NULL
+		FROM user_presence up
+		WHERE fma.user_id = $1
+		  AND up.user_id = $1
+		  AND up.connection_count = 0
+		  AND up.disconnected_at = $2
+	`, userID, stamp)
+	if err != nil {
+		return fmt.Errorf("release forming slots for disconnected user: %w", err)
+	}
+	return nil
 }
