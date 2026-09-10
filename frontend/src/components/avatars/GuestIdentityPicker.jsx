@@ -42,7 +42,7 @@ export default function GuestIdentityPicker({ user, onSaved, onBusyChange }) {
         <p className="text-2xs text-muted-foreground">{IDENTITY_GATE_SCOPE_HINT}</p>
       </div>
 
-      <ul className="grid gap-2 sm:grid-cols-2" role="list">
+      <ul className="m-0 grid list-none gap-2 p-0 sm:grid-cols-2" role="list">
         {identities.map((identity) => (
           <li key={identity.name}>
             <OptionButton
