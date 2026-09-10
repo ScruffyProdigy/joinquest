@@ -143,7 +143,14 @@ func (r *Resolver) provisionMatchedSession(ctx context.Context, work matchedSess
 		work.SessionID,
 		len(work.NotifyUserIDs),
 	)
-	return r.publishQueueResult(ctx, queueResult, launchURLs)
+	// A publish failure here must not fail provisioning: the session is provisioned
+	// and the queue rows say matched, so returning the error would only schedule a
+	// provision retry for a match that already exists.
+	if err := r.publishQueueResult(ctx, queueResult, launchURLs); err != nil {
+		log.Printf("handoff: publish matched result session=%s queue=%s: %v",
+			work.SessionID, work.ModeQueueID, err)
+	}
+	return nil
 }
 
 func (r *Resolver) scheduleFormingReconcile(modeQueueID uuid.UUID) {

@@ -2,6 +2,8 @@ package graph
 
 import (
 	"context"
+	"errors"
+	"fmt"
 
 	"github.com/google/uuid"
 	"github.com/scruffyprodigy/joinquest/graph/model"
@@ -9,11 +11,18 @@ import (
 	"github.com/scruffyprodigy/joinquest/internal/store"
 )
 
+// publishQueueResult tells every user in result.NotifyUserIDs where the queue
+// stands. It is best-effort by design: the queue rows are already committed when
+// it runs, so a broker hiccup for one player is that player's problem and must
+// not cost the rest of the lobby their notification. Every user is attempted, and
+// the failures come back joined together — callers log that error rather than
+// aborting, since aborting the mutation cannot un-form the match (JQ-247).
 func (r *Resolver) publishQueueResult(ctx context.Context, result *store.QueueJoinResult, launchURLs map[uuid.UUID]string) error {
 	if r.PubSub == nil || result == nil {
 		return nil
 	}
 
+	var errs []error
 	seen := make(map[uuid.UUID]struct{}, len(result.NotifyUserIDs))
 	for _, userID := range result.NotifyUserIDs {
 		if _, ok := seen[userID]; ok {
@@ -43,10 +52,10 @@ func (r *Resolver) publishQueueResult(ctx context.Context, result *store.QueueJo
 		}
 
 		if err := pubsub.PublishQueueEvent(ctx, r.PubSub, userID.String(), event); err != nil {
-			return err
+			errs = append(errs, fmt.Errorf("publish queue event to user %s: %w", userID, err))
 		}
 	}
-	return nil
+	return errors.Join(errs...)
 }
 
 func (r *Resolver) publishQueueLeft(ctx context.Context, gameID, modeQueueID, userID uuid.UUID, queuedCount int, message string) error {
@@ -75,25 +84,36 @@ func (r *Resolver) publishQueueSwitchFrom(ctx context.Context, st *store.Store, 
 		return err
 	}
 	leftMsg := "You left this queue to join another game."
-	if err := r.publishQueueLeft(ctx, from.GameID, from.ModeQueueID, userID, count, leftMsg); err != nil {
-		return err
-	}
+	// The switch is committed before either publish runs, so a failure telling the
+	// switcher they left must not cost the players still waiting their new count.
+	leftErr := r.publishQueueLeft(ctx, from.GameID, from.ModeQueueID, userID, count, leftMsg)
 	waiters, err := st.ListWaitingUserIDsInModeQueue(ctx, from.ModeQueueID)
 	if err != nil {
-		return err
+		return errors.Join(leftErr, err)
 	}
-	for _, waiterID := range waiters {
+	return errors.Join(leftErr, r.publishQueueWaiting(ctx, from.GameID, from.ModeQueueID, waiters, count))
+}
+
+// publishQueueWaiting tells each of userIDs the queue is still forming at count.
+// Like publishQueueResult it completes the fan-out and joins any failures, so one
+// unreachable player does not leave the rest of the queue on a stale count.
+func (r *Resolver) publishQueueWaiting(ctx context.Context, gameID, modeQueueID uuid.UUID, userIDs []uuid.UUID, count int) error {
+	if r.PubSub == nil {
+		return nil
+	}
+	var errs []error
+	for _, userID := range userIDs {
 		event := pubsub.QueueEvent{
-			GameID:      from.GameID.String(),
-			QueueID:     from.ModeQueueID.String(),
+			GameID:      gameID.String(),
+			QueueID:     modeQueueID.String(),
 			Status:      pubsub.QueueStatusWaiting,
 			QueuedCount: count,
 		}
-		if err := pubsub.PublishQueueEvent(ctx, r.PubSub, waiterID.String(), event); err != nil {
-			return err
+		if err := pubsub.PublishQueueEvent(ctx, r.PubSub, userID.String(), event); err != nil {
+			errs = append(errs, fmt.Errorf("publish queue event to user %s: %w", userID, err))
 		}
 	}
-	return nil
+	return errors.Join(errs...)
 }
 
 func queueUpdateFromView(view *store.UserQueueView, launchURL string) *model.QueueUpdate {
