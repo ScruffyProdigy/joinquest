@@ -68,6 +68,8 @@ Lobby validates `matchId` against the game id embedded in `serviceToken`. All fi
 
 **Rating.** Of the four `PlayerFinishReason` values, only `DISCONNECT` gets special handling when a match is rated: it drops that player out of the match's rating inputs entirely, so their rating is left untouched — neither helped nor hurt by a side they didn't really see through. Every other reason — `COMPLETED`, `ELIMINATED`, and `FORFEIT` alike — leaves the player rated normally on whatever outcome the game separately reports for them: their `placement` from `reportPlayerFinished`, or their side's standing from `reportMatchResult`'s `winnerLobbyUserIds` (or, for co-op, the [scenario outcome](./developer-integration-guide.md#cooperative-outcomes) above, which ranks the whole crew together on one shared result regardless of any individual member's finish reason). The `FORFEIT` reason itself does not count as a loss — if you want a forfeit rated as one, report it that way (a trailing placement, or simply leave that player out of `winnerLobbyUserIds`); don't rely on the reason to do it for you.
 
+**Order doesn't matter.** A `DISCONNECT` reported *after* `reportMatchResult` — which is the normal case, since the grace-period expiry that decides a disconnect usually comes after the match itself ended — reaches back and corrects that match's rating inputs: the player is dropped from the match and the mode's ratings are recomputed without them. The same is true of a corrected `reportMatchResult`: restate the winners, or restate a match as `ABANDONED`, and the ratings follow the correction, including all the way back to unrated. Ratings are recomputed from the log of reported results, so the latest thing you told us is what counts, whenever you told us.
+
 ---
 
 ## Lobby behavior
@@ -103,7 +105,9 @@ set of expectations:
   not the deltas they missed.
 - **Have an end to the grace period,** and tell the other players what it is. An
   indefinite wait is worse for the people still there than a decided outcome. *That*
-  expiry is the moment to `reportPlayerFinished`.
+  expiry is the moment to `reportPlayerFinished`. It is fine for that to land after
+  `reportMatchResult` — as the **Rating** note above says, a late `DISCONNECT` still
+  reaches back and removes that player from the match's ratings.
 
 How a player gets back in at all — the two recovery paths and the re-claim rule — is
 in [lobby-protocol-handoff.md](./lobby-protocol-handoff.md#reconnecting-a-player).

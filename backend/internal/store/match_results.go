@@ -100,31 +100,141 @@ func scenarioKeysFromMetadata(metadata map[string]any) []string {
 // lost their connection, not the match — and the OpenSkill paper leaves
 // partial play and contribution weighting unimplemented, so the honest
 // handling is to leave that player's rating untouched rather than to invent a
-// weight. A FORFEIT is deliberately absent: choosing to quit is a loss.
+// weight. A FORFEIT is deliberately absent for the opposite reason: the
+// reason itself carries no verdict, so the forfeiter stays in the match and
+// is rated on whatever outcome the game separately reports for them — a
+// trailing placement, or their absence from winnerLobbyUserIds. A game that
+// wants a forfeit to cost rating reports it that way; see the Rating section
+// of docs/match-lifecycle-callbacks.md, which publishes this contract.
 var excludedFinishReasons = map[string]bool{"DISCONNECT": true}
 
 // RecordPlayerFinish stores what the game reported about one player finishing.
 // Side effects (marking finished, releasing queue rows) stay in match_lifecycle.go.
-func (s *Store) RecordPlayerFinish(ctx context.Context, sessionID, userID uuid.UUID, reason string, placement *int, metadata map[string]any) error {
+//
+// It runs in a transaction because a finish reported *after* the match result
+// has to rebuild that match's rating input alongside it. That order is not an
+// edge case: docs/match-lifecycle-callbacks.md tells games to report the
+// result when the match ends and to call reportPlayerFinished at the expiry
+// of a disconnect grace period, which lands afterward — and without the
+// rebuild the player the lobby promised to leave unrated would be rated as a
+// loser. The rebuild is a correction, mechanically identical to a re-reported
+// result: appendRatingInput preserves the row's original rated_at, so it
+// lands back in its original chronological slot. The returned *RatedMode
+// (nil when the rating log did not change) tells the caller to schedule a
+// replay after commit, exactly as RecordMatchResult's does.
+func (s *Store) RecordPlayerFinish(ctx context.Context, sessionID, userID uuid.UUID, reason string, placement *int, metadata map[string]any) (*RatedMode, error) {
 	raw, err := marshalMetadata(metadata)
 	if err != nil {
-		return err
+		return nil, err
 	}
-	result, err := s.db.ExecContext(ctx, `
+
+	tx, err := s.db.BeginTx(ctx, nil)
+	if err != nil {
+		return nil, err
+	}
+	defer func() { _ = tx.Rollback() }()
+
+	result, err := tx.ExecContext(ctx, `
 		UPDATE game_session_participants
 		SET finish_reason = $3, placement = $4, finish_metadata = $5
 		WHERE session_id = $1 AND user_id = $2
 	`, sessionID, userID, reason, placement, raw)
 	if err != nil {
-		return err
+		return nil, err
 	}
-	return ensureRowsAffected(result, ErrNotFound)
+	if err := ensureRowsAffected(result, ErrNotFound); err != nil {
+		return nil, err
+	}
+
+	rated, err := s.rebuildRatingInputForReportedResultTx(ctx, tx, sessionID)
+	if err != nil {
+		return nil, err
+	}
+	if err := tx.Commit(); err != nil {
+		return nil, err
+	}
+	return rated, nil
+}
+
+// rebuildRatingInputForReportedResultTx re-runs the rating-input build for a
+// session whose result the game has already reported. A session with no
+// result yet has nothing to rebuild — its rating input gets written when the
+// result lands — so this is a no-op on the common ordering.
+//
+// Nothing is re-sent by the game: every input the build needs is already
+// persisted by RecordMatchResult. The reported status and scenario metadata
+// come off the session row, the winners off game_session_participants
+// .is_winner, and the reporting instant off result_reported_at, so the
+// rebuilt input restates the same result the game reported, differing only in
+// what this finish just changed.
+func (s *Store) rebuildRatingInputForReportedResultTx(ctx context.Context, tx *sql.Tx, sessionID uuid.UUID) (*RatedMode, error) {
+	var (
+		status      sql.NullString
+		reportedAt  sql.NullTime
+		rawMetadata []byte
+	)
+	if err := tx.QueryRowContext(ctx, `
+		SELECT result_status, result_reported_at, result_metadata
+		FROM game_sessions
+		WHERE id = $1
+	`, sessionID).Scan(&status, &reportedAt, &rawMetadata); err != nil {
+		return nil, err
+	}
+	if !status.Valid || !reportedAt.Valid {
+		return nil, nil
+	}
+
+	var metadata map[string]any
+	if len(rawMetadata) > 0 {
+		if err := json.Unmarshal(rawMetadata, &metadata); err != nil {
+			// Unreachable today (the column only ever holds what
+			// marshalMetadata wrote), and an unrateable-match condition like
+			// the ones in appendRatingInputForResultTx rather than a
+			// transaction failure: the finish itself must still commit.
+			log.Printf("rating: session %s stored result_metadata did not decode: %v; skipping rating input rebuild", sessionID, err)
+			return nil, nil
+		}
+	}
+
+	winners, err := reportedWinnersTx(ctx, tx, sessionID)
+	if err != nil {
+		return nil, err
+	}
+	return s.appendRatingInputForResultTx(ctx, tx, sessionID, status.String, winners, metadata, reportedAt.Time)
+}
+
+// reportedWinnersTx reads back the winner ids RecordMatchResult persisted for
+// a session. Only cooperativeSuccess consults this list — a competitive
+// match's ranking comes from each participant's own is_winner — but a co-op
+// crew's success has nowhere else to live, so a rebuild has to recover it
+// from the same flags rather than assume failure.
+func reportedWinnersTx(ctx context.Context, tx *sql.Tx, sessionID uuid.UUID) ([]uuid.UUID, error) {
+	rows, err := tx.QueryContext(ctx, `
+		SELECT user_id
+		FROM game_session_participants
+		WHERE session_id = $1 AND is_winner
+	`, sessionID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var winners []uuid.UUID
+	for rows.Next() {
+		var id uuid.UUID
+		if err := rows.Scan(&id); err != nil {
+			return nil, err
+		}
+		winners = append(winners, id)
+	}
+	return winners, rows.Err()
 }
 
 // RecordMatchResult stores the match outcome and flags winners. Winner ids that do not
 // belong to the session are silently ignored — the UPDATE simply matches no rows.
-// It returns the (game, mode) a rating input was appended for, or nil if the
-// match was not rateable, so a caller can schedule a replay after commit.
+// It returns the (game, mode) whose rating log this changed — by appending an
+// input, or by removing one a correction has voided — so a caller can schedule
+// a replay after commit, and nil when the log is untouched.
 func (s *Store) RecordMatchResult(ctx context.Context, sessionID uuid.UUID, status string, winnerUserIDs []uuid.UUID, metadata map[string]any, at time.Time) (*RatedMode, error) {
 	raw, err := marshalMetadata(metadata)
 	if err != nil {
@@ -177,7 +287,9 @@ func (s *Store) RecordMatchResult(ctx context.Context, sessionID uuid.UUID, stat
 // mode or seat template no longer resolves, and so on) is a normal occurrence
 // — it is logged and skipped, never treated as a failure of the transaction:
 // the game server has already applied its result report, and failing here
-// would make it retry a write that has already landed.
+// would make it retry a write that has already landed. Once the mode is
+// known, "skipped" also means dropping any input a correction has voided —
+// see dropRatingInputTx.
 func (s *Store) appendRatingInputForResultTx(ctx context.Context, tx *sql.Tx, sessionID uuid.UUID, status string, winnerUserIDs []uuid.UUID, metadata map[string]any, at time.Time) (*RatedMode, error) {
 	var (
 		gameID       uuid.UUID
@@ -266,7 +378,7 @@ func (s *Store) appendRatingInputForResultTx(ctx context.Context, tx *sql.Tx, se
 			// not a transaction failure: log and skip the rating input so
 			// the match result itself still commits.
 			log.Printf("rating: session %s participant %s queue_options failed to decode: %v; skipping rating input", sessionID, userID, err)
-			return nil, nil
+			return dropRatingInputTx(ctx, tx, sessionID, gameID, modeKey.String)
 		}
 		participants = append(participants, rating.Participant{
 			PlayerID:  userID.String(),
@@ -301,7 +413,7 @@ func (s *Store) appendRatingInputForResultTx(ctx context.Context, tx *sql.Tx, se
 	sides, err := rating.BuildSides(shape, outcome)
 	if err != nil {
 		log.Printf("rating: session %s outcome is not rateable: %v; skipping rating input", sessionID, err)
-		return nil, nil
+		return dropRatingInputTx(ctx, tx, sessionID, gameID, modeKey.String)
 	}
 
 	ratingSides := make([]RatingSideRow, len(sides))
@@ -324,6 +436,41 @@ func (s *Store) appendRatingInputForResultTx(ctx context.Context, tx *sql.Tx, se
 		return nil, err
 	}
 	return &RatedMode{GameID: gameID, ModeKey: modeKey.String}, nil
+}
+
+// dropRatingInputTx removes any rating input already recorded for a session
+// that is no longer rateable, and reports the mode as needing a replay when
+// it actually removed one.
+//
+// A match that was never rateable has nothing to remove and schedules
+// nothing. But the same path now also covers a *correction*, and a
+// correction can void a match that used to be rateable: COMPLETED with a
+// winner restated as ABANDONED, a winner list that grew to cover everybody,
+// a co-op result that dropped its scenarios, a disconnect reported late that
+// empties out the second side. The log is meant to say what the game
+// currently says, so the superseded row has to go — leaving it in place
+// keeps the voided match moving ratings forever, since the session's status,
+// is_winner flags and standings all follow the correction while the ratings
+// do not.
+//
+// Scheduling the replay from here is not optional either: a corrected row
+// keeps its original rated_at (see appendRatingInput) and a removed row
+// lowers the mode's max(rated_at), so neither is visible to
+// ListModesNeedingReplay's max-input-against-last-rated comparison.
+func dropRatingInputTx(ctx context.Context, tx *sql.Tx, sessionID, gameID uuid.UUID, modeKey string) (*RatedMode, error) {
+	result, err := tx.ExecContext(ctx, `DELETE FROM rating_match_inputs WHERE session_id = $1`, sessionID)
+	if err != nil {
+		return nil, err
+	}
+	removed, err := result.RowsAffected()
+	if err != nil {
+		return nil, err
+	}
+	if removed == 0 {
+		return nil, nil
+	}
+	log.Printf("rating: session %s is no longer rateable; removed its rating input and scheduling a replay of %s/%s", sessionID, gameID, modeKey)
+	return &RatedMode{GameID: gameID, ModeKey: modeKey}, nil
 }
 
 // preQueueByGroup turns a participant's stored queue selections into the

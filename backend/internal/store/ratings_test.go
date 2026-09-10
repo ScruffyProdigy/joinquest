@@ -597,7 +597,7 @@ func TestRecordMatchResultExcludesDisconnectedPlayers(t *testing.T) {
 	// dropping one still leaves two rateable sides.
 	st, sessionID, gameID, users := newCompetitiveSessionFixture(t, 3)
 
-	if err := st.RecordPlayerFinish(context.Background(), sessionID, users[2], "DISCONNECT", nil, nil); err != nil {
+	if _, err := st.RecordPlayerFinish(context.Background(), sessionID, users[2], "DISCONNECT", nil, nil); err != nil {
 		t.Fatalf("RecordPlayerFinish: %v", err)
 	}
 
@@ -623,10 +623,15 @@ func TestRecordMatchResultExcludesDisconnectedPlayers(t *testing.T) {
 	}
 }
 
-func TestRecordMatchResultRatesForfeitAsALoss(t *testing.T) {
+// A FORFEIT is not an exclusion: unlike DISCONNECT, the reason itself
+// carries no verdict, so the forfeiter stays in the rated sides and is
+// ranked by whatever outcome the game separately reported — here, their
+// absence from the winner list. What this proves is that they were kept and
+// ranked, not that the reason cost them anything.
+func TestRecordMatchResultRanksForfeiterByTheReportedWinners(t *testing.T) {
 	st, sessionID, gameID, users := newCompetitiveSessionFixture(t, 2)
 
-	if err := st.RecordPlayerFinish(context.Background(), sessionID, users[1], "FORFEIT", nil, nil); err != nil {
+	if _, err := st.RecordPlayerFinish(context.Background(), sessionID, users[1], "FORFEIT", nil, nil); err != nil {
 		t.Fatalf("RecordPlayerFinish: %v", err)
 	}
 
@@ -635,7 +640,7 @@ func TestRecordMatchResultRatesForfeitAsALoss(t *testing.T) {
 		t.Fatalf("RecordMatchResult: %v", err)
 	}
 	if rated == nil {
-		t.Fatal("forfeited match was not rated; a forfeit is a loss, not an exclusion")
+		t.Fatal("forfeited match was not rated; a FORFEIT must not make a match unrateable")
 	}
 
 	inputs, err := st.ListRatingInputs(context.Background(), gameID, rated.ModeKey)
@@ -655,7 +660,7 @@ func TestRecordMatchResultRatesForfeitAsALoss(t *testing.T) {
 		}
 	}
 	if !found {
-		t.Fatal("forfeiter was dropped from the sides; want them rated as a loss")
+		t.Fatal("forfeiter was dropped from the sides; want them kept and ranked by the reported winners")
 	}
 }
 

@@ -116,7 +116,7 @@ func TestPipelineFreeForAllOrdersByPlacement(t *testing.T) {
 
 	for i, userID := range users {
 		placement := i + 1 // users[0] finishes 1st, users[1] 2nd, users[2] 3rd.
-		if err := st.RecordPlayerFinish(ctx, sessionID, userID, "FINISHED", &placement, nil); err != nil {
+		if _, err := st.RecordPlayerFinish(ctx, sessionID, userID, "FINISHED", &placement, nil); err != nil {
 			t.Fatalf("RecordPlayerFinish(%s, placement %d): %v", userID, placement, err)
 		}
 	}
@@ -390,7 +390,7 @@ func TestPipelineDisconnectedPlayerKeepsTheirRating(t *testing.T) {
 	winner, loser, disconnected := users[0], users[1], users[2]
 	prior := ratingPrior(t)
 
-	if err := st.RecordPlayerFinish(ctx, sessionID, disconnected, "DISCONNECT", nil, nil); err != nil {
+	if _, err := st.RecordPlayerFinish(ctx, sessionID, disconnected, "DISCONNECT", nil, nil); err != nil {
 		t.Fatalf("RecordPlayerFinish: %v", err)
 	}
 
@@ -454,5 +454,116 @@ func TestPipelineEveryoneWinsLeavesRatingsUntouched(t *testing.T) {
 	}
 	if len(entities) != 0 {
 		t.Fatalf("entities = %v, want none", entities)
+	}
+}
+
+// Disconnect reported *after* the result — the order
+// docs/match-lifecycle-callbacks.md actually recommends, since it tells games
+// to report the result when the match ends and to call reportPlayerFinished
+// when a disconnect grace period expires. The favourable order is covered
+// above; this is the one that used to rate the disconnected player as a
+// loser, because nothing rebuilt the match's rating input once the finish
+// landed. RecordPlayerFinish now rebuilds it in the same transaction and
+// reports the mode as needing a replay.
+func TestPipelineDisconnectReportedAfterTheResultStillExcludesThePlayer(t *testing.T) {
+	ctx := context.Background()
+	st, sessionID, gameID, users := newCompetitiveSessionFixture(t, 3)
+	winner, loser, disconnected := users[0], users[1], users[2]
+	prior := ratingPrior(t)
+
+	rated, err := st.RecordMatchResult(ctx, sessionID, "COMPLETED", []uuid.UUID{winner}, nil, time.Now())
+	if err != nil {
+		t.Fatalf("RecordMatchResult: %v", err)
+	}
+	if rated == nil {
+		t.Fatal("match was not rated")
+	}
+
+	// Anchor the correction: the disconnected player is rated at this point,
+	// so the assertions below cannot pass by the pipeline being dead.
+	players, _ := replayAndLoad(t, st, gameID, rated.ModeKey)
+	if _, ok := players[PlayerRatingKey(disconnected)]; !ok {
+		t.Fatal("player has no rating before the disconnect is reported; the test would prove nothing")
+	}
+
+	corrected, err := st.RecordPlayerFinish(ctx, sessionID, disconnected, "DISCONNECT", nil, nil)
+	if err != nil {
+		t.Fatalf("RecordPlayerFinish: %v", err)
+	}
+	if corrected == nil {
+		t.Fatal("a disconnect reported after the result scheduled no replay; the correction would never be applied")
+	}
+	if corrected.GameID != gameID || corrected.ModeKey != rated.ModeKey {
+		t.Fatalf("scheduled replay = %s/%s, want %s/%s", corrected.GameID, corrected.ModeKey, gameID, rated.ModeKey)
+	}
+
+	players, _ = replayAndLoad(t, st, gameID, corrected.ModeKey)
+
+	if _, ok := players[PlayerRatingKey(disconnected)]; ok {
+		t.Fatalf("disconnected player %s still has a rating; want the late DISCONNECT to remove them", disconnected)
+	}
+	w, ok := players[PlayerRatingKey(winner)]
+	if !ok {
+		t.Fatal("winner has no rating")
+	}
+	if w.Mu <= prior {
+		t.Fatalf("winner mu = %v, want above the prior %v", w.Mu, prior)
+	}
+	l, ok := players[PlayerRatingKey(loser)]
+	if !ok {
+		t.Fatal("loser has no rating")
+	}
+	if l.Mu >= prior {
+		t.Fatalf("loser mu = %v, want below the prior %v", l.Mu, prior)
+	}
+}
+
+// A correction that makes a match unrateable must unwind it. The session's
+// status, is_winner flags and standings all follow the correction; before
+// dropRatingInputTx the ratings kept reflecting the voided match forever,
+// invisibly to the sweep (a corrected row keeps its original rated_at, so
+// max(rated_at) never moves).
+func TestPipelineCorrectionToAnUnrateableResultUnwindsTheRatings(t *testing.T) {
+	ctx := context.Background()
+	st, sessionID, gameID, users := newCompetitiveSessionFixture(t, 2)
+
+	rated, err := st.RecordMatchResult(ctx, sessionID, "COMPLETED", []uuid.UUID{users[0]}, nil, time.Now())
+	if err != nil {
+		t.Fatalf("RecordMatchResult: %v", err)
+	}
+	if rated == nil {
+		t.Fatal("match was not rated")
+	}
+	players, _ := replayAndLoad(t, st, gameID, rated.ModeKey)
+	if len(players) != 2 {
+		t.Fatalf("players = %v, want 2 before the correction", players)
+	}
+
+	// The game corrects itself: the match was abandoned, with no winners and
+	// no placements — nothing left to rate.
+	corrected, err := st.RecordMatchResult(ctx, sessionID, "ABANDONED", nil, nil, time.Now())
+	if err != nil {
+		t.Fatalf("RecordMatchResult (correction): %v", err)
+	}
+	if corrected == nil {
+		t.Fatal("correction to an unrateable result scheduled no replay; the voided match would keep moving ratings")
+	}
+
+	inputs, err := st.ListRatingInputs(ctx, gameID, rated.ModeKey)
+	if err != nil {
+		t.Fatalf("ListRatingInputs: %v", err)
+	}
+	for _, row := range inputs {
+		if row.SessionID == sessionID {
+			t.Fatal("the superseded rating input survived a correction that voided the match")
+		}
+	}
+
+	players, entities := replayAndLoad(t, st, gameID, corrected.ModeKey)
+	if len(players) != 0 {
+		t.Fatalf("players = %v, want none once the only match was voided", players)
+	}
+	if len(entities) != 0 {
+		t.Fatalf("entities = %v, want none once the only match was voided", entities)
 	}
 }
