@@ -515,6 +515,11 @@ type ComplexityRoot struct {
 		Tables     func(childComplexity int) int
 	}
 
+	RoomMember struct {
+		Away func(childComplexity int) int
+		User func(childComplexity int) int
+	}
+
 	RoomMessage struct {
 		Author    func(childComplexity int) int
 		Body      func(childComplexity int) int
@@ -819,7 +824,7 @@ type QueryResolver interface {
 type RoomResolver interface {
 	JoinURL(ctx context.Context, obj *model.Room) (string, error)
 	Host(ctx context.Context, obj *model.Room) (*model.User, error)
-	Members(ctx context.Context, obj *model.Room) ([]*model.User, error)
+	Members(ctx context.Context, obj *model.Room) ([]*model.RoomMember, error)
 	Messages(ctx context.Context, obj *model.Room, limit *int, before *string) ([]*model.RoomMessage, error)
 	Tables(ctx context.Context, obj *model.Room) ([]*model.Table, error)
 }
@@ -3164,6 +3169,19 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 
 		return e.complexity.Room.Tables(childComplexity), true
 
+	case "RoomMember.away":
+		if e.complexity.RoomMember.Away == nil {
+			break
+		}
+
+		return e.complexity.RoomMember.Away(childComplexity), true
+	case "RoomMember.user":
+		if e.complexity.RoomMember.User == nil {
+			break
+		}
+
+		return e.complexity.RoomMember.User(childComplexity), true
+
 	case "RoomMessage.author":
 		if e.complexity.RoomMessage.Author == nil {
 			break
@@ -4900,8 +4918,25 @@ input SavePushSubscriptionInput {
   inviteCode: String!
   joinUrl: String!
   host: User!
-  members: [User!]!
+  members: [RoomMember!]!
   messages(limit: Int = 50, before: ID): [RoomMessage!]!
+}
+
+"""
+One person on a room's roster.
+"""
+type RoomMember {
+  user: User!
+  """
+  Whether the roster has stopped claiming this member is here, because their last
+  socket closed more than DefaultRoomMemberAwayGrace (30s) ago.
+
+  A display state and nothing more. An away member still holds their membership, their
+  chat and their seat; this says only that we no longer believe they are looking at it,
+  so a roster does not have to pretend otherwise for the five minutes their place is
+  held. Reconnecting clears it immediately.
+  """
+  away: Boolean!
 }
 
 type RoomMessage {
@@ -18458,7 +18493,7 @@ func (ec *executionContext) _Room_members(ctx context.Context, field graphql.Col
 			return ec.resolvers.Room().Members(ctx, obj)
 		},
 		nil,
-		ec.marshalNUser2ᚕᚖgithubᚗcomᚋscruffyprodigyᚋjoinquestᚋgraphᚋmodelᚐUserᚄ,
+		ec.marshalNRoomMember2ᚕᚖgithubᚗcomᚋscruffyprodigyᚋjoinquestᚋgraphᚋmodelᚐRoomMemberᚄ,
 		true,
 		true,
 	)
@@ -18472,30 +18507,12 @@ func (ec *executionContext) fieldContext_Room_members(_ context.Context, field g
 		IsResolver: true,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			switch field.Name {
-			case "id":
-				return ec.fieldContext_User_id(ctx, field)
-			case "email":
-				return ec.fieldContext_User_email(ctx, field)
-			case "displayName":
-				return ec.fieldContext_User_displayName(ctx, field)
-			case "avatarUrl":
-				return ec.fieldContext_User_avatarUrl(ctx, field)
-			case "avatarKey":
-				return ec.fieldContext_User_avatarKey(ctx, field)
-			case "avatarSource":
-				return ec.fieldContext_User_avatarSource(ctx, field)
-			case "createdAt":
-				return ec.fieldContext_User_createdAt(ctx, field)
-			case "isAdmin":
-				return ec.fieldContext_User_isAdmin(ctx, field)
-			case "isGuest":
-				return ec.fieldContext_User_isGuest(ctx, field)
-			case "emails":
-				return ec.fieldContext_User_emails(ctx, field)
-			case "identities":
-				return ec.fieldContext_User_identities(ctx, field)
+			case "user":
+				return ec.fieldContext_RoomMember_user(ctx, field)
+			case "away":
+				return ec.fieldContext_RoomMember_away(ctx, field)
 			}
-			return nil, fmt.Errorf("no field named %q was found under type User", field.Name)
+			return nil, fmt.Errorf("no field named %q was found under type RoomMember", field.Name)
 		},
 	}
 	return fc, nil
@@ -18606,6 +18623,88 @@ func (ec *executionContext) fieldContext_Room_tables(_ context.Context, field gr
 				return ec.fieldContext_Table_regroupRoster(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type Table", field.Name)
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _RoomMember_user(ctx context.Context, field graphql.CollectedField, obj *model.RoomMember) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_RoomMember_user,
+		func(ctx context.Context) (any, error) {
+			return obj.User, nil
+		},
+		nil,
+		ec.marshalNUser2ᚖgithubᚗcomᚋscruffyprodigyᚋjoinquestᚋgraphᚋmodelᚐUser,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_RoomMember_user(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "RoomMember",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "id":
+				return ec.fieldContext_User_id(ctx, field)
+			case "email":
+				return ec.fieldContext_User_email(ctx, field)
+			case "displayName":
+				return ec.fieldContext_User_displayName(ctx, field)
+			case "avatarUrl":
+				return ec.fieldContext_User_avatarUrl(ctx, field)
+			case "avatarKey":
+				return ec.fieldContext_User_avatarKey(ctx, field)
+			case "avatarSource":
+				return ec.fieldContext_User_avatarSource(ctx, field)
+			case "createdAt":
+				return ec.fieldContext_User_createdAt(ctx, field)
+			case "isAdmin":
+				return ec.fieldContext_User_isAdmin(ctx, field)
+			case "isGuest":
+				return ec.fieldContext_User_isGuest(ctx, field)
+			case "emails":
+				return ec.fieldContext_User_emails(ctx, field)
+			case "identities":
+				return ec.fieldContext_User_identities(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type User", field.Name)
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _RoomMember_away(ctx context.Context, field graphql.CollectedField, obj *model.RoomMember) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_RoomMember_away,
+		func(ctx context.Context) (any, error) {
+			return obj.Away, nil
+		},
+		nil,
+		ec.marshalNBoolean2bool,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_RoomMember_away(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "RoomMember",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Boolean does not have child fields")
 		},
 	}
 	return fc, nil
@@ -28872,6 +28971,50 @@ func (ec *executionContext) _Room(ctx context.Context, sel ast.SelectionSet, obj
 	return out
 }
 
+var roomMemberImplementors = []string{"RoomMember"}
+
+func (ec *executionContext) _RoomMember(ctx context.Context, sel ast.SelectionSet, obj *model.RoomMember) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, roomMemberImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	deferred := make(map[string]*graphql.FieldSet)
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("RoomMember")
+		case "user":
+			out.Values[i] = ec._RoomMember_user(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "away":
+			out.Values[i] = ec._RoomMember_away(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch(ctx)
+	if out.Invalids > 0 {
+		return graphql.Null
+	}
+
+	atomic.AddInt32(&ec.deferred, int32(len(deferred)))
+
+	for label, dfs := range deferred {
+		ec.processDeferredGroup(graphql.DeferredGroup{
+			Label:    label,
+			Path:     graphql.GetPath(ctx),
+			FieldSet: dfs,
+			Context:  ctx,
+		})
+	}
+
+	return out
+}
+
 var roomMessageImplementors = []string{"RoomMessage"}
 
 func (ec *executionContext) _RoomMessage(ctx context.Context, sel ast.SelectionSet, obj *model.RoomMessage) graphql.Marshaler {
@@ -32525,6 +32668,60 @@ func (ec *executionContext) marshalNRoom2ᚖgithubᚗcomᚋscruffyprodigyᚋjoin
 		return graphql.Null
 	}
 	return ec._Room(ctx, sel, v)
+}
+
+func (ec *executionContext) marshalNRoomMember2ᚕᚖgithubᚗcomᚋscruffyprodigyᚋjoinquestᚋgraphᚋmodelᚐRoomMemberᚄ(ctx context.Context, sel ast.SelectionSet, v []*model.RoomMember) graphql.Marshaler {
+	ret := make(graphql.Array, len(v))
+	var wg sync.WaitGroup
+	isLen1 := len(v) == 1
+	if !isLen1 {
+		wg.Add(len(v))
+	}
+	for i := range v {
+		i := i
+		fc := &graphql.FieldContext{
+			Index:  &i,
+			Result: &v[i],
+		}
+		ctx := graphql.WithFieldContext(ctx, fc)
+		f := func(i int) {
+			defer func() {
+				if r := recover(); r != nil {
+					ec.Error(ctx, ec.Recover(ctx, r))
+					ret = nil
+				}
+			}()
+			if !isLen1 {
+				defer wg.Done()
+			}
+			ret[i] = ec.marshalNRoomMember2ᚖgithubᚗcomᚋscruffyprodigyᚋjoinquestᚋgraphᚋmodelᚐRoomMember(ctx, sel, v[i])
+		}
+		if isLen1 {
+			f(i)
+		} else {
+			go f(i)
+		}
+
+	}
+	wg.Wait()
+
+	for _, e := range ret {
+		if e == graphql.Null {
+			return graphql.Null
+		}
+	}
+
+	return ret
+}
+
+func (ec *executionContext) marshalNRoomMember2ᚖgithubᚗcomᚋscruffyprodigyᚋjoinquestᚋgraphᚋmodelᚐRoomMember(ctx context.Context, sel ast.SelectionSet, v *model.RoomMember) graphql.Marshaler {
+	if v == nil {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			ec.Errorf(ctx, "the requested element is null which the schema does not allow")
+		}
+		return graphql.Null
+	}
+	return ec._RoomMember(ctx, sel, v)
 }
 
 func (ec *executionContext) marshalNRoomMessage2githubᚗcomᚋscruffyprodigyᚋjoinquestᚋgraphᚋmodelᚐRoomMessage(ctx context.Context, sel ast.SelectionSet, v model.RoomMessage) graphql.Marshaler {

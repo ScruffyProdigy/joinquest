@@ -101,7 +101,13 @@ export function playersPickingASeat(room, table, viewerId = null) {
   const out = []
   const listed = new Set()
 
-  function add(user) {
+  // `away` rides alongside `status` rather than becoming one of its values (JQ-265). They
+  // answer different questions — status is what this player has decided about the next
+  // match, away is whether we still believe they are at their device — and a player can
+  // be both at once: someone whose regroup answer is still pending and whose phone died
+  // is awaiting AND away, and collapsing that into one field would have to drop one of
+  // the two facts.
+  function add(user, away = false) {
     const id = user?.id
     // A seated player is on the Players card already; a second row for them there and
     // here reads as two people.
@@ -110,22 +116,26 @@ export function playersPickingASeat(room, table, viewerId = null) {
     }
     listed.add(id)
     if (id === viewerId) {
-      viewer.push({ user, status: 'here' })
+      viewer.push({ user, status: 'here', away })
       return
     }
     const regroup = roster.get(id)
     if (regroup === 'PENDING') {
-      awaiting.push({ user, status: 'awaiting' })
+      awaiting.push({ user, status: 'awaiting', away })
     } else if (regroup === 'OUT') {
-      out.push({ user, status: 'out' })
+      out.push({ user, status: 'out', away })
     } else {
-      here.push({ user, status: 'here' })
+      here.push({ user, status: 'here', away })
     }
   }
 
   for (const member of room?.members ?? []) {
-    add(member)
+    add(member?.user, member?.away ?? false)
   }
+  // The regroup roster carries no presence of its own — it is a record of answers, not of
+  // sockets. Anyone on it who is also a room member was already added above with their
+  // real reading, and `listed` keeps this pass from overwriting it; anyone who is not a
+  // member has left the room, which is a stronger statement than away.
   for (const entry of table?.regroupRoster ?? []) {
     add(entry?.user)
   }

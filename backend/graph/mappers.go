@@ -367,6 +367,20 @@ func ToGraphQLUsers(users []store.User) []*model.User {
 	return result
 }
 
+// ToGraphQLRoomMembers maps a room's roster, carrying each member's away reading through
+// as the store derived it. Nothing recomputes the window here: the store's query is the
+// single place that decides what "away" means.
+func ToGraphQLRoomMembers(members []store.RoomMember) []*model.RoomMember {
+	result := make([]*model.RoomMember, len(members))
+	for i := range members {
+		result[i] = &model.RoomMember{
+			User: ToGraphQLUser(&members[i].User),
+			Away: members[i].Away,
+		}
+	}
+	return result
+}
+
 // gameTitleArt builds the catalog card's wordmark, or nil when the game has no
 // usable one. Placement is required alongside the URL: a mark drawn at the wrong
 // anchor or width lands over the card's own text, so a row missing either half is

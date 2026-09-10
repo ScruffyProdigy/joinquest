@@ -587,9 +587,22 @@ type Room struct {
 	InviteCode string         `json:"inviteCode"`
 	JoinURL    string         `json:"joinUrl"`
 	Host       *User          `json:"host"`
-	Members    []*User        `json:"members"`
+	Members    []*RoomMember  `json:"members"`
 	Messages   []*RoomMessage `json:"messages"`
 	Tables     []*Table       `json:"tables"`
+}
+
+// One person on a room's roster.
+type RoomMember struct {
+	User *User `json:"user"`
+	// Whether the roster has stopped claiming this member is here, because their last
+	// socket closed more than DefaultRoomMemberAwayGrace (30s) ago.
+	//
+	// A display state and nothing more. An away member still holds their membership, their
+	// chat and their seat; this says only that we no longer believe they are looking at it,
+	// so a roster does not have to pretend otherwise for the five minutes their place is
+	// held. Reconnecting clears it immediately.
+	Away bool `json:"away"`
 }
 
 type RoomMessage struct {

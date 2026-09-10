@@ -67,7 +67,14 @@ function useDeclineBeat(players) {
   return declining
 }
 
-function Row({ user, userId, status, leaving }) {
+/**
+ * `away` dims the avatar and names it, and is deliberately independent of `status`
+ * (JQ-265): a player can be awaiting a regroup answer and away at the same time, and the
+ * card has to be able to say both. Only the avatar dims — the row keeps its full-strength
+ * name and badge, because the uncertainty is about whether they are watching, not about
+ * who they are or what they have decided.
+ */
+function Row({ user, userId, status, leaving, away = false }) {
   return (
     <li
       className={cn(
@@ -79,7 +86,7 @@ function Row({ user, userId, status, leaving }) {
         status === 'out' && (leaving ? 'animate-out fade-out' : 'animate-in fade-in'),
       )}
     >
-      <PlayerAvatar user={user} size="xs" />
+      <PlayerAvatar user={user} size="xs" away={away} />
       <span className="flex-1 truncate text-sm font-bold text-foreground">
         {user?.id === userId ? 'You' : displayName(user)}
       </span>
@@ -145,6 +152,7 @@ export default function GroupSpectatorList({ players = [], userId }) {
                 userId={userId}
                 status={row.status}
                 leaving={row.leaving}
+                away={row.away}
               />
             ))}
           </ul>

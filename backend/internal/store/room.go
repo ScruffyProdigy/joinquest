@@ -385,29 +385,92 @@ func (s *Store) isRoomMemberTx(ctx context.Context, q sqlQueryRowContext, roomID
 	return exists, err
 }
 
-// ListRoomMemberUsers returns members ordered by join time.
-func (s *Store) ListRoomMemberUsers(ctx context.Context, roomID uuid.UUID) ([]User, error) {
+// scanRoomMember reads a user row with the roster's derived away column appended.
+//
+// It duplicates scanUser's column list rather than calling it, because Scan takes all
+// destinations in one call and the away column is the last one. Adding a column to
+// userColumns means adding it here too — the compiler will not catch that, but the
+// roster tests will.
+func scanRoomMember(row interface{ Scan(dest ...any) error }) (*User, bool, error) {
+	var u User
+	var email sql.NullString
+	var away bool
+	if err := row.Scan(
+		&u.ID,
+		&email,
+		&u.Username,
+		&u.DisplayName,
+		&u.AvatarURL,
+		&u.AvatarKey,
+		&u.AvatarSource,
+		&u.IsGuest,
+		&u.CreatedAt,
+		&away,
+	); err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return nil, false, ErrNotFound
+		}
+		return nil, false, err
+	}
+	if email.Valid {
+		u.Email = email.String
+	}
+	return &u, away, nil
+}
+
+// RoomMember is one membership on a room's roster: who holds it, and whether the roster
+// is still willing to claim they are there.
+//
+// Away is derived on read from user_presence and stored nowhere. That is the point rather
+// than an optimisation: a persisted flag would be a second answer to a question
+// user_presence already answers, and the two would disagree the first time a pod died
+// holding the writer. Nothing consults Away to decide what a player keeps — the membership
+// this struct describes is unaffected by it.
+type RoomMember struct {
+	User User
+	Away bool
+}
+
+// ListRoomRoster returns members ordered by join time, each marked away if their last
+// socket closed longer than awayAfter ago.
+//
+// LEFT JOIN, not INNER: a member with no user_presence row at all has never opened a
+// subscription — they joined by mutation and their client has not caught up yet — and the
+// honest reading of "no evidence they are gone" is present, not away. It is also the
+// state every member briefly passes through on the way in.
+//
+// The predicate tests only disconnected_at, and does not repeat
+// staleDisconnectedRoomMemberPredicate's connection_count = 0. The two are the same
+// question here: user_presence_stamp_matches_count makes the stamp non-null exactly when
+// the count is zero, so a live socket cannot carry a stamp for this to age.
+//
+// Strictly older-than, so a member exactly at the boundary still reads as present. The
+// window is a claim we stop making after it passes, not at it.
+func (s *Store) ListRoomRoster(ctx context.Context, roomID uuid.UUID, awayAfter time.Duration) ([]RoomMember, error) {
 	rows, err := s.db.QueryContext(ctx, `
-		SELECT `+strings.ReplaceAll(userColumns, "id,", "u.id,")+`
+		SELECT `+strings.ReplaceAll(userColumns, "id,", "u.id,")+`,
+		       (up.disconnected_at IS NOT NULL
+		        AND up.disconnected_at < NOW() - $2::interval) AS away
 		FROM users u
 		INNER JOIN room_members rm ON rm.user_id = u.id
+		LEFT JOIN user_presence up ON up.user_id = u.id
 		WHERE rm.room_id = $1 AND u.is_active = true
 		ORDER BY rm.joined_at ASC
-	`, roomID)
+	`, roomID, pgInterval(awayAfter))
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
 
-	var users []User
+	var members []RoomMember
 	for rows.Next() {
-		u, err := scanUser(rows)
+		u, away, err := scanRoomMember(rows)
 		if err != nil {
 			return nil, err
 		}
-		users = append(users, *u)
+		members = append(members, RoomMember{User: *u, Away: away})
 	}
-	return users, rows.Err()
+	return members, rows.Err()
 }
 
 // ListRoomMessages returns recent messages oldest-first for display.

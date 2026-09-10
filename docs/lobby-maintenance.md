@@ -415,7 +415,15 @@ So a room has to end when nobody is left in it, and the signal for "nobody" is J
 | Queue place | 90s | `store.DefaultQueueDisconnectGrace` |
 | Room membership | 5m | `store.DefaultRoomDisconnectGrace` |
 | Forming-table seat | 30s | `store.DefaultTableSeatDisconnectGrace` |
+| Roster reads *away* | 30s | `store.DefaultRoomMemberAwayGrace` |
 | Closed room retention | 6h | `store.DefaultClosedRoomRetention` |
+
+**Only the away window is about display.** The other three take something away from a
+player; that one takes nothing and changes only what the roster asserts about them
+(JQ-265). Its 30s equals the seat window's and is deliberately a separate constant rather
+than a borrow of that identifier: both answer "do we still believe this person is at their
+device", but the seat window spends Alice's seat on Bob's behalf, while this one only makes
+the roster honest — so it is free to move without touching seat availability.
 
 **The seat window is deliberately not the room's, and this is the pair most likely to get
 collapsed by someone tidying up.** Both fire off the same socket edge for the same player,
@@ -457,6 +465,13 @@ real budget then was 22.5s. The conclusion drawn from it was unaffected.)
 
 A deliberate `leaveRoom` is immediate and no window applies to it. The 5m governs only
 presence loss — a socket that dropped without saying anything.
+
+Raising the room window to 5m made the roster's silence ten times longer, which is what
+JQ-265 then fixed rather than reverting the window: at 30s a disconnected member is drawn
+dimmed and labelled *away* (`Room.members[].away`, derived on read from `user_presence` and
+stored nowhere), and keeps their membership, seat and chat throughout. So the 5m is no
+longer a tradeoff between truth and patience — it only means the room is still there when
+you come back. Reconnecting clears the reading in the same write that clears the stamp.
 
 ### What "removed" means
 

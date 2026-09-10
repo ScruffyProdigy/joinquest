@@ -6,6 +6,8 @@ import GroupSpectatorList from './GroupSpectatorList'
 const you = { user: { id: 'u1', displayName: 'Ada' }, status: 'here' }
 const member = { user: { id: 'u2', displayName: 'Bo' }, status: 'here' }
 const awaiting = { user: { id: 'u3', displayName: 'Cy' }, status: 'awaiting' }
+const awayMember = { user: { id: 'u4', displayName: 'Dee' }, status: 'here', away: true }
+const awayAwaiting = { user: { id: 'u5', displayName: 'Eli' }, status: 'awaiting', away: true }
 
 afterEach(() => {
   vi.useRealTimers()
@@ -22,6 +24,25 @@ describe('GroupSpectatorList', () => {
     render(<GroupSpectatorList players={[you]} userId="u1" />)
     expect(screen.getByText('Picking a seat')).toBeInTheDocument()
     expect(screen.getByText('You')).toBeInTheDocument()
+  })
+
+  // JQ-265. Away dims the avatar only: the name and any badge stay at full strength,
+  // because the doubt is about whether they are watching, not about who they are.
+  it('dims an away member and keeps their name legible', () => {
+    const { container } = render(<GroupSpectatorList players={[member, awayMember]} userId="u1" />)
+    expect(screen.getByText('Dee')).toBeInTheDocument()
+    const dimmed = container.querySelectorAll('[data-slot="avatar"][data-away="true"]')
+    expect(dimmed).toHaveLength(1)
+    expect(dimmed[0].getAttribute('title')).toBe('Dee (away)')
+  })
+
+  // Away and awaiting are different questions — whether we believe they are there, and
+  // what they have said about the next match — so a player whose phone died mid-decision
+  // has to read as both rather than have one reading swallow the other.
+  it('shows a player who is both awaiting and away as both', () => {
+    const { container } = render(<GroupSpectatorList players={[member, awayAwaiting]} userId="u1" />)
+    expect(screen.getByText('Awaiting')).toBeInTheDocument()
+    expect(container.querySelector('[data-slot="avatar"][data-away="true"]')).toBeTruthy()
   })
 
   it('stays out of the way when there is nobody to list at all', () => {

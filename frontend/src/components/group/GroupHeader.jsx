@@ -26,7 +26,12 @@ export default function GroupHeader({ table, room, busy, onLeave }) {
         </Button>
         <div className="flex -space-x-2" aria-label="In this group">
           {(room?.members ?? []).map((member) => (
-            <PlayerAvatar key={member.id} user={member} size="sm" />
+            <PlayerAvatar
+              key={member.user.id}
+              user={member.user}
+              size="sm"
+              away={member.away}
+            />
           ))}
         </div>
       </div>

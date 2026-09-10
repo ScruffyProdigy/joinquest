@@ -7,7 +7,7 @@ const mockRoom = {
   inviteCode: 'ABCD',
   joinUrl: 'https://joinquest.cc/r/abcd',
   host: { id: 'user-1' },
-  members: [{ id: 'user-1', displayName: 'Pat' }],
+  members: [{ user: { id: 'user-1', displayName: 'Pat' }, away: false }],
   tables: [],
 }
 
@@ -49,5 +49,34 @@ describe('RoomPanel', () => {
   it('shows the leave room button', () => {
     render(<RoomPanel compact />)
     expect(screen.getByRole('button', { name: /Leave room/ })).toBeInTheDocument()
+  })
+
+  // JQ-265. The member stays listed and still counts — the roster's job here is to stop
+  // claiming they are watching, not to start pretending they left. A regression that
+  // filtered away members out would pass a "shows away" assertion on its own, so the
+  // count and the row are asserted together.
+  it('dims an away member without dropping them from the roster', () => {
+    const original = mockRoom.members
+    mockRoom.members = [
+      { user: { id: 'user-1', displayName: 'Pat' }, away: false },
+      { user: { id: 'user-2', displayName: 'Sam' }, away: true },
+    ]
+    try {
+      const { container } = render(<RoomPanel compact />)
+      expect(screen.getByText('2 members')).toBeInTheDocument()
+      expect(screen.getByText(/Sam/)).toBeInTheDocument()
+      expect(screen.getByText(/Sam — away/)).toBeInTheDocument()
+      const dimmed = container.querySelectorAll('[data-slot="avatar"][data-away="true"]')
+      expect(dimmed).toHaveLength(1)
+      expect(dimmed[0].getAttribute('title')).toBe('Sam (away)')
+    } finally {
+      mockRoom.members = original
+    }
+  })
+
+  it('leaves a present member undimmed', () => {
+    const { container } = render(<RoomPanel compact />)
+    expect(container.querySelector('[data-slot="avatar"][data-away="true"]')).toBeNull()
+    expect(screen.queryByText(/away/)).toBeNull()
   })
 })

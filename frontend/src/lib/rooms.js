@@ -13,7 +13,10 @@ const ROOM_FIELDS = `
     ${USER_AVATAR_FIELDS}
   }
   members {
-    ${USER_AVATAR_FIELDS}
+    user {
+      ${USER_AVATAR_FIELDS}
+    }
+    away
   }
 `
 

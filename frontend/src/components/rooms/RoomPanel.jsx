@@ -218,14 +218,21 @@ export default function RoomPanel({ compact = false }) {
     tables[0]?.game?.accentColor,
   )
 
+  // Away members stay in the list and keep their place in it (JQ-265) — they still hold
+  // their membership, so removing or reordering them would be the roster telling a
+  // different lie from the one this fixed. The row dims and says so instead.
   const membersList = (
     <ul className="flex flex-col gap-2">
-      {room.members.map((member) => (
-        <li key={member.id} className="flex items-center gap-2 text-sm text-foreground">
-          <PlayerAvatar user={member} size="sm" />
+      {room.members.map(({ user, away }) => (
+        <li
+          key={user.id}
+          className={cn('flex items-center gap-2 text-sm text-foreground', away && 'opacity-60')}
+        >
+          <PlayerAvatar user={user} size="sm" away={away} />
           <span>
-            {displayName(member)}
-            {member.id === room.host?.id ? ' (host)' : ''}
+            {displayName(user)}
+            {user.id === room.host?.id ? ' (host)' : ''}
+            {away ? ' — away' : ''}
           </span>
         </li>
       ))}

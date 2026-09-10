@@ -3,8 +3,25 @@ type Room {
   inviteCode: String!
   joinUrl: String!
   host: User!
-  members: [User!]!
+  members: [RoomMember!]!
   messages(limit: Int = 50, before: ID): [RoomMessage!]!
+}
+
+"""
+One person on a room's roster.
+"""
+type RoomMember {
+  user: User!
+  """
+  Whether the roster has stopped claiming this member is here, because their last
+  socket closed more than DefaultRoomMemberAwayGrace (30s) ago.
+
+  A display state and nothing more. An away member still holds their membership, their
+  chat and their seat; this says only that we no longer believe they are looking at it,
+  so a roster does not have to pretend otherwise for the five minutes their place is
+  held. Reconnecting clears it immediately.
+  """
+  away: Boolean!
 }
 
 type RoomMessage {

@@ -618,3 +618,126 @@ func TestReconnectInsideTheWindowKeepsTheSeat(t *testing.T) {
 		t.Fatalf("seats = %+v, want the returned player still seated", seats)
 	}
 }
+
+// The away window is the roster's, not the room's, and the whole ticket is that the two
+// must not be the same number: a room holds a place for 5m, and a roster that stayed
+// quiet for all of it would spend five minutes claiming a player whose battery died is
+// sitting there. Pinning the value here pins that separation — if someone later points
+// this at DefaultRoomDisconnectGrace, the roster goes back to lying.
+func TestAwayWindowIsShorterThanTheRoomItReportsOn(t *testing.T) {
+	if DefaultRoomMemberAwayGrace != 30*time.Second {
+		t.Fatalf("away window: got %s, want 30s", DefaultRoomMemberAwayGrace)
+	}
+	if DefaultRoomMemberAwayGrace >= DefaultRoomDisconnectGrace {
+		t.Fatalf("away window %s must stay well inside the room's %s, or the roster is"+
+			" only honest about members who have already been removed",
+			DefaultRoomMemberAwayGrace, DefaultRoomDisconnectGrace)
+	}
+}
+
+// Past the window, the roster stops claiming a disconnected member is there. The
+// membership itself is untouched — that is the other half of this test, and the half a
+// regression would most plausibly break, because the tempting implementation of "show
+// them as away" is to take something away from them.
+func TestRosterReportsAMemberAwayPastTheWindow(t *testing.T) {
+	st := openTestStore(t)
+	cleaner := st.NewTestCleaner(t)
+	ctx := context.Background()
+	userID := newPresenceUser(t, st, cleaner, ctx)
+
+	room, _ := roomAndDisconnect(t, st, ctx, userID)
+	backdateDisconnect(t, st, ctx, userID, DefaultRoomMemberAwayGrace+time.Second)
+
+	member := onlyRosterEntry(t, st, ctx, room.ID)
+	if !member.Away {
+		t.Fatal("a member disconnected past the window still reads as present")
+	}
+	if member.User.ID != userID {
+		t.Fatalf("roster returned the wrong user: %s", member.User.ID)
+	}
+	if got := roomMemberCount(t, st, ctx, room.ID); got != 1 {
+		t.Fatalf("membership count = %d, want 1: away is what the roster says, never"+
+			" what the player holds", got)
+	}
+}
+
+// Inside the window a disconnect is invisible to everyone else, which is what makes a
+// reload or a passing tunnel a non-event. Tested at the boundary itself rather than a
+// comfortable distance inside it: exactly-at-the-window is the case an off-by-one in the
+// SQL comparison gets wrong, and the window is a claim we stop making after it passes.
+func TestRosterKeepsAMemberPresentInsideTheWindow(t *testing.T) {
+	st := openTestStore(t)
+	cleaner := st.NewTestCleaner(t)
+	ctx := context.Background()
+	userID := newPresenceUser(t, st, cleaner, ctx)
+
+	room, _ := roomAndDisconnect(t, st, ctx, userID)
+
+	if member := onlyRosterEntry(t, st, ctx, room.ID); member.Away {
+		t.Fatal("a member who just dropped their socket already reads as away")
+	}
+
+	backdateDisconnect(t, st, ctx, userID, DefaultRoomMemberAwayGrace)
+	if member := onlyRosterEntry(t, st, ctx, room.ID); member.Away {
+		t.Fatal("a member exactly at the window reads as away; the window is what we" +
+			" stop claiming after, not at")
+	}
+}
+
+// Reconnecting clears the stamp, so it clears the away reading in the same instant — no
+// second write, no timer to beat. The player who tabbed away and came back was never
+// shown as away to anybody, even though their disconnect had aged well past the window
+// while they were gone.
+func TestReconnectingClearsTheAwayReading(t *testing.T) {
+	st := openTestStore(t)
+	cleaner := st.NewTestCleaner(t)
+	ctx := context.Background()
+	userID := newPresenceUser(t, st, cleaner, ctx)
+
+	room, _ := roomAndDisconnect(t, st, ctx, userID)
+	backdateDisconnect(t, st, ctx, userID, 10*DefaultRoomMemberAwayGrace)
+	if member := onlyRosterEntry(t, st, ctx, room.ID); !member.Away {
+		t.Fatal("expected the long-gone member to read as away before reconnecting")
+	}
+
+	if _, err := st.PresenceConnected(ctx, userID); err != nil {
+		t.Fatalf("reconnect: %v", err)
+	}
+
+	if member := onlyRosterEntry(t, st, ctx, room.ID); member.Away {
+		t.Fatal("a reconnected member still reads as away")
+	}
+}
+
+// A member who has never held a socket has no user_presence row at all — they joined by
+// mutation and their client has not opened a subscription yet. Every member passes
+// through this state on the way in, so reading it as away would flash the whole roster
+// grey at join time.
+func TestRosterReadsAMemberWithNoPresenceRowAsPresent(t *testing.T) {
+	st := openTestStore(t)
+	cleaner := st.NewTestCleaner(t)
+	ctx := context.Background()
+	userID := newPresenceUser(t, st, cleaner, ctx)
+
+	room, err := st.CreateRoom(ctx, userID)
+	if err != nil {
+		t.Fatalf("CreateRoom: %v", err)
+	}
+
+	if member := onlyRosterEntry(t, st, ctx, room.ID); member.Away {
+		t.Fatal("a member who never opened a socket reads as away")
+	}
+}
+
+// onlyRosterEntry reads the roster of a room expected to hold exactly one member.
+func onlyRosterEntry(t *testing.T, st *Store, ctx context.Context, roomID uuid.UUID) RoomMember {
+	t.Helper()
+	members, err := st.ListRoomRoster(ctx, roomID, DefaultRoomMemberAwayGrace)
+	if err != nil {
+		t.Fatalf("ListRoomRoster: %v", err)
+	}
+	if len(members) != 1 {
+		t.Fatalf("roster size = %d, want 1", len(members))
+	}
+	return members[0]
+}
