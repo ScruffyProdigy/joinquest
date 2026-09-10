@@ -21,11 +21,34 @@
   min-width: 0;
 }
 
+#root.app-root--group {
+  padding: 0;
+  /* body centres its children; the group header has to be the top of the screen. */
+  align-self: stretch;
+}
+
 .app-shell,
 .auth-page {
   display: flex;
   flex-direction: column;
   gap: 1.5rem;
+}
+
+/* Each block on the group screen owns its own top gutter, so the shell adds none. */
+.app-shell--group {
+  gap: 0;
+}
+
+/* This app ships no Tailwind preflight, so headings and paragraphs still carry the
+   user agent's margins. On the group screen those margins are what pushed every block
+   past the prototype's sizing (JQ-251); a utility class still wins over this. */
+.app-shell--group :is(h1, p, ul) {
+  margin: 0;
+}
+
+.app-shell--group ul {
+  padding-inline-start: 0;
+  list-style: none;
 }
 
 .intent-banner {

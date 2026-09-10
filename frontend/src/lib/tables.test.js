@@ -10,6 +10,7 @@ import {
   mySeatDisplayName,
   mySeatKeyOnTable,
   seatLabelInSection,
+  seatSectionTitle,
   sectionTitleForSeat,
   tableShouldLeaveRoomList,
 } from './tables'
@@ -46,6 +47,18 @@ describe('groupSeatSlotsForDisplay', () => {
     expect(layout.kind).toBe('roles')
     expect(layout.roles).toHaveLength(2)
     expect(layout.roles[0][0]).toBe('Clue Giver')
+  })
+})
+
+describe('seatSectionTitle', () => {
+  it('takes the role off the seat label', () => {
+    expect(seatSectionTitle([{ displayName: 'Clue Giver · Red' }])).toBe('Clue Giver')
+  })
+
+  it('falls back rather than heading a section with a seat number', () => {
+    expect(seatSectionTitle([{ displayName: '1' }])).toBe('Player')
+    expect(seatSectionTitle([{ displayName: '' }])).toBe('Player')
+    expect(seatSectionTitle([{ displayName: '2' }], 'fifo')).toBe('fifo')
   })
 })
 
