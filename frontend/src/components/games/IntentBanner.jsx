@@ -1,6 +1,6 @@
 import {
-  LAUNCH_GAME,
   LEAVE_GAME,
+  REJOIN_MATCH,
   LEAVE_TABLE_SEAT,
   bannerIntentPlayingHint,
   bannerIntentLaunchPendingHint,
@@ -16,7 +16,7 @@ import {
 } from '../../lib/intent'
 import { Button } from '../ui/button'
 
-function LeaveError({ message }) {
+function BannerError({ message }) {
   if (!message) {
     return null
   }
@@ -38,10 +38,16 @@ export default function IntentBanner({
   activeTableSeat,
   busy,
   leaveError = null,
+  rejoinError = null,
+  rejoining = false,
   onLeave,
+  onRejoin,
 }) {
   if (hasReadyToPlayIntent(activeIntent, activeTableSeat)) {
-    const launchUrl = resolveIntentLaunchUrl(activeIntent, activeTableSeat)
+    // The launch URL only tells us the match is provisioned and has somewhere to
+    // send the player; the URL the player actually travels on is minted on click,
+    // because a rejoin token is short-lived by design (JQ-86).
+    const ready = Boolean(resolveIntentLaunchUrl(activeIntent, activeTableSeat))
     const title = playingIntentTitle(activeIntent, activeTableSeat)
 
     return (
@@ -49,14 +55,21 @@ export default function IntentBanner({
         <div className="intent-banner__copy">
           <p className="intent-banner__title">{title}</p>
           <p className="intent-banner__hint">
-            {launchUrl ? bannerIntentPlayingHint() : bannerIntentLaunchPendingHint()}
+            {ready ? bannerIntentPlayingHint() : bannerIntentLaunchPendingHint()}
           </p>
-          <LeaveError message={leaveError} />
+          <BannerError message={rejoinError} />
+          <BannerError message={leaveError} />
         </div>
         <div className="intent-banner__actions">
-          {launchUrl ? (
-            <Button asChild variant="default" size="sm">
-              <a href={launchUrl}>{LAUNCH_GAME}</a>
+          {ready ? (
+            <Button
+              type="button"
+              variant="default"
+              size="sm"
+              onClick={onRejoin}
+              disabled={rejoining || busy}
+            >
+              {rejoining ? '…' : REJOIN_MATCH}
             </Button>
           ) : null}
           <Button type="button" variant="secondary" size="sm" onClick={onLeave} disabled={busy}>
@@ -86,7 +99,7 @@ export default function IntentBanner({
             ? bannerTableBackfillHint(activeTableSeat.formingGaps)
             : bannerTableSeatHint()}
         </p>
-        <LeaveError message={leaveError} />
+        <BannerError message={leaveError} />
       </div>
       <div className="intent-banner__actions">
         <Button type="button" variant="secondary" size="sm" onClick={onLeave} disabled={busy}>

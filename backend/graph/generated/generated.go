@@ -176,20 +176,21 @@ type ComplexityRoot struct {
 	}
 
 	GameMode struct {
-		DisplayName    func(childComplexity int) int
-		Eligibility    func(childComplexity int, playerID string) int
-		ID             func(childComplexity int) int
-		MaxPlayers     func(childComplexity int) int
-		MinPlayers     func(childComplexity int) int
-		ModeKey        func(childComplexity int) int
-		PreQueueGroups func(childComplexity int) int
-		QueueOptions   func(childComplexity int, playerID string) int
-		QueuePaths     func(childComplexity int) int
-		Queues         func(childComplexity int) int
-		Seats          func(childComplexity int) int
-		SocialMode     func(childComplexity int) int
-		Status         func(childComplexity int) int
-		TypicalMinutes func(childComplexity int) int
+		DisplayName       func(childComplexity int) int
+		Eligibility       func(childComplexity int, playerID string) int
+		HasPreMatchChoice func(childComplexity int) int
+		ID                func(childComplexity int) int
+		MaxPlayers        func(childComplexity int) int
+		MinPlayers        func(childComplexity int) int
+		ModeKey           func(childComplexity int) int
+		PreQueueGroups    func(childComplexity int) int
+		QueueOptions      func(childComplexity int, playerID string) int
+		QueuePaths        func(childComplexity int) int
+		Queues            func(childComplexity int) int
+		Seats             func(childComplexity int) int
+		SocialMode        func(childComplexity int) int
+		Status            func(childComplexity int) int
+		TypicalMinutes    func(childComplexity int) int
 	}
 
 	GameModeQueuePath struct {
@@ -241,6 +242,7 @@ type ComplexityRoot struct {
 		Complete          func(childComplexity int) int
 		EndedAt           func(childComplexity int) int
 		Game              func(childComplexity int) int
+		GroupPlay         func(childComplexity int) int
 		MatchID           func(childComplexity int) int
 		Mode              func(childComplexity int) int
 		Participants      func(childComplexity int) int
@@ -294,6 +296,7 @@ type ComplexityRoot struct {
 		RegenerateSpiritAnimalImages func(childComplexity int) int
 		RegisterGame                 func(childComplexity int, input model.RegisterGameInput) int
 		RegisterMyGame               func(childComplexity int, input model.RegisterMyGameInput) int
+		RejoinActiveMatch            func(childComplexity int) int
 		RemoveLinkedEmail            func(childComplexity int, emailID string) int
 		RemoveLinkedIdentity         func(childComplexity int, identityID string) int
 		ReportMatchResult            func(childComplexity int, matchID string, status model.MatchResultStatus, winnerLobbyUserIds []string, metadata map[string]any) int
@@ -695,6 +698,7 @@ type GameModeResolver interface {
 	Queues(ctx context.Context, obj *model.GameMode) ([]*model.ModeQueue, error)
 	Eligibility(ctx context.Context, obj *model.GameMode, playerID string) (*model.ModeEligibility, error)
 	PreQueueGroups(ctx context.Context, obj *model.GameMode) ([]*model.PreQueueGroup, error)
+
 	QueueOptions(ctx context.Context, obj *model.GameMode, playerID string) (*model.QueueOptions, error)
 }
 type ModeQueueResolver interface {
@@ -706,6 +710,7 @@ type MutationResolver interface {
 	JoinQueue(ctx context.Context, queueID string, queuePath *string, options []*model.QueueOptionSelectionInput, party *model.PartyNodeInput) (*model.JoinResult, error)
 	LeaveQueue(ctx context.Context, queueID string) (bool, error)
 	LeaveActiveGame(ctx context.Context) (bool, error)
+	RejoinActiveMatch(ctx context.Context) (string, error)
 	GrantGood(ctx context.Context, userID string, goodID string, quantity *int) (bool, error)
 	RevokeGood(ctx context.Context, userID string, goodID string, quantity *int) (bool, error)
 	CreateGuestSession(ctx context.Context) (*model.User, error)
@@ -1374,6 +1379,12 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.GameMode.Eligibility(childComplexity, args["playerId"].(string)), true
+	case "GameMode.hasPreMatchChoice":
+		if e.complexity.GameMode.HasPreMatchChoice == nil {
+			break
+		}
+
+		return e.complexity.GameMode.HasPreMatchChoice(childComplexity), true
 	case "GameMode.id":
 		if e.complexity.GameMode.ID == nil {
 			break
@@ -1638,6 +1649,12 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.MatchResult.Game(childComplexity), true
+	case "MatchResult.groupPlay":
+		if e.complexity.MatchResult.GroupPlay == nil {
+			break
+		}
+
+		return e.complexity.MatchResult.GroupPlay(childComplexity), true
 	case "MatchResult.matchId":
 		if e.complexity.MatchResult.MatchID == nil {
 			break
@@ -2010,6 +2027,12 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.Mutation.RegisterMyGame(childComplexity, args["input"].(model.RegisterMyGameInput)), true
+	case "Mutation.rejoinActiveMatch":
+		if e.complexity.Mutation.RejoinActiveMatch == nil {
+			break
+		}
+
+		return e.complexity.Mutation.RejoinActiveMatch(childComplexity), true
 	case "Mutation.removeLinkedEmail":
 		if e.complexity.Mutation.RemoveLinkedEmail == nil {
 			break
@@ -4120,6 +4143,16 @@ type GameMode {
   """
   preQueueGroups: [PreQueueGroup!]!
   """
+  True when this mode asks a player to choose something before play: more than one
+  seat class, or any pre-queue option group.
+
+  Rejoin seating keys on this, and so does the return screen (JQ-232). A mode with
+  nothing to choose re-seats its returning players automatically; a mode with a choice
+  leaves a returning group unseated so they can make it again, and gives a returning
+  solo player a way to re-open the choices instead of replaying them.
+  """
+  hasPreMatchChoice: Boolean!
+  """
   This player's actual choices, live from the game. Null when the mode declares
   no groups; unavailable (rather than empty) when the game cannot be reached.
   """
@@ -4358,6 +4391,12 @@ type Mutation {
   leaveQueue(queueId: ID!): Boolean!
   """Abandon the current playing intent (matched queue or room table session)."""
   leaveActiveGame: Boolean!
+  """
+  Mint a fresh, short-lived launch URL back into the match the player is already
+  seated in — same seat, same match, new token. Errors once the session is over or
+  the player has finished, so it can never re-open a match someone has left.
+  """
+  rejoinActiveMatch: String!
 
   # Digital goods (simple entitlement grant)
   grantGood(userId: ID!, goodId: ID!, quantity: Int = 1): Boolean!
@@ -4659,6 +4698,15 @@ type MatchResult {
   participants: [MatchParticipantResult!]!
   """Set once a regroup table exists, so the client can route to it."""
   regroupInviteCode: String
+  """
+  Whether the viewer reached this match through a room table rather than the catalog
+  queue — the lobby's answer to the prototype's ` + "`" + `isGroupPlay` + "`" + ` prop.
+
+  Read from the viewer's own return context, which is stamped when the session starts
+  and never rewritten. Per viewer, not per match: a stranger backfilled into a group's
+  table did queue alone, and their rejoin is a solo one.
+  """
+  groupPlay: Boolean!
 }
 
 type PlayAgainResult {
@@ -8235,6 +8283,8 @@ func (ec *executionContext) fieldContext_Game_modes(_ context.Context, field gra
 				return ec.fieldContext_GameMode_eligibility(ctx, field)
 			case "preQueueGroups":
 				return ec.fieldContext_GameMode_preQueueGroups(ctx, field)
+			case "hasPreMatchChoice":
+				return ec.fieldContext_GameMode_hasPreMatchChoice(ctx, field)
 			case "queueOptions":
 				return ec.fieldContext_GameMode_queueOptions(ctx, field)
 			}
@@ -9017,6 +9067,35 @@ func (ec *executionContext) fieldContext_GameMode_preQueueGroups(_ context.Conte
 				return ec.fieldContext_PreQueueGroup_max(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type PreQueueGroup", field.Name)
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _GameMode_hasPreMatchChoice(ctx context.Context, field graphql.CollectedField, obj *model.GameMode) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_GameMode_hasPreMatchChoice,
+		func(ctx context.Context) (any, error) {
+			return obj.HasPreMatchChoice, nil
+		},
+		nil,
+		ec.marshalNBoolean2bool,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_GameMode_hasPreMatchChoice(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "GameMode",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Boolean does not have child fields")
 		},
 	}
 	return fc, nil
@@ -10034,6 +10113,8 @@ func (ec *executionContext) fieldContext_MatchResult_mode(_ context.Context, fie
 				return ec.fieldContext_GameMode_eligibility(ctx, field)
 			case "preQueueGroups":
 				return ec.fieldContext_GameMode_preQueueGroups(ctx, field)
+			case "hasPreMatchChoice":
+				return ec.fieldContext_GameMode_hasPreMatchChoice(ctx, field)
 			case "queueOptions":
 				return ec.fieldContext_GameMode_queueOptions(ctx, field)
 			}
@@ -10230,6 +10311,35 @@ func (ec *executionContext) fieldContext_MatchResult_regroupInviteCode(_ context
 		IsResolver: false,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _MatchResult_groupPlay(ctx context.Context, field graphql.CollectedField, obj *model.MatchResult) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_MatchResult_groupPlay,
+		func(ctx context.Context) (any, error) {
+			return obj.GroupPlay, nil
+		},
+		nil,
+		ec.marshalNBoolean2bool,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_MatchResult_groupPlay(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "MatchResult",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Boolean does not have child fields")
 		},
 	}
 	return fc, nil
@@ -10680,6 +10790,35 @@ func (ec *executionContext) fieldContext_Mutation_leaveActiveGame(_ context.Cont
 		IsResolver: true,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			return nil, errors.New("field of type Boolean does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Mutation_rejoinActiveMatch(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_Mutation_rejoinActiveMatch,
+		func(ctx context.Context) (any, error) {
+			return ec.resolvers.Mutation().RejoinActiveMatch(ctx)
+		},
+		nil,
+		ec.marshalNString2string,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_Mutation_rejoinActiveMatch(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Mutation",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
 		},
 	}
 	return fc, nil
@@ -15899,6 +16038,8 @@ func (ec *executionContext) fieldContext_Query_matchResult(ctx context.Context, 
 				return ec.fieldContext_MatchResult_participants(ctx, field)
 			case "regroupInviteCode":
 				return ec.fieldContext_MatchResult_regroupInviteCode(ctx, field)
+			case "groupPlay":
+				return ec.fieldContext_MatchResult_groupPlay(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type MatchResult", field.Name)
 		},
@@ -20231,6 +20372,8 @@ func (ec *executionContext) fieldContext_Subscription_matchResultUpdated(ctx con
 				return ec.fieldContext_MatchResult_participants(ctx, field)
 			case "regroupInviteCode":
 				return ec.fieldContext_MatchResult_regroupInviteCode(ctx, field)
+			case "groupPlay":
+				return ec.fieldContext_MatchResult_groupPlay(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type MatchResult", field.Name)
 		},
@@ -20804,6 +20947,8 @@ func (ec *executionContext) fieldContext_Table_mode(_ context.Context, field gra
 				return ec.fieldContext_GameMode_eligibility(ctx, field)
 			case "preQueueGroups":
 				return ec.fieldContext_GameMode_preQueueGroups(ctx, field)
+			case "hasPreMatchChoice":
+				return ec.fieldContext_GameMode_hasPreMatchChoice(ctx, field)
 			case "queueOptions":
 				return ec.fieldContext_GameMode_queueOptions(ctx, field)
 			}
@@ -25138,6 +25283,11 @@ func (ec *executionContext) _GameMode(ctx context.Context, sel ast.SelectionSet,
 			}
 
 			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
+		case "hasPreMatchChoice":
+			out.Values[i] = ec._GameMode_hasPreMatchChoice(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				atomic.AddUint32(&out.Invalids, 1)
+			}
 		case "queueOptions":
 			field := field
 
@@ -25547,6 +25697,11 @@ func (ec *executionContext) _MatchResult(ctx context.Context, sel ast.SelectionS
 			}
 		case "regroupInviteCode":
 			out.Values[i] = ec._MatchResult_regroupInviteCode(ctx, field, obj)
+		case "groupPlay":
+			out.Values[i] = ec._MatchResult_groupPlay(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}
@@ -25810,6 +25965,13 @@ func (ec *executionContext) _Mutation(ctx context.Context, sel ast.SelectionSet)
 		case "leaveActiveGame":
 			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
 				return ec._Mutation_leaveActiveGame(ctx, field)
+			})
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "rejoinActiveMatch":
+			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
+				return ec._Mutation_rejoinActiveMatch(ctx, field)
 			})
 			if out.Values[i] == graphql.Null {
 				out.Invalids++

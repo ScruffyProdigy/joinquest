@@ -269,7 +269,7 @@ func (r *queryResolver) MatchResult(ctx context.Context, matchID string) (*model
 	if err := requireMatchParticipant(ctx, st, sessionID, userID); err != nil {
 		return nil, err
 	}
-	return loadMatchResultModel(ctx, st, sessionID)
+	return loadMatchResultModel(ctx, st, sessionID, userID)
 }
 
 // MatchResultUpdated is the resolver for the matchResultUpdated field.
@@ -293,7 +293,7 @@ func (r *subscriptionResolver) MatchResultUpdated(ctx context.Context, matchID s
 		return nil, err
 	}
 
-	initial, err := loadMatchResultModel(ctx, st, sessionID)
+	initial, err := loadMatchResultModel(ctx, st, sessionID, userID)
 	if err != nil {
 		return nil, err
 	}
@@ -330,7 +330,7 @@ func (r *subscriptionResolver) MatchResultUpdated(ctx context.Context, matchID s
 				if _, err := pubsub.UnmarshalMatchEvent(payload); err != nil {
 					continue
 				}
-				result, err := loadMatchResultModel(ctx, st, sessionID)
+				result, err := loadMatchResultModel(ctx, st, sessionID, userID)
 				if err != nil {
 					continue
 				}

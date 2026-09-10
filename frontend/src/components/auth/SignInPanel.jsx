@@ -2,8 +2,8 @@ import { useState } from 'react'
 import { createGuestSession } from '../../lib/auth'
 import { notifyAuthComplete } from '../../lib/authBroadcast'
 import {
-  JUMP_IN,
-  JUMP_IN_HINT,
+  PLAY_AS_GUEST,
+  PLAY_AS_GUEST_HINT,
   SIGN_IN_DIVIDER,
   SIGN_IN_DIVIDER_LABEL,
   SIGN_IN_HEADING,
@@ -29,7 +29,7 @@ export default function SignInPanel({ heading = SIGN_IN_HEADING, showGuestOption
   const [status, setStatus] = useState('idle')
   const [message, setMessage] = useState('')
 
-  async function handleJumpIn() {
+  async function handlePlayAsGuest() {
     if (status === 'loading') {
       return
     }
@@ -78,10 +78,10 @@ export default function SignInPanel({ heading = SIGN_IN_HEADING, showGuestOption
 
         {showGuestOption ? (
           <div className="flex flex-col items-center gap-1 border-t border-border pt-4">
-            <Link variant="quiet" onClick={() => void handleJumpIn()} disabled={status === 'loading'}>
-              {status === 'loading' ? 'Starting…' : JUMP_IN}
+            <Link variant="quiet" onClick={() => void handlePlayAsGuest()} disabled={status === 'loading'}>
+              {status === 'loading' ? 'Starting…' : PLAY_AS_GUEST}
             </Link>
-            <p className="text-2xs text-muted-foreground">{JUMP_IN_HINT}</p>
+            <p className="text-2xs text-muted-foreground">{PLAY_AS_GUEST_HINT}</p>
           </div>
         ) : null}
       </CardContent>

@@ -2,7 +2,7 @@ import { render, screen, waitFor } from '@testing-library/react'
 import { describe, expect, it, beforeEach } from 'vitest'
 import { AuthProvider } from './AuthProvider'
 import SignInPanel from './SignInPanel'
-import { JUMP_IN, SIGN_IN_HEADING } from '../../lib/playerCopy'
+import { PLAY_AS_GUEST, SIGN_IN_HEADING } from '../../lib/playerCopy'
 import { mockUnauthenticatedSession } from '../../test/setup'
 
 function renderPanel(props = {}) {
@@ -24,7 +24,7 @@ describe('SignInPanel', () => {
     await waitFor(() => {
       expect(screen.getByRole('heading', { name: SIGN_IN_HEADING })).toBeInTheDocument()
     })
-    expect(screen.getByRole('button', { name: JUMP_IN })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: PLAY_AS_GUEST })).toBeInTheDocument()
   })
 
   it('renders a caller-supplied heading instead of the default', async () => {
@@ -53,6 +53,6 @@ describe('SignInPanel', () => {
     await waitFor(() => {
       expect(screen.getByRole('heading', { name: SIGN_IN_HEADING })).toBeInTheDocument()
     })
-    expect(screen.queryByRole('button', { name: JUMP_IN })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: PLAY_AS_GUEST })).not.toBeInTheDocument()
   })
 })

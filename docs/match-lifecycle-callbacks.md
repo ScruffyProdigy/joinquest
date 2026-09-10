@@ -72,3 +72,34 @@ Lobby validates `matchId` against the game id embedded in `serviceToken`. All fi
 2. **`reportMatchResult`** — mark session completed, release all `matched` queue rows for seated players.
 
 Recommended order for games: call **`reportMatchResult`** when the match ends (clears matched queue rows), optionally **`reportPlayerFinished`** for early exits; always link players to **`{returnUrl}?match={externalMatchId}`** (see [player-return-routing.md](./player-return-routing.md)).
+
+---
+
+## A disconnect is not a finish
+
+A dropped socket is not `reportPlayerFinished`. A player who closed the tab, lost
+wifi, or took a phone call is still seated and still expected back — reporting them
+finished releases their queue row, clears their playing intent, and permanently
+closes their way back in (JoinQuest refuses to re-mint a seat token for a player who
+has reported finished).
+
+Report a player finished when they have genuinely **left** — quit, forfeited, or
+timed out of a grace period you defined — not when their connection dropped.
+
+While they are away, games should behave consistently enough that players learn one
+set of expectations:
+
+- **Hold the seat.** Don't forfeit on the first dropped socket, don't fill the seat,
+  don't end the match.
+- **Say so.** Show the remaining players that someone is disconnected and the game is
+  waiting, rather than leaving the match silently stalled.
+- **Keep moving where the design allows.** Real-time: continue and let them catch up.
+  Turn-based: it is reasonable to hold on their turn with a visible timer.
+- **Resync from a full snapshot** when they re-claim — complete authoritative state,
+  not the deltas they missed.
+- **Have an end to the grace period,** and tell the other players what it is. An
+  indefinite wait is worse for the people still there than a decided outcome. *That*
+  expiry is the moment to `reportPlayerFinished`.
+
+How a player gets back in at all — the two recovery paths and the re-claim rule — is
+in [lobby-protocol-handoff.md](./lobby-protocol-handoff.md#reconnecting-a-player).

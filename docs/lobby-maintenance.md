@@ -385,6 +385,105 @@ no seated player is left in it (`completeEmptiedSessionsForUserTx`). It must nev
 sessions by queue: a partner still playing keeps their match, and the session closes on
 whoever leaves last.
 
+## Abandoned rooms (JQ-253)
+
+### The condition
+
+Two halves of one problem. **Play with friends** now opens a brand-new room on every
+click — `CreatePrivateTable` used to look up the player's existing room first and only
+create one when they had none, which meant a player who still had a room was dropped back
+into it, invite code and all. That reuse was only survivable because nothing ever tore
+rooms down; making every click mint a fresh room is only survivable because something
+now does.
+
+So a room has to end when nobody is left in it, and the signal for "nobody" is JQ-216's
+`user_presence` projection — the same one the queue's disconnect window reads.
+
+### The windows
+
+| | Window | Constant |
+|---|---|---|
+| Queue place | 90s | `store.DefaultQueueDisconnectGrace` |
+| Room membership | 30s | `store.DefaultRoomDisconnectGrace` |
+| Closed room retention | 6h | `store.DefaultClosedRoomRetention` |
+
+**The room's 30s is deliberately not the queue's 90s, and neither should be derived from
+the other.** The queue buys a backgrounded phone room to come back because losing your
+place costs a wait you already served. A private room is the opposite: its occupants
+scanned a QR code off each other's screens or followed a link a minute ago, so they are
+in the same space or already talking, and a roster that lies for 90 seconds makes the
+product look asleep while they sort it out themselves.
+
+30s specifically because that is where the client stops trying — the room subscription
+retries 10 times at `min(500ms * n, 5s)` (`frontend/src/lib/rooms.js`), which is 27.5s of
+reconnect attempts. **Retune that backoff and this constant has to follow it**, or an
+ordinary reload starts costing people their room.
+
+A deliberate `leaveRoom` is immediate and no window applies to it. The 30s governs only
+presence loss — a socket that dropped without saying anything.
+
+### What "removed" means
+
+Closing and deleting are separate, and the gap between them is load-bearing.
+
+- **Closed** (`status = 'closed'`) is the removal players experience: unreachable by
+  invite code, invisible to `GetUserRoom`, refuses new members. Immediate.
+- **Deleted** is the row going away, 6h later. It has to be deferred because a closed
+  room's tables deliberately outlive it — `loadFormingRegroupTableTx` reads a forming
+  table *through* a closed room on purpose, and `room_tables` cascade-deletes with the
+  room. Deleting at close time would take "play again with the same group" with it.
+
+### A room with a live game is not an empty room
+
+`roomHasLivePlayClause` is the guard, and it tests exactly one thing: a `started` table
+with an `active` session. Players in a game hold their sockets on the game rather than the
+lobby, so presence reads all of them as gone and their room looks abandoned — that is the
+case where cleanup would destroy an in-flight match.
+
+**A forming table is deliberately not in that clause**, which is worth knowing because the
+opposite reads as obviously right. A seat is only claimable by a room member
+(`sitAtTableTx`), so while anyone is legitimately seated the room has members and the
+clause is never reached — every caller consults it only after finding `room_members`
+empty. Seats that outlive a roster are seats nobody is entitled to, and
+`resetRoomTableAfterSessionTx` manufactures them routinely by re-seating participants when
+a match ends. Counting those would pin a room open forever on behalf of players who are
+gone.
+
+### What the sweep does automatically
+
+`lobby-room-cleanup` (`k8s/jobs/room-cleanup.yaml`) runs hourly and makes three passes.
+All three always run; a failure in one is reported in the exit status rather than by
+skipping the others.
+
+1. **Stale memberships** — removes members past the 30s window and closes whichever rooms
+   that emptied. This is the crash backstop only: when the API pod survives, an
+   in-process timer (`graph.PresenceTracker`) does it at exactly 30s. Not tunable on the
+   CronJob — it reads the code constant, so the sweep and the timer cannot disagree.
+2. **Empty rooms** — closes open rooms with nobody in them and no live play. *Not* a
+   coarser version of pass 1, and the reason it exists is easy to miss: a room whose
+   players went into a game is held open on purpose, and by the time that match ends
+   there is no member left whose departure would close it. Nothing else ever reconsiders
+   those rooms, and pass 3 never reaches them either, because it only deletes closed ones.
+3. **Retention** — deletes rooms closed longer than `CLOSED_ROOM_RETENTION` (default 6h,
+   tunable on the CronJob because it is a storage policy, not something a player feels).
+
+**The hourly cadence governs no window.** Memberships end at 30s by timer; retention is
+measured from when a room closed, not from when the job runs. The cadence only decides how
+promptly each backstop notices.
+
+- **Signal**: `lobby.room.stale_members.{count,removed,remaining}`, `lobby.room.closed`,
+  `lobby.room.empty.count`, `lobby.room.empty_closed`,
+  `lobby.room.retired.{count,deleted}`, plus a non-zero exit if any membership survives
+  its own sweep.
+
+```bash
+kubectl -n joinquest create job --from=cronjob/lobby-room-cleanup room-cleanup-manual
+kubectl -n joinquest logs job/room-cleanup-manual
+```
+
+`./roomsweep -dry-run` reports every count without writing, which is the safe way to check
+a retention change before it ships.
+
 ## Typical ship sequence
 
 When the user asks to commit, push, deploy, and publish:

@@ -215,7 +215,7 @@ Use Phase 1 seatTemplate plan. Full details: integration guide §3–§8. Pick a
 - **Provision:** `provision.happy_path`, `provision.idempotent_repush`, `provision.auth`, `provision.missing_auth`, `provision.launch_urls`, `provision.launch_url_no_jwt`
 - **JWT:** `jwt.jwks`, `jwt.claim_happy_path`, `jwt.wrong_audience`, `jwt.unknown_match`, `jwt.wrong_issuer`, `jwt.expired`, `jwt.invalid_token`, `jwt.wrong_seat`
 
-**Optional (recommended, not required for release):** `provision.banlist` — skipped unless the game bans test user `a0000000-0000-4000-8000-000000000099`. `jwt.rotation_overlap` — verifies your game accepts a token signed with a newly added JWKS key while an older key is still active; fails if you cache a single key instead of matching by `kid`.
+**Optional (recommended, not required for release):** `provision.banlist` — skipped unless the game bans test user `a0000000-0000-4000-8000-000000000099`. `jwt.rotation_overlap` — verifies your game accepts a token signed with a newly added JWKS key while an older key is still active; fails if you cache a single key instead of matching by `kid`. `jwt.reclaim_same_player` / `jwt.reclaim_seat_theft` — the two halves of the re-claim rule: the player already in a seat can claim it again (`200`), a different player cannot (`409`). Passing only the second one is the common shape of this bug — a flat `409` on any second claim looks correct until a real player closes their tab.
 
 **On failure:**
 
@@ -244,6 +244,8 @@ Common fixes:
 | `jwt.wrong_issuer` | Reject tokens whose `iss` ≠ provision `lobbyId` |
 | `jwt.expired` / `jwt.invalid_token` | Reject expired or malformed tokens → 401 |
 | `jwt.wrong_seat` | Reject tokens for another player's reserved seat |
+| `jwt.reclaim_same_player` | Same `sub` re-claiming a held seat → `200`, match state unchanged (optional check) |
+| `jwt.reclaim_seat_theft` | Different `sub` claiming an occupied seat → `409` (optional check) |
 | `jwt.rotation_overlap` | On unrecognized `kid`, refetch JWKS (rate-limited) before rejecting — don't cache a single key (optional check) |
 
 **Done when:** All 19 required checks are green (re-run to confirm).

@@ -105,4 +105,57 @@ describe('RegroupCard', () => {
     render(<RegroupCard result={allPending} viewerId="a" minPlayers={2} busy />)
     expect(screen.getByRole('button', { name: 'Another round' })).toBeDisabled()
   })
+
+  /**
+   * The solo rule and the group rule are different by design (JQ-232). A solo player's
+   * primary action replays the role and options they just had, so they are the only ones who
+   * need a way to reach those choices again — a group was never given them back.
+   */
+  describe('the solo second action', () => {
+    const solo = { ...allPending, groupPlay: false, mode: { hasPreMatchChoice: true } }
+
+    it('offers "Choose again" to a solo player whose mode has something to choose', () => {
+      render(<RegroupCard result={solo} viewerId="a" minPlayers={2} />)
+      expect(screen.getByRole('button', { name: 'Choose again' })).toBeEnabled()
+    })
+
+    it('leaves it out entirely when the mode has nothing to choose', () => {
+      const nothingToChoose = { ...solo, mode: { hasPreMatchChoice: false } }
+      render(<RegroupCard result={nothingToChoose} viewerId="a" minPlayers={2} />)
+      expect(screen.queryByRole('button', { name: 'Choose again' })).not.toBeInTheDocument()
+    })
+
+    it('never offers it to a group, whose choices were not carried forward anyway', () => {
+      const group = { ...solo, groupPlay: true }
+      render(<RegroupCard result={group} viewerId="a" minPlayers={2} />)
+      expect(screen.queryByRole('button', { name: 'Choose again' })).not.toBeInTheDocument()
+    })
+
+    // Both lead back to the game, so offering both would be two buttons and one
+    // destination. The more specific promise wins.
+    it('replaces "Back to <game>" rather than sitting beside it', () => {
+      render(<RegroupCard result={solo} viewerId="a" minPlayers={2} />)
+      expect(screen.queryByRole('button', { name: 'Back to Word Hunt' })).not.toBeInTheDocument()
+    })
+
+    it('wires to its own handler', async () => {
+      const user = userEvent.setup()
+      const onChooseAgain = vi.fn()
+      const onBackToGame = vi.fn()
+      render(
+        <RegroupCard
+          result={solo}
+          viewerId="a"
+          minPlayers={2}
+          onChooseAgain={onChooseAgain}
+          onBackToGame={onBackToGame}
+        />,
+      )
+
+      await user.click(screen.getByRole('button', { name: 'Choose again' }))
+
+      expect(onChooseAgain).toHaveBeenCalledTimes(1)
+      expect(onBackToGame).not.toHaveBeenCalled()
+    })
+  })
 })

@@ -224,6 +224,9 @@ func ToGraphQLGameMode(mode *store.GameMode) *model.GameMode {
 		// durations land they replace what is read here, not this field.
 		TypicalMinutes: mode.TypicalMinutes,
 		Status:         mode.Status,
+		// Derived rather than stored: it is a reading of the seat template and the
+		// pre-queue block, and both live on the mode row already (JQ-232).
+		HasPreMatchChoice: store.ModeOffersPreMatchChoice(mode),
 	}
 	return result
 }

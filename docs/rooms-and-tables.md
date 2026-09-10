@@ -33,6 +33,8 @@ Social **rooms** for friends to gather; **tables** are forming private games ins
 | **Step 3 — Table LFG** (shipped) | King **Look for group** backfill; `formingGaps` on TableCard; catalog fills remaining roles. |
 | **Step 4+** | Phase C: affinity-aware weighted dequeue. |
 
+Phase C has two dimensions. **Affinity** (variable team sizes, balance within N) is JQ-88. **Skill** is JQ-142, whose design lives in Notion — [Skill-aware matchmaking — design (JQ-142)](https://app.notion.com/p/3d7c637d78a581c1a83bfe722967062a) — and is implemented by JQ-226.
+
 ---
 
 ## Step 1: Rooms (chat + invite)
@@ -88,15 +90,24 @@ Per **mode** row under each game:
 ### Group screen (`/group`)
 
 A **presentation over one table in a room** — not a second data model. It renders entirely
-from `Table.seatSlots`, `Table.formingGaps`, `Table.king` and `Room.members`, and adds no
-GraphQL operations of its own.
+from `Table.seatSlots`, `Table.formingGaps`, `Table.king` and `Room.members`. Its one
+operation of its own is the pre-queue roster fetched when the options sheet opens, and
+that is deliberately lazy — see *Claiming a seat* below.
 
 - **Which table:** the one the player is seated at, else the newest forming table in their
   room (`selectGroupTable`). A room holding several tables keeps the room surfaces instead.
 - **Sections:** accent header with live status (`Still need: <roles>` → `N of M seats · ready
   to start`), **Invite friends** (QR + share link, reusing `RoomShareToolbar`; the raw invite
   code is hidden here), **Players** (seat rows with Claim/Leave), **Picking a seat**
-  (everyone still to decide), and a sticky bottom control.
+  (everyone still to decide), a named way back to matchmaking, and a sticky bottom control.
+- **Claiming a seat:** `sitAtTable(tableId, seatKey, options)`. A mode that declares
+  `preQueueGroups` routes every claim through `PreQueueOptionsSheet` first — each player
+  answers it for themselves as they sit down, because nobody may choose another player's
+  champion, kit or deck. The player's actual roster (`GameMode.queueOptions`) is a live
+  call out to the game, so it is fetched when the sheet opens rather than carried on
+  `TABLE_FIELDS`, which would make it one call per table update. A game that cannot be
+  reached is the sheet's own *unavailable* state: there is no fallback that seats someone
+  without picks.
 - **Picking a seat:** one list holding two populations — room members who hold no seat, and
   the previous match's players who have not answered (`Table.regroupRoster`, `PENDING`),
   badged *Awaiting* behind a turning clock. A roster entry beats room membership, because
@@ -116,6 +127,9 @@ GraphQL operations of its own.
 - **Share links:** `/room/:CODE` joins the room, then lands on `/group` when the room holds
   exactly one forming table. Arrivals land **unseated**, in *Picking a seat*, and claim their
   own seat rather than being placed in a role they did not choose.
+- **A way out, in words.** The header's back arrow leaves, but a rejoining group lands here
+  and for some of them the answer is "not this again", so *Find something new* is named
+  next to the roster. The rejoin screen is a destination, not a trap.
 - **What is hidden, not removed:** chat, the invite code, the king role and multiple tables
   per room all remain in the schema, resolvers and the room surfaces. `/group` suppresses the
   desktop room panel and the mobile dock so the room does not show through beside it.

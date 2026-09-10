@@ -185,6 +185,14 @@ type GameMode struct {
 	// Option rosters this mode asks the player to pick from before queueing, from
 	// the mode manifest. Empty for the modes that have no pre-queue step.
 	PreQueueGroups []*PreQueueGroup `json:"preQueueGroups"`
+	// True when this mode asks a player to choose something before play: more than one
+	// seat class, or any pre-queue option group.
+	//
+	// Rejoin seating keys on this, and so does the return screen (JQ-232). A mode with
+	// nothing to choose re-seats its returning players automatically; a mode with a choice
+	// leaves a returning group unseated so they can make it again, and gives a returning
+	// solo player a way to re-open the choices instead of replaying them.
+	HasPreMatchChoice bool `json:"hasPreMatchChoice"`
 	// This player's actual choices, live from the game. Null when the mode declares
 	// no groups; unavailable (rather than empty) when the game cannot be reached.
 	QueueOptions *QueueOptions `json:"queueOptions,omitempty"`
@@ -266,6 +274,13 @@ type MatchResult struct {
 	Participants []*MatchParticipantResult `json:"participants"`
 	// Set once a regroup table exists, so the client can route to it.
 	RegroupInviteCode *string `json:"regroupInviteCode,omitempty"`
+	// Whether the viewer reached this match through a room table rather than the catalog
+	// queue — the lobby's answer to the prototype's `isGroupPlay` prop.
+	//
+	// Read from the viewer's own return context, which is stamped when the session starts
+	// and never rewritten. Per viewer, not per match: a stranger backfilled into a group's
+	// table did queue alone, and their rejoin is a solo one.
+	GroupPlay bool `json:"groupPlay"`
 }
 
 type ModeEligibility struct {

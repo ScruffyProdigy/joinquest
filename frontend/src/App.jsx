@@ -26,7 +26,7 @@ import DeveloperDashboard from './components/developers/DeveloperDashboard'
 import DeveloperLandingPage from './components/developers/DeveloperLandingPage'
 import DeveloperWelcomePage from './components/developers/DeveloperWelcomePage'
 import YourGamesStrip from './components/developers/YourGamesStrip'
-import HomeHeader, { HOME_HEADING_ID } from './components/home/HomeHeader'
+import HomeHeader from './components/home/HomeHeader'
 import IdentityPromptProvider, { useIdentityPromptOnMount } from './components/avatars/IdentityPromptProvider'
 import AppFooter from './components/legal/AppFooter'
 import TermsPage from './components/legal/TermsPage'
@@ -36,7 +36,8 @@ import { Link } from './components/ui/link'
 
 function CatalogPage({ intent }) {
   const { user, loading: authLoading } = useAuth()
-  const { activeIntent, activeTableSeat, busy, leaveError, handleLeave } = intent
+  const { activeIntent, activeTableSeat, busy, leaveError, rejoinError, rejoining, handleLeave, handleRejoin } =
+    intent
 
   useEffect(() => {
     restoreCatalogScrollIfPending()
@@ -50,13 +51,16 @@ function CatalogPage({ intent }) {
           activeTableSeat={activeTableSeat}
           busy={busy}
           leaveError={leaveError}
+          rejoinError={rejoinError}
+          rejoining={rejoining}
           onLeave={handleLeave}
+          onRejoin={handleRejoin}
         />
       ) : null}
 
       <HomeHeader />
 
-      <GameLobby headingId={HOME_HEADING_ID} />
+      <GameLobby />
       <YourGamesStrip />
 
       <AppFooter />
@@ -66,7 +70,18 @@ function CatalogPage({ intent }) {
 
 function GameDetailShell({ slug, intent }) {
   const { user, loading: authLoading } = useAuth()
-  const { activeIntent, activeTableSeat, busy, leaveError, refresh, notifyQueueJoined, handleLeave } = intent
+  const {
+    activeIntent,
+    activeTableSeat,
+    busy,
+    leaveError,
+    rejoinError,
+    rejoining,
+    refresh,
+    notifyQueueJoined,
+    handleLeave,
+    handleRejoin,
+  } = intent
 
   // Joining a queue is the only route onto the waiting page.
   function handleQueueJoined(queueId, result, meta) {
@@ -84,7 +99,10 @@ function GameDetailShell({ slug, intent }) {
           activeTableSeat={activeTableSeat}
           busy={busy}
           leaveError={leaveError}
+          rejoinError={rejoinError}
+          rejoining={rejoining}
           onLeave={handleLeave}
+          onRejoin={handleRejoin}
         />
       ) : null}
       <GameDetailPage
@@ -116,10 +134,14 @@ function MainLayout() {
   useEffect(() => {
     const root = document.getElementById('root')
     root?.classList.toggle('app-root--game-detail', Boolean(gameSlug))
+    // The group screen bleeds to the edges: its header is the top of the screen and
+    // every block below carries its own gutter (JQ-251).
+    root?.classList.toggle('app-root--group', onGroup)
     return () => {
       root?.classList.remove('app-root--game-detail')
+      root?.classList.remove('app-root--group')
     }
-  }, [gameSlug])
+  }, [gameSlug, onGroup])
 
   // The service worker cannot route or re-register on its own, so the shell
   // listens for the whole session rather than only while on /waiting -- a push

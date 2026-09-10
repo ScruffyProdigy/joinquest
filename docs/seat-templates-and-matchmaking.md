@@ -291,7 +291,7 @@ When pulling from the waiter queue, Lobby uses a **score**, not queue head only:
 |--------|-----|
 | **Complementarity** | Party fills current gaps (e.g. second 2+1 split) |
 | **Party size** | Larger groups are harder to place later — favor slightly over long-waiting solos when re-solving the map (see [fifo stall example](./lfg-phase-b-plan.md#example-count-3-with-a-b-solo-then-cd-party)) |
-| **Skill / MMR** | When tracking win rates, bias toward even-skill lobbies in the same dequeue pass |
+| **Skill / MMR** | Minimize rating dispersion across **all** seats, not parity between team averages. Requires holding the fire briefly to accumulate candidates, and only when the arrival rate says that will pay — see [the design](https://app.notion.com/p/3d7c637d78a581c1a83bfe722967062a) (JQ-142) |
 | **Already on forming map** | Prefer finishing partial placements (Phase B); may yield to size/fit in Phase C when relocation is enabled |
 | **Wait time** | Tie-break for fairness within same tier |
 

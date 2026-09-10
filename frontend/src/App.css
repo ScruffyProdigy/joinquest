@@ -21,11 +21,34 @@
   min-width: 0;
 }
 
+#root.app-root--group {
+  padding: 0;
+  /* body centres its children; the group header has to be the top of the screen. */
+  align-self: stretch;
+}
+
 .app-shell,
 .auth-page {
   display: flex;
   flex-direction: column;
   gap: 1.5rem;
+}
+
+/* Each block on the group screen owns its own top gutter, so the shell adds none. */
+.app-shell--group {
+  gap: 0;
+}
+
+/* This app ships no Tailwind preflight, so headings and paragraphs still carry the
+   user agent's margins. On the group screen those margins are what pushed every block
+   past the prototype's sizing (JQ-251); a utility class still wins over this. */
+.app-shell--group :is(h1, p, ul) {
+  margin: 0;
+}
+
+.app-shell--group ul {
+  padding-inline-start: 0;
+  list-style: none;
 }
 
 .intent-banner {
@@ -431,6 +454,96 @@
   .home-header__heading {
     font-size: var(--text-2xl);
     line-height: var(--text-2xl--line-height);
+  }
+}
+
+/* The catalog's own label. The prototype shouts it in CSS rather than storing a
+   shouting string, so the accessible name stays "All games" (JQ-249). */
+.catalog-heading {
+  margin: 0 0 0.75rem;
+  font-size: var(--text-xs);
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--muted-foreground);
+}
+
+/* The case for an account, one rotating card at a time (JQ-249). */
+.sign-in-benefits {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.sign-in-benefits__card {
+  /* Fixed so the dialog does not jump as the bodies change length. */
+  min-height: 6.5rem;
+  display: flex;
+  align-items: center;
+  padding: 1rem;
+  border-radius: var(--radius-lg, 0.75rem);
+  background: var(--muted);
+  overflow: hidden;
+}
+
+.sign-in-benefits__copy {
+  animation: sign-in-benefit-in 400ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.sign-in-benefits__headline {
+  margin: 0 0 0.25rem;
+  font-family: var(--font-heading);
+  font-weight: 700;
+  color: var(--foreground);
+}
+
+.sign-in-benefits__body {
+  margin: 0;
+  font-size: var(--text-sm);
+  line-height: 1.5;
+  color: var(--muted-foreground);
+}
+
+.sign-in-benefits__dots {
+  display: flex;
+  justify-content: center;
+  gap: 0.5rem;
+}
+
+.sign-in-benefits__dot {
+  width: 6px;
+  height: 6px;
+  padding: 0;
+  border: 0;
+  border-radius: 999px;
+  background: var(--border);
+  cursor: pointer;
+  transition: width 300ms ease, background-color 300ms ease;
+}
+
+.sign-in-benefits__dot[aria-current='true'] {
+  width: 24px;
+  background: var(--primary);
+}
+
+@keyframes sign-in-benefit-in {
+  from {
+    opacity: 0;
+    transform: translateX(1.5rem);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .sign-in-benefits__copy {
+    animation: none;
+  }
+
+  .sign-in-benefits__dot {
+    transition: none;
   }
 }
 

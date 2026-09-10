@@ -230,6 +230,47 @@ export async function fetchGames(playerId = '') {
   return data.games ?? []
 }
 
+// Only the roster, and only for one mode. The full game query is far too much to pull down
+// for a picker, and queueOptions is a live call out to the game — so this is fetched when
+// the sheet opens rather than riding on every table or catalog payload (JQ-232).
+const MODE_QUEUE_OPTIONS_QUERY = `
+  query ModeQueueOptions($gameId: ID!, $playerId: ID!) {
+    game(id: $gameId) {
+      id
+      modes {
+        id
+        queueOptions(playerId: $playerId) {
+          available
+          unavailableReason
+          groups {
+            key
+            choices {
+              id
+              label
+              description
+              locked
+            }
+          }
+        }
+      }
+    }
+  }
+`
+
+/**
+ * This player's live roster for one mode, or null when the mode declares no groups. The
+ * game is the only source, so an unreachable one comes back as `available: false` for the
+ * sheet to say so rather than as an empty roster.
+ */
+export async function fetchModeQueueOptions(gameId, modeId, playerId) {
+  if (!gameId || !modeId || !playerId) {
+    return null
+  }
+  const data = await graphqlRequest(MODE_QUEUE_OPTIONS_QUERY, { gameId, playerId })
+  const mode = (data.game?.modes ?? []).find((entry) => entry.id === modeId)
+  return mode?.queueOptions ?? null
+}
+
 export async function fetchGameBySlug(slug, playerId = '') {
   const trimmed = String(slug || '').trim()
   if (!trimmed) {

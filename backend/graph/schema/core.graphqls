@@ -29,6 +29,12 @@ type Mutation {
   leaveQueue(queueId: ID!): Boolean!
   """Abandon the current playing intent (matched queue or room table session)."""
   leaveActiveGame: Boolean!
+  """
+  Mint a fresh, short-lived launch URL back into the match the player is already
+  seated in — same seat, same match, new token. Errors once the session is over or
+  the player has finished, so it can never re-open a match someone has left.
+  """
+  rejoinActiveMatch: String!
 
   # Digital goods (simple entitlement grant)
   grantGood(userId: ID!, goodId: ID!, quantity: Int = 1): Boolean!

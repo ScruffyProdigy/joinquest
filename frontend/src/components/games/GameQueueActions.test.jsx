@@ -4,7 +4,7 @@ import { describe, it, expect, vi } from 'vitest'
 import GameQueueActions from './GameQueueActions'
 
 describe('GameQueueActions', () => {
-  it('shows a Look for group button for single-bucket modes', () => {
+  it('shows a Jump in button for single-bucket modes', () => {
     render(
       <GameQueueActions
         joinOptions={{ kind: 'fifo', paths: [] }}
@@ -15,11 +15,34 @@ describe('GameQueueActions', () => {
       />,
     )
 
-    expect(screen.queryByRole('region', { name: 'Look for group' })).not.toBeInTheDocument()
-    expect(screen.getByRole('button', { name: 'Look for group' })).toBeInTheDocument()
+    expect(screen.queryByRole('region', { name: 'Jump in' })).not.toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Jump in' })).toBeInTheDocument()
   })
 
-  it('shows waiting controls without a Look for group panel in fifo modes', () => {
+  /**
+   * The prototype leads the CTA with a lucide `zap`. It has to stay decorative:
+   * an icon that joins the accessible name renames the button for anyone using
+   * a screen reader or driving the app by voice.
+   */
+  it('leads Jump in with a decorative icon that does not rename the button', () => {
+    render(
+      <GameQueueActions
+        joinOptions={{ kind: 'fifo', paths: [] }}
+        queueState="idle"
+        busy={false}
+        onJoin={vi.fn()}
+        onLeave={vi.fn()}
+      />,
+    )
+
+    const button = screen.getByRole('button', { name: 'Jump in' })
+    const icon = button.querySelector('svg')
+    expect(icon).not.toBeNull()
+    expect(icon).toHaveAttribute('aria-hidden', 'true')
+    expect(button).toHaveAccessibleName('Jump in')
+  })
+
+  it('shows waiting controls without a Jump in panel in fifo modes', () => {
     render(
       <GameQueueActions
         joinOptions={{ kind: 'fifo', paths: [] }}
@@ -30,12 +53,12 @@ describe('GameQueueActions', () => {
       />,
     )
 
-    expect(screen.queryByRole('region', { name: 'Look for group' })).not.toBeInTheDocument()
-    expect(screen.getByText('Looking…')).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: 'Stop looking' })).toBeInTheDocument()
+    expect(screen.queryByRole('region', { name: 'Jump in' })).not.toBeInTheDocument()
+    expect(screen.getByText('Finding players…')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Stop' })).toBeInTheDocument()
   })
 
-  it('shows role buttons inside a Look for group panel for composition modes', () => {
+  it('shows role buttons inside a Jump in panel for composition modes', () => {
     render(
       <GameQueueActions
         joinOptions={{
@@ -53,7 +76,7 @@ describe('GameQueueActions', () => {
       />,
     )
 
-    expect(screen.getByRole('region', { name: 'Look for group' })).toBeInTheDocument()
+    expect(screen.getByRole('region', { name: 'Jump in' })).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Join as DPS' })).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Join as Support' })).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Join as Tank' })).toBeInTheDocument()
@@ -102,7 +125,7 @@ describe('GameQueueActions', () => {
     expect(onJoin).toHaveBeenCalledWith('Tank')
   })
 
-  it('falls back to a plain Look for group button when composition paths are empty', () => {
+  it('falls back to a plain Jump in button when composition paths are empty', () => {
     render(
       <GameQueueActions
         joinOptions={{
@@ -116,8 +139,8 @@ describe('GameQueueActions', () => {
       />,
     )
 
-    expect(screen.queryByRole('region', { name: 'Look for group' })).not.toBeInTheDocument()
-    expect(screen.getByRole('button', { name: 'Look for group' })).toBeInTheDocument()
+    expect(screen.queryByRole('region', { name: 'Jump in' })).not.toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Jump in' })).toBeInTheDocument()
   })
 
   it('shows waiting state with selected role in composition panel', () => {
@@ -135,8 +158,8 @@ describe('GameQueueActions', () => {
       />,
     )
 
-    expect(screen.getByText('Looking as Damage…')).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: 'Stop looking' })).toBeInTheDocument()
+    expect(screen.getByText('Finding players as Damage…')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Stop' })).toBeInTheDocument()
   })
 
   it('keeps other role join buttons visible while waiting', async () => {
@@ -158,7 +181,7 @@ describe('GameQueueActions', () => {
       />,
     )
 
-    expect(screen.getByText('Looking as Clue Giver…')).toBeInTheDocument()
+    expect(screen.getByText('Finding players as Clue Giver…')).toBeInTheDocument()
     expect(screen.queryByRole('button', { name: 'Join as Clue Giver' })).not.toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Join as Guesser' })).toBeInTheDocument()
 
@@ -166,7 +189,7 @@ describe('GameQueueActions', () => {
     expect(onJoin).toHaveBeenCalledWith('Guesser')
   })
 
-  it('shows a Play button instead of Look for group for solo modes', () => {
+  it('shows a Single player button instead of Jump in for solo modes', () => {
     render(
       <GameQueueActions
         joinOptions={{ kind: 'fifo', paths: [] }}
@@ -178,8 +201,8 @@ describe('GameQueueActions', () => {
       />,
     )
 
-    expect(screen.getByRole('button', { name: 'Play' })).toBeInTheDocument()
-    expect(screen.queryByRole('button', { name: 'Look for group' })).not.toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Single player' })).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Jump in' })).not.toBeInTheDocument()
   })
 
   it('shows a Starting… label while a solo mode join is in flight', () => {
@@ -197,7 +220,7 @@ describe('GameQueueActions', () => {
     expect(screen.getByRole('button', { name: 'Starting…' })).toBeInTheDocument()
   })
 
-  it('calls onJoin with no queue path when Play is clicked in a solo mode', async () => {
+  it('calls onJoin with no queue path when Single player is clicked in a solo mode', async () => {
     const onJoin = vi.fn()
     render(
       <GameQueueActions
@@ -210,7 +233,7 @@ describe('GameQueueActions', () => {
       />,
     )
 
-    await userEvent.click(screen.getByRole('button', { name: 'Play' }))
+    await userEvent.click(screen.getByRole('button', { name: 'Single player' }))
     expect(onJoin).toHaveBeenCalledWith()
   })
 
@@ -227,7 +250,7 @@ describe('GameQueueActions', () => {
       />,
     )
 
-    expect(screen.getByRole('link', { name: 'Launch game' })).toBeInTheDocument()
+    expect(screen.getByRole('link', { name: 'Launch Now' })).toBeInTheDocument()
     expect(screen.queryByRole('button', { name: 'Leave match' })).not.toBeInTheDocument()
   })
 })

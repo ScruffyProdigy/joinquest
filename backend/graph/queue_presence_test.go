@@ -161,3 +161,94 @@ func TestNilTrackerIsSafe(t *testing.T) {
 	release := tracker.Track(context.Background(), uuid.New())
 	release()
 }
+
+// Two windows off one socket edge, on different clocks. The short one must fire on its
+// own schedule while the long one is still running — a player 40s into a disconnect has
+// lost their room and kept their queue place, and collapsing the two would mean the
+// stricter window silently governed both.
+func TestTrackerFiresEachWindowOnItsOwnClock(t *testing.T) {
+	short := make(chan time.Time, 1)
+	long := make(chan time.Time, 1)
+	tracker := newPresenceTrackerWithBackend(&fakePresenceStore{}, nil, 2*time.Second,
+		func(ctx context.Context, userID uuid.UUID, stamp time.Time) {
+			long <- stamp
+		}).WithExpiry(20*time.Millisecond,
+		func(ctx context.Context, userID uuid.UUID, stamp time.Time) {
+			short <- stamp
+		})
+
+	release := tracker.Track(context.Background(), uuid.New())
+	release()
+
+	select {
+	case <-short:
+	case <-time.After(2 * time.Second):
+		t.Fatal("the short window never fired")
+	}
+	select {
+	case <-long:
+		t.Fatal("the long window fired on the short window's clock")
+	default:
+	}
+}
+
+// A reconnect ends every window at once. Whatever each was about to take away, the
+// player is back before it did — so cancelling one and leaving the other armed would
+// cost them something they returned in time to keep.
+func TestTrackerReconnectCancelsEveryWindow(t *testing.T) {
+	fired := make(chan string, 2)
+	tracker := newPresenceTrackerWithBackend(&fakePresenceStore{}, nil, 40*time.Millisecond,
+		func(ctx context.Context, userID uuid.UUID, stamp time.Time) {
+			fired <- "long"
+		}).WithExpiry(20*time.Millisecond,
+		func(ctx context.Context, userID uuid.UUID, stamp time.Time) {
+			fired <- "short"
+		})
+
+	userID := uuid.New()
+	release := tracker.Track(context.Background(), userID)
+	release()
+	tracker.Track(context.Background(), userID)
+
+	select {
+	case which := <-fired:
+		t.Fatalf("the %s window fired for a player who reconnected inside it", which)
+	case <-time.After(300 * time.Millisecond):
+	}
+}
+
+// Every window firing must drop the player's map entry. A player who disconnects and
+// never returns is exactly the case the timers exist for, and exactly the case where no
+// reconnect ever arrives to clean up after them — so a leak here grows for as long as
+// the process lives.
+func TestTrackerForgetsAPlayerOnceEveryWindowHasFired(t *testing.T) {
+	done := make(chan struct{}, 2)
+	noop := func(ctx context.Context, userID uuid.UUID, stamp time.Time) { done <- struct{}{} }
+	tracker := newPresenceTrackerWithBackend(&fakePresenceStore{}, nil, 10*time.Millisecond, noop).
+		WithExpiry(20*time.Millisecond, noop)
+
+	release := tracker.Track(context.Background(), uuid.New())
+	release()
+
+	for i := 0; i < 2; i++ {
+		select {
+		case <-done:
+		case <-time.After(2 * time.Second):
+			t.Fatal("not every window fired")
+		}
+	}
+
+	deadline := time.Now().Add(time.Second)
+	for {
+		tracker.mu.Lock()
+		remaining := len(tracker.timers)
+		tracker.mu.Unlock()
+		if remaining == 0 {
+			return
+		}
+		if time.Now().After(deadline) {
+			t.Fatalf("tracker still holds %d player(s) after every window fired", remaining)
+		}
+		time.Sleep(5 * time.Millisecond)
+	}
+}

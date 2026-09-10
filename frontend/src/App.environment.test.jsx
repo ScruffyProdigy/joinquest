@@ -21,7 +21,7 @@ describe('App Environment Integration', () => {
     render(<App />)
     
     // The app should render without crashing
-    expect(screen.getByRole('heading', { level: 1, name: 'Find a game' })).toBeInTheDocument()
+    expect(screen.getByRole('heading', { level: 1, name: 'Solo or squad, just join.' })).toBeInTheDocument()
     // JQ-71 moved the developer promo into the catalog list, so it arrives with the
     // games rather than on first paint. Its own coverage lives in DeveloperPromoCard
     // and GameLobby; this test is about the environment config.
@@ -38,7 +38,7 @@ describe('App Environment Integration', () => {
     
     // App should still render
     render(<App />)
-    expect(screen.getByRole('heading', { level: 1, name: 'Find a game' })).toBeInTheDocument()
+    expect(screen.getByRole('heading', { level: 1, name: 'Solo or squad, just join.' })).toBeInTheDocument()
   })
 
   it('can access environment variables in component', () => {

@@ -103,6 +103,53 @@ func (r *mutationResolver) LeaveActiveGame(ctx context.Context) (bool, error) {
 	return true, nil
 }
 
+// RejoinActiveMatch is the resolver for the rejoinActiveMatch field.
+//
+// The way back into a match the player fell out of (JQ-86). It mints on demand
+// rather than handing out a URL with the banner, because the token is deliberately
+// short-lived: a link minted when the banner rendered would be stale by the time a
+// player who wandered off came back to click it.
+//
+// GetUserActiveSessionParticipation is what enforces "only while the match is live" —
+// it matches on an active session with the player neither left nor finished, so a
+// reported result or the player's own finish closes this door for good.
+func (r *mutationResolver) RejoinActiveMatch(ctx context.Context) (string, error) {
+	st, err := r.requireStore()
+	if err != nil {
+		return "", err
+	}
+
+	userID, err := requireAuthenticatedUserID(ctx)
+	if err != nil {
+		return "", err
+	}
+
+	participation, err := st.GetUserActiveSessionParticipation(ctx, userID)
+	if err != nil {
+		return "", err
+	}
+	if participation == nil {
+		return "", fmt.Errorf("no live match to rejoin")
+	}
+
+	game, err := st.GetGameByID(ctx, participation.GameID)
+	if err != nil {
+		return "", err
+	}
+
+	launchURL, err := r.signRejoinURL(ctx, game, participation.SessionID, userID)
+	if err != nil {
+		return "", fmt.Errorf("rejoin url: %w", err)
+	}
+	if launchURL == "" {
+		// The match exists but the game has not handed back a launch URL base yet,
+		// so there is nowhere to send the player. Distinct from "nothing to rejoin".
+		return "", fmt.Errorf("match is not ready to rejoin yet")
+	}
+	log.Printf("rejoin: minted session=%s user=%s seat=%s", participation.SessionID, userID, participation.SeatKey)
+	return launchURL, nil
+}
+
 // GrantGood is the resolver for the grantGood field.
 func (r *mutationResolver) GrantGood(ctx context.Context, userID string, goodID string, quantity *int) (bool, error) {
 	if _, err := r.requireAdmin(ctx); err != nil {

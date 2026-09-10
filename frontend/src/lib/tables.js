@@ -6,7 +6,7 @@ import { prefetchSubscriptionAuth } from './queue'
 import { displayNameOrFallback } from './viewer'
 
 // Everyone on a table card is a PublicPlayer, not a User. A table admits strangers — the
-// king's Look for group backfill and the catalog queue both seat people who were never
+// king's look-for-group backfill and the catalog queue both seat people who were never
 // invited — so no seat, king or roster entry may carry an email (JQ-174).
 export const TABLE_FIELDS = `
   id
@@ -30,6 +30,15 @@ export const TABLE_FIELDS = `
       queuePath
       minPlayers
       maxPlayers
+    }
+    # The declaration only. The player's own roster comes live from the game and is
+    # fetched when the picker opens, not on every table update (JQ-232).
+    preQueueGroups {
+      key
+      kind
+      label
+      min
+      max
     }
   }
   king {
@@ -109,8 +118,8 @@ const CREATE_PRIVATE_TABLE = `
 `
 
 const SIT_AT_TABLE = `
-  mutation SitAtTable($tableId: ID!, $seatKey: String!) {
-    sitAtTable(tableId: $tableId, seatKey: $seatKey) {
+  mutation SitAtTable($tableId: ID!, $seatKey: String!, $options: [QueueOptionSelectionInput!]) {
+    sitAtTable(tableId: $tableId, seatKey: $seatKey, options: $options) {
       ${TABLE_FIELDS}
     }
   }
@@ -159,8 +168,10 @@ export async function createPrivateTable(gameId, modeId) {
   return data.createPrivateTable
 }
 
-export async function sitAtTable(tableId, seatKey) {
-  const data = await graphqlRequest(SIT_AT_TABLE, { tableId, seatKey })
+// Each player answers the picker for themselves on the way into the seat, so options is
+// per claim. Left null for a mode that declares no groups.
+export async function sitAtTable(tableId, seatKey, options) {
+  const data = await graphqlRequest(SIT_AT_TABLE, { tableId, seatKey, options: options ?? null })
   return data.sitAtTable
 }
 
@@ -320,15 +331,25 @@ export function groupSeatSlotsForDisplay(seatSlots = []) {
     const roles = [...byRole.entries()].sort(([a], [b]) => a.localeCompare(b))
     return {
       kind: 'roles',
-      roles: roles.map(([path, slots]) => {
-        const title = slots[0]?.displayName?.split(' · ')[0]?.trim() || path
-        return [title, slots]
-      }),
+      roles: roles.map(([path, slots]) => [seatSectionTitle(slots, path), slots]),
       noPath,
     }
   }
 
   return { kind: 'flat', slots: seatSlots.length ? seatSlots : noPath }
+}
+
+/**
+ * The role a seat section is titled with. A seat's displayName is often nothing but its
+ * number ("1", "2") when a mode names no roles, and a section headed "1" reads as a seat
+ * rather than as who sits in it — so a numeric label is no title, and the fallback wins.
+ */
+export function seatSectionTitle(slots = [], fallback = 'Player') {
+  const label = slots[0]?.displayName?.split(' · ')[0]?.trim() || ''
+  if (!label || /^\d+$/.test(label)) {
+    return fallback
+  }
+  return label
 }
 
 /**
