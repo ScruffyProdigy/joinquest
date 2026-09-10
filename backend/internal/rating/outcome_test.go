@@ -440,6 +440,30 @@ func TestBuildSidesWithFewerThanTwoSidesIsUnrateable(t *testing.T) {
 	}
 }
 
+// The commonest way to end up with one side is a 1v1 whose loser
+// disconnected — and the side that survives is winner-marked, so the
+// all-winner refusal would fire first and send an operator hunting an
+// all-winner report the game never sent. Which refusal wins is the whole
+// point of this test: both messages are true, only one is useful here.
+func TestBuildSidesLoneWinningSideReportsTheSideCountNotAllWinners(t *testing.T) {
+	shape := ModeShape{SeatClasses: map[string]string{"s1": "Player", "s2": "Player"}}
+	out := MatchOutcome{
+		Participants: []Participant{
+			{PlayerID: "a", SeatKey: "s1", IsWinner: true},
+			{PlayerID: "b", SeatKey: "s2", Excluded: true},
+		},
+	}
+
+	_, err := BuildSides(shape, out)
+	if err == nil {
+		t.Fatal("BuildSides succeeded with one side left; a lone side has nothing to be rated against")
+	}
+	want := "rating: match has 1 rateable side(s), want at least 2"
+	if err.Error() != want {
+		t.Fatalf("BuildSides error = %q, want %q", err.Error(), want)
+	}
+}
+
 func TestBuildSidesCooperativeKeepsCrewWhenOneMemberIsExcluded(t *testing.T) {
 	success := true
 	shape := ModeShape{

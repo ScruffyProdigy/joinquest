@@ -277,7 +277,13 @@ func deriveRanks(groups map[string][]Participant) (map[string]int, error) {
 		// Unlike equal placements, which state a draw, "everybody won" states
 		// no ordering: nobody was better than anybody. Rating it would move
 		// sigma on a report that carries no information.
-		if winningSides == len(groups) {
+		//
+		// Requiring more than one group keeps this from claiming the far
+		// commoner single-side case, where it would send an operator hunting
+		// a phantom all-winner report: exclusions routinely leave one
+		// winner-marked group (a 1v1 whose loser disconnected), and that is
+		// BuildSides' side-count refusal below, which says so accurately.
+		if len(groups) > 1 && winningSides == len(groups) {
 			return nil, fmt.Errorf("rating: every side is marked a winner, so the outcome carries no ranking")
 		}
 

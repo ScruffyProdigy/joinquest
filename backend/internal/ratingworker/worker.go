@@ -29,8 +29,8 @@
 // correction never changes max(rated_at) for its mode, and a replay that
 // already ran for that correction leaves last_rated_at unchanged too — the
 // two already matched before the correction landed. If the correction's
-// replay is scheduled but then lost (process crash before the next tick) or
-// exhausts its retries, the mode looks clean to a sweep that compares
+// replay is scheduled but then lost (process crash before the next tick),
+// the mode looks clean to a sweep that compares
 // max-input against last-rated forever, and the stale ratings persist until
 // an unrelated new match happens to land in that mode. This is a known,
 // accepted limit of the replay-by-log design, not something this package
@@ -140,12 +140,18 @@ func (w *Worker) Start(ctx context.Context) {
 // into one replay rather than racing each other. This also keeps DrainNow
 // the sole caller of a replay: sweepOnce only ever touches the dirty set
 // through Schedule, so two replays for the same mode can never be in flight
-// at once (see the package comment on DrainNow being the single drain path).
+// at once.
 func (w *Worker) sweepOnce(ctx context.Context) {
 	modes, err := w.sweeper.ListModesNeedingReplay(ctx)
 	if err != nil {
 		log.Printf("ratingworker: sweep: %v", err)
 		return
+	}
+	// A healthy system sweeps up nothing, so anything found is worth a line:
+	// on the first boot after deploy every mode with inputs is behind, and
+	// this is the only sign that the back-fill is running at all.
+	if len(modes) > 0 {
+		log.Printf("ratingworker: sweep found %d mode(s) behind their inputs; scheduling a replay for each", len(modes))
 	}
 	for _, m := range modes {
 		w.Schedule(m.GameID, m.ModeKey)
@@ -167,7 +173,8 @@ func (w *Worker) DrainNow(ctx context.Context) error {
 	var failed []modeKey
 	for _, k := range pending {
 		replayer := w.newReplayer()
-		if _, err := replayer.ReplayMode(ctx, k.gameID.String(), k.modeKey); err != nil {
+		report, err := replayer.ReplayMode(ctx, k.gameID.String(), k.modeKey)
+		if err != nil {
 			// Log and continue: one mode failing to replay must not stop the
 			// others. Re-queue it below so the next tick retries it — the
 			// input log is intact either way, but a failed replay must not
@@ -176,7 +183,12 @@ func (w *Worker) DrainNow(ctx context.Context) error {
 			// be (see the package comment).
 			log.Printf("ratingworker: replay %s/%s: %v", k.gameID, k.modeKey, err)
 			failed = append(failed, k)
+			continue
 		}
+		// One line per completed replay, so an operator can tell a mode whose
+		// ratings never move from one whose replays are silently failing.
+		// A breadcrumb, deliberately not per-match tracing.
+		log.Printf("ratingworker: replayed %s/%s over %d match(es)", k.gameID, k.modeKey, report.Matches)
 	}
 
 	if len(failed) > 0 {

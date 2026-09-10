@@ -585,6 +585,13 @@ The full mutation signature, field semantics, and how it relates to
 covers one shape of that call that deserves its own contract: what a
 cooperative mode sends.
 
+**Don't express a draw as an all-winner list.** A result where *every* side is
+marked a winner states no ordering at all — nobody beat anybody — so it is
+refused for rating the same silent way a malformed `scenarios` is: the match
+resolves normally, the standings show what you sent, and the ratings simply
+never move. Report a draw as equal `placement` values on `reportPlayerFinished`
+instead; equal placements *are* a draw, and are rated as one.
+
 ### Cooperative outcomes
 
 A co-op mode (`socialMode: "co-op"`) wins or loses as one, so `reportMatchResult`
