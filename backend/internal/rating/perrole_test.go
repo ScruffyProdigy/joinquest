@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"math"
+	"reflect"
 	"testing"
 )
 
@@ -330,4 +331,25 @@ func stripInteractionEntrants(inputs []Input) []Input {
 		out[i] = Input{SessionID: in.SessionID, Sides: sides}
 	}
 	return out
+}
+
+// The specialist history is the one where a seed depends on state built up
+// earlier in the replay — a player's mode-level uncertainty at the moment
+// they first sit in a new seat. That makes it worth its own determinism
+// check: TestReplayIsDeterministicAcrossRuns covers a symmetric history,
+// where no seed reads anything.
+func TestPerRoleReplayIsDeterministicAcrossRuns(t *testing.T) {
+	history := specialistHistory(t)
+
+	var first map[string]Rating
+	for i := 0; i < 25; i++ {
+		fs, _ := replayInputs(t, history)
+		if i == 0 {
+			first = fs.players
+			continue
+		}
+		if !reflect.DeepEqual(first, fs.players) {
+			t.Fatalf("run %d differs:\nfirst = %+v\ngot   = %+v", i, first, fs.players)
+		}
+	}
 }

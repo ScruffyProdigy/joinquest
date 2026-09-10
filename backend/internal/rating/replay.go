@@ -156,6 +156,13 @@ func NewReplayer(engine Engine, store Store) *Replayer {
 // an Engine.Rate call or the order those calls happen in. The accumulating
 // ratings map below is fine as a map because it is used only for lookup by
 // key; nothing about map iteration order leaks into an engine call.
+//
+// One ordering inside a match is load-bearing and is not obvious from the
+// loop: every entrant's rating is read before any is written back. seed reads
+// a player's mode-level rating to size the uncertainty on a seat they have
+// not played before, so writing updates as each entrant is visited would make
+// that seed depend on where in the side the player happened to sit. Keep the
+// read pass and the write-back pass separate.
 func (r *Replayer) ReplayMode(ctx context.Context, gameID, modeKey string) (Report, error) {
 	inputs, err := r.store.ListInputs(ctx, gameID, modeKey)
 	if err != nil {
