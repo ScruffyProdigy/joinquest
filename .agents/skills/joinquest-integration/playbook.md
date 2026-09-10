@@ -139,6 +139,11 @@ In Agent mode, ask the agent to call `joinquest_integration_list_my_games`. If a
 
 **Provision banlist:** `403` with `{ "error": "...", "bannedLobbyUserIds": ["..."] }`.
 
+**Provision skill:** every seat carries `skill { rating, uncertainty }` for the mode
+being provisioned, and `player(id) { skill(modeKey:) }` answers the same over GraphQL. Both need your
+`serviceToken`; it is never in the seat JWT and never on a player-readable field. Use it for AI
+difficulty and side balance — JoinQuest asks that you do not show it to players. Guide §15.
+
 **JWT:** Verify `iss`, `aud` (your API base URL), `matchId`, `seatKey`, `sub`. Publish JWKS at `{lobbyIssuer}/.well-known/jwks.json`.
 
 **Optional per-player endpoints:**

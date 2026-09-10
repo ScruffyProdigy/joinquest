@@ -209,6 +209,10 @@ Full reference: [seat-templates-and-matchmaking.md](./seat-templates-and-matchma
 - **Success:** `200/201` with `launchUrls` map (lobbyUserId → URL base, no JWT) or `launchUrlTemplate`
 - **Banned roster:** `403` with `{ "error": "...", "bannedLobbyUserIds": ["..."] }`
 
+Each seat also carries the player's [skill](#15-player-skill-optional) in the
+mode being provisioned, and their [pre-queue picks](#13-pre-queue-options-optional)
+if the mode has them.
+
 ### Troubleshooting
 
 <a id="provision-403-banned"></a>
@@ -640,3 +644,100 @@ response to tell you why.
 A co-op match that reports no `scenarios` produces **no rating change at all**.
 That is deliberate: "everybody won" with no idea what they beat is not
 information, and a guessed difficulty would be worse than none.
+
+---
+
+## 15. Player skill (optional)
+
+JoinQuest keeps a skill estimate for every player, **per game and per mode**,
+derived from the [match results](#14-match-results-reportmatchresult) you
+already report. There is nothing extra to send: the same `reportMatchResult`
+call that closes out a match is what moves the number. You are welcome to track your own ratings as well — this is here so
+you do not have to.
+
+The estimate is for **your server to use**, not for your players to see.
+
+### What you get
+
+Two channels, both server-to-server, both authenticated with your
+`serviceToken`.
+
+**On the provision push**, every seat carries its player's skill in the mode
+being provisioned — so you can size a match, pick AI difficulty or balance sides
+before it starts, with no extra round trip:
+
+```json
+{
+  "assignment": {
+    "gameMode": "duel",
+    "seats": [
+      {
+        "seatKey": "p1",
+        "lobbyUserId": "…",
+        "skill": { "rating": 31.5, "uncertainty": 2.25 }
+      }
+    ]
+  }
+}
+```
+
+**On the GraphQL player lookup**, ask for any player in any mode you declare:
+
+```graphql
+query Player($id: ID!) {
+  player(id: $id) {
+    displayName
+    skill(modeKey: "duel") { rating uncertainty }
+  }
+}
+```
+
+### Reading the numbers
+
+| Field | Meaning |
+|-------|---------|
+| `rating` | Centre of the estimate. A player we have not rated sits at **25.0**; most rated players land roughly between **0 and 50**. Higher is stronger. |
+| `uncertainty` | One standard deviation on the same scale — how unsure we are. Widest at about **8.3**, narrowing as evidence accumulates. |
+
+Treat `rating` as a range, not a point: a player at `28.0 ± 7.0` and one at
+`28.0 ± 1.5` are not the same information. If you are picking AI difficulty for
+someone with a high `uncertainty`, aim near the middle and let the next few
+results sharpen it.
+
+**`uncertainty` is the field to branch on**, not how new the player is to you.
+There is no match count in the payload on purpose: you already know how many
+times you have seen a player id, and that count answers a different question.
+How much a number deserves to be trusted is what `uncertainty` is for, and it
+keeps meaning that however the estimate was arrived at.
+
+A rating is **only ever comparable inside one game and one mode**. A 30 in your
+Duel says nothing about a 30 in your Arena, and nothing at all about a 30 in
+somebody else's game.
+
+### What you will never get
+
+- **Another game's rating.** Your `serviceToken` names your game, and that is
+  the only catalog entry it reads. A player's standing elsewhere in JoinQuest is
+  not yours to see.
+- **A mode you do not declare.** `skill` returns `null` for a `modeKey` your
+  manifest does not carry, so a typo reads as a mistake rather than as a
+  plausible number.
+- **Skill on the player's own path.** It is not in the seat JWT and not in any
+  field a player's session can read — including a player asking about
+  themselves. Every seat token your players hold is decodable in their browser,
+  so nothing sensitive rides there.
+
+### Please do not show it to players
+
+JoinQuest deliberately does not show players their own skill, and asks that
+games do the same — no number, no bracket, no "you are rated ___" screen.
+
+This is an expectation, not something the lobby can enforce: once the number is
+on your server it is yours, and we have no way to check what you render. We are
+asking because a visible rating changes how a casual audience plays — it turns a
+game you were enjoying into a score you can lose. Use it to make the match
+better and leave it out of the UI.
+
+Using it to shape difficulty, seed teams, or pick an opponent is exactly what it
+is for. Grading players with it is not.
+

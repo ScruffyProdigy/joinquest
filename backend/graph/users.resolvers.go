@@ -12,6 +12,14 @@ import (
 	"github.com/scruffyprodigy/joinquest/internal/auth"
 )
 
+// Skill is the resolver for the skill field.
+func (r *publicPlayerResolver) Skill(ctx context.Context, obj *model.PublicPlayer, modeKey string) (*model.PlayerSkill, error) {
+	if obj == nil {
+		return nil, nil
+	}
+	return resolvePlayerSkill(ctx, r.Resolver, obj.ID, modeKey)
+}
+
 // IsAdmin is the resolver for the isAdmin field.
 func (r *userResolver) IsAdmin(ctx context.Context, obj *model.User) (bool, error) {
 	if obj == nil || obj.Email == nil {
@@ -20,7 +28,11 @@ func (r *userResolver) IsAdmin(ctx context.Context, obj *model.User) (bool, erro
 	return auth.IsAdminEmail(*obj.Email), nil
 }
 
+// PublicPlayer returns generated.PublicPlayerResolver implementation.
+func (r *Resolver) PublicPlayer() generated.PublicPlayerResolver { return &publicPlayerResolver{r} }
+
 // User returns generated.UserResolver implementation.
 func (r *Resolver) User() generated.UserResolver { return &userResolver{r} }
 
+type publicPlayerResolver struct{ *Resolver }
 type userResolver struct{ *Resolver }
