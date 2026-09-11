@@ -55,11 +55,13 @@ func setupTeamMode(t *testing.T, st *Store, cleaner *TestCleaner) (*Game, *GameM
 // setupTwoSidedMode registers a 3v3 whose sides are named, so each seat carries its own
 // queue path and a player can choose which side to sit on.
 //
-// The distinction matters for the split case below and is not incidental: seats that
-// share a queue path are pooled, and a claim on a pooled seat is resolved to the first
-// open seat in the group rather than to the key the player asked for. A mode shaped like
-// setupTeamMode therefore cannot express "two of us here, one of us over there" at all —
-// only a mode that names its sides can.
+// Matchmaking does not need the names: TestGroupBackfillSplitSurvivesUnnumberedSides
+// below proves it preserves a split across anonymous Team-1/Team-2 branches perfectly
+// well, by permuting which branch becomes which side. What needs them is the seat claim
+// one layer earlier. isPooledSeatGroup treats every seat sharing a queue path as one
+// interchangeable pool, and for a path-less template that pool spans both sides — so a
+// player clicking a Team-2 seat is handed the next free Team-1 seat instead, and the
+// split never reaches the party tree to be preserved.
 func setupTwoSidedMode(t *testing.T, st *Store, cleaner *TestCleaner) (*Game, *GameMode, uuid.UUID) {
 	t.Helper()
 	ctx := context.Background()
@@ -226,13 +228,13 @@ func TestGroupBackfillSameSideFillsAndAllPlayersReachTheGame(t *testing.T) {
 	}
 }
 
-// The split case. Two friends on one side and one on the other must come out of
-// matchmaking still split that way. This asserts behaviour that already works, so that a
-// later change to the control cannot quietly break it.
+// The split case, through the whole path a group actually walks. Two friends on one side
+// and one on the other must come out of matchmaking still split that way. This asserts
+// behaviour that already works, so that a later change to the control cannot quietly
+// break it.
 //
-// It uses a mode that names its sides, because that is the only kind that can express the
-// case: seats sharing one queue path are pooled, and a claim on a pooled seat lands in
-// the first open seat of the group rather than the one the player picked.
+// It uses a mode that names its sides because that is what makes the seat claim stick;
+// the companion test below shows matchmaking itself needs no such help.
 func TestGroupBackfillSplitGroupKeepsItsSides(t *testing.T) {
 	st := openTestStore(t)
 	cleaner := st.NewTestCleaner(t)
@@ -475,5 +477,107 @@ func TestAutoStartTableSkippedWhileBackfillIsLive(t *testing.T) {
 	}
 	if result != nil {
 		t.Fatal("expected no auto-start while the table is waiting on matchmaking")
+	}
+}
+
+// Matchmaking preserves a split across sides a template never named, which is what the
+// ticket says and what `placeBranchSiblings` is for: the two branch nodes are permuted
+// into distinct side instances, so which of them becomes Team-1 and which Team-2 is the
+// solver's choice rather than anything the group had to declare.
+//
+// The seats are written directly. That is the point of the test rather than a shortcut
+// around it: pooled seat resolution would put all three players on Team-1 (see
+// setupTwoSidedMode), so seating them split is the only way to ask matchmaking the
+// question at all — and the answer is that matchmaking was never the part that needed
+// naming.
+func TestGroupBackfillSplitSurvivesUnnumberedSides(t *testing.T) {
+	st := openTestStore(t)
+	cleaner := st.NewTestCleaner(t)
+	ctx := context.Background()
+
+	game, mode, queueID := setupTeamMode(t, st, cleaner)
+	alice := mustUser(t, st, cleaner, "anon-split-a")
+	bob := mustUser(t, st, cleaner, "anon-split-b")
+	cara := mustUser(t, st, cleaner, "anon-split-c")
+
+	table := mustGroupTable(t, st, game, mode, alice, map[*User]string{
+		alice: "Team-1-Seat-1",
+		bob:   "Team-1-Seat-2",
+		cara:  "Team-2-Seat-1",
+	})
+	if _, err := st.db.ExecContext(ctx, `
+		UPDATE table_seats SET seat_key = 'Team-2-Seat-1' WHERE table_id = $1 AND user_id = $2
+	`, table.ID, cara.ID); err != nil {
+		t.Fatalf("seat the split the pooled claim would not: %v", err)
+	}
+
+	if _, err := st.StartTableBackfill(ctx, table.ID, cara.ID, queueID); err != nil {
+		t.Fatalf("StartTableBackfill: %v", err)
+	}
+	for i := 0; i < 3; i++ {
+		stranger := mustUser(t, st, cleaner, "anon-split-stranger")
+		if _, err := st.JoinModeQueue(ctx, queueID, stranger.ID, "", nil); err != nil {
+			t.Fatalf("stranger join: %v", err)
+		}
+	}
+
+	rec := mustReconcileForming(t, st, ctx, queueID)
+	if !rec.Fired || rec.SessionID == nil {
+		t.Fatalf("expected the filled match to fire, got %+v", rec)
+	}
+	assignments, err := st.ListSessionSeatAssignments(ctx, *rec.SessionID)
+	if err != nil {
+		t.Fatalf("ListSessionSeatAssignments: %v", err)
+	}
+	seatByUser := map[uuid.UUID]string{}
+	for _, a := range assignments {
+		seatByUser[a.UserID] = a.SeatKey
+	}
+	if sideOf(seatByUser[alice.ID]) != sideOf(seatByUser[bob.ID]) {
+		t.Fatalf("the pair was split apart: %s vs %s", seatByUser[alice.ID], seatByUser[bob.ID])
+	}
+	if sideOf(seatByUser[cara.ID]) == sideOf(seatByUser[alice.ID]) {
+		t.Fatalf("the lone player was folded into the pair's side: all on %s",
+			sideOf(seatByUser[alice.ID]))
+	}
+}
+
+// The seat claim, on the other hand, cannot express that split. Every seat in a
+// path-less template shares one pool, so a claim on the far side is resolved to the next
+// free seat on the near one and the group is silently gathered onto a single side.
+//
+// Asserted rather than described, so that the day pooling learns about sides this test
+// fails and says so, instead of the limitation quietly outliving its own documentation.
+func TestPooledSeatClaimCannotChooseASide(t *testing.T) {
+	st := openTestStore(t)
+	cleaner := st.NewTestCleaner(t)
+	ctx := context.Background()
+
+	game, mode, _ := setupTeamMode(t, st, cleaner)
+	alice := mustUser(t, st, cleaner, "pooled-a")
+	bob := mustUser(t, st, cleaner, "pooled-b")
+	cara := mustUser(t, st, cleaner, "pooled-c")
+
+	table := mustGroupTable(t, st, game, mode, alice, map[*User]string{
+		alice: "Team-1-Seat-1",
+		bob:   "Team-1-Seat-2",
+		cara:  "Team-2-Seat-1", // asked for the other side
+	})
+
+	seated, err := st.ListTableSeats(ctx, table.ID)
+	if err != nil {
+		t.Fatalf("ListTableSeats: %v", err)
+	}
+	for _, seat := range seated {
+		if seat.UserID != cara.ID {
+			continue
+		}
+		if seat.SeatKey == "Team-2-Seat-1" {
+			t.Skip("pooled seating now honours the requested side — delete this test and the " +
+				"caveat on setupTwoSidedMode")
+		}
+		if seat.SeatKey != "Team-1-Seat-3" {
+			t.Fatalf("expected the pooled claim to land on Team-1-Seat-3, got %s", seat.SeatKey)
+		}
 	}
 }
