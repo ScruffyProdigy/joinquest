@@ -343,6 +343,19 @@ export const GROUP_WAIT_KEEP_LOOKING = 'Keep looking'
  */
 export const GROUP_WAIT_OWNER_HINT = 'Your group is looking for a match.'
 
+/*
+ * Leaving on your own, which anyone may do and which is not the same as stopping. Stop
+ * takes the whole group off the queue; this takes one player off the table and leaves
+ * everybody else looking, in the seats they already hold.
+ */
+export const GROUP_WAIT_LEAVE = 'Leave the group'
+export const GROUP_WAIT_LEAVE_TITLE = 'Leave the group?'
+export const GROUP_WAIT_LEAVE_BODY =
+  'Your seat opens up for somebody else, and the rest of your group keeps looking.'
+/** The sheet's confirm, distinct from the button that opened it. */
+export const GROUP_WAIT_LEAVE_CONFIRM = 'Yes, leave'
+export const GROUP_WAIT_STAY = 'Stay with the group'
+
 export const LEAVE_QUEUE_TITLE = 'Leave the queue?'
 export const LEAVE_QUEUE_BODY = "You'll lose your spot and have to start over."
 export const LEAVE_QUEUE_CONFIRM = 'Leave queue'

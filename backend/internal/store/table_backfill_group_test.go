@@ -8,6 +8,7 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/scruffyprodigy/joinquest/internal/gameclient"
+	"github.com/scruffyprodigy/joinquest/internal/seattemplate"
 )
 
 // setupModeWithTemplate registers a one-mode game with the seat template given, so a test
@@ -547,6 +548,38 @@ func TestOnlyTheKingCanStartEarly(t *testing.T) {
 		t.Fatal("expected four seated players to be enough to start this mode")
 	}
 
+	// And still short of the queue's target, so asking the lobby is on offer as well:
+	// the king may play four now, or wait for the lobby to make it six. Both are the
+	// same decision — when the group stops waiting — answered two ways.
+	seatedNow, err := st.ListTableSeats(ctx, table.ID)
+	if err != nil {
+		t.Fatalf("ListTableSeats: %v", err)
+	}
+	if len(seatedNow) != 4 {
+		t.Fatalf("expected 4 seated, got %d", len(seatedNow))
+	}
+	// The same condition graph.tableLookForGroupVisible applies: some path is still
+	// under its maximum, so the lobby has something to add.
+	// ListGameModesByGameID does not carry the template; the by-id read does.
+	modeWithTemplate, err := st.GetGameModeByID(ctx, mode.ID)
+	if err != nil {
+		t.Fatalf("GetGameModeByID: %v", err)
+	}
+	specs, err := seattemplate.PathSpecs(modeWithTemplate.SeatTemplate)
+	if err != nil {
+		t.Fatalf("PathSpecs: %v", err)
+	}
+	room := false
+	for _, spec := range specs {
+		if countSeatedByPath(seatedNow, modeSeats, spec.QueuePath) < spec.Max {
+			room = true
+			break
+		}
+	}
+	if !room {
+		t.Fatal("expected a table of 4 in a 4-to-9 mode to still have room to ask for more")
+	}
+
 	for _, other := range others {
 		if _, err := st.StartTable(ctx, table.ID, other.ID); err == nil {
 			t.Fatalf("player %s started the game early without being the king", other.ID)
@@ -560,5 +593,160 @@ func TestOnlyTheKingCanStartEarly(t *testing.T) {
 	if len(result.NotifyUserIDs) != 4 {
 		t.Fatalf("expected all 4 seated players taken into the match, got %d",
 			len(result.NotifyUserIDs))
+	}
+}
+
+// formingSeatsByUser reads the forming map: who is holding which seat right now.
+func formingSeatsByUser(t *testing.T, st *Store, queueID uuid.UUID) map[uuid.UUID]string {
+	t.Helper()
+	ctx := context.Background()
+	fm, err := st.GetFillingFormingMatchByModeQueueID(ctx, queueID)
+	if err != nil {
+		t.Fatalf("GetFillingFormingMatchByModeQueueID: %v", err)
+	}
+	if fm == nil {
+		return map[uuid.UUID]string{}
+	}
+	tx, err := st.db.BeginTx(ctx, nil)
+	if err != nil {
+		t.Fatalf("BeginTx: %v", err)
+	}
+	defer tx.Rollback()
+	assignments, err := st.ListFormingAssignmentsTx(ctx, tx, fm.ID)
+	if err != nil {
+		t.Fatalf("ListFormingAssignmentsTx: %v", err)
+	}
+	out := map[uuid.UUID]string{}
+	for _, a := range assignments {
+		if a.UserID != nil {
+			out[*a.UserID] = a.SeatKey
+		}
+	}
+	return out
+}
+
+// One player walks out of a group that is already looking. The rest keep looking, and
+// keep the seats they were already holding — a stranger takes the chair that opened,
+// not a reshuffle of everybody (JQ-137).
+func TestLeavingAWaitingGroupLeavesTheRestInTheirSeats(t *testing.T) {
+	st := openTestStore(t)
+	cleaner := st.NewTestCleaner(t)
+	ctx := context.Background()
+
+	game, mode, queueID := setupTeamMode(t, st, cleaner)
+	king := mustUser(t, st, cleaner, "leave-king")
+	stays := mustUser(t, st, cleaner, "leave-stays")
+	goes := mustUser(t, st, cleaner, "leave-goes")
+
+	table := mustGroupTable(t, st, game, mode, king, map[*User]string{
+		king:  "Team-1-Seat-1",
+		stays: "Team-1-Seat-2",
+		goes:  "Team-1-Seat-3",
+	})
+	if _, err := st.StartTableBackfill(ctx, table.ID, king.ID, queueID); err != nil {
+		t.Fatalf("StartTableBackfill: %v", err)
+	}
+	mustReconcileForming(t, st, ctx, queueID)
+
+	before := formingSeatsByUser(t, st, queueID)
+	for _, user := range []*User{king, stays, goes} {
+		if before[user.ID] == "" {
+			t.Fatalf("player %s was never placed on the forming map", user.ID)
+		}
+	}
+
+	result, err := st.LeaveTableDetached(ctx, table.ID, goes.ID)
+	if err != nil {
+		t.Fatalf("LeaveTableDetached: %v", err)
+	}
+	if !result.Left || !result.Detached {
+		t.Fatalf("expected the leaver to be taken out of both, got %+v", result)
+	}
+
+	// The seats the others were holding, unchanged.
+	after := formingSeatsByUser(t, st, queueID)
+	for _, user := range []*User{king, stays} {
+		if after[user.ID] != before[user.ID] {
+			t.Fatalf("player %s moved from %s to %s", user.ID, before[user.ID], after[user.ID])
+		}
+	}
+	if seat, ok := after[goes.ID]; ok {
+		t.Fatalf("the leaver is still holding %s", seat)
+	}
+	// And still queued as a group, not re-entered as strangers.
+	for _, user := range []*User{king, stays} {
+		if _, waiting, err := st.WaitingModeQueueIDForUser(ctx, user.ID); err != nil {
+			t.Fatalf("WaitingModeQueueIDForUser: %v", err)
+		} else if !waiting {
+			t.Fatalf("player %s stopped waiting when somebody else left", user.ID)
+		}
+	}
+	if _, waiting, err := st.WaitingModeQueueIDForUser(ctx, goes.ID); err != nil {
+		t.Fatalf("WaitingModeQueueIDForUser: %v", err)
+	} else if waiting {
+		t.Fatal("the leaver is still in the queue")
+	}
+	if active, err := st.TableBackfillActive(ctx, table.ID); err != nil {
+		t.Fatalf("TableBackfillActive: %v", err)
+	} else if !active {
+		t.Fatal("the group stopped looking because one player left")
+	}
+
+	// Four strangers now complete it — three for the far side and one for the chair
+	// that opened — and the two who stayed are still together on their own.
+	for i := 0; i < 4; i++ {
+		stranger := mustUser(t, st, cleaner, "leave-stranger")
+		if _, err := st.JoinModeQueue(ctx, queueID, stranger.ID, "", nil); err != nil {
+			t.Fatalf("stranger join: %v", err)
+		}
+	}
+	rec := mustReconcileForming(t, st, ctx, queueID)
+	if !rec.Fired || rec.SessionID == nil {
+		t.Fatalf("expected the refilled match to fire, got %+v", rec)
+	}
+	assignments, err := st.ListSessionSeatAssignments(ctx, *rec.SessionID)
+	if err != nil {
+		t.Fatalf("ListSessionSeatAssignments: %v", err)
+	}
+	if len(assignments) != 6 {
+		t.Fatalf("expected 6 players, got %d", len(assignments))
+	}
+	seatByUser := map[uuid.UUID]string{}
+	for _, a := range assignments {
+		seatByUser[a.UserID] = a.SeatKey
+	}
+	if _, in := seatByUser[goes.ID]; in {
+		t.Fatal("the player who left was taken into the match anyway")
+	}
+	if sideOf(seatByUser[king.ID]) != sideOf(seatByUser[stays.ID]) {
+		t.Fatalf("the two who stayed were split: %s vs %s",
+			seatByUser[king.ID], seatByUser[stays.ID])
+	}
+}
+
+// The last one out takes the request with them; there is no group left to look for.
+func TestTheLastPlayerLeavingAWaitingGroupEndsTheSearch(t *testing.T) {
+	st := openTestStore(t)
+	cleaner := st.NewTestCleaner(t)
+	ctx := context.Background()
+
+	game, mode, queueID := setupTeamMode(t, st, cleaner)
+	alone := mustUser(t, st, cleaner, "last-out")
+	table := mustGroupTable(t, st, game, mode, alone, map[*User]string{alone: "Team-1-Seat-1"})
+	if _, err := st.StartTableBackfill(ctx, table.ID, alone.ID, queueID); err != nil {
+		t.Fatalf("StartTableBackfill: %v", err)
+	}
+	mustReconcileForming(t, st, ctx, queueID)
+
+	if _, err := st.LeaveTableDetached(ctx, table.ID, alone.ID); err != nil {
+		t.Fatalf("LeaveTableDetached: %v", err)
+	}
+	if active, err := st.TableBackfillActive(ctx, table.ID); err != nil {
+		t.Fatalf("TableBackfillActive: %v", err)
+	} else if active {
+		t.Fatal("an empty table is still looking for players")
+	}
+	if len(formingSeatsByUser(t, st, queueID)) != 0 {
+		t.Fatal("the emptied group is still holding seats on the forming map")
 	}
 }

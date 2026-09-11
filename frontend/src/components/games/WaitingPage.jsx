@@ -4,14 +4,20 @@ import LaunchStep from './LaunchStep'
 import NotifyMeControl from './NotifyMeControl'
 import { useLeaveQueueOnExit } from './useLeaveQueueOnExit'
 import { hasGroupWaitingIntent, hasReadyToPlayIntent, hasWaitingIntent } from '../../lib/intent'
-import { cancelTableBackfill } from '../../lib/tables'
+import { cancelTableBackfill, discardTable, leaveTable } from '../../lib/tables'
 import { navigateOutOfWaiting } from '../../lib/waiting'
+import { navigateTo } from '../../lib/usePathname'
 import {
   FINDING_PLAYERS,
   LEAVE_QUEUE_BODY,
   LEAVE_QUEUE_CONFIRM,
   LEAVE_QUEUE_TITLE,
   GROUP_WAIT_KEEP_LOOKING,
+  GROUP_WAIT_LEAVE,
+  GROUP_WAIT_LEAVE_BODY,
+  GROUP_WAIT_LEAVE_CONFIRM,
+  GROUP_WAIT_LEAVE_TITLE,
+  GROUP_WAIT_STAY,
   GROUP_WAIT_STOP_BODY,
   GROUP_WAIT_STOP_CONFIRM,
   GROUP_WAIT_STOP_TITLE,
@@ -76,6 +82,7 @@ export default function WaitingPage({ intent }) {
   const mayStopGroup = groupWait && activeTableSeat?.canCancelBackfill === true
   const [groupStopError, setGroupStopError] = useState('')
   const [stoppingGroup, setStoppingGroup] = useState(false)
+  const [confirmingGroupExit, setConfirmingGroupExit] = useState(false)
 
   async function stopLookingForGroup() {
     setGroupStopError('')
@@ -87,6 +94,29 @@ export default function WaitingPage({ intent }) {
       navigateOutOfWaiting()
     } catch (err) {
       setGroupStopError(err.message || 'Could not stop looking. Try again.')
+    } finally {
+      setStoppingGroup(false)
+    }
+  }
+
+  /*
+    One player out, everybody else still looking (JQ-137). Deliberately not the queue's
+    own leave: that cancels the party and would re-enter the others as strangers. The
+    table's leave releases only this player's chair, so the group keeps the seats it
+    already holds and a stranger takes the one that opened.
+  */
+  async function leaveTheGroup() {
+    setGroupStopError('')
+    setStoppingGroup(true)
+    try {
+      await leaveTable(activeTableSeat.tableId)
+      // Nothing left to leave behind if they were the last one; refused, and ignored,
+      // while anybody is still seated.
+      await discardTable(activeTableSeat.tableId).catch(() => {})
+      // The catalog, not the group screen — they are not in that group any more.
+      navigateTo('/', { replace: true })
+    } catch (err) {
+      setGroupStopError(err.message || 'Could not leave the group. Try again.')
     } finally {
       setStoppingGroup(false)
     }
@@ -205,12 +235,52 @@ export default function WaitingPage({ intent }) {
             {busy || stoppingGroup ? '…' : STOP_FINDING}
           </Button>
         )}
+        {/* Anyone may go it alone, the king included — they are leaving, not deciding
+            for everybody, and the next-earliest seated player inherits the role. */}
+        {groupWait ? (
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            disabled={busy || stoppingGroup}
+            onClick={() => setConfirmingGroupExit(true)}
+          >
+            {GROUP_WAIT_LEAVE}
+          </Button>
+        ) : null}
         {groupStopError ? (
           <p className="status-message status-message-error" role="status">
             {groupStopError}
           </p>
         ) : null}
       </section>
+
+      <Sheet open={confirmingGroupExit} onOpenChange={setConfirmingGroupExit}>
+        <SheetContent side="bottom" aria-label={GROUP_WAIT_LEAVE_TITLE}>
+          <SheetTitle>{GROUP_WAIT_LEAVE_TITLE}</SheetTitle>
+          <p className="waiting-page__confirm-body">{GROUP_WAIT_LEAVE_BODY}</p>
+          <div className="waiting-page__confirm-actions">
+            <Button
+              type="button"
+              variant="default"
+              disabled={busy || stoppingGroup}
+              onClick={() => {
+                setConfirmingGroupExit(false)
+                void leaveTheGroup()
+              }}
+            >
+              {GROUP_WAIT_LEAVE_CONFIRM}
+            </Button>
+            <Button
+              type="button"
+              variant="secondary"
+              onClick={() => setConfirmingGroupExit(false)}
+            >
+              {GROUP_WAIT_STAY}
+            </Button>
+          </div>
+        </SheetContent>
+      </Sheet>
 
       {/* Leaving costs the player their place, so every way out asks first — the
           button here, and a back gesture, which `useLeaveQueueOnExit` undoes so it

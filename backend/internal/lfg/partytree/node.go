@@ -78,3 +78,29 @@ func (n Node) MarshalJSON() ([]byte, error) {
 func SoloNode(userID, queuePath string) Node {
 	return Node{Role: queuePath, Members: []string{userID}}
 }
+
+// WithoutMember returns the tree with one user removed, dropping any node it leaves
+// empty. Used when a player walks out of a group that is already queued: the party
+// carries on without them, so the layout it is placed from must stop naming them.
+func WithoutMember(n Node, userID string) Node {
+	want := strings.TrimSpace(userID)
+	out := n
+	out.Members = nil
+	for _, member := range n.Members {
+		if strings.TrimSpace(member) != want {
+			out.Members = append(out.Members, member)
+		}
+	}
+	out.Children = nil
+	for _, child := range n.Children {
+		pruned := WithoutMember(child, userID)
+		// A role node with nobody left in it is not a request for that role — it is
+		// nothing, and leaving it in would ask placement for a seat the party no
+		// longer needs.
+		if len(pruned.Members) == 0 && len(pruned.Children) == 0 {
+			continue
+		}
+		out.Children = append(out.Children, pruned)
+	}
+	return out
+}

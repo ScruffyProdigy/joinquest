@@ -22,9 +22,13 @@ vi.mock('./useLeaveQueueOnExit', () => ({
 }))
 
 const cancelTableBackfill = vi.fn()
+const leaveTable = vi.fn()
+const discardTable = vi.fn()
 vi.mock('../../lib/tables', async (importOriginal) => ({
   ...(await importOriginal()),
   cancelTableBackfill: (...args) => cancelTableBackfill(...args),
+  leaveTable: (...args) => leaveTable(...args),
+  discardTable: (...args) => discardTable(...args),
 }))
 
 
@@ -58,6 +62,8 @@ describe('WaitingPage', () => {
     setIntentState()
     vi.mocked(useLeaveQueueOnExit).mockClear()
     cancelTableBackfill.mockReset()
+    leaveTable.mockReset()
+    discardTable.mockReset()
   })
 
   /* A wait the whole table was sent to, rather than one this player joined (JQ-137). */
@@ -104,6 +110,44 @@ describe('WaitingPage', () => {
       // Back to the group screen the request was made from, which is what
       // navigateToWaiting remembered on the way here.
       await waitFor(() => expect(window.location.pathname).toBe('/group'))
+    })
+
+    it('lets any member leave on their own, which is not the same as stopping', async () => {
+      const user = userEvent.setup()
+      const handleLeave = vi.fn()
+      leaveTable.mockResolvedValue(true)
+      discardTable.mockResolvedValue(false)
+      setIntentState({
+        activeIntent: waitingIntent,
+        activeTableSeat: groupSeat({ canCancelBackfill: false }),
+        handleLeave,
+      })
+      render(<WaitingPage intent={intentState} />)
+
+      await user.click(screen.getByRole('button', { name: 'Leave the group' }))
+      expect(screen.getByText('Leave the group?')).toBeInTheDocument()
+      await user.click(screen.getByRole('button', { name: 'Yes, leave' }))
+
+      // The table's leave, never the queue's: the queue's would cancel the party and
+      // re-enter everyone else as strangers.
+      await waitFor(() => expect(leaveTable).toHaveBeenCalledWith('table-1'))
+      expect(cancelTableBackfill).not.toHaveBeenCalled()
+      expect(handleLeave).not.toHaveBeenCalled()
+    })
+
+    it('offers leaving to the king too — they go alone, they do not decide for anyone', () => {
+      setIntentState({ activeIntent: waitingIntent, activeTableSeat: groupSeat() })
+      render(<WaitingPage intent={intentState} />)
+
+      expect(screen.getByRole('button', { name: 'Stop' })).toBeInTheDocument()
+      expect(screen.getByRole('button', { name: 'Leave the group' })).toBeInTheDocument()
+    })
+
+    it('offers no way to leave on a wait of the player\'s own', () => {
+      setIntentState({ activeIntent: waitingIntent, activeTableSeat: null })
+      render(<WaitingPage intent={intentState} />)
+
+      expect(screen.queryByRole('button', { name: 'Leave the group' })).not.toBeInTheDocument()
     })
 
     it('offers no way to stop to a member who is not the king', () => {

@@ -136,16 +136,28 @@ func (r *mutationResolver) LeaveTable(ctx context.Context, tableID string) (bool
 	if err != nil {
 		return false, err
 	}
-	left, err := st.LeaveTable(ctx, tid, userID)
+	result, err := st.LeaveTableDetached(ctx, tid, userID)
 	if err != nil {
 		return false, err
 	}
-	if left {
-		if err := r.publishTableUpdated(ctx, table.RoomID, tid); err != nil {
-			return false, err
-		}
+	if !result.Left {
+		return false, nil
 	}
-	return left, nil
+	if err := r.publishTableUpdated(ctx, table.RoomID, tid); err != nil {
+		return false, err
+	}
+	if result.Detached {
+		// They were in a queue their table had put them in, and are not any more —
+		// their own banner has to stop saying otherwise. The rest of the group is
+		// untouched and stays exactly where it was, so nobody else is told anything.
+		if err := r.publishQueueLeft(ctx, result.GameID, result.ModeQueueID, userID, result.QueuedCount, ""); err != nil {
+			log.Printf("leave table: notify user %s: %v", userID, err)
+		}
+		// The chair they released is a gap again, so the lobby can fill it now rather
+		// than on the next tick.
+		r.scheduleFormingReconcile(result.ModeQueueID)
+	}
+	return true, nil
 }
 
 // DiscardTable is the resolver for the discardTable field.
