@@ -10,35 +10,33 @@ import (
 	"github.com/scruffyprodigy/joinquest/internal/gameclient"
 )
 
-// setupTeamMode registers a 3v3: two sides of three, naming neither. Its one queue path is
-// the empty string and its six seats are one bucket, which is the mode declaring its two
-// sides equivalent — so a group of three takes a side rather than picking one, and
-// matchmaking decides what that side ends up being called.
-//
-// This is the shape of the ticket's own examples: a group that needs opponents rather
-// than more of itself, and that should never have to get a side number right to sit
-// together.
-func setupTeamMode(t *testing.T, st *Store, cleaner *TestCleaner) (*Game, *GameMode, uuid.UUID) {
+// setupModeWithTemplate registers a one-mode game with the seat template given, so a test
+// can name the shape it cares about instead of carrying a fixture per shape.
+func setupModeWithTemplate(
+	t *testing.T,
+	st *Store,
+	cleaner *TestCleaner,
+	tag, template string,
+) (*Game, *GameMode, uuid.UUID) {
 	t.Helper()
 	ctx := context.Background()
-	slug := "table-team-" + uuid.NewString()
-	manifest := &gameclient.Manifest{
-		Modes: []gameclient.ModeManifest{{
-			Key:          "teams",
-			DisplayName:  "3v3",
-			SeatTemplate: json.RawMessage(`{"Team":{"count":2,"Seat":{"count":3}}}`),
-		}},
-		Status:     gameclient.StatusResponse{Game: "Teams", Version: "1.0.0"},
-		ETag:       `"teams"`,
-		RawJSON:    []byte(`{"modes":[{"key":"teams"}]}`),
-		SHA256Hash: uuid.NewString(),
-	}
+	slug := "table-" + tag + "-" + uuid.NewString()
 	result, err := st.RegisterGame(ctx, RegisterGameParams{
 		Slug:       slug,
 		IconURL:    "/games/default.svg",
 		HeroURL:    "/games/default-hero.svg",
 		APIBaseURL: "https://api.example.com/" + slug,
-	}, manifest)
+	}, &gameclient.Manifest{
+		Modes: []gameclient.ModeManifest{{
+			Key:          tag,
+			DisplayName:  tag,
+			SeatTemplate: json.RawMessage(template),
+		}},
+		Status:     gameclient.StatusResponse{Game: tag, Version: "1.0.0"},
+		ETag:       `"` + tag + `"`,
+		RawJSON:    []byte(`{"modes":[{"key":"` + tag + `"}]}`),
+		SHA256Hash: uuid.NewString(),
+	})
 	if err != nil {
 		t.Fatalf("RegisterGame: %v", err)
 	}
@@ -55,49 +53,13 @@ func setupTeamMode(t *testing.T, st *Store, cleaner *TestCleaner) (*Game, *GameM
 	return result.Game, &modes[0], queues[0].ID
 }
 
-// setupTwoSidedMode registers a 3v3 whose sides are named, so each seat carries its own
-// queue path and a player can choose which side to sit on.
-//
-// Naming them is how a mode says the two sides are not interchangeable. setupTeamMode
-// above says the opposite by leaving them anonymous, and its seats pool across both as a
-// result — a group there takes a side rather than choosing one, which is what the tests
-// above assert. Only a mode like this one can mean "two of us here, one of us over
-// there", so only this one can be asked whether that survives matchmaking.
-func setupTwoSidedMode(t *testing.T, st *Store, cleaner *TestCleaner) (*Game, *GameMode, uuid.UUID) {
+// setupTeamMode registers a 3v3 naming neither side. Its one queue path is the empty
+// string and its six seats are one bucket, which is the mode declaring its two sides
+// equivalent — so a group of three takes a side rather than picking one, and matchmaking
+// decides what that side ends up being called.
+func setupTeamMode(t *testing.T, st *Store, cleaner *TestCleaner) (*Game, *GameMode, uuid.UUID) {
 	t.Helper()
-	ctx := context.Background()
-	slug := "table-sides-" + uuid.NewString()
-	manifest := &gameclient.Manifest{
-		Modes: []gameclient.ModeManifest{{
-			Key:          "sides",
-			DisplayName:  "Red vs Blue",
-			SeatTemplate: json.RawMessage(`{"Red":{"count":3},"Blue":{"count":3}}`),
-		}},
-		Status:     gameclient.StatusResponse{Game: "Sides", Version: "1.0.0"},
-		ETag:       `"sides"`,
-		RawJSON:    []byte(`{"modes":[{"key":"sides"}]}`),
-		SHA256Hash: uuid.NewString(),
-	}
-	result, err := st.RegisterGame(ctx, RegisterGameParams{
-		Slug:       slug,
-		IconURL:    "/games/default.svg",
-		HeroURL:    "/games/default-hero.svg",
-		APIBaseURL: "https://api.example.com/" + slug,
-	}, manifest)
-	if err != nil {
-		t.Fatalf("RegisterGame: %v", err)
-	}
-	cleaner.TrackGame(result.Game.ID)
-
-	modes, err := st.ListGameModesByGameID(ctx, result.Game.ID)
-	if err != nil {
-		t.Fatalf("ListGameModesByGameID: %v", err)
-	}
-	queues, err := st.ListModeQueuesByModeID(ctx, modes[0].ID)
-	if err != nil {
-		t.Fatalf("ListModeQueuesByModeID: %v", err)
-	}
-	return result.Game, &modes[0], queues[0].ID
+	return setupModeWithTemplate(t, st, cleaner, "teams", `{"Team":{"count":2,"Seat":{"count":3}}}`)
 }
 
 func mustUser(t *testing.T, st *Store, cleaner *TestCleaner, tag string) *User {
@@ -167,136 +129,153 @@ func sideOf(seatKey string) string {
 	return parts[0]
 }
 
-// End-to-end for the ticket's headline case: two friends on the same side ask for the
-// rest of the match, strangers fill the other seats, and everybody reaches one game.
-func TestGroupBackfillSameSideFillsAndAllPlayersReachTheGame(t *testing.T) {
-	st := openTestStore(t)
-	cleaner := st.NewTestCleaner(t)
-	ctx := context.Background()
+// One mechanism, whatever the mode looks like.
+//
+// Three friends wanting opponents in a 3v3 and three friends wanting a game in an
+// eight-player free-for-all go through the identical process: they sit at a table, the
+// king asks the lobby for the rest of the match, strangers are queued alongside them, and
+// matchmaking seats everybody. Nothing branches on the shape of the mode — the seat
+// template is an input to the same machinery, not a fork in it — so the shapes belong in
+// one table rather than in four tests each implying a different story.
+//
+// What varies per shape is only what "the rest" means and where it lands, which is what
+// each case's arrangement check states.
+func TestBackfillFillsTheTableWhateverShapeTheModeIs(t *testing.T) {
+	cases := []struct {
+		name string
+		// template is the mode's seat template; groupSeats are the seats the friends
+		// claim (the king first); strangerPaths is one queue path per stranger needed
+		// to complete the match.
+		template      string
+		groupSeats    []string
+		strangerPaths []string
+		matchSize     int
+		// arrangement asserts where everyone ended up, given each player's side.
+		arrangement func(t *testing.T, sideOfGroup []string, sideOfStrangers []string)
+	}{
+		{
+			name:          "eight-player free-for-all, three friends and five strangers",
+			template:      `{"count":8}`,
+			groupSeats:    []string{"1", "2", "3"},
+			strangerPaths: []string{"", "", "", "", ""},
+			matchSize:     8,
+			arrangement: func(t *testing.T, group, strangers []string) {
+				// No sides to land on. Everyone being in the match is the whole claim,
+				// and the caller has already checked that.
+			},
+		},
+		{
+			name:          "three versus three, sides unnamed",
+			template:      `{"Team":{"count":2,"Seat":{"count":3}}}`,
+			groupSeats:    []string{"Team-1-Seat-1", "Team-1-Seat-2", "Team-1-Seat-3"},
+			strangerPaths: []string{"", "", ""},
+			matchSize:     6,
+			arrangement:   groupTogetherAndStrangersOpposite,
+		},
+		{
+			name:          "three versus three, sides named",
+			template:      `{"Red":{"count":3},"Blue":{"count":3}}`,
+			groupSeats:    []string{"Red-1", "Red-2", "Red-3"},
+			strangerPaths: []string{"Blue", "Blue", "Blue"},
+			matchSize:     6,
+			arrangement:   groupTogetherAndStrangersOpposite,
+		},
+		{
+			name:          "three versus three, the group itself split across named sides",
+			template:      `{"Red":{"count":3},"Blue":{"count":3}}`,
+			groupSeats:    []string{"Red-1", "Red-2", "Blue-1"},
+			strangerPaths: []string{"Red", "Blue", "Blue"},
+			matchSize:     6,
+			arrangement: func(t *testing.T, group, strangers []string) {
+				t.Helper()
+				if group[0] != group[1] {
+					t.Fatalf("the pair was split apart: %s vs %s", group[0], group[1])
+				}
+				if group[2] == group[0] {
+					t.Fatalf("the lone player was folded into the pair's side: all on %s", group[0])
+				}
+			},
+		},
+	}
 
-	game, mode, queueID := setupTeamMode(t, st, cleaner)
-	alice := mustUser(t, st, cleaner, "same-side-a")
-	bob := mustUser(t, st, cleaner, "same-side-b")
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			st := openTestStore(t)
+			cleaner := st.NewTestCleaner(t)
+			ctx := context.Background()
 
-	table := mustGroupTable(t, st, game, mode, alice, map[*User]string{
-		alice: "Team-1-Seat-1",
-		bob:   "Team-1-Seat-2",
-	})
+			game, mode, queueID := setupModeWithTemplate(t, st, cleaner, "shape", tc.template)
 
-	if _, err := st.StartTableBackfill(ctx, table.ID, alice.ID, queueID); err != nil {
-		t.Fatalf("StartTableBackfill: %v", err)
-	}
-	if rec := mustReconcileForming(t, st, ctx, queueID); rec.Fired {
-		t.Fatal("expected the group to wait: four seats are still empty")
-	}
+			friends := make([]*User, len(tc.groupSeats))
+			seating := map[*User]string{}
+			for i := range friends {
+				friends[i] = mustUser(t, st, cleaner, "shape-friend")
+				seating[friends[i]] = tc.groupSeats[i]
+			}
+			table := mustGroupTable(t, st, game, mode, friends[0], seating)
 
-	strangers := make([]*User, 4)
-	for i := range strangers {
-		strangers[i] = mustUser(t, st, cleaner, "same-side-stranger")
-		if _, err := st.JoinModeQueue(ctx, queueID, strangers[i].ID, "", nil); err != nil {
-			t.Fatalf("stranger %d join: %v", i, err)
-		}
-	}
+			if _, err := st.StartTableBackfill(ctx, table.ID, friends[0].ID, queueID); err != nil {
+				t.Fatalf("StartTableBackfill: %v", err)
+			}
+			if rec := mustReconcileForming(t, st, ctx, queueID); rec.Fired {
+				t.Fatal("expected the group to wait: the table is not full yet")
+			}
 
-	rec := mustReconcileForming(t, st, ctx, queueID)
-	if !rec.Fired || rec.SessionID == nil {
-		t.Fatalf("expected the filled match to fire, got %+v", rec)
-	}
+			strangers := make([]*User, len(tc.strangerPaths))
+			for i, path := range tc.strangerPaths {
+				strangers[i] = mustUser(t, st, cleaner, "shape-stranger")
+				if _, err := st.JoinModeQueue(ctx, queueID, strangers[i].ID, path, nil); err != nil {
+					t.Fatalf("stranger %d joining on %q: %v", i, path, err)
+				}
+			}
 
-	assignments, err := st.ListSessionSeatAssignments(ctx, *rec.SessionID)
-	if err != nil {
-		t.Fatalf("ListSessionSeatAssignments: %v", err)
-	}
-	if len(assignments) != 6 {
-		t.Fatalf("expected 6 players in the match, got %d", len(assignments))
-	}
+			rec := mustReconcileForming(t, st, ctx, queueID)
+			if !rec.Fired || rec.SessionID == nil {
+				t.Fatalf("expected the filled match to fire, got %+v", rec)
+			}
+			assignments, err := st.ListSessionSeatAssignments(ctx, *rec.SessionID)
+			if err != nil {
+				t.Fatalf("ListSessionSeatAssignments: %v", err)
+			}
+			if len(assignments) != tc.matchSize {
+				t.Fatalf("expected %d players in the match, got %d", tc.matchSize, len(assignments))
+			}
 
-	seatByUser := map[uuid.UUID]string{}
-	for _, a := range assignments {
-		seatByUser[a.UserID] = a.SeatKey
-	}
-	// Every player reaches the game, the two friends included — "you'll be taken in
-	// automatically", asserted rather than assumed.
-	for _, user := range append([]*User{alice, bob}, strangers...) {
-		if _, ok := seatByUser[user.ID]; !ok {
-			t.Fatalf("player %s did not reach the match", user.ID)
-		}
-	}
-	if sideOf(seatByUser[alice.ID]) != sideOf(seatByUser[bob.ID]) {
-		t.Fatalf("friends queued on one side were split: %s vs %s",
-			seatByUser[alice.ID], seatByUser[bob.ID])
+			seatByUser := map[uuid.UUID]string{}
+			for _, a := range assignments {
+				seatByUser[a.UserID] = a.SeatKey
+			}
+			// "You'll be taken in automatically" — asserted for every player, friend and
+			// stranger alike, rather than assumed.
+			sides := func(users []*User) []string {
+				out := make([]string, len(users))
+				for i, user := range users {
+					seat, ok := seatByUser[user.ID]
+					if !ok {
+						t.Fatalf("player %s did not reach the match", user.ID)
+					}
+					out[i] = sideOf(seat)
+				}
+				return out
+			}
+			tc.arrangement(t, sides(friends), sides(strangers))
+		})
 	}
 }
 
-// The split case, through the whole path a group actually walks. Two friends on one side
-// and one on the other must come out of matchmaking still split that way. This asserts
-// behaviour that already works, so that a later change to the control cannot quietly
-// break it.
-//
-// It uses a mode whose sides are named, because a deliberate split is only a thing a
-// player can mean when the sides differ. Where they do not, the group simply takes a side
-// together and the tests above cover it.
-func TestGroupBackfillSplitGroupKeepsItsSides(t *testing.T) {
-	st := openTestStore(t)
-	cleaner := st.NewTestCleaner(t)
-	ctx := context.Background()
-
-	game, mode, queueID := setupTwoSidedMode(t, st, cleaner)
-	alice := mustUser(t, st, cleaner, "split-a")
-	bob := mustUser(t, st, cleaner, "split-b")
-	cara := mustUser(t, st, cleaner, "split-c")
-
-	table := mustGroupTable(t, st, game, mode, alice, map[*User]string{
-		alice: "Red-1",
-		bob:   "Red-2",
-		cara:  "Blue-1",
-	})
-	// The split is the players' own, and the seat rows have to say so before
-	// matchmaking can be asked to preserve anything.
-	seated, err := st.ListTableSeats(ctx, table.ID)
-	if err != nil {
-		t.Fatalf("ListTableSeats: %v", err)
-	}
-	for _, seat := range seated {
-		want := map[uuid.UUID]string{alice.ID: "Red-1", bob.ID: "Red-2", cara.ID: "Blue-1"}[seat.UserID]
-		if seat.SeatKey != want {
-			t.Fatalf("player %s sat in %s, wanted %s", seat.UserID, seat.SeatKey, want)
+// groupTogetherAndStrangersOpposite is the expectation shared by every two-sided shape:
+// the friends play together and the arrivals are their opponents.
+func groupTogetherAndStrangersOpposite(t *testing.T, group, strangers []string) {
+	t.Helper()
+	for _, side := range group[1:] {
+		if side != group[0] {
+			t.Fatalf("the group was split across sides: %s and %s", group[0], side)
 		}
 	}
-
-	if _, err := st.StartTableBackfill(ctx, table.ID, alice.ID, queueID); err != nil {
-		t.Fatalf("StartTableBackfill: %v", err)
-	}
-	// One more for Red, two more for Blue — the gaps the split itself implies.
-	for _, side := range []string{"Red", "Blue", "Blue"} {
-		stranger := mustUser(t, st, cleaner, "split-stranger")
-		if _, err := st.JoinModeQueue(ctx, queueID, stranger.ID, side, nil); err != nil {
-			t.Fatalf("stranger join as %s: %v", side, err)
+	for _, side := range strangers {
+		if side == group[0] {
+			t.Fatalf("a stranger was seated on the group's own side (%s)", side)
 		}
-	}
-
-	rec := mustReconcileForming(t, st, ctx, queueID)
-	if !rec.Fired || rec.SessionID == nil {
-		t.Fatalf("expected the filled match to fire, got %+v", rec)
-	}
-
-	assignments, err := st.ListSessionSeatAssignments(ctx, *rec.SessionID)
-	if err != nil {
-		t.Fatalf("ListSessionSeatAssignments: %v", err)
-	}
-	if len(assignments) != 6 {
-		t.Fatalf("expected 6 players in the match, got %d", len(assignments))
-	}
-	seatByUser := map[uuid.UUID]string{}
-	for _, a := range assignments {
-		seatByUser[a.UserID] = a.SeatKey
-	}
-	if sideOf(seatByUser[alice.ID]) != sideOf(seatByUser[bob.ID]) {
-		t.Fatalf("the pair was split apart: %s vs %s", seatByUser[alice.ID], seatByUser[bob.ID])
-	}
-	if sideOf(seatByUser[cara.ID]) == sideOf(seatByUser[alice.ID]) {
-		t.Fatalf("the lone player was folded into the pair's side: all on %s",
-			sideOf(seatByUser[alice.ID]))
 	}
 }
 
