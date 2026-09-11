@@ -8,6 +8,7 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/scruffyprodigy/joinquest/internal/auth"
+	"github.com/scruffyprodigy/joinquest/internal/coldstart"
 	"github.com/scruffyprodigy/joinquest/internal/gameclient"
 	"github.com/scruffyprodigy/joinquest/internal/rating"
 	"github.com/scruffyprodigy/joinquest/internal/store"
@@ -360,5 +361,158 @@ func TestServiceScopedGameIDRejectsNonGameCallers(t *testing.T) {
 	gameID, ok := serviceScopedGameID(scoped)
 	if !ok || gameID != store.DemoPrimaryGameID {
 		t.Errorf("scoped service token resolved to (%v, %v), want (%v, true)", gameID, ok, store.DemoPrimaryGameID)
+	}
+}
+
+// coldStartSourceMode is the mode a seed is drawn from in the tests below.
+//
+// It is deliberately not a mode the demo game declares. player_ratings is
+// keyed by the mode_key string and has no foreign key onto game_modes —
+// precisely so a rating survives the delete-and-rewrite of mode rows that
+// manifest sync performs — so a rating in a mode the game no longer declares
+// is a real state, not a contrived one. The mode being *seeded into* still has
+// to exist, and resolvePlayerSkill checks that before it gets here.
+const coldStartSourceMode = "arena"
+
+// seedModePair writes the measured relationship that lets coldStartSourceMode
+// seed demoModeKey.
+//
+// The numbers stand in for a refit: fitting one from a real population is
+// covered in internal/store (TestRecomputeThenSeedOverRealRatings) and in
+// internal/coldstart. What these tests are about is the flag and the order of
+// precedence on the read path.
+func seedModePair(t *testing.T, env *queueIntegrationEnv, gameID uuid.UUID, target string) {
+	t.Helper()
+	err := env.Store.SaveModePairStats(context.Background(), gameID, time.Now().UTC(), []coldstart.PairStats{{
+		SourceMode:    coldStartSourceMode,
+		TargetMode:    target,
+		PairedPlayers: coldstart.MinPairedPlayers * 4,
+		Correlation:   0.85,
+		SourceMean:    25,
+		SourceSD:      5,
+		TargetMean:    25,
+		TargetSD:      5,
+		// Comfortably better than the flat prior's, so the pair is usable.
+		ResidualSD:     5,
+		FlatResidualSD: 8,
+	}})
+	if err != nil {
+		t.Fatalf("SaveModePairStats: %v", err)
+	}
+}
+
+// Off by default is the whole shape of JQ-154's rollout: every ingredient for
+// a seed is in place here, and the player still reports the flat prior because
+// the flag has not been set.
+func TestPlayerSkillIsNotSeededWhileTheFlagIsOff(t *testing.T) {
+	env := newQueueIntegrationEnv(t)
+	cleaner := env.newCleaner(t)
+	ctx := t.Context()
+
+	t.Setenv("LOBBY_GAME_TOKEN_PEPPER", "cold-start-pepper")
+	t.Setenv(coldstart.EnabledEnv, "")
+
+	player := createTestUser(t, ctx, env, cleaner, "coldstart-off-"+uuid.NewString()+"@example.com", "Transfer Player")
+	seedPlayerRating(t, env, store.DemoPrimaryGameID, coldStartSourceMode, player.ID, store.RatingValue{
+		Mu: 34, Sigma: 2, MatchesPlayed: 40,
+	})
+	seedModePair(t, env, store.DemoPrimaryGameID, demoModeKey)
+
+	got := queryPlayerSkill(t, env, demoGameServiceToken(t), player.ID.String(), demoModeKey)
+	if got.Data.Player.Skill == nil {
+		t.Fatal("no skill for an unrated player; the prior is meant to stand in")
+	}
+
+	prior := rating.UnratedSkill()
+	if got.Data.Player.Skill.Rating != prior.Rating || got.Data.Player.Skill.Uncertainty != prior.Uncertainty {
+		t.Errorf("skill = (%v, %v) with seeding off, want the flat prior (%v, %v)",
+			got.Data.Player.Skill.Rating, got.Data.Player.Skill.Uncertainty, prior.Rating, prior.Uncertainty)
+	}
+}
+
+// With the flag on, the same player reports a seed: pulled toward the mean
+// from where they sit in the source mode, and never as confident as a rating
+// they earned here.
+func TestPlayerSkillIsSeededFromAnotherModeWhenEnabled(t *testing.T) {
+	env := newQueueIntegrationEnv(t)
+	cleaner := env.newCleaner(t)
+	ctx := t.Context()
+
+	t.Setenv("LOBBY_GAME_TOKEN_PEPPER", "cold-start-pepper")
+	t.Setenv(coldstart.EnabledEnv, "true")
+
+	player := createTestUser(t, ctx, env, cleaner, "coldstart-on-"+uuid.NewString()+"@example.com", "Transfer Player")
+	seedPlayerRating(t, env, store.DemoPrimaryGameID, coldStartSourceMode, player.ID, store.RatingValue{
+		Mu: 34, Sigma: 2, MatchesPlayed: 40,
+	})
+	seedModePair(t, env, store.DemoPrimaryGameID, demoModeKey)
+
+	got := queryPlayerSkill(t, env, demoGameServiceToken(t), player.ID.String(), demoModeKey)
+	if got.Data.Player.Skill == nil {
+		t.Fatal("no skill for a seedable player")
+	}
+
+	prior := rating.UnratedSkill()
+	if got.Data.Player.Skill.Rating <= prior.Rating {
+		t.Errorf("seeded rating = %v, want above the prior %v for a strong source rating",
+			got.Data.Player.Skill.Rating, prior.Rating)
+	}
+	if got.Data.Player.Skill.Rating >= 34 {
+		t.Errorf("seeded rating = %v, want regressed below the source rating of 34", got.Data.Player.Skill.Rating)
+	}
+	if got.Data.Player.Skill.Uncertainty < coldstart.SeedSigmaFloor {
+		t.Errorf("seeded uncertainty = %v, tighter than the documented floor %v",
+			got.Data.Player.Skill.Uncertainty, coldstart.SeedSigmaFloor)
+	}
+	if got.Data.Player.Skill.Uncertainty >= prior.Uncertainty {
+		t.Errorf("seeded uncertainty = %v, want tighter than the flat prior %v",
+			got.Data.Player.Skill.Uncertainty, prior.Uncertainty)
+	}
+
+	// Serving a seed is a claim made about a player before watching them
+	// play, so it has to leave a trace.
+	seeds, err := env.Store.CountRatingSeeds(ctx, store.DemoPrimaryGameID, demoModeKey)
+	if err != nil {
+		t.Fatalf("CountRatingSeeds: %v", err)
+	}
+	if seeds != 1 {
+		t.Errorf("audit trail holds %d seed(s), want 1", seeds)
+	}
+}
+
+// A rating the player earned in this mode always wins. Seeding may fill a gap;
+// it may never soften or overwrite something a player actually showed.
+func TestPlayerSkillPrefersARealRatingOverASeed(t *testing.T) {
+	env := newQueueIntegrationEnv(t)
+	cleaner := env.newCleaner(t)
+	ctx := t.Context()
+
+	t.Setenv("LOBBY_GAME_TOKEN_PEPPER", "cold-start-pepper")
+	t.Setenv(coldstart.EnabledEnv, "true")
+
+	player := createTestUser(t, ctx, env, cleaner, "coldstart-rated-"+uuid.NewString()+"@example.com", "Rated Player")
+	seedPlayerRating(t, env, store.DemoPrimaryGameID, coldStartSourceMode, player.ID, store.RatingValue{
+		Mu: 34, Sigma: 2, MatchesPlayed: 40,
+	})
+	seedPlayerRating(t, env, store.DemoPrimaryGameID, demoModeKey, player.ID, store.RatingValue{
+		Mu: 18.5, Sigma: 2.5, MatchesPlayed: 30,
+	})
+	seedModePair(t, env, store.DemoPrimaryGameID, demoModeKey)
+
+	got := queryPlayerSkill(t, env, demoGameServiceToken(t), player.ID.String(), demoModeKey)
+	if got.Data.Player.Skill == nil {
+		t.Fatal("no skill for a rated player")
+	}
+	if got.Data.Player.Skill.Rating != 18.5 || got.Data.Player.Skill.Uncertainty != 2.5 {
+		t.Errorf("skill = (%v, %v), want the stored rating (18.5, 2.5) rather than a seed",
+			got.Data.Player.Skill.Rating, got.Data.Player.Skill.Uncertainty)
+	}
+
+	seeds, err := env.Store.CountRatingSeeds(ctx, store.DemoPrimaryGameID, demoModeKey)
+	if err != nil {
+		t.Fatalf("CountRatingSeeds: %v", err)
+	}
+	if seeds != 0 {
+		t.Errorf("recorded %d seed(s) for a player who already had a rating here, want 0", seeds)
 	}
 }

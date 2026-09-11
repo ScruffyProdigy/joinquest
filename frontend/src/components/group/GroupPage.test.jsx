@@ -1,4 +1,4 @@
-import { render, screen, waitFor } from '@testing-library/react'
+import { render, screen, waitFor, fireEvent } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import GroupPage from './GroupPage'
@@ -432,10 +432,8 @@ describe('GroupPage when the game starts', () => {
 
     render(<GroupPage intent={makeIntent({ activeTableSeat: startedSeat })} />)
 
-    expect(screen.getByRole('link', { name: 'Launch Now' })).toHaveAttribute(
-      'href',
-      startedSeat.joinUrl,
-    )
+    fireEvent.click(screen.getByRole('button', { name: 'Launch Now' }))
+    expect(navigateToLaunchUrl).toHaveBeenCalledWith(startedSeat.joinUrl)
     expect(screen.queryByText('This group has ended.')).not.toBeInTheDocument()
   })
 
@@ -446,7 +444,7 @@ describe('GroupPage when the game starts', () => {
 
     render(<GroupPage intent={makeIntent({ activeTableSeat: startedSeat })} />)
 
-    expect(screen.getByRole('link', { name: 'Launch Now' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Launch Now' })).toBeInTheDocument()
     expect(screen.queryByRole('button', { name: /claim/i })).not.toBeInTheDocument()
   })
 

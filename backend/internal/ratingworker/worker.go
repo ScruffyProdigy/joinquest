@@ -9,6 +9,14 @@
 // rewrites a row that sits in the middle of history (see appendRatingInput's
 // note on preserving rated_at).
 //
+// A mode is replayed under its own rating constants, resolved per run (see
+// ModeEngine). A newly measured beta therefore takes effect through the same
+// path as a new match: the sweep sees cached ratings stamped with an engine id
+// that no longer matches the mode's constants, schedules the mode, and the
+// replay recomputes its whole history under the new value. Nothing continues a
+// mode's ratings across a constants change, because ratings produced under two
+// different betas are not on one scale.
+//
 // A replay costs O(history) for that game and mode, so it runs here rather
 // than inside the transaction that records the result: a game server's
 // callback must not get slower as the mode accumulates matches. Work is
@@ -54,10 +62,23 @@ type Replayer interface {
 	ReplayMode(ctx context.Context, gameID, modeKey string) (rating.Report, error)
 }
 
-// Sweeper reports modes whose ratings are behind their inputs.
+// Sweeper reports modes whose ratings are behind the inputs or the constants
+// they should have been computed from. defaultEngineID names the engine a mode
+// with no measured constants of its own must be rated by, so the sweep can
+// recognise ratings left behind by a constants change without a lookup per
+// mode.
 type Sweeper interface {
-	ListModesNeedingReplay(ctx context.Context) ([]store.RatedMode, error)
+	ListModesNeedingReplay(ctx context.Context, defaultEngineID string) ([]store.RatedMode, error)
 }
+
+// ModeEngine resolves the engine one mode should be rated by: its own measured
+// constants where they exist, and the default everywhere else.
+//
+// It is a per-mode lookup rather than a single engine held for the process
+// because beta is per mode (JQ-227). A mode where skill barely predicts the
+// result and one where it nearly decides the match are not the same model, and
+// rating them through one engine would be the assertion this replaced.
+type ModeEngine func(ctx context.Context, gameID uuid.UUID, modeKey string) (rating.Engine, error)
 
 type modeKey struct {
 	gameID  uuid.UUID
@@ -66,8 +87,10 @@ type modeKey struct {
 
 // Worker replays dirty modes on a tick.
 type Worker struct {
-	newReplayer func() Replayer
-	tickEvery   time.Duration
+	modeEngine      ModeEngine
+	newReplayer     func(rating.Engine) Replayer
+	defaultEngineID string
+	tickEvery       time.Duration
 
 	sweeper    Sweeper
 	sweepEvery time.Duration
@@ -76,14 +99,24 @@ type Worker struct {
 	dirty map[modeKey]struct{}
 }
 
-// New builds a Worker. newReplayer is called once per replay run rather than
-// held, because the store's rating adapter carries per-run state and must not
-// be shared across concurrent replays (JQ-241).
-func New(newReplayer func() Replayer, tickEvery time.Duration) *Worker {
+// New builds a Worker.
+//
+// modeEngine is consulted per replay, so a mode picks up a newly measured beta
+// on its next run without the process restarting. newReplayer is likewise
+// called once per replay run rather than held, because the store's rating
+// adapter carries per-run state and must not be shared across concurrent
+// replays (JQ-241).
+//
+// defaultEngineID is the identity of the engine used by a mode with no
+// measured constants. The sweep needs it to tell ratings computed under the
+// current constants from ratings left behind by a change.
+func New(modeEngine ModeEngine, newReplayer func(rating.Engine) Replayer, defaultEngineID string, tickEvery time.Duration) *Worker {
 	return &Worker{
-		newReplayer: newReplayer,
-		tickEvery:   tickEvery,
-		dirty:       make(map[modeKey]struct{}),
+		modeEngine:      modeEngine,
+		newReplayer:     newReplayer,
+		defaultEngineID: defaultEngineID,
+		tickEvery:       tickEvery,
+		dirty:           make(map[modeKey]struct{}),
 	}
 }
 
@@ -142,7 +175,7 @@ func (w *Worker) Start(ctx context.Context) {
 // through Schedule, so two replays for the same mode can never be in flight
 // at once.
 func (w *Worker) sweepOnce(ctx context.Context) {
-	modes, err := w.sweeper.ListModesNeedingReplay(ctx)
+	modes, err := w.sweeper.ListModesNeedingReplay(ctx, w.defaultEngineID)
 	if err != nil {
 		log.Printf("ratingworker: sweep: %v", err)
 		return
@@ -151,7 +184,7 @@ func (w *Worker) sweepOnce(ctx context.Context) {
 	// on the first boot after deploy every mode with inputs is behind, and
 	// this is the only sign that the back-fill is running at all.
 	if len(modes) > 0 {
-		log.Printf("ratingworker: sweep found %d mode(s) behind their inputs; scheduling a replay for each", len(modes))
+		log.Printf("ratingworker: sweep found %d mode(s) behind their inputs or constants; scheduling a replay for each", len(modes))
 	}
 	for _, m := range modes {
 		w.Schedule(m.GameID, m.ModeKey)
@@ -172,7 +205,19 @@ func (w *Worker) DrainNow(ctx context.Context) error {
 
 	var failed []modeKey
 	for _, k := range pending {
-		replayer := w.newReplayer()
+		engine, err := w.modeEngine(ctx, k.gameID, k.modeKey)
+		if err != nil {
+			// Re-queue rather than fall back to the default engine. Rating a
+			// mode under constants that are not its own would write ratings
+			// that look fine and are on the wrong scale, and the sweep could
+			// not tell them from a correct replay afterwards — the engine id
+			// it stamped would be the one it was actually rated under. Better
+			// to leave the mode stale and visibly behind.
+			log.Printf("ratingworker: resolve engine for %s/%s: %v", k.gameID, k.modeKey, err)
+			failed = append(failed, k)
+			continue
+		}
+		replayer := w.newReplayer(engine)
 		report, err := replayer.ReplayMode(ctx, k.gameID.String(), k.modeKey)
 		if err != nil {
 			// Log and continue: one mode failing to replay must not stop the
@@ -188,7 +233,7 @@ func (w *Worker) DrainNow(ctx context.Context) error {
 		// One line per completed replay, so an operator can tell a mode whose
 		// ratings never move from one whose replays are silently failing.
 		// A breadcrumb, deliberately not per-match tracing.
-		log.Printf("ratingworker: replayed %s/%s over %d match(es)", k.gameID, k.modeKey, report.Matches)
+		log.Printf("ratingworker: replayed %s/%s over %d match(es) under %s", k.gameID, k.modeKey, report.Matches, engine.ID())
 	}
 
 	if len(failed) > 0 {

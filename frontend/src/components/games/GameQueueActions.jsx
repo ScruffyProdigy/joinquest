@@ -10,6 +10,7 @@ import {
   joinAsLabel,
   waitingAsRoleLine,
 } from '../../lib/playerCopy'
+import { navigateToLaunchUrl } from '../../lib/launch'
 import { Button } from '../ui/button'
 
 /**
@@ -96,10 +97,10 @@ export default function GameQueueActions({
   if (queueState === 'matched' && joinUrl) {
     return (
       <div className="game-list-actions">
-        {/* A raw <a> on purpose (JQ-72): this is a button that navigates, so Button
-            wears the styling and the anchor keeps real href semantics. */}
-        <Button asChild size={size}>
-          <a href={joinUrl}>{LAUNCH_GAME}</a>
+        {/* A button rather than a link: the launch URL carries a token, which has no
+            business sitting in the DOM waiting to be copied or to go stale (JQ-261). */}
+        <Button type="button" size={size} onClick={() => navigateToLaunchUrl(joinUrl)}>
+          {LAUNCH_GAME}
         </Button>
         {solo ? null : (
           <Button variant="outline" size={size} onClick={onLeave} disabled={busy}>

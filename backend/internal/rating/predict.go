@@ -47,7 +47,11 @@ func (w *wengLin) WinProbabilities(sides []Side) ([]float64, error) {
 		teams[i] = team
 	}
 
-	probs := openskillrating.PredictWin(teams, nil)
+	// The engine's own beta, not the package default: a forecast made under
+	// different constants than the update that follows it would be scored
+	// against ratings it does not describe, and the backtest harness reads
+	// that disagreement as the model being wrong.
+	probs := openskillrating.PredictWin(teams, w.options())
 	if len(probs) != len(sides) {
 		return nil, fmt.Errorf("rating: predict returned %d probabilities, want %d", len(probs), len(sides))
 	}

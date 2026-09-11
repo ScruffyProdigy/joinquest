@@ -30,8 +30,13 @@ type RoomTable struct {
 	ModeID    uuid.UUID
 	Status    string
 	SessionID *uuid.UUID
-	CreatedAt time.Time
-	UpdatedAt time.Time
+	// RegroupSessionID names the finished match this table is regrouping from, or nil for
+	// an ordinary table that was never reached from one. It is the forward half of
+	// game_sessions.regroup_table_id, kept here so a table can answer the question without
+	// a reverse lookup into game_sessions on every render (JQ-177).
+	RegroupSessionID *uuid.UUID
+	CreatedAt        time.Time
+	UpdatedAt        time.Time
 }
 
 // TableSeat is one player seated at a specific seat key.
@@ -65,7 +70,7 @@ type StartTableResult struct {
 	NotifyUserIDs []uuid.UUID
 }
 
-const roomTableColumns = `id, room_id, game_id, mode_id, status, session_id, created_at, updated_at`
+const roomTableColumns = `id, room_id, game_id, mode_id, status, session_id, regroup_session_id, created_at, updated_at`
 
 // roomTableColumnsT is roomTableColumns qualified with the alias `t`, for the queries that
 // join rooms — id, status, created_at and updated_at exist on both tables, so an unqualified
@@ -74,24 +79,37 @@ var roomTableColumnsT = "t." + strings.ReplaceAll(roomTableColumns, ", ", ", t."
 
 func scanRoomTable(row interface{ Scan(dest ...any) error }) (*RoomTable, error) {
 	var t RoomTable
-	var sessionID sql.NullString
-	if err := row.Scan(
-		&t.ID, &t.RoomID, &t.GameID, &t.ModeID, &t.Status, &sessionID,
+	var sessionID, regroupSessionID sql.NullString
+	err := row.Scan(
+		&t.ID, &t.RoomID, &t.GameID, &t.ModeID, &t.Status, &sessionID, &regroupSessionID,
 		&t.CreatedAt, &t.UpdatedAt,
-	); err != nil {
+	)
+	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return nil, ErrNotFound
 		}
 		return nil, err
 	}
-	if sessionID.Valid {
-		id, err := uuid.Parse(sessionID.String)
-		if err != nil {
-			return nil, err
-		}
-		t.SessionID = &id
+	if t.SessionID, err = nullableUUID(sessionID); err != nil {
+		return nil, err
+	}
+	if t.RegroupSessionID, err = nullableUUID(regroupSessionID); err != nil {
+		return nil, err
 	}
 	return &t, nil
+}
+
+// nullableUUID reads a UUID column that may be NULL. Scanning through sql.NullString
+// rather than *uuid.UUID keeps the driver's NULL handling out of uuid.Parse.
+func nullableUUID(raw sql.NullString) (*uuid.UUID, error) {
+	if !raw.Valid {
+		return nil, nil
+	}
+	id, err := uuid.Parse(raw.String)
+	if err != nil {
+		return nil, err
+	}
+	return &id, nil
 }
 
 func scanTableSeat(row interface{ Scan(dest ...any) error }) (*TableSeat, error) {

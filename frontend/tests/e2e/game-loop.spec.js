@@ -10,7 +10,7 @@ import {
   enterMatch,
   expectAutoLaunch,
   expectLaunchStep,
-  expectNoIntentBanner,
+  expectNoActiveMatchDialog,
   expectWaitingPage,
   joinDemoGameQueue,
   returnFromMatch,
@@ -79,10 +79,10 @@ test.describe('Game loop', () => {
       expect(await enterMatch(pageB)).toBe(firstMatchId)
 
       await returnFromMatch(pageA, firstMatchId)
-      await expectNoIntentBanner(pageA)
+      await expectNoActiveMatchDialog(pageA)
 
       await returnFromMatch(pageB, firstMatchId)
-      await expectNoIntentBanner(pageB)
+      await expectNoActiveMatchDialog(pageB)
 
       await joinDemoGameQueue(pageA)
       await expectWaitingPage(pageA)

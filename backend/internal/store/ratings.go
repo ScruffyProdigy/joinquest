@@ -5,11 +5,12 @@ import (
 	"database/sql"
 	"encoding/json"
 	"fmt"
-	"strings"
 	"time"
 
 	"github.com/google/uuid"
 	"github.com/lib/pq"
+
+	"github.com/scruffyprodigy/joinquest/internal/rating"
 )
 
 // sqlExecContext is satisfied by both *sql.DB and *sql.Tx, letting
@@ -19,17 +20,24 @@ type sqlExecContext interface {
 	ExecContext(context.Context, string, ...any) (sql.Result, error)
 }
 
-// playerRatingKeyPrefix namespaces a player_ratings row's user id inside the
-// flat string-keyed maps the rating engine works in. Non-player entities
-// (scenarios, seat classes, pre-queue options) use their own namespaced keys
-// and live in nonplayer_ratings instead — see the migration comment on that
-// table for the entity_key convention.
-const playerRatingKeyPrefix = "player:"
-
 // PlayerRatingKey returns the map key LoadPlayerRatings/SaveRatings use for a
-// user, so callers never have to build the "player:<uuid>" string by hand.
+// user's mode-level rating, so callers never have to build the
+// "player:<uuid>" string by hand.
+//
+// The grammar for every entrant key — player, per-seat player, seat class,
+// scenario, pre-queue option — lives in internal/rating, which is the package
+// that produces them. It is deliberately not restated here: this table and
+// that package have to agree exactly for a replay's output to land in the
+// right rows, and two copies of the same string constant is how they would
+// come to disagree.
 func PlayerRatingKey(userID uuid.UUID) string {
-	return playerRatingKeyPrefix + userID.String()
+	return rating.PlayerKey(userID.String())
+}
+
+// PlayerSeatRatingKey is PlayerRatingKey for a player's rating in one seat
+// class. An empty seatClass gives back the mode-level key.
+func PlayerSeatRatingKey(userID uuid.UUID, seatClass string) string {
+	return rating.PlayerSeatKey(userID.String(), seatClass)
 }
 
 // RatingValue is one entrant's current skill estimate, as cached in
@@ -162,7 +170,7 @@ func (s *Store) ListRatingInputs(ctx context.Context, gameID uuid.UUID, modeKey 
 // that key twice.
 func (s *Store) LoadPlayerRatings(ctx context.Context, gameID uuid.UUID, modeKey string) (map[string]RatingValue, error) {
 	rows, err := s.db.QueryContext(ctx, `
-		SELECT user_id, mu, sigma, matches_played
+		SELECT user_id, seat_class, mu, sigma, matches_played
 		FROM player_ratings
 		WHERE game_id = $1 AND mode_key = $2
 	`, gameID, modeKey)
@@ -174,11 +182,12 @@ func (s *Store) LoadPlayerRatings(ctx context.Context, gameID uuid.UUID, modeKey
 	out := make(map[string]RatingValue)
 	for rows.Next() {
 		var userID uuid.UUID
+		var seatClass string
 		var v RatingValue
-		if err := rows.Scan(&userID, &v.Mu, &v.Sigma, &v.MatchesPlayed); err != nil {
+		if err := rows.Scan(&userID, &seatClass, &v.Mu, &v.Sigma, &v.MatchesPlayed); err != nil {
 			return nil, err
 		}
-		out[PlayerRatingKey(userID)] = v
+		out[PlayerSeatRatingKey(userID, seatClass)] = v
 	}
 	return out, rows.Err()
 }
@@ -233,20 +242,20 @@ func (s *Store) SaveRatings(ctx context.Context, gameID uuid.UUID, modeKey, engi
 	}
 
 	for key, v := range players {
-		userID, ok := parsePlayerRatingKey(key)
+		userID, seatClass, ok := parsePlayerRatingKey(key)
 		if !ok {
-			return fmt.Errorf("store: SaveRatings player key %q is not %q<uuid>", key, playerRatingKeyPrefix)
+			return fmt.Errorf("store: SaveRatings player key %q is not player:<uuid> or player:<uuid>@seat:<class>", key)
 		}
 		if _, err := tx.ExecContext(ctx, `
-			INSERT INTO player_ratings (user_id, game_id, mode_key, mu, sigma, matches_played, engine_id, last_rated_at)
-			VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
-			ON CONFLICT (user_id, game_id, mode_key) DO UPDATE SET
+			INSERT INTO player_ratings (user_id, game_id, mode_key, seat_class, mu, sigma, matches_played, engine_id, last_rated_at)
+			VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+			ON CONFLICT (user_id, game_id, mode_key, seat_class) DO UPDATE SET
 				mu = EXCLUDED.mu,
 				sigma = EXCLUDED.sigma,
 				matches_played = EXCLUDED.matches_played,
 				engine_id = EXCLUDED.engine_id,
 				last_rated_at = EXCLUDED.last_rated_at
-		`, userID, gameID, modeKey, v.Mu, v.Sigma, v.MatchesPlayed, engineID, at); err != nil {
+		`, userID, gameID, modeKey, seatClass, v.Mu, v.Sigma, v.MatchesPlayed, engineID, at); err != nil {
 			return err
 		}
 	}
@@ -329,22 +338,39 @@ func (s *Store) ListRatedModes(ctx context.Context) ([]RatedMode, error) {
 	return out, rows.Err()
 }
 
-// ListModesNeedingReplay returns every (game, mode) whose newest rating input
-// is newer than the ratings computed from it — modes whose replay was
-// scheduled but never ran, typically because the process restarted between
-// the result committing and the worker's next tick.
+// ListModesNeedingReplay returns every (game, mode) whose cached ratings no
+// longer follow from the inputs and constants they should have been computed
+// from — modes whose replay was scheduled but never ran, typically because the
+// process restarted between the result committing and the worker's next tick,
+// and modes whose rating constants have since changed.
 //
-// The comparison is exact because SaveRatings stamps last_rated_at with the
-// newest input the replay consumed, not with wall-clock time. A correction to
-// an older session keeps its original rated_at and so is invisible here; it
-// is scheduled directly by the result path instead.
+// Two kinds of staleness, one sweep, because they need the identical repair: a
+// full replay of the mode.
+//
+// Newer inputs. The comparison is exact because SaveRatings stamps
+// last_rated_at with the newest input the replay consumed, not with wall-clock
+// time. A correction to an older session keeps its original rated_at and so is
+// invisible here; it is scheduled directly by the result path instead.
+//
+// Changed constants. defaultEngineID is the engine a mode with no measured
+// constants must be rated by, and mode_rating_constants.engine_id is the one a
+// measured mode must be rated by; either way, cached ratings carrying a
+// different engine id were computed under constants that no longer apply.
+// Ratings produced under two different betas are not on one scale and cannot
+// be compared, so a mode's whole history is replayed rather than continued —
+// which also means a beta can be written without holding a replay open, since
+// the next sweep picks it up. Both the minimum and the maximum engine id are
+// checked so a mode that somehow holds a mixture is caught as well: a mode
+// half-rated under old constants is the exact corruption this is here to
+// prevent, and it would otherwise pass whichever single row the query happened
+// to see.
 //
 // The join is against player_ratings only, not nonplayer_ratings because
 // every stored input carries at least one player: entrant (BuildSides/buildSide),
 // so any replay of a mode in this query writes at least one player_ratings row;
 // a NULL therefore means "not currently cached" — never replayed, or invalidated
 // by ClearRatings or a user merge — and one replay clears it either way.
-func (s *Store) ListModesNeedingReplay(ctx context.Context) ([]RatedMode, error) {
+func (s *Store) ListModesNeedingReplay(ctx context.Context, defaultEngineID string) ([]RatedMode, error) {
 	rows, err := s.db.QueryContext(ctx, `
 		SELECT i.game_id, i.mode_key
 		FROM (
@@ -353,12 +379,20 @@ func (s *Store) ListModesNeedingReplay(ctx context.Context) ([]RatedMode, error)
 			GROUP BY game_id, mode_key
 		) i
 		LEFT JOIN (
-			SELECT game_id, mode_key, MAX(last_rated_at) AS last_rated
+			SELECT game_id, mode_key,
+			       MAX(last_rated_at) AS last_rated,
+			       MIN(engine_id) AS engine_id_min,
+			       MAX(engine_id) AS engine_id_max
 			FROM player_ratings
 			GROUP BY game_id, mode_key
 		) r ON r.game_id = i.game_id AND r.mode_key = i.mode_key
-		WHERE r.last_rated IS NULL OR r.last_rated < i.last_input
-	`)
+		LEFT JOIN mode_rating_constants c
+			ON c.game_id = i.game_id AND c.mode_key = i.mode_key
+		WHERE r.last_rated IS NULL
+		   OR r.last_rated < i.last_input
+		   OR r.engine_id_min IS DISTINCT FROM COALESCE(c.engine_id, $1)
+		   OR r.engine_id_max IS DISTINCT FROM COALESCE(c.engine_id, $1)
+	`, defaultEngineID)
 	if err != nil {
 		return nil, err
 	}
@@ -375,16 +409,19 @@ func (s *Store) ListModesNeedingReplay(ctx context.Context) ([]RatedMode, error)
 	return out, rows.Err()
 }
 
-func parsePlayerRatingKey(key string) (uuid.UUID, bool) {
-	rest, ok := strings.CutPrefix(key, playerRatingKeyPrefix)
+// parsePlayerRatingKey splits a player entrant key into the primary-key parts
+// of a player_ratings row: the user, and the seat class the rating is scoped
+// to (empty for the mode-level rating).
+func parsePlayerRatingKey(key string) (uuid.UUID, string, bool) {
+	playerID, seatClass, ok := rating.ParsePlayerKey(key)
 	if !ok {
-		return uuid.UUID{}, false
+		return uuid.UUID{}, "", false
 	}
-	id, err := uuid.Parse(rest)
+	id, err := uuid.Parse(playerID)
 	if err != nil {
-		return uuid.UUID{}, false
+		return uuid.UUID{}, "", false
 	}
-	return id, true
+	return id, seatClass, true
 }
 
 // GetPlayerRatings returns the cached rating for each of userIDs in one game
@@ -411,6 +448,7 @@ func (s *Store) GetPlayerRatings(ctx context.Context, gameID uuid.UUID, modeKey 
 		SELECT user_id, mu, sigma, matches_played
 		FROM player_ratings
 		WHERE game_id = $1 AND mode_key = $2 AND user_id = ANY($3::uuid[])
+		  AND seat_class = ''
 	`, gameID, modeKey, pq.Array(ids))
 	if err != nil {
 		return nil, err

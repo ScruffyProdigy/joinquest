@@ -1,7 +1,13 @@
-import { render, screen } from '@testing-library/react'
+import { render, screen, fireEvent } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { describe, it, expect, vi } from 'vitest'
 import GameQueueActions from './GameQueueActions'
+import { navigateToLaunchUrl } from '../../lib/launch'
+
+vi.mock('../../lib/launch', async (importOriginal) => ({
+  ...(await importOriginal()),
+  navigateToLaunchUrl: vi.fn(),
+}))
 
 describe('GameQueueActions', () => {
   it('shows a Jump in button for single-bucket modes', () => {
@@ -250,7 +256,12 @@ describe('GameQueueActions', () => {
       />,
     )
 
-    expect(screen.getByRole('link', { name: 'Launch Now' })).toBeInTheDocument()
+    const launch = screen.getByRole('button', { name: 'Launch Now' })
+    // A button, not a link: the URL carries a token (JQ-261).
+    expect(launch).not.toHaveAttribute('href')
+    fireEvent.click(launch)
+    expect(navigateToLaunchUrl).toHaveBeenCalledWith('https://example.com/launch')
+
     expect(screen.queryByRole('button', { name: 'Leave match' })).not.toBeInTheDocument()
   })
 })

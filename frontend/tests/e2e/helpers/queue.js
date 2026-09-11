@@ -3,8 +3,9 @@ import {
   FINDING_PLAYERS,
   WAITING_REGION_LABEL,
   APP_TAGLINE,
-  LAUNCH_GAME,
+  MATCH_IN_PROGRESS,
   READY_TO_LAUNCH,
+  REJOIN_MATCH,
   RESULTS_LEAVE_MATCH,
   RESULTS_STILL_PLAYING,
   RESULTS_YOUR_RESULT_SO_FAR,
@@ -61,18 +62,17 @@ export async function expectAutoLaunch(page) {
 
 /**
  * Either way into the match, so the walk does not depend on how fast the queue
- * resolved: a player who was waiting is carried in by the countdown (JQ-136), and
- * one who matched straight from the game page launches from the banner's link.
+ * resolved: a player who was waiting is carried in by the countdown (JQ-136), and one
+ * who matched somewhere else in the lobby meets the match dialog (JQ-261), whose own
+ * countdown carries them in. Rejoin is clicked only if the countdown has not already.
  */
 export async function enterMatch(page) {
-  const launchLink = page
-    .getByRole('region', { name: 'Your intent' })
-    .getByRole('link', { name: LAUNCH_GAME })
+  const rejoin = activeMatchDialog(page).getByRole('button', { name: REJOIN_MATCH })
 
   await expect(async () => {
     if (!LAUNCHED_URL.test(page.url())) {
-      if (await launchLink.isVisible()) {
-        await launchLink.click()
+      if (await rejoin.isVisible()) {
+        await rejoin.click()
       }
       expect(page.url()).toMatch(LAUNCHED_URL)
     }
@@ -81,8 +81,17 @@ export async function enterMatch(page) {
   return matchIdFromLaunchUrl(page.url())
 }
 
-export async function expectNoIntentBanner(page) {
-  await expect(page.getByRole('region', { name: 'Your intent' })).not.toBeVisible()
+function activeMatchDialog(page) {
+  return page.getByRole('region', { name: MATCH_IN_PROGRESS })
+}
+
+/**
+ * The lobby has let go of the match. Worth asserting on its own: the dialog is
+ * unconditional and auto-rejoins, so an intent the server failed to release would not
+ * merely linger the way the old banner did -- it would carry the player back in.
+ */
+export async function expectNoActiveMatchDialog(page) {
+  await expect(activeMatchDialog(page)).not.toBeVisible()
 }
 
 /**

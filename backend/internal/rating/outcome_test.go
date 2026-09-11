@@ -56,13 +56,12 @@ func TestBuildSidesAsymmetricAddsSeatClassEntrants(t *testing.T) {
 		t.Fatalf("BuildSides: %v", err)
 	}
 	got := keysOf(sides)
-	if len(got) != 2 {
-		t.Fatalf("sides = %v, want 2", got)
+	want := [][]string{
+		{"player:b", "player:b@seat:Black", "seat:Black"},
+		{"player:w", "player:w@seat:White", "seat:White"},
 	}
-	for _, side := range got {
-		if len(side) != 2 {
-			t.Fatalf("side %v should hold the player and its seat-class entity", side)
-		}
+	if !reflect.DeepEqual(got, want) {
+		t.Fatalf("sides = %v, want %v", got, want)
 	}
 }
 

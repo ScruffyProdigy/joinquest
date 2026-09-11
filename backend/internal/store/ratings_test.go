@@ -679,7 +679,7 @@ func TestListModesNeedingReplayFindsUnappliedInputs(t *testing.T) {
 	}
 	// An input has been appended and nothing has replayed it yet.
 
-	modes, err := st.ListModesNeedingReplay(context.Background())
+	modes, err := st.ListModesNeedingReplay(context.Background(), defaultRatingEngineID(t))
 	if err != nil {
 		t.Fatalf("ListModesNeedingReplay: %v", err)
 	}
@@ -716,7 +716,7 @@ func TestListModesNeedingReplaySkipsAppliedModes(t *testing.T) {
 		t.Fatalf("ReplayMode: %v", err)
 	}
 
-	modes, err := st.ListModesNeedingReplay(context.Background())
+	modes, err := st.ListModesNeedingReplay(context.Background(), defaultRatingEngineID(t))
 	if err != nil {
 		t.Fatalf("ListModesNeedingReplay: %v", err)
 	}
@@ -724,5 +724,59 @@ func TestListModesNeedingReplaySkipsAppliedModes(t *testing.T) {
 		if m.GameID == gameID && m.ModeKey == modeKey {
 			t.Fatal("an already-replayed mode was reported as needing replay")
 		}
+	}
+}
+
+// A player holds one rating per seat class they have sat in, plus the
+// mode-level one, and all of them round-trip through the same table (JQ-229).
+func TestSaveAndLoadPerRoleRatings(t *testing.T) {
+	st := openTestStore(t)
+	cleaner := st.NewTestCleaner(t)
+	ctx := context.Background()
+
+	sessionID, userA, _ := seedMatchedSession(t, st, ctx, cleaner)
+	gameID, modeKey := gameAndModeForSession(t, st, ctx, sessionID)
+	at := time.Now().UTC()
+
+	modeLevel := PlayerRatingKey(userA)
+	clueGiver := PlayerSeatRatingKey(userA, "ClueGiver")
+	guesser := PlayerSeatRatingKey(userA, "Guesser")
+
+	if err := st.SaveRatings(ctx, gameID, modeKey, "weng-lin/plackett-luce@1", at,
+		map[string]RatingValue{
+			modeLevel: {Mu: 25.0, Sigma: 6.0, MatchesPlayed: 10},
+			clueGiver: {Mu: 31.0, Sigma: 7.0, MatchesPlayed: 6},
+			guesser:   {Mu: 19.0, Sigma: 7.5, MatchesPlayed: 4},
+		}, nil,
+	); err != nil {
+		t.Fatalf("SaveRatings: %v", err)
+	}
+
+	players, err := st.LoadPlayerRatings(ctx, gameID, modeKey)
+	if err != nil {
+		t.Fatalf("LoadPlayerRatings: %v", err)
+	}
+	for key, want := range map[string]RatingValue{
+		modeLevel: {Mu: 25.0, Sigma: 6.0, MatchesPlayed: 10},
+		clueGiver: {Mu: 31.0, Sigma: 7.0, MatchesPlayed: 6},
+		guesser:   {Mu: 19.0, Sigma: 7.5, MatchesPlayed: 4},
+	} {
+		if got := players[key]; got != want {
+			t.Errorf("%s = %+v, want %+v", key, got, want)
+		}
+	}
+
+	// A per-seat row must not leak into a mode-level lookup: those callers —
+	// the skill resolver and lobby formation — asked about the mode, and
+	// three rows for one user would silently pick one.
+	rated, err := st.GetPlayerRatings(ctx, gameID, modeKey, []uuid.UUID{userA})
+	if err != nil {
+		t.Fatalf("GetPlayerRatings: %v", err)
+	}
+	if len(rated) != 1 {
+		t.Fatalf("GetPlayerRatings returned %d rows for one user, want 1", len(rated))
+	}
+	if got := rated[userA].Mu; got != 25.0 {
+		t.Errorf("mode-level lookup returned mu %v, want the mode-level 25", got)
 	}
 }
