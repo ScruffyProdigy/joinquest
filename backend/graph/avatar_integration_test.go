@@ -182,7 +182,7 @@ func TestMyRoomIncludesMemberAvatars(t *testing.T) {
 
 	myRoomBody := postGraphQL(t, env.Handler, `query {
 		myRoom {
-			members { id avatarUrl avatarKey }
+			members { user { id avatarUrl avatarKey } disconnected }
 			host { id avatarUrl }
 		}
 	}`, nil, cookie)
@@ -190,7 +190,9 @@ func TestMyRoomIncludesMemberAvatars(t *testing.T) {
 		Data struct {
 			MyRoom *struct {
 				Members []struct {
-					AvatarURL *string `json:"avatarUrl"`
+					User struct {
+						AvatarURL *string `json:"avatarUrl"`
+					} `json:"user"`
 				} `json:"members"`
 			} `json:"myRoom"`
 		} `json:"data"`
@@ -201,7 +203,7 @@ func TestMyRoomIncludesMemberAvatars(t *testing.T) {
 	if roomResp.Data.MyRoom == nil || len(roomResp.Data.MyRoom.Members) == 0 {
 		t.Fatal("expected room members")
 	}
-	if roomResp.Data.MyRoom.Members[0].AvatarURL == nil {
+	if roomResp.Data.MyRoom.Members[0].User.AvatarURL == nil {
 		t.Fatal("expected member avatarUrl")
 	}
 }

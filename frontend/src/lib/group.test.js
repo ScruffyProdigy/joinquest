@@ -75,7 +75,7 @@ describe('playersPickingASeat', () => {
   }
 
   it('lists room members who hold no seat', () => {
-    const room = { members: [{ id: 'u1' }, { id: 'u2' }, { id: 'u3' }] }
+    const room = { members: [{ user: { id: 'u1' }, disconnected: false }, { user: { id: 'u2' }, disconnected: false }, { user: { id: 'u3' }, disconnected: false }] }
     const table = {
       seats: [{ seatKey: 'p-1', user: { id: 'u2' } }],
       seatSlots: [slot('p-1', 'Player · 1', { id: 'u2' }), slot('p-2', 'Player · 2')],
@@ -86,7 +86,7 @@ describe('playersPickingASeat', () => {
   })
 
   it('leaves a seated player off the card even when their regroup answer is pending', () => {
-    const room = { members: [{ id: 'u1' }] }
+    const room = { members: [{ user: { id: 'u1' }, disconnected: false }] }
     const table = {
       seatSlots: [slot('p-1', 'Player · 1', { id: 'u1' })],
       regroupRoster: [{ user: { id: 'u1' }, role: 'p-1', regroup: 'PENDING' }],
@@ -96,14 +96,14 @@ describe('playersPickingASeat', () => {
   })
 
   it('shows a pending previous-match player as awaiting', () => {
-    const room = { members: [{ id: 'u1' }] }
+    const room = { members: [{ user: { id: 'u1' }, disconnected: false }] }
     const table = {
       seatSlots: [slot('p-1', 'Player · 1', { id: 'u1' }), slot('p-2', 'Player · 2')],
       regroupRoster: [{ user: { id: 'u2' }, role: 'p-2', regroup: 'PENDING' }],
     }
 
     expect(playersPickingASeat(room, table, 'u1')).toEqual([
-      { user: { id: 'u2' }, status: 'awaiting' },
+      { user: { id: 'u2' }, status: 'awaiting', away: false },
     ])
   })
 
@@ -111,25 +111,27 @@ describe('playersPickingASeat', () => {
     // A room-table group never leaves the room, so membership cannot stand in for
     // "they are back" the way the prototype's arrival does. The regroup answer is the
     // only thing that actually says whether they have decided.
-    const room = { members: [{ id: 'u1' }, { id: 'u2' }] }
+    const room = { members: [{ user: { id: 'u1' }, disconnected: false }, { user: { id: 'u2' }, disconnected: false }] }
     const table = {
       seatSlots: [slot('p-1', 'Player · 1', { id: 'u1' }), slot('p-2', 'Player · 2')],
       regroupRoster: [{ user: { id: 'u2' }, role: 'p-2', regroup: 'PENDING' }],
     }
 
     expect(playersPickingASeat(room, table, 'u1')).toEqual([
-      { user: { id: 'u2' }, status: 'awaiting' },
+      { user: { id: 'u2' }, status: 'awaiting', away: false },
     ])
   })
 
   it('never shows the viewer as awaiting — they are demonstrably back', () => {
-    const room = { members: [{ id: 'u1' }, { id: 'u2' }] }
+    const room = { members: [{ user: { id: 'u1' }, disconnected: false }, { user: { id: 'u2' }, disconnected: false }] }
     const table = {
       seatSlots: [slot('p-1', 'Player · 1'), slot('p-2', 'Player · 2', { id: 'u2' })],
       regroupRoster: [{ user: { id: 'u1' }, role: 'p-1', regroup: 'PENDING' }],
     }
 
-    expect(playersPickingASeat(room, table, 'u1')).toEqual([{ user: { id: 'u1' }, status: 'here' }])
+    expect(playersPickingASeat(room, table, 'u1')).toEqual([
+      { user: { id: 'u1' }, status: 'here', away: false },
+    ])
   })
 
   it('marks a declined previous-match player out', () => {
@@ -139,11 +141,59 @@ describe('playersPickingASeat', () => {
       regroupRoster: [{ user: { id: 'u2' }, role: 'p-1', regroup: 'OUT' }],
     }
 
-    expect(playersPickingASeat(room, table, 'u1')).toEqual([{ user: { id: 'u2' }, status: 'out' }])
+    expect(playersPickingASeat(room, table, 'u1')).toEqual([
+      { user: { id: 'u2' }, status: 'out', away: false },
+    ])
+  })
+
+  // JQ-265. The reading belongs to the room, and the group screen is a presentation over
+  // the room, so it has to survive the trip rather than be recomputed here. It arrives as
+  // `disconnected` (what the API observed) and lands as `away` (what the card shows).
+  it('carries a member disconnected reading through to their entry as away', () => {
+    const room = {
+      members: [
+        { user: { id: 'u1' }, disconnected: false },
+        { user: { id: 'u2' }, disconnected: true },
+      ],
+    }
+    const table = { seatSlots: [slot('p-1', 'Player · 1')], regroupRoster: [] }
+
+    const byId = new Map(playersPickingASeat(room, table, 'u1').map((e) => [e.user.id, e]))
+    expect(byId.get('u1').away).toBe(false)
+    expect(byId.get('u2').away).toBe(true)
+  })
+
+  // A player can be awaiting a regroup answer and away at once, so the two readings have
+  // to be independent fields. Collapsing away into `status` would have to drop one.
+  it('keeps away independent of an awaiting status', () => {
+    const room = { members: [{ user: { id: 'u2' }, disconnected: true }] }
+    const table = {
+      seatSlots: [slot('p-1', 'Player · 1', { id: 'u1' }), slot('p-2', 'Player · 2')],
+      regroupRoster: [{ user: { id: 'u2' }, role: 'p-2', regroup: 'PENDING' }],
+    }
+
+    expect(playersPickingASeat(room, table, 'u1')).toEqual([
+      { user: { id: 'u2' }, status: 'awaiting', away: true },
+    ])
+  })
+
+  // Someone on the regroup roster who is no longer a room member has left outright, which
+  // is a stronger statement than away — and that roster records answers, not sockets, so
+  // there is no presence there to read in the first place.
+  it('does not invent an away reading for a non-member on the regroup roster', () => {
+    const room = { members: [] }
+    const table = {
+      seatSlots: [slot('p-1', 'Player · 1')],
+      regroupRoster: [{ user: { id: 'u9' }, role: 'p-1', regroup: 'PENDING' }],
+    }
+
+    expect(playersPickingASeat(room, table, 'u1')).toEqual([
+      { user: { id: 'u9' }, status: 'awaiting', away: false },
+    ])
   })
 
   it('lists each player once when they are both a room member and on the roster', () => {
-    const room = { members: [{ id: 'u1' }, { id: 'u2' }] }
+    const room = { members: [{ user: { id: 'u1' }, disconnected: false }, { user: { id: 'u2' }, disconnected: false }] }
     const table = {
       seatSlots: [slot('p-1', 'Player · 1'), slot('p-2', 'Player · 2')],
       regroupRoster: [{ user: { id: 'u2' }, role: 'p-2', regroup: 'PENDING' }],
@@ -182,7 +232,7 @@ describe('playersPickingASeat', () => {
   })
 
   it('orders the viewer, then members, then awaiting, then out', () => {
-    const room = { members: [{ id: 'u5' }, { id: 'u1' }] }
+    const room = { members: [{ user: { id: 'u5' }, disconnected: false }, { user: { id: 'u1' }, disconnected: false }] }
     const table = {
       seatSlots: [slot('p-1', 'Player · 1'), slot('p-2', 'Player · 2')],
       regroupRoster: [

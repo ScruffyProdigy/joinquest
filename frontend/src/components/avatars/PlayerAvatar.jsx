@@ -6,17 +6,38 @@ import { Avatar, AvatarFallback, AvatarImage } from '../ui/avatar'
 
 const SIZE_MAP = { xs: 'xs', sm: 'sm', md: 'md' }
 
-export default function PlayerAvatar({ user, size = 'md', className = '', title, ring }) {
+/**
+ * `away` is the roster's honesty about a member we no longer believe is at their device
+ * (JQ-265). It lives here rather than at each call site so the three places that draw a
+ * roster dim it the same way and say the same word.
+ *
+ * The prop is presentational, which is why it is `away` and not `disconnected`: today it is
+ * fed by `RoomMember.disconnected` (a socket gone longer than the roster's window), and
+ * JQ-179's idle signal will feed the same treatment without being a disconnect at all.
+ *
+ * Dimmed, not removed or badged: the player still holds their place, and the roster is
+ * reporting reduced confidence rather than an event. The title carries the word too,
+ * because opacity is not available to a screen reader and is not a safe carrier of meaning
+ * on its own — same reason `ring === 'king'` names the king in the label instead of relying
+ * on the ring.
+ */
+export default function PlayerAvatar({ user, size = 'md', className = '', title, ring, away = false }) {
   const baseLabel = title ?? displayName(user)
-  const label = ring === 'king' ? `${baseLabel} (${KING_LABEL})` : baseLabel
+  const ringLabel = ring === 'king' ? `${baseLabel} (${KING_LABEL})` : baseLabel
+  const label = away ? `${ringLabel} (away)` : ringLabel
   const avatarUrl = resolveUserAvatarUrl(user)
 
   const avatar = (
     <Avatar
       size={SIZE_MAP[size] ?? 'md'}
-      className={cn(ring === 'king' && 'ring-2 ring-primary ring-offset-2 ring-offset-background', className)}
+      className={cn(
+        ring === 'king' && 'ring-2 ring-primary ring-offset-2 ring-offset-background',
+        away && 'opacity-40 grayscale',
+        className,
+      )}
       title={label}
       data-ring={ring === 'king' ? 'king' : undefined}
+      data-away={away ? 'true' : undefined}
     >
       {avatarUrl ? (
         <AvatarImage src={avatarUrl} alt="" aria-hidden="true" />

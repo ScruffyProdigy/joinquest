@@ -16,7 +16,7 @@ const room = {
   inviteCode: 'ABC123',
   joinUrl: 'https://joinquest.cc/room/ABC123',
   host: { id: 'user-1', displayName: 'player' },
-  members: [{ id: 'user-1', displayName: 'player' }],
+  members: [{ user: { id: 'user-1', displayName: 'player' }, disconnected: false }],
   messages: [],
   tables: [],
 }

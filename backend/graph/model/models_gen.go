@@ -589,9 +589,27 @@ type Room struct {
 	InviteCode string         `json:"inviteCode"`
 	JoinURL    string         `json:"joinUrl"`
 	Host       *User          `json:"host"`
-	Members    []*User        `json:"members"`
+	Members    []*RoomMember  `json:"members"`
 	Messages   []*RoomMessage `json:"messages"`
 	Tables     []*Table       `json:"tables"`
+}
+
+// One person on a room's roster.
+type RoomMember struct {
+	User *User `json:"user"`
+	// Whether this member's last socket closed more than store.DefaultRoomRosterPresenceGrace
+	// (30s) ago, so the roster has stopped claiming they are here.
+	//
+	// A reading and nothing more. A disconnected member still holds their membership, their
+	// chat and their seat — their room is held for the full DefaultRoomDisconnectGrace (5m) —
+	// and this says only that we no longer believe they are looking at it, so a roster does
+	// not have to pretend otherwise meanwhile. Reconnecting clears it immediately.
+	//
+	// Clients draw this as "away", which is the word a player understands. It is named for
+	// the evidence instead, because store.UserIsAway is a different signal with the opposite
+	// evidence — a live socket with no visible document — and is false for every member this
+	// is true for. JQ-179 is where that second signal joins this one in the same display.
+	Disconnected bool `json:"disconnected"`
 }
 
 type RoomMessage struct {

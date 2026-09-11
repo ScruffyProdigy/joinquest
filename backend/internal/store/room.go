@@ -385,29 +385,102 @@ func (s *Store) isRoomMemberTx(ctx context.Context, q sqlQueryRowContext, roomID
 	return exists, err
 }
 
-// ListRoomMemberUsers returns members ordered by join time.
-func (s *Store) ListRoomMemberUsers(ctx context.Context, roomID uuid.UUID) ([]User, error) {
+// scanRoomMember reads a user row with the roster's derived disconnected column appended.
+//
+// It duplicates scanUser's column list rather than calling it, because Scan takes all
+// destinations in one call and the derived column is the last one. Adding a column to
+// userColumns means adding it here too — the compiler will not catch that, but the
+// roster tests will.
+func scanRoomMember(row interface{ Scan(dest ...any) error }) (*User, bool, error) {
+	var u User
+	var email sql.NullString
+	var disconnected bool
+	if err := row.Scan(
+		&u.ID,
+		&email,
+		&u.Username,
+		&u.DisplayName,
+		&u.AvatarURL,
+		&u.AvatarKey,
+		&u.AvatarSource,
+		&u.IsGuest,
+		&u.CreatedAt,
+		&disconnected,
+	); err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return nil, false, ErrNotFound
+		}
+		return nil, false, err
+	}
+	if email.Valid {
+		u.Email = email.String
+	}
+	return &u, disconnected, nil
+}
+
+// RoomMember is one membership on a room's roster: who holds it, and whether the roster
+// is still willing to claim they are there.
+//
+// Disconnected is derived on read from user_presence and stored nowhere. That is the point
+// rather than an optimisation: a persisted flag would be a second answer to a question
+// user_presence already answers, and the two would disagree the first time a pod died
+// holding the writer. Nothing consults it to decide what a player keeps — the membership
+// this struct describes is unaffected by it.
+//
+// "Disconnected" and not "away": UserIsAway (visibility.go) already owns that word for the
+// opposite evidence, a live socket with no visible document, and returns false for every
+// player this field is true for. The roster shows both to a player as away; this layer
+// keeps them distinguishable.
+type RoomMember struct {
+	User         User
+	Disconnected bool
+}
+
+// ListRoomRoster returns members ordered by join time, each marked disconnected if their
+// last socket closed longer than presenceGrace ago.
+//
+// LEFT JOIN, not INNER: a member with no user_presence row at all has never opened a
+// subscription — they joined by mutation and their client has not caught up yet — and the
+// honest reading of "no evidence they are gone" is present. It is also the state every
+// member briefly passes through on the way in, so reading it as gone would flash the whole
+// roster grey at join time. Same default, and the same reason for it, as UserIsAway.
+//
+// The predicate tests only disconnected_at, and does not repeat
+// staleDisconnectedRoomMemberPredicate's connection_count = 0. The two are the same
+// question here: user_presence_stamp_matches_count makes the stamp non-null exactly when
+// the count is zero, so a live socket cannot carry a stamp for this to age.
+//
+// Strictly older-than: the window is a claim we stop making after it passes, not at it.
+// The exact boundary is not observable against a real clock — NOW() moves between the write
+// that stamps a disconnect and any read of it — so that is a statement about this SQL rather
+// than a behaviour anything can depend on. What callers can rely on is the direction, and it
+// is monotonic: time only moves a member from present to gone, and only a reconnect moves
+// them back.
+func (s *Store) ListRoomRoster(ctx context.Context, roomID uuid.UUID, presenceGrace time.Duration) ([]RoomMember, error) {
 	rows, err := s.db.QueryContext(ctx, `
-		SELECT `+strings.ReplaceAll(userColumns, "id,", "u.id,")+`
+		SELECT `+strings.ReplaceAll(userColumns, "id,", "u.id,")+`,
+		       (up.disconnected_at IS NOT NULL
+		        AND up.disconnected_at < NOW() - $2::interval) AS disconnected
 		FROM users u
 		INNER JOIN room_members rm ON rm.user_id = u.id
+		LEFT JOIN user_presence up ON up.user_id = u.id
 		WHERE rm.room_id = $1 AND u.is_active = true
 		ORDER BY rm.joined_at ASC
-	`, roomID)
+	`, roomID, pgInterval(presenceGrace))
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
 
-	var users []User
+	var members []RoomMember
 	for rows.Next() {
-		u, err := scanUser(rows)
+		u, disconnected, err := scanRoomMember(rows)
 		if err != nil {
 			return nil, err
 		}
-		users = append(users, *u)
+		members = append(members, RoomMember{User: *u, Disconnected: disconnected})
 	}
-	return users, rows.Err()
+	return members, rows.Err()
 }
 
 // ListRoomMessages returns recent messages oldest-first for display.

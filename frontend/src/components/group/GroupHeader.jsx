@@ -24,9 +24,19 @@ export default function GroupHeader({ table, room, busy, onLeave }) {
         >
           ←
         </Button>
+        {/*
+          JQ-265: `disconnected` is what the API observed — the member's socket has been
+          gone longer than the roster's window — and `away` is what the player is shown.
+          The two words stay apart on purpose: store.UserIsAway is a different signal.
+        */}
         <div className="flex -space-x-2" aria-label="In this group">
           {(room?.members ?? []).map((member) => (
-            <PlayerAvatar key={member.id} user={member} size="sm" />
+            <PlayerAvatar
+              key={member.user.id}
+              user={member.user}
+              size="sm"
+              away={member.disconnected}
+            />
           ))}
         </div>
       </div>

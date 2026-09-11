@@ -183,7 +183,14 @@ func (r *roomResolver) Host(ctx context.Context, obj *model.Room) (*model.User, 
 }
 
 // Members is the resolver for the members field.
-func (r *roomResolver) Members(ctx context.Context, obj *model.Room) ([]*model.User, error) {
+//
+// The disconnected reading comes from the same read that lists the roster, so it is
+// exactly as fresh as the roster itself. Nothing pushes it: every roomUpdated publish re-resolves
+// this field, and an ordinary query re-reads it too, so a member who went away with no
+// accompanying room event is seen the next time anything asks. That is the honest
+// granularity for a derived state — a member crosses the window because time passed, not
+// because something happened that there was an event to publish.
+func (r *roomResolver) Members(ctx context.Context, obj *model.Room) ([]*model.RoomMember, error) {
 	st, err := r.requireStore()
 	if err != nil {
 		return nil, err
@@ -192,11 +199,11 @@ func (r *roomResolver) Members(ctx context.Context, obj *model.Room) ([]*model.U
 	if err != nil {
 		return nil, err
 	}
-	users, err := st.ListRoomMemberUsers(ctx, roomID)
+	members, err := st.ListRoomRoster(ctx, roomID, store.DefaultRoomRosterPresenceGrace)
 	if err != nil {
 		return nil, err
 	}
-	return ToGraphQLUsers(users), nil
+	return ToGraphQLRoomMembers(members), nil
 }
 
 // Messages is the resolver for the messages field.
