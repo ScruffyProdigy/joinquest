@@ -77,30 +77,82 @@ func (s *Store) clearDocumentVisibilityForUser(ctx context.Context, userID uuid.
 	return nil
 }
 
-// awayAssignedUsersTx returns the distinct assigned players who hold a live socket
-// with nothing visible behind it, in assignment order.
+// awayAssignedUnit is one absence on the forming map: the thing a hold window runs
+// for, and the thing whose chairs are given up when it is not waited for.
+//
+// A party is one unit however many chairs it holds (JQ-299). The presence rules are
+// written per player, but a party is placed and vacated all-or-nothing, and counting
+// a group of three as three absences made "two independent absences" true of a single
+// group with two members away -- which vacated chairs that a solo player in the same
+// position would have kept, and left the group holding the rest.
+type awayAssignedUnit struct {
+	// UserID anchors the hold window, which is keyed on a single user. For a party
+	// it is the member holding the first seat in seat-key order: stable for as long
+	// as the party is on the map, so the next reconcile finds the same anchor and
+	// does not restart the window under them.
+	//
+	// There is no better answer available. A party is away here only when every one
+	// of its members is, so there is no present member to notify instead.
+	UserID uuid.UUID
+
+	// PartyID is the party the chairs are released by. Every placed seat carries one,
+	// a solo player's party of one included; the nil case is defensive.
+	PartyID *uuid.UUID
+}
+
+// awayAssignedUnitsTx returns the absences on the forming map, in seat order.
+//
+// A party is away only when every one of its assigned members is away, and counts
+// once. Groups are deliberately treated more leniently than solo players: the gate
+// exists so nobody is dropped into a game they are not watching, and a group member
+// who is present can tell the one who is not -- being in contact with each other is
+// what made them a group. A solo player who misses it has nobody to tell them.
 //
 // Read inside the caller's transaction, which already holds the advisory lock on
 // the mode queue, so the answer cannot change under a decision made from it.
-func awayAssignedUsersTx(ctx context.Context, tx *sql.Tx, assignments []FormingAssignment) ([]uuid.UUID, error) {
-	seen := make(map[uuid.UUID]struct{}, len(assignments))
-	var away []uuid.UUID
+func awayAssignedUnitsTx(ctx context.Context, tx *sql.Tx, assignments []FormingAssignment) ([]awayAssignedUnit, error) {
+	// A party keys by party so its members collapse into one unit; a seat with no
+	// party keys by user, which cannot collide with a party id.
+	type unitKey struct{ party, user uuid.UUID }
+
+	awayByUser := make(map[uuid.UUID]bool, len(assignments))
+	index := make(map[unitKey]int, len(assignments))
+	var units []awayAssignedUnit
+	var allAway []bool
+
 	for _, assignment := range assignments {
 		if assignment.UserID == nil {
 			continue
 		}
 		userID := *assignment.UserID
-		if _, ok := seen[userID]; ok {
+		isAway, known := awayByUser[userID]
+		if !known {
+			var err error
+			isAway, err = userIsAwayTx(ctx, tx, userID)
+			if err != nil {
+				return nil, err
+			}
+			awayByUser[userID] = isAway
+		}
+
+		key := unitKey{user: userID}
+		if assignment.PartyID != nil {
+			key = unitKey{party: *assignment.PartyID}
+		}
+		if pos, ok := index[key]; ok {
+			// One present member is enough to make the whole party present.
+			allAway[pos] = allAway[pos] && isAway
 			continue
 		}
-		seen[userID] = struct{}{}
+		index[key] = len(units)
+		units = append(units, awayAssignedUnit{UserID: userID, PartyID: assignment.PartyID})
+		allAway = append(allAway, isAway)
+	}
 
-		isAway, err := userIsAwayTx(ctx, tx, userID)
-		if err != nil {
-			return nil, err
-		}
-		if isAway {
-			away = append(away, userID)
+	var away []awayAssignedUnit
+	for i, unit := range units {
+		if allAway[i] {
+			away = append(away, unit)
 		}
 	}
 	return away, nil

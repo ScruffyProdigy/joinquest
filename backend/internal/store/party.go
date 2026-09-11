@@ -261,6 +261,20 @@ func (s *Store) releasePartyFormingSlotsTx(ctx context.Context, tx *sql.Tx, part
 	return err
 }
 
+// releaseFormingUnitTx gives up the chairs one absence is holding.
+//
+// A party gives up all of them (JQ-299). Releasing only the member whose absence was
+// counted leaves the party partly on the map, and partyAssignedOnFormingTx answers
+// "is any member assigned", so syncWaitingPartiesOnFormingTx would then skip that
+// party for the life of the forming match: the vacated members could never be placed
+// again, even once they came back, while the rest of their group stayed seated.
+func (s *Store) releaseFormingUnitTx(ctx context.Context, tx *sql.Tx, unit awayAssignedUnit) error {
+	if unit.PartyID != nil {
+		return s.releasePartyFormingSlotsTx(ctx, tx, *unit.PartyID)
+	}
+	return s.releaseFormingSlotsForUserTx(ctx, tx, unit.UserID)
+}
+
 func (s *Store) releaseFormingSlotsForUserTx(ctx context.Context, tx *sql.Tx, userID uuid.UUID) error {
 	_, err := tx.ExecContext(ctx, `
 		UPDATE forming_match_assignments

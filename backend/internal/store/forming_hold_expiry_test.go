@@ -66,6 +66,10 @@ func TestHeldChairIsVacatedOnceTheWindowExpires(t *testing.T) {
 //
 // Four seats, because both players have to be seated while present -- an away
 // player is never placed on a forming match in the first place.
+//
+// Four separate players, because "two independent absences" is the thing being
+// tested: a group of two is one absence between them under JQ-299, and queuing
+// these four as two parties would have made this assert the opposite rule.
 func TestTwoAwayPlayersVacateBothRatherThanHolding(t *testing.T) {
 	st := openTestStore(t)
 	cleaner := st.NewTestCleaner(t)
@@ -74,13 +78,15 @@ func TestTwoAwayPlayersVacateBothRatherThanHolding(t *testing.T) {
 
 	first := newPresenceUser(t, st, cleaner, ctx)
 	second := newPresenceUser(t, st, cleaner, ctx)
-	joinPartyAndPlace(t, st, ctx, queueID, first, second)
+	joinSoloAndPlace(t, st, ctx, queueID, first)
+	joinSoloAndPlace(t, st, ctx, queueID, second)
 	goAway(t, st, ctx, first)
 	goAway(t, st, ctx, second)
 
 	third := newPresenceUser(t, st, cleaner, ctx)
 	fourth := newPresenceUser(t, st, cleaner, ctx)
-	joinPartyAndPlace(t, st, ctx, queueID, third, fourth)
+	joinSoloAndPlace(t, st, ctx, queueID, third)
+	joinSoloAndPlace(t, st, ctx, queueID, fourth)
 
 	if rec := mustReconcileForming(t, st, ctx, queueID); rec.Fired {
 		t.Fatal("match fired with two away players in it")
@@ -130,6 +136,8 @@ func TestHoldWindowRestartsWhenADifferentPlayerGoesAway(t *testing.T) {
 // else then wandered off makes that message retroactively false, which is the one
 // thing it cannot survive. So the running hold is kept and only the new absence
 // gives up its chair.
+// Four separate players again, for the same reason as above: `held` and `later` have
+// to be two absences rather than one group's.
 func TestASecondAbsenceDoesNotEvictThePlayerAlreadyBeingHeldFor(t *testing.T) {
 	st := openTestStore(t)
 	cleaner := st.NewTestCleaner(t)
@@ -138,7 +146,8 @@ func TestASecondAbsenceDoesNotEvictThePlayerAlreadyBeingHeldFor(t *testing.T) {
 
 	held := newPresenceUser(t, st, cleaner, ctx)
 	later := newPresenceUser(t, st, cleaner, ctx)
-	joinPartyAndPlace(t, st, ctx, queueID, held, later)
+	joinSoloAndPlace(t, st, ctx, queueID, held)
+	joinSoloAndPlace(t, st, ctx, queueID, later)
 
 	// Away before the table completes, so completing it starts a window for `held`
 	// rather than firing.
@@ -146,7 +155,8 @@ func TestASecondAbsenceDoesNotEvictThePlayerAlreadyBeingHeldFor(t *testing.T) {
 
 	third := newPresenceUser(t, st, cleaner, ctx)
 	fourth := newPresenceUser(t, st, cleaner, ctx)
-	joinPartyAndPlace(t, st, ctx, queueID, third, fourth)
+	joinSoloAndPlace(t, st, ctx, queueID, third)
+	joinSoloAndPlace(t, st, ctx, queueID, fourth)
 
 	// A second player wanders off while the first is still being waited for.
 	goAway(t, st, ctx, later)

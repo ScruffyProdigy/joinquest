@@ -89,16 +89,40 @@ func newFourSeatQueue(t *testing.T, st *Store, cleaner *TestCleaner, ctx context
 	return queues[0].ID
 }
 
-// joinPartyAndPlace queues two players as one party and runs the forming worker's step,
-// leaving both on the filling match.
-func joinPartyAndPlace(t *testing.T, st *Store, ctx context.Context, queueID, leader, member uuid.UUID) {
+// joinSoloAndPlace is joinAndPlace against a queue the test named, for the fixtures
+// that need several players on one filling match without making them a party. A party
+// is not a neutral way to seat two people: JQ-299 gives a group one hold between them,
+// so a test about two independent absences has to queue two independent players.
+func joinSoloAndPlace(t *testing.T, st *Store, ctx context.Context, queueID, userID uuid.UUID) {
 	t.Helper()
-	if _, err := st.JoinModeQueue(ctx, queueID, leader, "", &JoinPartyInput{
-		Tree: partytree.Node{Members: []string{leader.String(), member.String()}},
-		Members: []JoinPartyMemberInput{
-			{UserID: leader, QueuePath: ""},
-			{UserID: member, QueuePath: ""},
-		},
+	if _, err := st.JoinModeQueue(ctx, queueID, userID, "", nil); err != nil {
+		t.Fatalf("join: %v", err)
+	}
+	rec := mustReconcileForming(t, st, ctx, queueID)
+	if rec.Fired {
+		t.Fatal("fixture fired a match, so nothing here is on a filling match")
+	}
+	if n := assignedSeatCount(t, st, ctx, userID); n != 1 {
+		t.Fatalf("fixture never placed the player on the forming match (%d seats), so this test proves nothing", n)
+	}
+}
+
+// joinPartyAndPlace queues the given players as one party and runs the forming worker's
+// step, leaving all of them on the filling match.
+func joinPartyAndPlace(t *testing.T, st *Store, ctx context.Context, queueID uuid.UUID, members ...uuid.UUID) {
+	t.Helper()
+	if len(members) == 0 {
+		t.Fatal("joinPartyAndPlace needs at least one member")
+	}
+	ids := make([]string, len(members))
+	inputs := make([]JoinPartyMemberInput, len(members))
+	for i, userID := range members {
+		ids[i] = userID.String()
+		inputs[i] = JoinPartyMemberInput{UserID: userID, QueuePath: ""}
+	}
+	if _, err := st.JoinModeQueue(ctx, queueID, members[0], "", &JoinPartyInput{
+		Tree:    partytree.Node{Members: ids},
+		Members: inputs,
 	}); err != nil {
 		t.Fatalf("party join: %v", err)
 	}
@@ -106,7 +130,7 @@ func joinPartyAndPlace(t *testing.T, st *Store, ctx context.Context, queueID, le
 	if rec.Fired {
 		t.Fatal("fixture fired a match with half a lobby, so nothing here is on a filling match")
 	}
-	for _, userID := range []uuid.UUID{leader, member} {
+	for _, userID := range members {
 		if n := assignedSeatCount(t, st, ctx, userID); n != 1 {
 			t.Fatalf("fixture placed a party member on %d seats, want 1", n)
 		}
