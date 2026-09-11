@@ -10,6 +10,7 @@ import (
 	"testing"
 
 	"github.com/google/uuid"
+	"github.com/scruffyprodigy/joinquest/graph/model"
 	"github.com/scruffyprodigy/joinquest/internal/auth"
 	"github.com/scruffyprodigy/joinquest/internal/store"
 )
@@ -475,6 +476,11 @@ const declinePlayAgainMutation = `mutation Decline($matchId: ID!) {
 type playAgainResponse struct {
 	Errors []struct {
 		Message string `json:"message"`
+		// The client branches on this, never on Message (JQ-176). Captured here so the
+		// tests below prove it survives gqlgen's error presenter onto the wire.
+		Extensions struct {
+			Code string `json:"code"`
+		} `json:"extensions"`
 	} `json:"errors"`
 	Data struct {
 		PlayAgain *struct {
@@ -624,9 +630,12 @@ func TestPlayAgainAndDeclinePlayAgainRefuseNonParticipant(t *testing.T) {
 }
 
 // TestPlayAgainRefusesUnfinishedMatch pins ErrSessionNotFinished's distinct surfacing: a real
-// participant in a match that has not completed yet gets an error that is NOT "you did not
-// play in this match" — the client needs to tell "too early" apart from "not your match" so it
+// participant in a match that has not completed yet gets SESSION_NOT_FINISHED in the error's
+// `code` extension — the client needs to tell "too early" apart from "not your match" so it
 // can say something true instead of a generic failure.
+//
+// End to end through the real handler on purpose: the unit test in match_helpers_test.go
+// proves the extension is set, this one proves gqlgen still puts it on the wire.
 func TestPlayAgainRefusesUnfinishedMatch(t *testing.T) {
 	env := newQueueIntegrationEnv(t)
 	cleaner := env.newCleaner(t)
@@ -660,9 +669,13 @@ func TestPlayAgainRefusesUnfinishedMatch(t *testing.T) {
 	if len(resp.Errors) == 0 {
 		t.Fatal("expected playAgain to refuse a still-running match")
 	}
+	want := string(model.RegroupErrorCodeSessionNotFinished)
+	if got := resp.Errors[0].Extensions.Code; got != want {
+		t.Fatalf("error code = %q, want %q (message was %q)", got, want, resp.Errors[0].Message)
+	}
 	for _, e := range resp.Errors {
-		if strings.Contains(e.Message, "did not play") {
-			t.Fatalf("still-running match reported as non-participant, want a distinct message: %q", e.Message)
+		if strings.Contains(e.Message, "store:") {
+			t.Fatalf("internal store text reached the client: %q", e.Message)
 		}
 	}
 }

@@ -242,7 +242,7 @@ func (s *Store) partyRegroupTableTx(
 // The fallback is not only for solo players. A room that emptied while the match ran is
 // closed by leaveRoomTx, and sitAtTableTx's isRoomMemberTx requires an open room — so
 // returning the arrival room regardless would fail every claim from that party with
-// ErrNotFound, which regroupClientError reports as "you did not play in this match",
+// ErrNotFound, which reaches the player as an uncoded "could not start another round",
 // permanently. A fresh room is a worse answer than their own room and a far better one than
 // no way back at all.
 func (s *Store) regroupRoomTx(ctx context.Context, tx *sql.Tx, userID uuid.UUID, arrival *participantSeating) (*Room, error) {

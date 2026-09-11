@@ -213,29 +213,41 @@ describe('matchResult data layer', () => {
 })
 
 describe('classifyRegroupError', () => {
-  // Pinned to the exact phrasing backend/graph/match_helpers.go sends (regroupClientError).
+  /** A thrown error as graphqlRequest builds one: message plus the server's extensions.code. */
+  function coded(code, message = 'some server sentence') {
+    const error = new Error(message)
+    error.code = code
+    return error
+  }
+
   it('recognises a session with no mode to rebuild from', () => {
-    expect(classifyRegroupError(new Error('this match no longer has a mode to build a table from')))
-      .toBe(REGROUP_ERROR.NO_MODE)
+    expect(classifyRegroupError(coded('NO_REGROUP_MODE'))).toBe(REGROUP_ERROR.NO_MODE)
   })
 
   it('recognises a match that is still running', () => {
-    expect(classifyRegroupError(new Error("this match hasn't finished yet")))
-      .toBe(REGROUP_ERROR.NOT_FINISHED)
-    expect(classifyRegroupError('this match hasn\u2019t finished yet'))
-      .toBe(REGROUP_ERROR.NOT_FINISHED)
+    expect(classifyRegroupError(coded('SESSION_NOT_FINISHED'))).toBe(REGROUP_ERROR.NOT_FINISHED)
   })
 
   it('recognises a full table', () => {
-    expect(classifyRegroupError(new Error('the table is full'))).toBe(REGROUP_ERROR.TABLE_FULL)
+    expect(classifyRegroupError(coded('TABLE_FULL'))).toBe(REGROUP_ERROR.TABLE_FULL)
   })
 
-  it('keeps "not your match" distinct from "too early"', () => {
-    expect(classifyRegroupError(new Error('you did not play in this match'))).toBe(REGROUP_ERROR.UNKNOWN)
+  // The point of JQ-176: the message is copy, and rewording it must not move the player
+  // onto a different branch.
+  it('ignores the message text entirely', () => {
+    expect(classifyRegroupError(coded('TABLE_FULL', 'every seat is taken'))).toBe(REGROUP_ERROR.TABLE_FULL)
+    expect(classifyRegroupError(new Error('the table is full'))).toBe(REGROUP_ERROR.UNKNOWN)
+    expect(classifyRegroupError(new Error("this match hasn't finished yet"))).toBe(REGROUP_ERROR.UNKNOWN)
+  })
+
+  it('treats an uncoded failure as unknown', () => {
+    expect(classifyRegroupError(new Error('could not start another round'))).toBe(REGROUP_ERROR.UNKNOWN)
+    expect(classifyRegroupError(coded('SOMETHING_ELSE'))).toBe(REGROUP_ERROR.UNKNOWN)
   })
 
   it('survives a missing or malformed error', () => {
     expect(classifyRegroupError(null)).toBe(REGROUP_ERROR.UNKNOWN)
     expect(classifyRegroupError({})).toBe(REGROUP_ERROR.UNKNOWN)
+    expect(classifyRegroupError('a bare string')).toBe(REGROUP_ERROR.UNKNOWN)
   })
 })

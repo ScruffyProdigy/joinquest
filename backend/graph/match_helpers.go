@@ -3,9 +3,12 @@ package graph
 import (
 	"context"
 	"errors"
+	"log"
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/vektah/gqlparser/v2/gqlerror"
+
 	"github.com/scruffyprodigy/joinquest/graph/model"
 	"github.com/scruffyprodigy/joinquest/internal/store"
 )
@@ -92,22 +95,44 @@ func resolveReturnDestination(ctx context.Context, st *store.Store, sessionID, u
 	return returnDestinationFromContext(ctxData), nil
 }
 
-// regroupClientError translates the store's regroup sentinel errors into messages a client can
-// act on, instead of letting an internal "store: ..." string (or an opaque 500) reach the
-// player. The three cases are deliberately distinguishable from each other and from "you did
-// not play in this match": the client falls back to the game detail page on ErrNoRegroupMode,
-// and can tell "too early" (ErrSessionNotFinished) apart from "not your match" (ErrNotFound).
+// regroupGenericMessage is what a player is told about a regroup failure that is not one of
+// the three they can act on. Deliberately says nothing: the alternative is the store's own
+// "store: ..." text, which is an internal detail and sometimes a database error.
+const regroupGenericMessage = "could not start another round"
+
+// regroupClientError translates the store's regroup sentinel errors into a GraphQL error the
+// client can branch on, instead of letting an internal "store: ..." string (or an opaque 500)
+// reach the player.
+//
+// The three cases a player should experience differently carry a RegroupErrorCode in the
+// error's `code` extension; the message beside it is copy, and rewording it changes nothing
+// for the client (JQ-176). The client falls back to the game detail page on NO_REGROUP_MODE,
+// and can tell "too early" (SESSION_NOT_FINISHED) apart from a full table (TABLE_FULL).
+//
+// Everything else — ErrNotFound included — is a failure the player cannot act on, so it gets
+// no code and no detail. ErrNotFound in particular is *not* "you did not play in this match"
+// here: PlayAgain has already run requireMatchParticipant by this point, so a not-found from
+// the claim is some other row missing, and saying "you did not play" would be a lie.
 func regroupClientError(err error) error {
 	switch {
 	case errors.Is(err, store.ErrNoRegroupMode):
-		return errors.New("this match no longer has a mode to build a table from")
+		return regroupError(model.RegroupErrorCodeNoRegroupMode, "this match no longer has a mode to build a table from")
 	case errors.Is(err, store.ErrSessionNotFinished):
-		return errors.New("this match hasn't finished yet")
+		return regroupError(model.RegroupErrorCodeSessionNotFinished, "this match hasn't finished yet")
 	case errors.Is(err, store.ErrTableFull):
-		return errors.New("the table is full")
-	case errors.Is(err, store.ErrNotFound):
-		return errors.New("you did not play in this match")
+		return regroupError(model.RegroupErrorCodeTableFull, "the table is full")
 	default:
-		return err
+		log.Printf("playAgain: unclassified regroup failure: %v", err)
+		return errors.New(regroupGenericMessage)
+	}
+}
+
+// regroupError builds the wire form of a coded regroup failure. gqlgen's default error
+// presenter returns a *gqlerror.Error unchanged, so the extensions arrive at the client as
+// written — see graph/gql_server.go, which registers no presenter of its own.
+func regroupError(code model.RegroupErrorCode, message string) *gqlerror.Error {
+	return &gqlerror.Error{
+		Message:    message,
+		Extensions: map[string]any{"code": string(code)},
 	}
 }
