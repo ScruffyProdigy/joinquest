@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useAuth } from '../auth/AuthProvider'
 import { useActiveRoom } from '../rooms/ActiveRoomProvider'
 import { navigateTo } from '../../lib/usePathname'
@@ -12,7 +12,8 @@ import {
 } from '../../lib/tables'
 import { fetchModeQueueOptions } from '../../lib/games'
 import { GROUP_FIND_SOMETHING_NEW, GROUP_TAKE_SEAT, GROUP_TAKING_SEAT } from '../../lib/playerCopy'
-import { hasReadyToPlayIntent } from '../../lib/intent'
+import { hasGroupWaitingIntent, hasReadyToPlayIntent } from '../../lib/intent'
+import { navigateToWaiting } from '../../lib/waiting'
 import {
   groupCtaState,
   isLastSeatedPlayer,
@@ -45,6 +46,27 @@ export default function GroupPage({ intent }) {
     handleLeave: leaveActiveGame,
   } = intent ?? {}
   const [busy, setBusy] = useState(false)
+  /*
+    Asking the lobby for the rest of the match sends the whole group to the waiting
+    screen, not just whoever pressed it — everyone is in the same queue, so everyone
+    should be watching the same thing fill.
+
+    Edge-triggered on the queue, not a standing redirect: a player who walks back to the
+    group screen from there has decided to look at it, and bouncing them straight out
+    again would make the back button useless.
+  */
+  const sentToWaitingFor = useRef(null)
+  const waitingQueueId = hasGroupWaitingIntent(activeIntent, activeTableSeat)
+    ? activeIntent.queueId
+    : null
+  useEffect(() => {
+    if (!waitingQueueId || sentToWaitingFor.current === waitingQueueId) {
+      return
+    }
+    sentToWaitingFor.current = waitingQueueId
+    navigateToWaiting({ replace: true })
+  }, [waitingQueueId])
+
   const [error, setError] = useState('')
   // The seat the player has asked for but not yet paid the picker for. Holding it here is
   // what lets the sheet's confirm finish a claim the click only started.

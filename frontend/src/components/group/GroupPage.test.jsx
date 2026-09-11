@@ -40,6 +40,12 @@ vi.mock('../../lib/usePathname', () => ({
   usePathname: () => '/group',
 }))
 
+const navigateToWaiting = vi.fn()
+vi.mock('../../lib/waiting', async (importOriginal) => ({
+  ...(await importOriginal()),
+  navigateToWaiting: (...args) => navigateToWaiting(...args),
+}))
+
 let currentUser = { id: 'u1', displayName: 'Pat' }
 vi.mock('../auth/AuthProvider', () => ({
   useAuth: () => ({ user: currentUser, loading: false }),
@@ -298,6 +304,50 @@ describe('GroupPage', () => {
       await user.click(screen.getByRole('button', { name: 'Start game' }))
 
       expect(mutations.startTable).toHaveBeenCalledWith('table-1')
+    })
+
+    it('sends every seated player to the waiting screen once the group is queued', () => {
+      // The friend, not the king: everyone is in the same queue, so everyone watches
+      // the same thing fill.
+      currentUser = { id: 'u9', displayName: 'Jo' }
+      currentRoom = makeRoom(withQueue({ backfillActive: true }))
+      render(
+        <GroupPage
+          intent={{
+            activeIntent: { status: 'WAITING', queueId: 'q-1' },
+            activeTableSeat: { tableId: 'table-1', status: 'forming' },
+          }}
+        />,
+      )
+
+      expect(navigateToWaiting).toHaveBeenCalledWith({ replace: true })
+    })
+
+    it('leaves a player who walks back to the group screen there', () => {
+      // Edge-triggered on the queue, not a standing redirect — otherwise the back
+      // button is useless while a request is live.
+      currentRoom = makeRoom(withQueue({ backfillActive: true }))
+      const intent = {
+        activeIntent: { status: 'WAITING', queueId: 'q-1' },
+        activeTableSeat: { tableId: 'table-1', status: 'forming' },
+      }
+      const { rerender } = render(<GroupPage intent={intent} />)
+      expect(navigateToWaiting).toHaveBeenCalledTimes(1)
+
+      rerender(<GroupPage intent={{ ...intent }} />)
+      expect(navigateToWaiting).toHaveBeenCalledTimes(1)
+    })
+
+    it('does not send a player anywhere for a queue wait of their own', () => {
+      // A catalog queue join has no table seat; the waiting page is already its home.
+      currentRoom = makeRoom(withQueue())
+      render(
+        <GroupPage
+          intent={{ activeIntent: { status: 'WAITING', queueId: 'q-9' }, activeTableSeat: null }}
+        />,
+      )
+
+      expect(navigateToWaiting).not.toHaveBeenCalled()
     })
 
     it('surfaces a refused request instead of leaving the button looking pressed', async () => {

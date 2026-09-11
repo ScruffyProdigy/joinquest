@@ -325,6 +325,24 @@ export const INSTALL_STEP_ADD = 'Choose Add to Home Screen'
 export const INSTALL_STEP_ADD_WHERE = 'then open JoinQuest from your Home Screen'
 export const INSTALL_DISMISS = 'Not now'
 
+/*
+ * The same three moments, for a group (JQ-137). A player here did not join a queue —
+ * their table did — so the copy names the group rather than the queue, and the warning
+ * is about what it costs everyone rather than what it costs the reader.
+ */
+export const GROUP_WAIT_STOP_TITLE = 'Stop looking?'
+export const GROUP_WAIT_STOP_BODY =
+  'Your group goes back to the group screen with its seats as they are. Nobody loses their place at the table.'
+export const GROUP_WAIT_STOP_CONFIRM = 'Stop looking'
+export const GROUP_WAIT_KEEP_LOOKING = 'Keep looking'
+/*
+ * Everyone else's version of the same screen: it is happening, and it is not theirs to
+ * stop. Deliberately unnamed, unlike the group screen's "Waiting for Alex to start" —
+ * MyTableSeat is a lean per-viewer record and carries no king, and the group screen that
+ * does name them is one back-press away.
+ */
+export const GROUP_WAIT_OWNER_HINT = 'Your group is looking for a match.'
+
 export const LEAVE_QUEUE_TITLE = 'Leave the queue?'
 export const LEAVE_QUEUE_BODY = "You'll lose your spot and have to start over."
 export const LEAVE_QUEUE_CONFIRM = 'Leave queue'

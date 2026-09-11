@@ -334,19 +334,20 @@ type ComplexityRoot struct {
 	}
 
 	MyTableSeat struct {
-		BackfillActive  func(childComplexity int) int
-		FormingGaps     func(childComplexity int) int
-		GameID          func(childComplexity int) int
-		GameName        func(childComplexity int) int
-		InviteCode      func(childComplexity int) int
-		JoinURL         func(childComplexity int) int
-		ModeID          func(childComplexity int) int
-		ModeName        func(childComplexity int) int
-		RoomID          func(childComplexity int) int
-		SeatDisplayName func(childComplexity int) int
-		SeatKey         func(childComplexity int) int
-		Status          func(childComplexity int) int
-		TableID         func(childComplexity int) int
+		BackfillActive    func(childComplexity int) int
+		CanCancelBackfill func(childComplexity int) int
+		FormingGaps       func(childComplexity int) int
+		GameID            func(childComplexity int) int
+		GameName          func(childComplexity int) int
+		InviteCode        func(childComplexity int) int
+		JoinURL           func(childComplexity int) int
+		ModeID            func(childComplexity int) int
+		ModeName          func(childComplexity int) int
+		RoomID            func(childComplexity int) int
+		SeatDisplayName   func(childComplexity int) int
+		SeatKey           func(childComplexity int) int
+		Status            func(childComplexity int) int
+		TableID           func(childComplexity int) int
 	}
 
 	PlayAgainResult struct {
@@ -2391,6 +2392,12 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.MyTableSeat.BackfillActive(childComplexity), true
+	case "MyTableSeat.canCancelBackfill":
+		if e.complexity.MyTableSeat.CanCancelBackfill == nil {
+			break
+		}
+
+		return e.complexity.MyTableSeat.CanCancelBackfill(childComplexity), true
 	case "MyTableSeat.formingGaps":
 		if e.complexity.MyTableSeat.FormingGaps == nil {
 			break
@@ -5268,6 +5275,12 @@ type MyTableSeat {
   joinUrl: String
   backfillActive: Boolean!
   formingGaps: [QueuePathGap!]!
+  """
+  Whether this player may withdraw the table's request for the rest of the match.
+  The king's, like making it (JQ-137) — the waiting screen needs it per-viewer,
+  because every seated player is sent there and only one of them may stop it.
+  """
+  canCancelBackfill: Boolean!
 }
 
 extend type Room {
@@ -14514,6 +14527,35 @@ func (ec *executionContext) fieldContext_MyTableSeat_formingGaps(_ context.Conte
 	return fc, nil
 }
 
+func (ec *executionContext) _MyTableSeat_canCancelBackfill(ctx context.Context, field graphql.CollectedField, obj *model.MyTableSeat) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_MyTableSeat_canCancelBackfill,
+		func(ctx context.Context) (any, error) {
+			return obj.CanCancelBackfill, nil
+		},
+		nil,
+		ec.marshalNBoolean2bool,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_MyTableSeat_canCancelBackfill(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "MyTableSeat",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Boolean does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _PlayAgainResult_table(ctx context.Context, field graphql.CollectedField, obj *model.PlayAgainResult) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
@@ -17136,6 +17178,8 @@ func (ec *executionContext) fieldContext_Query_myTableSeat(_ context.Context, fi
 				return ec.fieldContext_MyTableSeat_backfillActive(ctx, field)
 			case "formingGaps":
 				return ec.fieldContext_MyTableSeat_formingGaps(ctx, field)
+			case "canCancelBackfill":
+				return ec.fieldContext_MyTableSeat_canCancelBackfill(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type MyTableSeat", field.Name)
 		},
@@ -21484,6 +21528,8 @@ func (ec *executionContext) fieldContext_Subscription_myTableSeatUpdated(_ conte
 				return ec.fieldContext_MyTableSeat_backfillActive(ctx, field)
 			case "formingGaps":
 				return ec.fieldContext_MyTableSeat_formingGaps(ctx, field)
+			case "canCancelBackfill":
+				return ec.fieldContext_MyTableSeat_canCancelBackfill(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type MyTableSeat", field.Name)
 		},
@@ -27437,6 +27483,11 @@ func (ec *executionContext) _MyTableSeat(ctx context.Context, sel ast.SelectionS
 			}
 
 			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
+		case "canCancelBackfill":
+			out.Values[i] = ec._MyTableSeat_canCancelBackfill(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				atomic.AddUint32(&out.Invalids, 1)
+			}
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}

@@ -99,6 +99,7 @@ export const MY_TABLE_SEAT_QUERY = `
       status
       joinUrl
       backfillActive
+      canCancelBackfill
       formingGaps {
         queuePath
         displayName
@@ -223,6 +224,7 @@ const MY_TABLE_SEAT_UPDATED_SUBSCRIPTION = `
       status
       joinUrl
       backfillActive
+      canCancelBackfill
       formingGaps {
         queuePath
         displayName

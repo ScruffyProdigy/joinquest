@@ -3,13 +3,18 @@ import { useAuth } from '../auth/AuthProvider'
 import LaunchStep from './LaunchStep'
 import NotifyMeControl from './NotifyMeControl'
 import { useLeaveQueueOnExit } from './useLeaveQueueOnExit'
-import { hasReadyToPlayIntent, hasWaitingIntent } from '../../lib/intent'
+import { hasGroupWaitingIntent, hasReadyToPlayIntent, hasWaitingIntent } from '../../lib/intent'
+import { cancelTableBackfill } from '../../lib/tables'
 import { navigateOutOfWaiting } from '../../lib/waiting'
 import {
   FINDING_PLAYERS,
   LEAVE_QUEUE_BODY,
   LEAVE_QUEUE_CONFIRM,
   LEAVE_QUEUE_TITLE,
+  GROUP_WAIT_KEEP_LOOKING,
+  GROUP_WAIT_STOP_BODY,
+  GROUP_WAIT_STOP_CONFIRM,
+  GROUP_WAIT_STOP_TITLE,
   STAY_IN_QUEUE,
   STOP_FINDING,
   WAITING_REGION_LABEL,
@@ -18,6 +23,7 @@ import {
   waitingPageNotifiedHint,
   formatFormingGapsNeedLine,
   estimatedWaitLine,
+  GROUP_WAIT_OWNER_HINT,
   waitingForGroupLine,
   waitingPageSubline,
 } from '../../lib/playerCopy'
@@ -55,6 +61,36 @@ export default function WaitingPage({ intent }) {
   const { activeIntent, activeTableSeat, loading, busy, queueWsConnected, leaveError, handleLeave } =
     intent
   const [confirmingLeave, setConfirmingLeave] = useState(false)
+  /*
+    A wait that belongs to a table, not to this player (JQ-137). The whole group was
+    queued together and sent here together, so the page's ordinary exits are wrong: a
+    per-player leaveQueue cancels the party and leaves everyone else in the queue as
+    strangers, which is the one outcome the group control exists to prevent.
+
+    So the way out is the table's own cancel, and it belongs to the king — the same
+    person who committed the group in the first place. `canCancelBackfill` is the
+    server's per-viewer answer, because everyone seated is looking at this screen and
+    only one of them may stop it.
+  */
+  const groupWait = hasGroupWaitingIntent(activeIntent, activeTableSeat)
+  const mayStopGroup = groupWait && activeTableSeat?.canCancelBackfill === true
+  const [groupStopError, setGroupStopError] = useState('')
+  const [stoppingGroup, setStoppingGroup] = useState(false)
+
+  async function stopLookingForGroup() {
+    setGroupStopError('')
+    setStoppingGroup(true)
+    try {
+      await cancelTableBackfill(activeTableSeat.tableId)
+      // Back where the group came from. `navigateOutOfWaiting` already remembers it,
+      // and for this page that is always the group screen.
+      navigateOutOfWaiting()
+    } catch (err) {
+      setGroupStopError(err.message || 'Could not stop looking. Try again.')
+    } finally {
+      setStoppingGroup(false)
+    }
+  }
   // Whether a verified push subscription is in force. Owned here rather than
   // inside the control, because opting in changes the page around it too — a
   // screen that still says "we will notify you here" is not permission to
@@ -67,7 +103,9 @@ export default function WaitingPage({ intent }) {
   const settled = useIntentSettled(loading, authLoading, user)
   const liveUpdatesConnected = !activeIntent?.queueId || !waiting || queueWsConnected
 
-  useLeaveQueueOnExit(activeIntent, () => setConfirmingLeave(true))
+  // Never for a group: walking back to the group screen is not leaving the queue, and
+  // spending one member's place would quietly break the party for the others.
+  useLeaveQueueOnExit(groupWait ? null : activeIntent, () => setConfirmingLeave(true))
 
   // No intent at all means this route is a dead end — hand control back.
   useEffect(() => {
@@ -150,38 +188,57 @@ export default function WaitingPage({ intent }) {
           onReachableChange={setNotified}
         />
 
-        <Button
-          type="button"
-          variant="secondary"
-          className="waiting-page__leave"
-          onClick={() => setConfirmingLeave(true)}
-          disabled={busy}
-        >
-          {busy ? '…' : STOP_FINDING}
-        </Button>
+        {groupWait && !mayStopGroup ? (
+          // Absent rather than disabled, for the same reason it is on the group screen:
+          // a greyed-out Stop invites a player to wonder what they did wrong.
+          <p className="text-xs text-muted-foreground" role="status">
+            {GROUP_WAIT_OWNER_HINT}
+          </p>
+        ) : (
+          <Button
+            type="button"
+            variant="secondary"
+            className="waiting-page__leave"
+            onClick={() => setConfirmingLeave(true)}
+            disabled={busy || stoppingGroup}
+          >
+            {busy || stoppingGroup ? '…' : STOP_FINDING}
+          </Button>
+        )}
+        {groupStopError ? (
+          <p className="status-message status-message-error" role="status">
+            {groupStopError}
+          </p>
+        ) : null}
       </section>
 
       {/* Leaving costs the player their place, so every way out asks first — the
           button here, and a back gesture, which `useLeaveQueueOnExit` undoes so it
           arrives at this same sheet rather than leaving on its own (JQ-218). */}
       <Sheet open={confirmingLeave} onOpenChange={setConfirmingLeave}>
-        <SheetContent side="bottom" aria-label={LEAVE_QUEUE_TITLE}>
-          <SheetTitle>{LEAVE_QUEUE_TITLE}</SheetTitle>
-          <p className="waiting-page__confirm-body">{LEAVE_QUEUE_BODY}</p>
+        <SheetContent side="bottom" aria-label={groupWait ? GROUP_WAIT_STOP_TITLE : LEAVE_QUEUE_TITLE}>
+          <SheetTitle>{groupWait ? GROUP_WAIT_STOP_TITLE : LEAVE_QUEUE_TITLE}</SheetTitle>
+          <p className="waiting-page__confirm-body">
+            {groupWait ? GROUP_WAIT_STOP_BODY : LEAVE_QUEUE_BODY}
+          </p>
           <div className="waiting-page__confirm-actions">
             <Button
               type="button"
               variant="default"
-              disabled={busy}
+              disabled={busy || stoppingGroup}
               onClick={() => {
                 setConfirmingLeave(false)
+                if (groupWait) {
+                  void stopLookingForGroup()
+                  return
+                }
                 void handleLeave()
               }}
             >
-              {LEAVE_QUEUE_CONFIRM}
+              {groupWait ? GROUP_WAIT_STOP_CONFIRM : LEAVE_QUEUE_CONFIRM}
             </Button>
             <Button type="button" variant="secondary" onClick={() => setConfirmingLeave(false)}>
-              {STAY_IN_QUEUE}
+              {groupWait ? GROUP_WAIT_KEEP_LOOKING : STAY_IN_QUEUE}
             </Button>
           </div>
         </SheetContent>
