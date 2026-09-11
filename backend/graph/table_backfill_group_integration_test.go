@@ -78,10 +78,10 @@ const groupTableFields = `
 	backfillActive
 `
 
-// Any seated player may ask the lobby for the rest of the match — the point of JQ-137.
-// The store enforces it; this asserts the whole GraphQL path a group screen actually uses,
-// including that the asker is not the king.
-func TestStartAndCancelTableBackfillFromANonKingSeat(t *testing.T) {
+// The whole GraphQL path a group screen uses: the king asks the lobby for the rest of the
+// match, a seated friend cannot, and the king withdraws it again. The store enforces the
+// gate; this checks the resolver does not quietly widen it.
+func TestStartAndCancelTableBackfillIsTheKingsAlone(t *testing.T) {
 	t.Setenv("LOBBY_PUBLIC_URL", "http://localhost:5173")
 
 	env := newQueueIntegrationEnv(t)
@@ -121,8 +121,7 @@ func TestStartAndCancelTableBackfillFromANonKingSeat(t *testing.T) {
 	var sat struct {
 		SitAtTable struct{ ID string } `json:"sitAtTable"`
 	}
-	// The king takes the first seat by taking it first — that is the whole of what makes
-	// them the king, and it is exactly what this ticket stops mattering here.
+	// Taking the first seat is the whole of what makes them the king.
 	if err := env.Client.Post(sit, &sat, client.AddCookie(kingCookie),
 		client.Var("tableId", table.ID), client.Var("seatKey", table.SeatSlots[0].SeatKey),
 	); err != nil {
@@ -175,19 +174,27 @@ func TestStartAndCancelTableBackfillFromANonKingSeat(t *testing.T) {
 		t.Fatal("the partly-filled table offers no queue to ask")
 	}
 
-	// The friend is seated but is not the king. Before JQ-137 the store refused this.
+	backfill := `mutation Backfill($tableId: ID!, $queueId: ID!) {
+		startTableBackfill(tableId: $tableId, queueId: $queueId) { queued queuedCount }
+	}`
 	var started struct {
 		StartTableBackfill struct {
 			Queued      bool
 			QueuedCount *int `json:"queuedCount"`
 		} `json:"startTableBackfill"`
 	}
-	if err := env.Client.Post(`mutation Backfill($tableId: ID!, $queueId: ID!) {
-		startTableBackfill(tableId: $tableId, queueId: $queueId) { queued queuedCount }
-	}`, &started, client.AddCookie(friendCookie),
+	// Seated, and still not theirs: filling the table ends the wait for anyone still on
+	// their way, which is the king's call however it is spelled.
+	if err := env.Client.Post(backfill, &started, client.AddCookie(friendCookie),
+		client.Var("tableId", table.ID), client.Var("queueId", queueID),
+	); err == nil {
+		t.Fatal("expected a seated player who is not the king to be refused")
+	}
+
+	if err := env.Client.Post(backfill, &started, client.AddCookie(kingCookie),
 		client.Var("tableId", table.ID), client.Var("queueId", queueID),
 	); err != nil {
-		t.Fatalf("startTableBackfill from a non-king seat: %v", err)
+		t.Fatalf("startTableBackfill as the king: %v", err)
 	}
 	if !started.StartTableBackfill.Queued {
 		t.Fatal("expected the request to report the group as queued")
@@ -210,12 +217,18 @@ func TestStartAndCancelTableBackfillFromANonKingSeat(t *testing.T) {
 		t.Fatal("expected the table to read as filling once it is on the forming map")
 	}
 
-	// And any seated member may withdraw it, including the one who did not ask.
+	// Withdrawing is the king's too — it puts the whole group back to waiting.
+	cancel := `mutation Cancel($tableId: ID!) { cancelTableBackfill(tableId: $tableId) }`
 	var cancelled struct {
 		CancelTableBackfill bool `json:"cancelTableBackfill"`
 	}
-	if err := env.Client.Post(`mutation Cancel($tableId: ID!) { cancelTableBackfill(tableId: $tableId) }`,
-		&cancelled, client.AddCookie(kingCookie), client.Var("tableId", table.ID),
+	if err := env.Client.Post(cancel, &cancelled, client.AddCookie(friendCookie),
+		client.Var("tableId", table.ID),
+	); err == nil {
+		t.Fatal("expected a seated player who is not the king to be refused the cancel")
+	}
+	if err := env.Client.Post(cancel, &cancelled, client.AddCookie(kingCookie),
+		client.Var("tableId", table.ID),
 	); err != nil {
 		t.Fatalf("cancelTableBackfill: %v", err)
 	}

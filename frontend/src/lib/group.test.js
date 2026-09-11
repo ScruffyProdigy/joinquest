@@ -307,14 +307,13 @@ describe('groupCtaState', () => {
     })
   })
 
-  it('offers any seated player the way to ask for the rest of the match', () => {
+  it('offers the king the way to ask for the rest of the match', () => {
     const table = startableTable({
       canStart: false,
       lookForGroupOptions: [{ queueId: 'q-1', queueName: 'Ranked', visible: true, enabled: true }],
     })
 
-    // u9 is not the king. That is the point of the ticket.
-    expect(groupCtaState(table, 'u9')).toMatchObject({
+    expect(groupCtaState(table, 'u1')).toMatchObject({
       kind: 'find',
       label: 'Find us a match',
       queueId: 'q-1',
@@ -322,13 +321,25 @@ describe('groupCtaState', () => {
     })
   })
 
-  it('keeps the king’s manual start beside it while the table is playable but not full', () => {
+  it('offers nobody else that control — filling the table ends the wait for everyone', () => {
+    const table = startableTable({
+      canStart: false,
+      lookForGroupOptions: [{ queueId: 'q-1', queueName: 'Ranked', visible: true, enabled: true }],
+    })
+
+    expect(groupCtaState(table, 'u9')).toMatchObject({
+      kind: 'waiting',
+      label: 'Waiting for Alex to start',
+      hint: "You'll be taken in automatically",
+    })
+  })
+
+  it('keeps playing short beside it once the table is past its minimum', () => {
     const table = startableTable({
       lookForGroupOptions: [{ queueId: 'q-1', queueName: 'Ranked', visible: true, enabled: true }],
     })
 
     expect(groupCtaState(table, 'u1')).toMatchObject({ kind: 'find', startLabel: 'Start game' })
-    expect(groupCtaState(table, 'u9')).toMatchObject({ kind: 'find', startLabel: null })
   })
 
   it('ignores a queue the table may not ask right now', () => {
@@ -336,10 +347,11 @@ describe('groupCtaState', () => {
       lookForGroupOptions: [{ queueId: 'q-1', queueName: 'Ranked', visible: true, enabled: false }],
     })
 
+    expect(groupCtaState(table, 'u1')).toMatchObject({ kind: 'start' })
     expect(groupCtaState(table, 'u9')).toMatchObject({ kind: 'waiting' })
   })
 
-  it('shows what is still filling, and lets any member stop it', () => {
+  it('shows what is still filling to everyone, and offers Stop only to the king', () => {
     const table = startableTable({
       backfillActive: true,
       formingGaps: [
@@ -348,15 +360,17 @@ describe('groupCtaState', () => {
       ],
     })
 
-    // Both of them, king or not: nobody on this screen can see who pressed the button.
-    for (const viewer of ['u1', 'u9']) {
-      expect(groupCtaState(table, viewer)).toMatchObject({
-        kind: 'filling',
-        label: 'Finding your match',
-        detail: 'Need 1 Attacker, 2 Defender',
-        cancelLabel: 'Stop',
-      })
-    }
+    expect(groupCtaState(table, 'u1')).toMatchObject({
+      kind: 'filling',
+      label: 'Finding your match',
+      detail: 'Need 1 Attacker, 2 Defender',
+      cancelLabel: 'Stop',
+    })
+    expect(groupCtaState(table, 'u9')).toMatchObject({
+      kind: 'filling',
+      detail: 'Need 1 Attacker, 2 Defender',
+      cancelLabel: null,
+    })
   })
 
   it('counts rather than names the gap for a mode with no roles of its own', () => {
@@ -365,7 +379,7 @@ describe('groupCtaState', () => {
       formingGaps: [{ queuePath: '', displayName: '', assigned: 3, needed: 3 }],
     })
 
-    expect(groupCtaState(table, 'u9')).toMatchObject({ detail: 'Need 3 more' })
+    expect(groupCtaState(table, 'u1')).toMatchObject({ detail: 'Need 3 more' })
   })
 
   it('announces the start once every seat is taken, offering nobody a button', () => {

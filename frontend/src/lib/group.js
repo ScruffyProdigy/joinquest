@@ -176,18 +176,23 @@ export function findMatchQueueId(table) {
 /**
  * The sticky bottom control.
  *
- * Asking the lobby for the rest of the match is every seated player's, not the king's
- * (JQ-137) — a group request has no owner, so the same button and the same Stop are on
- * everyone's screen. The king gate survives only where it still means something: the
- * manual Start for a table that is playable but deliberately not full, which is the one
- * case where somebody has to decide not to wait for the friend still on their way.
+ * One decision sits behind every branch here: when does the group stop waiting for the
+ * people who are not in it yet. Filling the remaining seats from the lobby and starting
+ * short-handed are two spellings of it rather than two powers — for a mode whose minimum
+ * is its full complement, filling *is* how a partial group starts at all — and it ends
+ * the wait for anyone still on their way either way, selling their seat instead of
+ * playing without them. So it keeps one owner, the king, exactly as starting early always
+ * did (JQ-137).
  *
- * The page still never says "king" — it names the person, the way the prototype does.
+ * Everyone else is told what is happening and that they need do nothing. The page still
+ * never says "king" — it names the person, the way the prototype does.
  */
 export function groupCtaState(table, userId) {
   if (!mySeatKeyOnTable(table, userId)) {
     return { kind: 'claim', label: 'Claim a seat to join' }
   }
+
+  const king = isKing(table, userId)
 
   if (table?.backfillActive) {
     return {
@@ -195,7 +200,9 @@ export function groupCtaState(table, userId) {
       label: GROUP_FINDING_MATCH,
       detail: formatGroupFillNeedLine(table.formingGaps),
       hint: GROUP_FIND_MATCH_HINT,
-      cancelLabel: STOP_FINDING,
+      // Withdrawing puts the whole group back to waiting, so it belongs to whoever
+      // committed them. Everybody else keeps the line telling them to sit tight.
+      cancelLabel: king ? STOP_FINDING : null,
     }
   }
 
@@ -208,23 +215,30 @@ export function groupCtaState(table, userId) {
   }
 
   const queueId = findMatchQueueId(table)
-  if (queueId) {
-    return {
-      kind: 'find',
-      label: GROUP_FIND_MATCH,
-      hint: GROUP_FIND_MATCH_HINT,
-      detail: groupStatusLine(table),
-      queueId,
-      // Offered alongside, not instead: a group at the mode's minimum may prefer to
-      // play short rather than wait for anyone at all.
-      startLabel: isKing(table, userId) && table?.canStart ? 'Start game' : null,
+
+  if (king) {
+    if (queueId) {
+      return {
+        kind: 'find',
+        label: GROUP_FIND_MATCH,
+        hint: GROUP_FIND_MATCH_HINT,
+        detail: groupStatusLine(table),
+        queueId,
+        // Offered alongside, not instead: a group already past the mode's minimum may
+        // prefer to play short now rather than wait for strangers to arrive. Same
+        // decision, different answer about who fills the gap.
+        startLabel: table?.canStart ? 'Start game' : null,
+      }
     }
+    if (table?.canStart) {
+      return { kind: 'start', label: 'Start game' }
+    }
+    return { kind: 'blocked', label: groupStatusLine(table) }
   }
 
-  if (isKing(table, userId) && table?.canStart) {
-    return { kind: 'start', label: 'Start game' }
-  }
-  if (table?.canStart && table?.king) {
+  // Not the king. Anything that could end the wait is theirs to trigger, so say who and
+  // promise the ride in rather than offering a button that would be refused.
+  if (table?.king && (queueId || table?.canStart)) {
     return {
       kind: 'waiting',
       label: `Waiting for ${displayName(table.king)} to start`,

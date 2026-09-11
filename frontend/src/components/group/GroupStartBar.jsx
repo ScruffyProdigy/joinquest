@@ -14,9 +14,8 @@ export default function GroupStartBar({ cta, busy, onStart, onFindMatch, onCance
         </Button>
         <p className="text-xs text-muted-foreground">{cta.hint}</p>
         {/*
-          The king's manual Start stays available beside it for a table that is playable
-          but not full — offered second, because a group on this screen is far more often
-          waiting for a game than choosing to play short-handed.
+          Playing short now, offered second: a group on this screen is far more often
+          waiting for a full game than choosing to go without one.
         */}
         {cta.startLabel ? (
           <Button type="button" variant="secondary" size="sm" disabled={busy} onClick={onStart}>
@@ -36,13 +35,15 @@ export default function GroupStartBar({ cta, busy, onStart, onFindMatch, onCance
         </p>
         <p className="text-xs text-muted-foreground">{cta.hint}</p>
         {/*
-          Any seated member may stop it, not only whoever started it: nobody on this
-          screen can see who pressed the button, so a Stop that worked for one player and
-          not another would be unexplainable from the outside.
+          Absent rather than disabled for everyone else. A greyed-out Stop invites a
+          player to wonder what they did wrong; nothing there says, correctly, that this
+          is not theirs to do.
         */}
-        <Button type="button" variant="secondary" size="sm" disabled={busy} onClick={onCancelFindMatch}>
-          {cta.cancelLabel}
-        </Button>
+        {cta.cancelLabel ? (
+          <Button type="button" variant="secondary" size="sm" disabled={busy} onClick={onCancelFindMatch}>
+            {cta.cancelLabel}
+          </Button>
+        ) : null}
       </div>
     )
   }

@@ -183,9 +183,8 @@ func TestGroupBackfillSameSideFillsAndAllPlayersReachTheGame(t *testing.T) {
 		bob:   "Team-1-Seat-2",
 	})
 
-	// Bob, not the king, makes the request — the point of the ticket.
-	if _, err := st.StartTableBackfill(ctx, table.ID, bob.ID, queueID); err != nil {
-		t.Fatalf("StartTableBackfill by non-king: %v", err)
+	if _, err := st.StartTableBackfill(ctx, table.ID, alice.ID, queueID); err != nil {
+		t.Fatalf("StartTableBackfill: %v", err)
 	}
 	if rec := mustReconcileForming(t, st, ctx, queueID); rec.Fired {
 		t.Fatal("expected the group to wait: four seats are still empty")
@@ -265,7 +264,7 @@ func TestGroupBackfillSplitGroupKeepsItsSides(t *testing.T) {
 		}
 	}
 
-	if _, err := st.StartTableBackfill(ctx, table.ID, cara.ID, queueID); err != nil {
+	if _, err := st.StartTableBackfill(ctx, table.ID, alice.ID, queueID); err != nil {
 		t.Fatalf("StartTableBackfill: %v", err)
 	}
 	// One more for Red, two more for Blue — the gaps the split itself implies.
@@ -301,28 +300,34 @@ func TestGroupBackfillSplitGroupKeepsItsSides(t *testing.T) {
 	}
 }
 
-// The king gate is gone, but the table is still the boundary: a room member watching
-// from outside it has no seat to carry into the queue.
-func TestStartTableBackfillRejectsUnseatedRoomMember(t *testing.T) {
+// Filling the remaining seats with strangers is the king's, like starting early, because
+// it is the same decision: it ends the wait for anyone still on their way, selling their
+// seat rather than playing without them (JQ-137).
+func TestStartTableBackfillIsTheKingsAlone(t *testing.T) {
 	st := openTestStore(t)
 	cleaner := st.NewTestCleaner(t)
 	ctx := context.Background()
 
 	game, mode, queueID := setupTeamMode(t, st, cleaner)
-	alice := mustUser(t, st, cleaner, "unseated-king")
-	watcher := mustUser(t, st, cleaner, "unseated-watcher")
+	king := mustUser(t, st, cleaner, "gate-king")
+	friend := mustUser(t, st, cleaner, "gate-friend")
+	watcher := mustUser(t, st, cleaner, "gate-watcher")
 
-	table := mustGroupTable(t, st, game, mode, alice, map[*User]string{alice: "Team-1-Seat-1"})
-	room, err := st.GetRoomTableByID(ctx, table.ID)
-	if err != nil {
-		t.Fatalf("GetRoomTableByID: %v", err)
-	}
-	if err := st.addRoomMemberDirect(ctx, room.RoomID, watcher.ID); err != nil {
-		t.Fatalf("addRoomMember: %v", err)
-	}
+	table := mustGroupTable(t, st, game, mode, king, map[*User]string{
+		king:   "Team-1-Seat-1",
+		friend: "Team-1-Seat-2",
+	}, watcher)
 
+	// Seated, and still not theirs to press.
+	if _, err := st.StartTableBackfill(ctx, table.ID, friend.ID, queueID); err == nil {
+		t.Fatal("expected a seated player who is not the king to be refused")
+	}
+	// Nor a room member watching from outside the table.
 	if _, err := st.StartTableBackfill(ctx, table.ID, watcher.ID, queueID); err == nil {
 		t.Fatal("expected a room member with no seat to be refused")
+	}
+	if _, err := st.StartTableBackfill(ctx, table.ID, king.ID, queueID); err != nil {
+		t.Fatalf("the king could not ask: %v", err)
 	}
 }
 
@@ -346,8 +351,12 @@ func TestCancelTableBackfillTakesTheWholeGroupOutOfTheQueue(t *testing.T) {
 	}
 	mustReconcileForming(t, st, ctx, queueID)
 
-	// Bob cancels what Alice started: a group request has no owner.
-	result, err := st.CancelTableBackfill(ctx, table.ID, bob.ID)
+	// Bob cannot withdraw what Alice committed the group to.
+	if _, err := st.CancelTableBackfill(ctx, table.ID, bob.ID); err == nil {
+		t.Fatal("expected a seated player who is not the king to be refused the cancel")
+	}
+
+	result, err := st.CancelTableBackfill(ctx, table.ID, alice.ID)
 	if err != nil {
 		t.Fatalf("CancelTableBackfill: %v", err)
 	}
@@ -373,7 +382,7 @@ func TestCancelTableBackfillTakesTheWholeGroupOutOfTheQueue(t *testing.T) {
 	}
 
 	// The seats are the table's again, so asking a second time is allowed.
-	if _, err := st.StartTableBackfill(ctx, table.ID, bob.ID, queueID); err != nil {
+	if _, err := st.StartTableBackfill(ctx, table.ID, alice.ID, queueID); err != nil {
 		t.Fatalf("re-request after cancel: %v", err)
 	}
 }
@@ -550,14 +559,13 @@ func TestTwoGroupsOfThreeMeetOnOppositeSides(t *testing.T) {
 	home, homeTable := newGroup("meet-home")
 	away, awayTable := newGroup("meet-away")
 
-	// Either group may ask, and neither is the king of the other's table.
-	if _, err := st.StartTableBackfill(ctx, homeTable.ID, home[2].ID, queueID); err != nil {
+	if _, err := st.StartTableBackfill(ctx, homeTable.ID, home[0].ID, queueID); err != nil {
 		t.Fatalf("home group asks: %v", err)
 	}
 	if rec := mustReconcileForming(t, st, ctx, queueID); rec.Fired {
 		t.Fatal("expected the first group to wait for opponents")
 	}
-	if _, err := st.StartTableBackfill(ctx, awayTable.ID, away[1].ID, queueID); err != nil {
+	if _, err := st.StartTableBackfill(ctx, awayTable.ID, away[0].ID, queueID); err != nil {
 		t.Fatalf("away group asks: %v", err)
 	}
 

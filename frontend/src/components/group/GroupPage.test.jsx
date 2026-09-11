@@ -208,9 +208,8 @@ describe('GroupPage', () => {
         ...overrides,
       })
 
-    it('lets a seated player who is not the king ask, and says the group comes too', async () => {
+    it('lets the king ask, and says the group comes too', async () => {
       const user = userEvent.setup()
-      currentUser = { id: 'u9', displayName: 'Jo' }
       mutations.startTableBackfill.mockResolvedValue({ queued: true })
       currentRoom = makeRoom(withQueue())
       render(<GroupPage />)
@@ -224,9 +223,17 @@ describe('GroupPage', () => {
       await waitFor(() => expect(refreshRoom).toHaveBeenCalled())
     })
 
+    it('offers a seated friend no such button — filling the table ends the wait for everyone', () => {
+      currentUser = { id: 'u9', displayName: 'Jo' }
+      currentRoom = makeRoom(withQueue())
+      render(<GroupPage />)
+
+      expect(screen.queryByRole('button', { name: 'Find us a match' })).not.toBeInTheDocument()
+      expect(screen.getByText('Waiting for Alex to start')).toBeInTheDocument()
+    })
+
     it('never sends a player elsewhere on success — the seat push takes everyone in together', async () => {
       const user = userEvent.setup()
-      currentUser = { id: 'u9', displayName: 'Jo' }
       mutations.startTableBackfill.mockResolvedValue({ queued: true, joinUrl: null })
       currentRoom = makeRoom(withQueue())
       render(<GroupPage />)
@@ -236,9 +243,8 @@ describe('GroupPage', () => {
       expect(navigateTo).not.toHaveBeenCalled()
     })
 
-    it('shows what is still filling and lets a non-king stop it', async () => {
+    it('shows what is still filling, and lets the king stop it', async () => {
       const user = userEvent.setup()
-      currentUser = { id: 'u9', displayName: 'Jo' }
       mutations.cancelTableBackfill.mockResolvedValue(true)
       currentRoom = makeRoom(
         withQueue({
@@ -257,6 +263,22 @@ describe('GroupPage', () => {
       await user.click(screen.getByRole('button', { name: 'Stop' }))
 
       expect(mutations.cancelTableBackfill).toHaveBeenCalledWith('table-1')
+    })
+
+    it('tells a seated friend it is filling without offering them Stop', () => {
+      currentUser = { id: 'u9', displayName: 'Jo' }
+      currentRoom = makeRoom(
+        withQueue({
+          backfillActive: true,
+          formingGaps: [
+            { queuePath: 'Attacker', displayName: 'Attacker', assigned: 1, needed: 1 },
+          ],
+        }),
+      )
+      render(<GroupPage />)
+
+      expect(screen.getByText('Finding your match')).toBeInTheDocument()
+      expect(screen.queryByRole('button', { name: 'Stop' })).not.toBeInTheDocument()
     })
 
     it('says a full table is starting rather than asking anyone to press anything', () => {
@@ -278,7 +300,6 @@ describe('GroupPage', () => {
 
     it('surfaces a refused request instead of leaving the button looking pressed', async () => {
       const user = userEvent.setup()
-      currentUser = { id: 'u9', displayName: 'Jo' }
       mutations.startTableBackfill.mockRejectedValue(new Error('table backfill already active'))
       currentRoom = makeRoom(withQueue())
       render(<GroupPage />)

@@ -11,7 +11,7 @@ import (
 )
 
 // StartTableBackfill enqueues seated table players and leaves matchmaking to the forming worker.
-func (s *Store) StartTableBackfill(ctx context.Context, tableID, actorUserID, modeQueueID uuid.UUID) (*QueueJoinResult, error) {
+func (s *Store) StartTableBackfill(ctx context.Context, tableID, kingUserID, modeQueueID uuid.UUID) (*QueueJoinResult, error) {
 	tx, err := s.db.BeginTx(ctx, nil)
 	if err != nil {
 		return nil, err
@@ -32,12 +32,14 @@ func (s *Store) StartTableBackfill(ctx context.Context, tableID, actorUserID, mo
 	if len(seated) == 0 {
 		return nil, fmt.Errorf("store: table has no seated players")
 	}
-	// Any seated player may ask for the rest of the match, not only the king (JQ-137).
-	// Whoever presses it puts the whole table into the queue as one party, so the only
-	// thing worth requiring is that the asker is part of what gets queued — a room
-	// member watching from outside the table has no seat of their own to carry in.
-	if !seatedIncludes(seated, actorUserID) {
-		return nil, fmt.Errorf("store: only a seated player can start backfill")
+	// The king's, like starting early, and for the same reason (JQ-137). Filling the
+	// remaining seats with strangers ends the wait for anyone still on their way just as
+	// surely as starting short-handed does — it sells their seat rather than playing
+	// without them — so it is the same decision taken on everybody's behalf, and it keeps
+	// the same owner.
+	king := tableKingUserID(seated)
+	if king == nil || *king != kingUserID {
+		return nil, fmt.Errorf("store: only the king can start backfill")
 	}
 	if active, err := s.TableBackfillActive(ctx, tableID); err != nil {
 		return nil, err
@@ -89,7 +91,7 @@ func (s *Store) StartTableBackfill(ctx context.Context, tableID, actorUserID, mo
 	tree := partytree.BuildFromPinnedSeats(pinned, seatRoles)
 	tree.TableID = tableID.String()
 
-	party, err := s.CreatePartyFromTreeTx(ctx, tx, modeQueue.ID, actorUserID, tree, members)
+	party, err := s.CreatePartyFromTreeTx(ctx, tx, modeQueue.ID, kingUserID, tree, members)
 	if err != nil {
 		return nil, err
 	}
@@ -160,9 +162,9 @@ type CancelTableBackfillResult struct {
 // out would silently convert their friends into strangers looking for a game on their
 // own. A request made for the whole table is withdrawn for the whole table.
 //
-// Any seated member may do it, for the same reason any of them may start it (JQ-137):
-// there is no owner of a group request. First writer wins — a second cancel finds
-// nothing waiting and reports false rather than failing.
+// The king's, like the request itself (JQ-137). Withdrawing it puts everyone back to
+// waiting, which is as much a decision for the group as making it was. A second cancel
+// finds nothing waiting and reports false rather than failing.
 func (s *Store) CancelTableBackfill(ctx context.Context, tableID, actorUserID uuid.UUID) (*CancelTableBackfillResult, error) {
 	tx, err := s.db.BeginTx(ctx, nil)
 	if err != nil {
@@ -181,8 +183,9 @@ func (s *Store) CancelTableBackfill(ctx context.Context, tableID, actorUserID uu
 	if err != nil {
 		return nil, err
 	}
-	if !seatedIncludes(seated, actorUserID) {
-		return nil, fmt.Errorf("store: only a seated player can cancel backfill")
+	king := tableKingUserID(seated)
+	if king == nil || *king != actorUserID {
+		return nil, fmt.Errorf("store: only the king can cancel backfill")
 	}
 
 	userIDs := make([]uuid.UUID, len(seated))
@@ -242,15 +245,6 @@ func (s *Store) CancelTableBackfill(ctx context.Context, tableID, actorUserID uu
 		NotifyUserIDs: userIDs,
 		QueuedCount:   len(waiting),
 	}, nil
-}
-
-func seatedIncludes(seated []TableSeat, userID uuid.UUID) bool {
-	for _, seat := range seated {
-		if seat.UserID == userID {
-			return true
-		}
-	}
-	return false
 }
 
 // waitingPartiesForUsersTx returns the parties these users are waiting in, and the queue
