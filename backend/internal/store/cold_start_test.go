@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"math"
 	"math/rand"
 	"testing"
 	"time"
@@ -372,5 +373,106 @@ func TestListConvergedRatingsIgnoresPerSeatRatings(t *testing.T) {
 	}
 	if got[0].Mu != 30 {
 		t.Errorf("mu = %v, want the mode-level 30", got[0].Mu)
+	}
+}
+
+// addPerSeatRatings gives every user a per-seat rating in a mode alongside
+// their mode-level one, deliberately far above and below it so that a leak
+// moves the fit rather than hiding inside its noise.
+func addPerSeatRatings(t *testing.T, st *Store, gameID uuid.UUID, modeKey string, users []uuid.UUID) {
+	t.Helper()
+	values, err := st.LoadPlayerRatings(context.Background(), gameID, modeKey)
+	if err != nil {
+		t.Fatalf("LoadPlayerRatings(%s): %v", modeKey, err)
+	}
+	for _, id := range users {
+		base := values[PlayerRatingKey(id)]
+		values[PlayerSeatRatingKey(id, "ClueGiver")] = RatingValue{Mu: base.Mu + 9, Sigma: 2, MatchesPlayed: 12}
+		values[PlayerSeatRatingKey(id, "Guesser")] = RatingValue{Mu: base.Mu - 9, Sigma: 2, MatchesPlayed: 8}
+	}
+	saveModeRatings(t, st, gameID, modeKey, values)
+}
+
+// coldStartSeedOutcome runs the whole cold-start flow once — build a
+// correlated population, fit it, then seed a newcomer who has played only the
+// source mode — and returns what the fit found and what the newcomer was
+// seeded with. withPerSeat adds per-seat rows to the population first.
+//
+// The population is identical between runs because seedCorrelatedModes draws
+// from a fixed seed, so two runs differ only in whether per-seat rows exist.
+func coldStartSeedOutcome(t *testing.T, withPerSeat bool) (usable int, seed coldstart.Seed) {
+	t.Helper()
+	st, gameID, users := newColdStartFixture(t, coldstart.MinPairedPlayers+10)
+	ctx := context.Background()
+
+	paired, newcomer := users[:len(users)-1], users[len(users)-1]
+	seedCorrelatedModes(t, st, gameID, paired, 0.9)
+
+	if withPerSeat {
+		addPerSeatRatings(t, st, gameID, "arena", paired)
+		addPerSeatRatings(t, st, gameID, "duel", paired)
+	}
+
+	arena, err := st.LoadPlayerRatings(ctx, gameID, "arena")
+	if err != nil {
+		t.Fatalf("LoadPlayerRatings: %v", err)
+	}
+	arena[PlayerRatingKey(newcomer)] = RatingValue{Mu: 34, Sigma: 2, MatchesPlayed: 20}
+	if withPerSeat {
+		// The newcomer carries per-seat rows of their own, so the seed path is
+		// exercised for a player who has them and not only the fit.
+		arena[PlayerSeatRatingKey(newcomer, "ClueGiver")] = RatingValue{Mu: 43, Sigma: 2, MatchesPlayed: 12}
+		arena[PlayerSeatRatingKey(newcomer, "Guesser")] = RatingValue{Mu: 25, Sigma: 2, MatchesPlayed: 8}
+	}
+	saveModeRatings(t, st, gameID, "arena", arena)
+
+	report, err := coldstart.NewRecomputer(st).RecomputeGame(ctx, gameID)
+	if err != nil {
+		t.Fatalf("RecomputeGame: %v", err)
+	}
+
+	seeds, err := coldstart.NewSeeder(st, true).Seed(ctx, gameID, "duel", []uuid.UUID{newcomer})
+	if err != nil {
+		t.Fatalf("Seed: %v", err)
+	}
+	got, ok := seeds[newcomer]
+	if !ok {
+		t.Fatal("a player with a settled arena rating was not seeded into duel")
+	}
+	return report.Usable, got
+}
+
+// Per-seat ratings (JQ-229) must be invisible to cold-start end to end, not
+// merely filtered out of two queries.
+//
+// Cold-start correlates a player's standing in one mode against their standing
+// in another. A per-seat row is a different quantity, so counting one as
+// evidence makes a single player look like several — which moves the measured
+// correlation, the population spread the seed is rescaled through, and the
+// seed itself. The whole path is run twice over an identical population, once
+// with per-seat rows present, and the two must agree exactly.
+func TestRecomputeThenSeedIgnoresPerSeatRatings(t *testing.T) {
+	plainUsable, plainSeed := coldStartSeedOutcome(t, false)
+	seatUsable, seatSeed := coldStartSeedOutcome(t, true)
+
+	if plainUsable == 0 {
+		t.Fatalf("refit found no usable pair over strongly correlated modes, so this proves nothing")
+	}
+	if seatUsable != plainUsable {
+		t.Errorf("per-seat rows changed the fit: %d usable pair(s) with them, %d without", seatUsable, plainUsable)
+	}
+	// Compared to a tolerance rather than bit-exactly. The two runs are
+	// separate fixtures, so their user ids differ, and ListConvergedRatings
+	// orders by user id — which changes the order the fit sums the same
+	// values in, moving the last couple of bits. That noise is around 1e-14
+	// here; a leak is nothing like that small (without the fix this mu moves
+	// by about 4.8), so the gap between the two is wide enough that the
+	// tolerance costs no sensitivity.
+	const tol = 1e-9
+	if math.Abs(seatSeed.Rating.Mu-plainSeed.Rating.Mu) > tol {
+		t.Errorf("per-seat rows changed the seeded mu: %v with them, %v without", seatSeed.Rating.Mu, plainSeed.Rating.Mu)
+	}
+	if math.Abs(seatSeed.Rating.Sigma-plainSeed.Rating.Sigma) > tol {
+		t.Errorf("per-seat rows changed the seeded sigma: %v with them, %v without", seatSeed.Rating.Sigma, plainSeed.Rating.Sigma)
 	}
 }
