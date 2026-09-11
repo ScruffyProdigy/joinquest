@@ -47,11 +47,28 @@ function makeResult(overrides = {}) {
     reported: true,
     complete: true,
     regroupInviteCode: null,
+    // A group who played the match out: the one case that still gets the regroup roster
+    // rather than the bare actions (JQ-233).
+    groupPlay: true,
     // Both PENDING on purpose: that is the state two players who just finished a match
     // actually land in, and the state the old count gate deadlocked on.
     participants: [
-      { user: { id: 'a', displayName: 'Ada' }, finished: true, placement: 1, winner: true, regroup: 'PENDING' },
-      { user: { id: 'b', displayName: 'Bo' }, finished: true, placement: 2, winner: false, regroup: 'PENDING' },
+      {
+        user: { id: 'a', displayName: 'Ada' },
+        finished: true,
+        placement: 1,
+        winner: true,
+        reason: 'COMPLETED',
+        regroup: 'PENDING',
+      },
+      {
+        user: { id: 'b', displayName: 'Bo' },
+        finished: true,
+        placement: 2,
+        winner: false,
+        reason: 'COMPLETED',
+        regroup: 'PENDING',
+      },
     ],
     ...overrides,
   }
@@ -251,6 +268,29 @@ describe('ReturnPage', () => {
     // The regression this whole fix exists for: playAgain is the only writer of IN, and
     // this button is its only caller, so an all-PENDING roster that renders a disabled
     // button is a permanent deadlock for every real player.
+    /**
+     * The standings are not the roster, and only the roster is conditional. A player who was
+     * knocked out still wants to know how it ended — they just do not get the decision board
+     * they were not part of (JQ-233).
+     */
+    it('still shows an eliminated player the final standings, without the roster', async () => {
+      window.location.search = '?match=match-1'
+      vi.mocked(returnLib.fetchReturnDestination).mockResolvedValue({ path: '/', kind: 'HOME' })
+      vi.mocked(matchResultLib.fetchMatchResult).mockResolvedValue(
+        makeResult({
+          participants: makeResult().participants.map((p) =>
+            p.user.id === 'a' ? { ...p, reason: 'ELIMINATED' } : p,
+          ),
+        }),
+      )
+      render(<ReturnPage />)
+
+      expect(await screen.findByText('Play again?')).toBeInTheDocument()
+      expect(screen.getByText('Final standings')).toBeInTheDocument()
+      expect(screen.queryByText('Who’s playing again?')).not.toBeInTheDocument()
+      expect(screen.getByRole('button', { name: 'Another round' })).toBeEnabled()
+    })
+
     it('offers an enabled primary action on an all-PENDING roster', async () => {
       await renderComplete()
       expect(screen.getByRole('button', { name: 'Another round' })).toBeEnabled()
