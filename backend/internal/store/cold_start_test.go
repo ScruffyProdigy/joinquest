@@ -320,3 +320,57 @@ func TestRecomputeThenSeedOverRealRatings(t *testing.T) {
 		t.Errorf("audit trail holds %d seed(s), want 1", n)
 	}
 }
+
+// Cold-start seeding correlates a player's standing in one mode against their
+// standing in another. Since JQ-229 player_ratings also holds a row per seat
+// class a player has sat in, and those are a different quantity — counting one
+// as a second observation of the player's mode-level standing would let a
+// single player contribute several times to a mode they play one of, inflating
+// the fit with what is really one data point.
+func TestListSeedSourcesIgnoresPerSeatRatings(t *testing.T) {
+	st, gameID, users := newColdStartFixture(t, 1)
+	ctx := context.Background()
+	userID := users[0]
+
+	saveModeRatings(t, st, gameID, "arena", map[string]RatingValue{
+		PlayerRatingKey(userID):                  {Mu: 31, Sigma: 2, MatchesPlayed: 20},
+		PlayerSeatRatingKey(userID, "ClueGiver"): {Mu: 38, Sigma: 2, MatchesPlayed: 12},
+		PlayerSeatRatingKey(userID, "Guesser"):   {Mu: 24, Sigma: 2, MatchesPlayed: 8},
+	})
+
+	got, err := st.ListSeedSources(ctx, gameID, "duel", []uuid.UUID{userID}, coldstart.ConvergedSigma)
+	if err != nil {
+		t.Fatalf("ListSeedSources: %v", err)
+	}
+	sources := got[userID]
+	if len(sources) != 1 {
+		t.Fatalf("returned %d source(s), want only the mode-level one: %+v", len(sources), sources)
+	}
+	if sources[0].Rating.Mu != 31 {
+		t.Errorf("source mu = %v, want the mode-level 31 rather than a per-seat rating", sources[0].Rating.Mu)
+	}
+}
+
+// The same for the fit's own population: a per-seat row must not read as
+// another converged player in the mode.
+func TestListConvergedRatingsIgnoresPerSeatRatings(t *testing.T) {
+	st, gameID, users := newColdStartFixture(t, 1)
+	ctx := context.Background()
+	userID := users[0]
+
+	saveModeRatings(t, st, gameID, "arena", map[string]RatingValue{
+		PlayerRatingKey(userID):                  {Mu: 30, Sigma: 2, MatchesPlayed: 20},
+		PlayerSeatRatingKey(userID, "ClueGiver"): {Mu: 37, Sigma: 2, MatchesPlayed: 12},
+	})
+
+	got, err := st.ListConvergedRatings(ctx, gameID, coldstart.ConvergedSigma)
+	if err != nil {
+		t.Fatalf("ListConvergedRatings: %v", err)
+	}
+	if len(got) != 1 {
+		t.Fatalf("returned %d rating(s), want only the mode-level one: %+v", len(got), got)
+	}
+	if got[0].Mu != 30 {
+		t.Errorf("mu = %v, want the mode-level 30", got[0].Mu)
+	}
+}

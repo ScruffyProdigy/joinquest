@@ -11,6 +11,7 @@ on:
       - 'scripts/ensure-test-database.sh'
       - 'scripts/check-concurrent-test-isolation.sh'
       - 'scripts/check-catalog-identity.mjs'
+      - 'scripts/check-migration-versions.sh'
       - 'k8s/jobs/patch-game-handoff-urls.yaml'
       - '.github/workflows/backend-tests.yml'
   pull_request:
@@ -23,6 +24,7 @@ on:
       - 'scripts/ensure-test-database.sh'
       - 'scripts/check-concurrent-test-isolation.sh'
       - 'scripts/check-catalog-identity.mjs'
+      - 'scripts/check-migration-versions.sh'
       - 'k8s/jobs/patch-game-handoff-urls.yaml'
       - '.github/workflows/backend-tests.yml'
 
@@ -70,6 +72,12 @@ jobs:
     # handoff URL belongs to the game it advertises (JQ-203).
     - name: Check catalog identity
       run: node scripts/check-catalog-identity.mjs
+
+    # Two agents branching from main at once both pick the same next migration
+    # number, and neither PR's CI can see the other's. Catching it on the
+    # merged tree is the only place it can be caught before a deploy fails.
+    - name: Check migration versions
+      run: ./scripts/check-migration-versions.sh
 
   test:
     runs-on: ubuntu-latest
