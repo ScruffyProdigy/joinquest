@@ -73,11 +73,18 @@ func (s *WebPushSender) PublicKey() string {
 }
 
 // payload is the wire shape frontend/public/sw.js parses.
+//
+// It crosses an untrusted push service, so it carries nothing about the game.
+// The verification token is the exception and is safe: it is single-use, short
+// lived, and proves only that this endpoint received what we sent -- which is
+// exactly what we are trying to find out.
 type payload struct {
 	Title string `json:"title"`
 	Body  string `json:"body"`
 	URL   string `json:"url"`
 	Tag   string `json:"tag"`
+	Type  string `json:"type,omitempty"`
+	Token string `json:"token,omitempty"`
 }
 
 // Send delivers one notification. A permanent rejection becomes
@@ -92,6 +99,8 @@ func (s *WebPushSender) Send(ctx context.Context, sub Subscription, note Notific
 		Body:  note.Body,
 		URL:   note.URL,
 		Tag:   note.Tag,
+		Type:  note.Kind,
+		Token: note.Token,
 	})
 	if err != nil {
 		return err

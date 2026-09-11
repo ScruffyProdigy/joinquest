@@ -1,5 +1,5 @@
 import { startSeatHeldSignals, stopSeatHeldSignals } from './inTabSignals'
-import { isPushSupported, resubscribeAfterChange } from './push'
+import { confirmPushVerification, isPushSupported, resubscribeAfterChange } from './push'
 
 /*
  * Bridges the service worker's messages into the app.
@@ -12,6 +12,7 @@ import { isPushSupported, resubscribeAfterChange } from './push'
 export const SEAT_HELD = 'joinquest:seat-held'
 export const NOTIFICATION_CLICK = 'joinquest:notification-click'
 export const SUBSCRIPTION_CHANGED = 'joinquest:push-subscription-changed'
+export const PUSH_VERIFY = 'joinquest:push-verify'
 
 /**
  * Starts listening. Returns a teardown.
@@ -26,7 +27,7 @@ export function listenForPushMessages({ onSeatHeld, onNotificationClick } = {}) 
   }
 
   const handler = (event) => {
-    const { type, url } = event.data ?? {}
+    const { type, url, token } = event.data ?? {}
     switch (type) {
       case SEAT_HELD:
         // The tab is visible but may not be the window the player is looking
@@ -39,6 +40,12 @@ export function listenForPushMessages({ onSeatHeld, onNotificationClick } = {}) 
         // They are here now, so clear anything still flashing.
         stopSeatHeldSignals()
         onNotificationClick?.(url)
+        break
+      case PUSH_VERIFY:
+        // This tab received the round-trip push, which is the proof. Hand the
+        // token back; the opt-in that is waiting on it may be in another tab,
+        // so the server is what tells it, not us.
+        confirmPushVerification(token).catch(() => {})
         break
       case SUBSCRIPTION_CHANGED:
         // Best-effort: the endpoint is already dead either way.

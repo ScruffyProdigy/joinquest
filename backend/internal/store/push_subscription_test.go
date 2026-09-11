@@ -20,7 +20,7 @@ func createPushTestUser(t *testing.T, st *Store, cleaner *TestCleaner, label str
 	return user.ID
 }
 
-func TestSavePushSubscriptionStoresAnInstallAndMakesTheUserReachable(t *testing.T) {
+func TestSavePushSubscriptionStoresAnInstallForTheUser(t *testing.T) {
 	st := openTestStore(t)
 	cleaner := st.NewTestCleaner(t)
 	ctx := context.Background()

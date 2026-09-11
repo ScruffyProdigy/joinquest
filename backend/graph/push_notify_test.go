@@ -18,16 +18,25 @@ type fakeSender struct {
 	publicKey string
 	results   map[string]error
 	sent      []string
+	// notes is every notification handed over, in order. A verification test
+	// reads its token from here for the same reason a service worker does:
+	// that is where the token actually travels.
+	notes []push.Notification
 }
 
-func (f *fakeSender) Send(_ context.Context, sub push.Subscription, _ push.Notification) error {
+func (f *fakeSender) Send(_ context.Context, sub push.Subscription, note push.Notification) error {
 	f.sent = append(f.sent, sub.Endpoint)
+	f.notes = append(f.notes, note)
 	return f.results[sub.Endpoint]
 }
 
 func (f *fakeSender) PublicKey() string { return f.publicKey }
 
 // subscribeUser registers endpoints for a user and returns them.
+//
+// Each one is verified too, because these tests mean "a player who has opted
+// in and can be reached". A bare save is only the browser's claim, and leaves
+// the player unreachable by design -- see store.ConfirmPushSubscriptionVerification.
 func subscribeUser(t *testing.T, ctx context.Context, env *queueIntegrationEnv, userID uuid.UUID, n int) []string {
 	t.Helper()
 	var endpoints []string
@@ -38,9 +47,23 @@ func subscribeUser(t *testing.T, ctx context.Context, env *queueIntegrationEnv, 
 		}); err != nil {
 			t.Fatalf("SavePushSubscription: %v", err)
 		}
+		verifyEndpoint(t, ctx, env, userID, endpoint)
 		endpoints = append(endpoints, endpoint)
 	}
 	return endpoints
+}
+
+// verifyEndpoint runs the round trip's bookkeeping directly, standing in for a
+// push that went out and was acked.
+func verifyEndpoint(t *testing.T, ctx context.Context, env *queueIntegrationEnv, userID uuid.UUID, endpoint string) {
+	t.Helper()
+	_, token, err := env.Store.StartPushSubscriptionVerification(ctx, userID, endpoint)
+	if err != nil {
+		t.Fatalf("StartPushSubscriptionVerification: %v", err)
+	}
+	if _, err := env.Store.ConfirmPushSubscriptionVerification(ctx, token); err != nil {
+		t.Fatalf("ConfirmPushSubscriptionVerification: %v", err)
+	}
 }
 
 func newPushTestUser(t *testing.T, ctx context.Context, env *queueIntegrationEnv, cleaner *store.TestCleaner, label string) uuid.UUID {

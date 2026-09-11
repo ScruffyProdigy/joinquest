@@ -286,7 +286,13 @@ export function waitingPageSubline(gameName, modeName, roleLabel, selectedOption
 // Leaving gives up the player's place, so it is confirmed first.
 /* Notifications: leaving the page without losing your place. */
 
-export const NOTIFY_ME = 'Notify me instead'
+/*
+ * The control names the benefit, not the mechanism. "Notify me instead"
+ * describes what the code does; a player deciding whether it is safe to put
+ * their phone away is asking something else, and the answer is the sentence
+ * they get.
+ */
+export const NOTIFY_ME = "You can close this — we'll ping you"
 export const NOTIFY_ME_VALUE = 'Leave this page and keep your spot.'
 export const NOTIFY_ME_IOS = 'Get notified on your phone'
 export const NOTIFY_ON = "You'll be notified"
@@ -295,6 +301,20 @@ export const NOTIFY_OFF = 'Turn off notifications'
 export const NOTIFY_BLOCKED =
   'Notifications are switched off for JoinQuest in your browser settings.'
 export const NOTIFY_FAILED = 'Notifications could not be switched on. Try again.'
+
+/* The round trip, and the two ways it ends. */
+
+export const NOTIFY_VERIFYING = 'Checking we can reach you…'
+/*
+ * Said plainly, and said before they act on it. A player who pressed the
+ * button believes they are covered; discovering otherwise by losing their
+ * place is the outcome this whole mechanism exists to prevent, so the failure
+ * has to be as loud as the success would have been.
+ */
+export const NOTIFY_UNVERIFIED = "We couldn't reach your browser with a test notification."
+export const NOTIFY_UNVERIFIED_VALUE =
+  'Leaving this page will still give up your spot. Stay here, or try again.'
+export const NOTIFY_RETRY = 'Try again'
 
 export const INSTALL_TITLE = 'Add JoinQuest to your Home Screen'
 export const INSTALL_BODY =
@@ -309,6 +329,15 @@ export const LEAVE_QUEUE_TITLE = 'Leave the queue?'
 export const LEAVE_QUEUE_BODY = "You'll lose your spot and have to start over."
 export const LEAVE_QUEUE_CONFIRM = 'Leave queue'
 export const STAY_IN_QUEUE = 'Stay in queue'
+
+/*
+ * Opting in has to change the page, not only what happens after it. A screen
+ * that reads exactly as it did before does not give anyone permission to walk
+ * away from it, however true the promise underneath is.
+ */
+export function waitingPageNotifiedHint() {
+  return "Put your phone away — we'll notify you when your group is ready."
+}
 
 export function bannerIntentWaitingHint() {
   return 'We will notify you here when your group is ready.'

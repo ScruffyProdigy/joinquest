@@ -16,6 +16,9 @@ Three independent states, easy to confuse:
 
 This is not a presence check. It answers "can we get them back", never "are
 they here right now".
+
+And "can" means proven, not claimed: a subscription counts only once a push
+sent to it has been acked. See internal/store/push_verification.go.
 */
 
 // ReachabilityReason explains a verdict. Each reason has a different fix, so
@@ -27,6 +30,12 @@ const (
 	ReachabilityReachable ReachabilityReason = "reachable"
 	// ReachabilityNeverSubscribed -- never registered an install. A UX problem.
 	ReachabilityNeverSubscribed ReachabilityReason = "never-subscribed"
+	// ReachabilityUnverified -- an install is registered, but no push sent to
+	// it has ever been acked. A claim, not a fact: the endpoint may be stale,
+	// the keys wrong, or the push service dropping us. Deliberately not
+	// reachable, because holding a seat on an unproven endpoint strands the
+	// player it was held for.
+	ReachabilityUnverified ReachabilityReason = "unverified"
 	// ReachabilitySubscriptionExpired -- opted in, but every install has since
 	// been rejected. A storage-invalidation problem.
 	ReachabilitySubscriptionExpired ReachabilityReason = "subscription-expired"
@@ -41,8 +50,12 @@ const (
 // user's devices and several callers ask about different subjects.
 type PushReachability struct {
 	UserID uuid.UUID
-	// Live is every install still believed deliverable, newest last.
+	// Live is every install still believed deliverable, newest last. Includes
+	// unverified ones: they are worth a best-effort send, just not a promise.
 	Live []PushSubscription
+	// Verified is the subset of Live a push has actually reached. This is what
+	// reachability is decided on.
+	Verified []PushSubscription
 	// ExpiredCount and LastExpiredAt cover installs the push service rejected.
 	ExpiredCount  int
 	LastExpiredAt *time.Time
@@ -61,8 +74,11 @@ func (r *PushReachability) Reason(pushConfigured bool) ReachabilityReason {
 	if r == nil {
 		return ReachabilityNeverSubscribed
 	}
-	if len(r.Live) > 0 {
+	if len(r.Verified) > 0 {
 		return ReachabilityReachable
+	}
+	if len(r.Live) > 0 {
+		return ReachabilityUnverified
 	}
 	if r.ExpiredCount > 0 {
 		return ReachabilitySubscriptionExpired
@@ -81,8 +97,8 @@ func (r *PushReachability) Reachable(pushConfigured bool) bool {
 // Call it live rather than caching: a player can become reachable mid-wait by
 // accepting the notify prompt.
 func (s *Store) GetPushReachability(ctx context.Context, userID uuid.UUID) (*PushReachability, error) {
-	const query = `
-		SELECT id, user_id, endpoint, p256dh, auth, user_agent, created_at, last_used_at, expired_at
+	query := `
+		SELECT ` + pushSubscriptionColumns + `
 		FROM push_subscriptions
 		WHERE user_id = $1
 		ORDER BY created_at`
@@ -96,10 +112,7 @@ func (s *Store) GetPushReachability(ctx context.Context, userID uuid.UUID) (*Pus
 	out := &PushReachability{UserID: userID}
 	for rows.Next() {
 		var sub PushSubscription
-		if err := rows.Scan(
-			&sub.ID, &sub.UserID, &sub.Endpoint, &sub.P256dh, &sub.Auth,
-			&sub.UserAgent, &sub.CreatedAt, &sub.LastUsedAt, &sub.ExpiredAt,
-		); err != nil {
+		if err := scanPushSubscription(rows, &sub); err != nil {
 			return nil, err
 		}
 		if sub.ExpiredAt != nil {
@@ -110,6 +123,9 @@ func (s *Store) GetPushReachability(ctx context.Context, userID uuid.UUID) (*Pus
 			continue
 		}
 		out.Live = append(out.Live, sub)
+		if sub.VerifiedAt != nil {
+			out.Verified = append(out.Verified, sub)
+		}
 		if sub.LastUsedAt != nil && (out.LastDeliveredAt == nil || sub.LastUsedAt.After(*out.LastDeliveredAt)) {
 			out.LastDeliveredAt = sub.LastUsedAt
 		}

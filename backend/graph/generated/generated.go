@@ -276,6 +276,7 @@ type ComplexityRoot struct {
 		CompleteLinkEmailWithLink    func(childComplexity int, token string, confirmMerge *bool) int
 		CompleteSignInWithCode       func(childComplexity int, email string, code string) int
 		CompleteSignInWithLink       func(childComplexity int, token string) int
+		ConfirmPushVerification      func(childComplexity int, token string) int
 		ConnectMyGame                func(childComplexity int, input model.ConnectMyGameInput) int
 		CreateDeveloperAPIKey        func(childComplexity int, name *string) int
 		CreateGuestSession           func(childComplexity int) int
@@ -323,6 +324,7 @@ type ComplexityRoot struct {
 		SyncMyGameManifest           func(childComplexity int, gameID string) int
 		UpdateMyGameMetadata         func(childComplexity int, input model.UpdateMyGameMetadataInput) int
 		UpdatePlayerProfile          func(childComplexity int, displayName string, avatarKey *string) int
+		VerifyPushSubscription       func(childComplexity int, endpoint string) int
 	}
 
 	MyGameCredentials struct {
@@ -377,6 +379,16 @@ type ComplexityRoot struct {
 		PublicKey         func(childComplexity int) int
 		Reachable         func(childComplexity int) int
 		SubscriptionCount func(childComplexity int) int
+		VerifiedCount     func(childComplexity int) int
+	}
+
+	PushVerification struct {
+		Capability func(childComplexity int) int
+		Sent       func(childComplexity int) int
+	}
+
+	PushVerificationResult struct {
+		Verified func(childComplexity int) int
 	}
 
 	Query struct {
@@ -759,6 +771,8 @@ type MutationResolver interface {
 	DeclinePlayAgain(ctx context.Context, matchID string) (*model.ReturnDestination, error)
 	SavePushSubscription(ctx context.Context, input model.SavePushSubscriptionInput) (*model.PushCapability, error)
 	DeletePushSubscription(ctx context.Context, endpoint string) (*model.PushCapability, error)
+	VerifyPushSubscription(ctx context.Context, endpoint string) (*model.PushVerification, error)
+	ConfirmPushVerification(ctx context.Context, token string) (*model.PushVerificationResult, error)
 	CreateRoom(ctx context.Context) (*model.Room, error)
 	JoinRoom(ctx context.Context, inviteCode string) (*model.Room, error)
 	LeaveRoom(ctx context.Context) (bool, error)
@@ -1840,6 +1854,17 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.Mutation.CompleteSignInWithLink(childComplexity, args["token"].(string)), true
+	case "Mutation.confirmPushVerification":
+		if e.complexity.Mutation.ConfirmPushVerification == nil {
+			break
+		}
+
+		args, err := ec.field_Mutation_confirmPushVerification_args(ctx, rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.complexity.Mutation.ConfirmPushVerification(childComplexity, args["token"].(string)), true
 	case "Mutation.connectMyGame":
 		if e.complexity.Mutation.ConnectMyGame == nil {
 			break
@@ -2322,6 +2347,17 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.Mutation.UpdatePlayerProfile(childComplexity, args["displayName"].(string), args["avatarKey"].(*string)), true
+	case "Mutation.verifyPushSubscription":
+		if e.complexity.Mutation.VerifyPushSubscription == nil {
+			break
+		}
+
+		args, err := ec.field_Mutation_verifyPushSubscription_args(ctx, rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.complexity.Mutation.VerifyPushSubscription(childComplexity, args["endpoint"].(string)), true
 
 	case "MyGameCredentials.serviceToken":
 		if e.complexity.MyGameCredentials.ServiceToken == nil {
@@ -2532,6 +2568,32 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.PushCapability.SubscriptionCount(childComplexity), true
+	case "PushCapability.verifiedCount":
+		if e.complexity.PushCapability.VerifiedCount == nil {
+			break
+		}
+
+		return e.complexity.PushCapability.VerifiedCount(childComplexity), true
+
+	case "PushVerification.capability":
+		if e.complexity.PushVerification.Capability == nil {
+			break
+		}
+
+		return e.complexity.PushVerification.Capability(childComplexity), true
+	case "PushVerification.sent":
+		if e.complexity.PushVerification.Sent == nil {
+			break
+		}
+
+		return e.complexity.PushVerification.Sent(childComplexity), true
+
+	case "PushVerificationResult.verified":
+		if e.complexity.PushVerificationResult.Verified == nil {
+			break
+		}
+
+		return e.complexity.PushVerificationResult.Verified(childComplexity), true
 
 	case "Query.catalogTagTaxonomy":
 		if e.complexity.Query.CatalogTagTaxonomy == nil {
@@ -4864,17 +4926,28 @@ the browser once granted: a grant on a platform that cannot deliver, or a
 subscription the push service has since expired, is not reachability. Staying
 queued while away is gated on this, because a queue held open for a player who
 will never be told is worse than one that lets them go.
+
+Nor is a stored subscription enough on its own. It is the browser's claim that
+an endpoint works; reachability is the claim having been tested. See
+` + "`" + `verifyPushSubscription` + "`" + `.
 """
 type PushCapability {
   """
-  True when at least one live subscription is stored for this player.
+  True when at least one stored subscription has been verified -- a push was
+  sent to it and acked. Registering alone does not set this.
   """
   reachable: Boolean!
   """
-  How many browser installs are subscribed. A player may queue from a phone and
-  a desktop at once; both ring.
+  How many browser installs are subscribed, verified or not. A player may queue
+  from a phone and a desktop at once; both ring.
   """
   subscriptionCount: Int!
+  """
+  How many of those installs have been verified. Zero with a non-zero
+  ` + "`" + `subscriptionCount` + "`" + ` is the interesting state: the browser registered and
+  nothing we sent ever came back.
+  """
+  verifiedCount: Int!
   """
   The VAPID application server key the browser needs to subscribe. Null when
   push is not configured on this deployment, which is the signal to hide the
@@ -4902,6 +4975,45 @@ extend type Mutation {
   notifications off, or when the browser reports the subscription has changed.
   """
   deletePushSubscription(endpoint: String!): PushCapability!
+  """
+  Test one browser install by sending it a push, so the answer to "can we reach
+  this player" is a fact rather than an assumption.
+
+  Sends immediately and returns; the proof arrives separately, when the service
+  worker that received the push calls ` + "`" + `confirmPushVerification` + "`" + `. Poll
+  ` + "`" + `pushCapability` + "`" + `, or wait for the service worker's message, to learn the
+  outcome. Nothing here promises the push will land -- that is the point of
+  sending it.
+  """
+  verifyPushSubscription(endpoint: String!): PushVerification!
+  """
+  Redeem a verification token, marking the subscription that received it
+  verified.
+
+  The token is the credential, so this needs no session: by design it can be
+  called by a service worker whose page has already gone away. An unknown,
+  replayed, or expired token is reported as not verified rather than as an
+  error -- it is a normal outcome, not a fault.
+  """
+  confirmPushVerification(token: String!): PushVerificationResult!
+}
+
+"""The outcome of asking to verify one browser install."""
+type PushVerification {
+  """
+  True when a push was actually handed to the push service. False when this
+  deployment cannot send, or the endpoint is already gone -- in both cases no
+  ack is coming and the caller should stop waiting.
+  """
+  sent: Boolean!
+  """This player's reachability as it stands now, before any ack."""
+  capability: PushCapability!
+}
+
+"""The outcome of redeeming a verification token."""
+type PushVerificationResult {
+  """True when the token was live and a subscription is now verified."""
+  verified: Boolean!
 }
 
 input SavePushSubscriptionInput {
@@ -5350,6 +5462,17 @@ func (ec *executionContext) field_Mutation_completeSignInWithLink_args(ctx conte
 	var err error
 	args := map[string]any{}
 	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "token", ec.unmarshalNID2string)
+	if err != nil {
+		return nil, err
+	}
+	args["token"] = arg0
+	return args, nil
+}
+
+func (ec *executionContext) field_Mutation_confirmPushVerification_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
+	var err error
+	args := map[string]any{}
+	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "token", ec.unmarshalNString2string)
 	if err != nil {
 		return nil, err
 	}
@@ -5919,6 +6042,17 @@ func (ec *executionContext) field_Mutation_updatePlayerProfile_args(ctx context.
 		return nil, err
 	}
 	args["avatarKey"] = arg1
+	return args, nil
+}
+
+func (ec *executionContext) field_Mutation_verifyPushSubscription_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
+	var err error
+	args := map[string]any{}
+	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "endpoint", ec.unmarshalNString2string)
+	if err != nil {
+		return nil, err
+	}
+	args["endpoint"] = arg0
 	return args, nil
 }
 
@@ -12855,6 +12989,8 @@ func (ec *executionContext) fieldContext_Mutation_savePushSubscription(ctx conte
 				return ec.fieldContext_PushCapability_reachable(ctx, field)
 			case "subscriptionCount":
 				return ec.fieldContext_PushCapability_subscriptionCount(ctx, field)
+			case "verifiedCount":
+				return ec.fieldContext_PushCapability_verifiedCount(ctx, field)
 			case "publicKey":
 				return ec.fieldContext_PushCapability_publicKey(ctx, field)
 			}
@@ -12904,6 +13040,8 @@ func (ec *executionContext) fieldContext_Mutation_deletePushSubscription(ctx con
 				return ec.fieldContext_PushCapability_reachable(ctx, field)
 			case "subscriptionCount":
 				return ec.fieldContext_PushCapability_subscriptionCount(ctx, field)
+			case "verifiedCount":
+				return ec.fieldContext_PushCapability_verifiedCount(ctx, field)
 			case "publicKey":
 				return ec.fieldContext_PushCapability_publicKey(ctx, field)
 			}
@@ -12918,6 +13056,98 @@ func (ec *executionContext) fieldContext_Mutation_deletePushSubscription(ctx con
 	}()
 	ctx = graphql.WithFieldContext(ctx, fc)
 	if fc.Args, err = ec.field_Mutation_deletePushSubscription_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Mutation_verifyPushSubscription(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_Mutation_verifyPushSubscription,
+		func(ctx context.Context) (any, error) {
+			fc := graphql.GetFieldContext(ctx)
+			return ec.resolvers.Mutation().VerifyPushSubscription(ctx, fc.Args["endpoint"].(string))
+		},
+		nil,
+		ec.marshalNPushVerification2ᚖgithubᚗcomᚋscruffyprodigyᚋjoinquestᚋgraphᚋmodelᚐPushVerification,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_Mutation_verifyPushSubscription(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Mutation",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "sent":
+				return ec.fieldContext_PushVerification_sent(ctx, field)
+			case "capability":
+				return ec.fieldContext_PushVerification_capability(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type PushVerification", field.Name)
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Mutation_verifyPushSubscription_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Mutation_confirmPushVerification(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_Mutation_confirmPushVerification,
+		func(ctx context.Context) (any, error) {
+			fc := graphql.GetFieldContext(ctx)
+			return ec.resolvers.Mutation().ConfirmPushVerification(ctx, fc.Args["token"].(string))
+		},
+		nil,
+		ec.marshalNPushVerificationResult2ᚖgithubᚗcomᚋscruffyprodigyᚋjoinquestᚋgraphᚋmodelᚐPushVerificationResult,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_Mutation_confirmPushVerification(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Mutation",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "verified":
+				return ec.fieldContext_PushVerificationResult_verified(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type PushVerificationResult", field.Name)
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Mutation_confirmPushVerification_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
 		ec.Error(ctx, err)
 		return fc, err
 	}
@@ -14751,6 +14981,35 @@ func (ec *executionContext) fieldContext_PushCapability_subscriptionCount(_ cont
 	return fc, nil
 }
 
+func (ec *executionContext) _PushCapability_verifiedCount(ctx context.Context, field graphql.CollectedField, obj *model.PushCapability) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_PushCapability_verifiedCount,
+		func(ctx context.Context) (any, error) {
+			return obj.VerifiedCount, nil
+		},
+		nil,
+		ec.marshalNInt2int,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_PushCapability_verifiedCount(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "PushCapability",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Int does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _PushCapability_publicKey(ctx context.Context, field graphql.CollectedField, obj *model.PushCapability) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
@@ -14775,6 +15034,103 @@ func (ec *executionContext) fieldContext_PushCapability_publicKey(_ context.Cont
 		IsResolver: false,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _PushVerification_sent(ctx context.Context, field graphql.CollectedField, obj *model.PushVerification) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_PushVerification_sent,
+		func(ctx context.Context) (any, error) {
+			return obj.Sent, nil
+		},
+		nil,
+		ec.marshalNBoolean2bool,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_PushVerification_sent(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "PushVerification",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Boolean does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _PushVerification_capability(ctx context.Context, field graphql.CollectedField, obj *model.PushVerification) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_PushVerification_capability,
+		func(ctx context.Context) (any, error) {
+			return obj.Capability, nil
+		},
+		nil,
+		ec.marshalNPushCapability2ᚖgithubᚗcomᚋscruffyprodigyᚋjoinquestᚋgraphᚋmodelᚐPushCapability,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_PushVerification_capability(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "PushVerification",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "reachable":
+				return ec.fieldContext_PushCapability_reachable(ctx, field)
+			case "subscriptionCount":
+				return ec.fieldContext_PushCapability_subscriptionCount(ctx, field)
+			case "verifiedCount":
+				return ec.fieldContext_PushCapability_verifiedCount(ctx, field)
+			case "publicKey":
+				return ec.fieldContext_PushCapability_publicKey(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type PushCapability", field.Name)
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _PushVerificationResult_verified(ctx context.Context, field graphql.CollectedField, obj *model.PushVerificationResult) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_PushVerificationResult_verified,
+		func(ctx context.Context) (any, error) {
+			return obj.Verified, nil
+		},
+		nil,
+		ec.marshalNBoolean2bool,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_PushVerificationResult_verified(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "PushVerificationResult",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Boolean does not have child fields")
 		},
 	}
 	return fc, nil
@@ -16451,6 +16807,8 @@ func (ec *executionContext) fieldContext_Query_pushCapability(_ context.Context,
 				return ec.fieldContext_PushCapability_reachable(ctx, field)
 			case "subscriptionCount":
 				return ec.fieldContext_PushCapability_subscriptionCount(ctx, field)
+			case "verifiedCount":
+				return ec.fieldContext_PushCapability_verifiedCount(ctx, field)
 			case "publicKey":
 				return ec.fieldContext_PushCapability_publicKey(ctx, field)
 			}
@@ -26677,6 +27035,20 @@ func (ec *executionContext) _Mutation(ctx context.Context, sel ast.SelectionSet)
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
+		case "verifyPushSubscription":
+			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
+				return ec._Mutation_verifyPushSubscription(ctx, field)
+			})
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "confirmPushVerification":
+			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
+				return ec._Mutation_confirmPushVerification(ctx, field)
+			})
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
 		case "createRoom":
 			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
 				return ec._Mutation_createRoom(ctx, field)
@@ -27258,8 +27630,96 @@ func (ec *executionContext) _PushCapability(ctx context.Context, sel ast.Selecti
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
+		case "verifiedCount":
+			out.Values[i] = ec._PushCapability_verifiedCount(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
 		case "publicKey":
 			out.Values[i] = ec._PushCapability_publicKey(ctx, field, obj)
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch(ctx)
+	if out.Invalids > 0 {
+		return graphql.Null
+	}
+
+	atomic.AddInt32(&ec.deferred, int32(len(deferred)))
+
+	for label, dfs := range deferred {
+		ec.processDeferredGroup(graphql.DeferredGroup{
+			Label:    label,
+			Path:     graphql.GetPath(ctx),
+			FieldSet: dfs,
+			Context:  ctx,
+		})
+	}
+
+	return out
+}
+
+var pushVerificationImplementors = []string{"PushVerification"}
+
+func (ec *executionContext) _PushVerification(ctx context.Context, sel ast.SelectionSet, obj *model.PushVerification) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, pushVerificationImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	deferred := make(map[string]*graphql.FieldSet)
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("PushVerification")
+		case "sent":
+			out.Values[i] = ec._PushVerification_sent(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "capability":
+			out.Values[i] = ec._PushVerification_capability(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch(ctx)
+	if out.Invalids > 0 {
+		return graphql.Null
+	}
+
+	atomic.AddInt32(&ec.deferred, int32(len(deferred)))
+
+	for label, dfs := range deferred {
+		ec.processDeferredGroup(graphql.DeferredGroup{
+			Label:    label,
+			Path:     graphql.GetPath(ctx),
+			FieldSet: dfs,
+			Context:  ctx,
+		})
+	}
+
+	return out
+}
+
+var pushVerificationResultImplementors = []string{"PushVerificationResult"}
+
+func (ec *executionContext) _PushVerificationResult(ctx context.Context, sel ast.SelectionSet, obj *model.PushVerificationResult) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, pushVerificationResultImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	deferred := make(map[string]*graphql.FieldSet)
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("PushVerificationResult")
+		case "verified":
+			out.Values[i] = ec._PushVerificationResult_verified(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}
@@ -32234,6 +32694,34 @@ func (ec *executionContext) marshalNPushCapability2ᚖgithubᚗcomᚋscruffyprod
 		return graphql.Null
 	}
 	return ec._PushCapability(ctx, sel, v)
+}
+
+func (ec *executionContext) marshalNPushVerification2githubᚗcomᚋscruffyprodigyᚋjoinquestᚋgraphᚋmodelᚐPushVerification(ctx context.Context, sel ast.SelectionSet, v model.PushVerification) graphql.Marshaler {
+	return ec._PushVerification(ctx, sel, &v)
+}
+
+func (ec *executionContext) marshalNPushVerification2ᚖgithubᚗcomᚋscruffyprodigyᚋjoinquestᚋgraphᚋmodelᚐPushVerification(ctx context.Context, sel ast.SelectionSet, v *model.PushVerification) graphql.Marshaler {
+	if v == nil {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			ec.Errorf(ctx, "the requested element is null which the schema does not allow")
+		}
+		return graphql.Null
+	}
+	return ec._PushVerification(ctx, sel, v)
+}
+
+func (ec *executionContext) marshalNPushVerificationResult2githubᚗcomᚋscruffyprodigyᚋjoinquestᚋgraphᚋmodelᚐPushVerificationResult(ctx context.Context, sel ast.SelectionSet, v model.PushVerificationResult) graphql.Marshaler {
+	return ec._PushVerificationResult(ctx, sel, &v)
+}
+
+func (ec *executionContext) marshalNPushVerificationResult2ᚖgithubᚗcomᚋscruffyprodigyᚋjoinquestᚋgraphᚋmodelᚐPushVerificationResult(ctx context.Context, sel ast.SelectionSet, v *model.PushVerificationResult) graphql.Marshaler {
+	if v == nil {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			ec.Errorf(ctx, "the requested element is null which the schema does not allow")
+		}
+		return graphql.Null
+	}
+	return ec._PushVerificationResult(ctx, sel, v)
 }
 
 func (ec *executionContext) marshalNQueueOption2ᚕᚖgithubᚗcomᚋscruffyprodigyᚋjoinquestᚋgraphᚋmodelᚐQueueOptionᚄ(ctx context.Context, sel ast.SelectionSet, v []*model.QueueOption) graphql.Marshaler {
