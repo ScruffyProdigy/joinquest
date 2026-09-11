@@ -26,22 +26,33 @@ describe('GroupSpectatorList', () => {
     expect(screen.getByText('You')).toBeInTheDocument()
   })
 
-  // JQ-265. Away dims the avatar only: the name and any badge stay at full strength,
-  // because the doubt is about whether they are watching, not about who they are.
-  it('dims an away member and keeps their name legible', () => {
+  // JQ-265. The caption is the assertion and the dimming only supports it: a faded avatar
+  // next to a full-strength name is a rendering artefact to anyone not comparing rows, and
+  // it says nothing at all to a screen reader. The name stays legible either way — the
+  // doubt is about whether they are watching, not about who they are.
+  it('captions an away member and keeps their name legible', () => {
     const { container } = render(<GroupSpectatorList players={[member, awayMember]} userId="u1" />)
     expect(screen.getByText('Dee')).toBeInTheDocument()
+    expect(screen.getByText('Away')).toBeInTheDocument()
     const dimmed = container.querySelectorAll('[data-slot="avatar"][data-away="true"]')
     expect(dimmed).toHaveLength(1)
     expect(dimmed[0].getAttribute('title')).toBe('Dee (away)')
   })
 
+  it('says nothing about presence when everyone is here', () => {
+    render(<GroupSpectatorList players={[you, member]} userId="u1" />)
+    expect(screen.queryByText('Away')).toBeNull()
+  })
+
   // Away and awaiting are different questions — whether we believe they are there, and
   // what they have said about the next match — so a player whose phone died mid-decision
-  // has to read as both rather than have one reading swallow the other.
+  // has to read as both rather than have one reading swallow the other. This is the case
+  // that makes the caption necessary rather than nice: two states in one list, and only
+  // one of them carried words.
   it('shows a player who is both awaiting and away as both', () => {
     const { container } = render(<GroupSpectatorList players={[member, awayAwaiting]} userId="u1" />)
     expect(screen.getByText('Awaiting')).toBeInTheDocument()
+    expect(screen.getByText('Away')).toBeInTheDocument()
     expect(container.querySelector('[data-slot="avatar"][data-away="true"]')).toBeTruthy()
   })
 

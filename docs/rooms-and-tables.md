@@ -125,9 +125,12 @@ that is deliberately lazy — see *Claiming a seat* below.
   their membership, their seat and their chat, and their room is still held for the full
   `DefaultRoomDisconnectGrace` (5m). The avatar dims and its label gains `(away)`
   (`PlayerAvatar`'s `away` prop, used by the group header, the *Picking a seat* card and the
-  room panel's member list); names and badges stay at full strength, because the doubt is
-  about whether they are watching, not who they are. Away is independent of the *Awaiting*
-  badge above: a player can be both, and each says something the other does not. A live
+  room panel's member list), and on *Picking a seat* the row also carries a muted **Away**
+  caption behind a still moon — the dimming alone is a weak carrier beside the turning-clock
+  *Awaiting* badge in the same list, and says nothing to a screen reader. Names stay at full
+  strength, because the doubt is about whether they are watching, not who they are. Away is
+  independent of *Awaiting*: a player can be both, and each says something the other does
+  not, so both captions render (Away first — it qualifies the other). A live
   socket always reads as present here, so a player who left a tab open and walked away is
   still *here* — that needs an interaction signal rather than a connection one (JQ-179),
   and is where `UserIsAway` would join this display.

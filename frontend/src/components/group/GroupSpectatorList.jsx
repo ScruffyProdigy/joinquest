@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { ClockIcon } from 'lucide-react'
+import { ClockIcon, MoonIcon } from 'lucide-react'
 import { displayName } from '../../lib/tables'
 import { cn } from '../../lib/utils'
 import PlayerAvatar from '../avatars/PlayerAvatar'
@@ -68,11 +68,18 @@ function useDeclineBeat(players) {
 }
 
 /**
- * `away` dims the avatar and names it, and is deliberately independent of `status`
- * (JQ-265): a player can be awaiting a regroup answer and away at the same time, and the
- * card has to be able to say both. Only the avatar dims — the row keeps its full-strength
- * name and badge, because the uncertainty is about whether they are watching, not about
- * who they are or what they have decided.
+ * `away` is deliberately independent of `status` (JQ-265): a player can be awaiting a
+ * regroup answer and away at the same time, and the card has to be able to say both.
+ *
+ * It earns a caption of its own rather than only dimming the avatar. Opacity alone is a
+ * weak carrier next to the Awaiting badge — a faded avatar beside a full-strength name
+ * reads as a rendering artefact, not a statement — and the two states sit in the same list,
+ * so the one without words loses every comparison. The still moon against Awaiting's
+ * turning clock is the distinction: that player is being waited ON, this one has gone
+ * quiet.
+ *
+ * The name itself stays at full strength either way. The doubt is about whether they are
+ * watching, never about who they are.
  */
 function Row({ user, userId, status, leaving, away = false }) {
   return (
@@ -90,20 +97,33 @@ function Row({ user, userId, status, leaving, away = false }) {
       <span className="flex-1 truncate text-sm font-bold text-foreground">
         {user?.id === userId ? 'You' : displayName(user)}
       </span>
-      {status === 'awaiting' ? (
-        <span className="flex items-center gap-1 text-2xs font-normal text-muted-foreground">
-          {/* The prototype turns the hand once every three seconds, linear and forever. */}
-          <ClockIcon
-            size={11}
-            aria-hidden="true"
-            className="motion-safe:animate-spin [animation-duration:3s]"
-          />
-          Awaiting
-        </span>
-      ) : null}
-      {status === 'out' ? (
-        <span className="text-2xs font-normal text-muted-foreground">Out</span>
-      ) : null}
+      {/*
+        Badges share one shrink-0 row so the name is what truncates when a player carries
+        both. Away comes first because it qualifies the other: "they have not answered, and
+        we cannot see them" is the order those facts are useful in.
+      */}
+      <span className="flex shrink-0 items-center gap-2">
+        {away ? (
+          <span className="flex items-center gap-1 text-2xs font-normal text-muted-foreground">
+            <MoonIcon size={11} aria-hidden="true" />
+            Away
+          </span>
+        ) : null}
+        {status === 'awaiting' ? (
+          <span className="flex items-center gap-1 text-2xs font-normal text-muted-foreground">
+            {/* The prototype turns the hand once every three seconds, linear and forever. */}
+            <ClockIcon
+              size={11}
+              aria-hidden="true"
+              className="motion-safe:animate-spin [animation-duration:3s]"
+            />
+            Awaiting
+          </span>
+        ) : null}
+        {status === 'out' ? (
+          <span className="text-2xs font-normal text-muted-foreground">Out</span>
+        ) : null}
+      </span>
     </li>
   )
 }
