@@ -26,6 +26,13 @@ const NO_BARE_BUTTON = {
  * of a dedicated component (CatalogGameLink, DeveloperPromoCard), or Radix `Slot`
  * plumbing inside <Button asChild>, where Button owns the styling and the anchor
  * supplies only the href. The reasoning is repeated at each call site.
+ *
+ * Prune an entry the moment its file stops needing the exemption: an allowance for
+ * a file with no bare anchor left is a permanently open door that can never fail,
+ * so nothing will ever prompt its removal. Three had rotted that way by 2026-09-11 --
+ * GameQueueActions and LaunchStep, which had lost their anchors, and IntentBanner,
+ * deleted outright by JQ-261. Audit by removing an entry and running lint, not by
+ * grepping: DeveloperPromoCard's anchor breaks across lines and `grep '<a '` misses it.
  */
 const ANCHOR_ALLOWED = [
   'src/components/games/CatalogGameLink.jsx',
@@ -34,9 +41,6 @@ const ANCHOR_ALLOWED = [
   'src/components/auth/LinkEmailPage.jsx',
   'src/components/auth/UserSessionCard.jsx',
   'src/components/developers/DeveloperAuthGate.jsx',
-  'src/components/games/IntentBanner.jsx',
-  'src/components/games/GameQueueActions.jsx',
-  'src/components/games/LaunchStep.jsx',
 ]
 
 /**
