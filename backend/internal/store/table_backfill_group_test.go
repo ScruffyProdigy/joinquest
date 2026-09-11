@@ -589,3 +589,88 @@ func TestTwoGroupsOfThreeMeetOnOppositeSides(t *testing.T) {
 		}
 	}
 }
+
+// Starting before the table is full is the king's alone, and stays so (JQ-137).
+//
+// Nothing else on the group screen is theirs any more — anyone seated may ask for the
+// rest of the match, and anyone may stop it — which is exactly why this one needs pinning
+// rather than leaving to hold by accident. Deciding not to wait for the friend still on
+// their way is a decision taken on everybody's behalf, so it keeps an owner.
+//
+// The nil-actor arm of startTable exists only for a full table, and is asserted here
+// alongside the king gate because the two are one rule: a start nobody authorised is
+// permitted only when there is nothing left to decide.
+func TestOnlyTheKingCanStartEarly(t *testing.T) {
+	st := openTestStore(t)
+	cleaner := st.NewTestCleaner(t)
+	ctx := context.Background()
+
+	// Word Hunt starts at four — two clue givers and two guessers — in a nine-seat mode,
+	// so a table can be playable and a long way from full at the same time.
+	game, mode, _ := setupWordHuntMode(t, st, cleaner)
+	modeSeats, err := st.ListGameModeSeats(ctx, mode.ID)
+	if err != nil {
+		t.Fatalf("ListGameModeSeats: %v", err)
+	}
+	seatsInPath := func(path string, n int) []string {
+		var out []string
+		for _, seat := range modeSeats {
+			if seatQueuePathValue(seat) == path && len(out) < n {
+				out = append(out, seat.SeatKey)
+			}
+		}
+		if len(out) < n {
+			t.Fatalf("mode has fewer than %d seats on path %q", n, path)
+		}
+		return out
+	}
+	clueGivers := seatsInPath("ClueGiver", 2)
+	guessers := seatsInPath("Guesser", 2)
+
+	king := mustUser(t, st, cleaner, "early-king")
+	others := []*User{
+		mustUser(t, st, cleaner, "early-b"),
+		mustUser(t, st, cleaner, "early-c"),
+		mustUser(t, st, cleaner, "early-d"),
+	}
+	table := mustGroupTable(t, st, game, mode, king, map[*User]string{
+		king:      clueGivers[0],
+		others[0]: clueGivers[1],
+		others[1]: guessers[0],
+		others[2]: guessers[1],
+	})
+
+	// Playable, and five seats short of full.
+	canStart, err := st.TableCanStart(ctx, table.ID)
+	if err != nil {
+		t.Fatalf("TableCanStart: %v", err)
+	}
+	if !canStart {
+		t.Fatal("expected four seated players to be enough to start this mode")
+	}
+
+	for _, other := range others {
+		if _, err := st.StartTable(ctx, table.ID, other.ID); err == nil {
+			t.Fatalf("player %s started the game early without being the king", other.ID)
+		}
+	}
+
+	// Nor may the automatic path stand in for them: it starts a full table, never an
+	// early one.
+	auto, err := st.AutoStartTable(ctx, table.ID)
+	if err != nil {
+		t.Fatalf("AutoStartTable: %v", err)
+	}
+	if auto != nil {
+		t.Fatal("a table five seats short of full started itself")
+	}
+
+	result, err := st.StartTable(ctx, table.ID, king.ID)
+	if err != nil {
+		t.Fatalf("the king could not start early: %v", err)
+	}
+	if len(result.NotifyUserIDs) != 4 {
+		t.Fatalf("expected all 4 seated players taken into the match, got %d",
+			len(result.NotifyUserIDs))
+	}
+}
