@@ -86,16 +86,19 @@ describe('LaunchStep', () => {
     expect(navigateToLaunchUrl).toHaveBeenCalledWith(matchedIntent.joinUrl)
   })
 
-  it('keeps a manual launch link for anyone whose countdown does not carry them', () => {
+  it('keeps a manual launch for anyone whose countdown does not carry them', () => {
     renderLaunchStep()
     act(() => {
       vi.advanceTimersByTime(MATCH_FOUND_BEAT_MS)
     })
 
-    expect(screen.getByRole('link', { name: 'Launch Now' })).toHaveAttribute(
-      'href',
-      matchedIntent.joinUrl,
-    )
+    // A button, not a link: the launch URL carries a token, and rendering it as an
+    // href leaves that token in the DOM to be copied or to go stale (JQ-261).
+    const launch = screen.getByRole('button', { name: 'Launch Now' })
+    expect(launch).not.toHaveAttribute('href')
+
+    fireEvent.click(launch)
+    expect(navigateToLaunchUrl).toHaveBeenCalledWith(matchedIntent.joinUrl)
   })
 
   it('holds the countdown rather than yanking a tab the player is not looking at', () => {
@@ -108,7 +111,7 @@ describe('LaunchStep', () => {
     expect(
       screen.getByText('Countdown paused while you were away. Launch when you are ready.'),
     ).toBeInTheDocument()
-    expect(screen.getByRole('link', { name: 'Launch Now' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Launch Now' })).toBeInTheDocument()
   })
 
   it('stops the countdown when the player leaves the tab mid-count', () => {
@@ -133,7 +136,7 @@ describe('LaunchStep', () => {
     runCountdown()
 
     expect(screen.getByText('Preparing your launch link…')).toBeInTheDocument()
-    expect(screen.queryByRole('link', { name: 'Launch Now' })).toBeNull()
+    expect(screen.queryByRole('button', { name: 'Launch Now' })).toBeNull()
     expect(navigateToLaunchUrl).not.toHaveBeenCalled()
 
     // The banner polls for the URL; the countdown starts when it lands.
@@ -190,10 +193,7 @@ describe('LaunchStep', () => {
       renderLaunchStep({ immediate: true })
 
       expect(navigateToLaunchUrl).not.toHaveBeenCalled()
-      expect(screen.getByRole('link', { name: 'Launch Now' })).toHaveAttribute(
-        'href',
-        matchedIntent.joinUrl,
-      )
+      expect(screen.getByRole('button', { name: 'Launch Now' })).toBeInTheDocument()
     })
 
     it('waits for a launch URL that is still being provisioned', () => {
@@ -221,6 +221,57 @@ describe('LaunchStep', () => {
       fireEvent.click(screen.getByRole('button', { name: 'Leave game' }))
       expect(onLeave).toHaveBeenCalledTimes(1)
       expect(navigateToLaunchUrl).not.toHaveBeenCalled()
+    })
+  })
+
+  /*
+    The same step turned around for a player who fell out of a live match and came
+    back (JQ-261). The dialog that wraps it is covered in ActiveMatchDialog.test.jsx;
+    what matters here is that the flag changes how the player travels.
+  */
+  describe('rejoin', () => {
+    it('mints on the countdown instead of travelling on the URL it rendered with', () => {
+      const onRejoin = vi.fn()
+      renderLaunchStep({ rejoin: true, onRejoin })
+
+      act(() => {
+        vi.advanceTimersByTime(LAUNCH_COUNTDOWN_SECONDS * 1000)
+      })
+
+      expect(onRejoin).toHaveBeenCalledTimes(1)
+      expect(navigateToLaunchUrl).not.toHaveBeenCalled()
+    })
+
+    it('drops the beat, because a game already in progress is not news', () => {
+      renderLaunchStep({ rejoin: true, onRejoin: vi.fn() })
+
+      expect(screen.getByRole('heading', { name: "You're in a game" })).toBeInTheDocument()
+      expect(screen.getByText(`Entering in ${LAUNCH_COUNTDOWN_SECONDS}…`)).toBeInTheDocument()
+    })
+
+    it('names the action for someone returning rather than starting', () => {
+      const onRejoin = vi.fn()
+      renderLaunchStep({ rejoin: true, onRejoin })
+
+      fireEvent.click(screen.getByRole('button', { name: 'Rejoin' }))
+      expect(onRejoin).toHaveBeenCalledTimes(1)
+      expect(navigateToLaunchUrl).not.toHaveBeenCalled()
+    })
+
+    it('surfaces a rejoin failure', () => {
+      renderLaunchStep({
+        rejoin: true,
+        onRejoin: vi.fn(),
+        rejoinError: 'That match has finished, so there is nothing to rejoin.',
+      })
+
+      expect(screen.getByRole('alert')).toHaveTextContent('That match has finished')
+    })
+
+    it('holds the way in while a mint is already in flight', () => {
+      renderLaunchStep({ rejoin: true, onRejoin: vi.fn(), rejoining: true })
+
+      expect(screen.getByRole('button', { name: '…' })).toBeDisabled()
     })
   })
 

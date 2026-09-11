@@ -21,6 +21,9 @@ func toGraphQLTable(table *store.RoomTable) *model.Table {
 		ID:        table.ID.String(),
 		CreatedAt: table.CreatedAt,
 		Status:    table.Status,
+		// Server-side only, never serialized: what lets Table.regroupRoster answer for an
+		// ordinary table without a database round-trip (JQ-177).
+		OriginSessionID: table.RegroupSessionID,
 	}
 }
 

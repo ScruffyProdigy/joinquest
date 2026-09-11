@@ -7,6 +7,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/scruffyprodigy/joinquest/graph/model"
 	"github.com/scruffyprodigy/joinquest/internal/auth"
+	"github.com/scruffyprodigy/joinquest/internal/coldstart"
 	"github.com/scruffyprodigy/joinquest/internal/rating"
 	"github.com/scruffyprodigy/joinquest/internal/store"
 )
@@ -47,6 +48,13 @@ func serviceScopedGameID(ctx context.Context) (uuid.UUID, bool) {
 // prior rather than being left out, so a caller never has to special-case a
 // player it is meeting for the first time.
 //
+// A player with no rating here may still be seeded from another mode of the
+// same game (JQ-154). The order below is what makes that safe: a stored
+// rating always wins, and a seed is only ever consulted for a player who has
+// none — so seeding can never overwrite or soften something a player actually
+// earned. When seeding is off, or the mode has no usable pair behind it, the
+// fallback is the flat prior exactly as before.
+//
 // The mode is not verified here. Both callers already hold a mode from the
 // catalog — the resolver checks the key it was handed, and provision reads the
 // mode it is provisioning.
@@ -56,10 +64,27 @@ func playerSkills(ctx context.Context, st *store.Store, gameID uuid.UUID, modeKe
 		return nil, err
 	}
 
+	unrated := make([]uuid.UUID, 0, len(userIDs))
+	for _, id := range userIDs {
+		if _, ok := rated[id]; !ok {
+			unrated = append(unrated, id)
+		}
+	}
+
+	seeder := coldstart.NewSeeder(st, coldstart.EnabledFromEnv())
+	seeds, err := seeder.Seed(ctx, gameID, modeKey, unrated)
+	if err != nil {
+		return nil, err
+	}
+
 	out := make(map[uuid.UUID]rating.Skill, len(userIDs))
 	for _, id := range userIDs {
 		if v, ok := rated[id]; ok {
 			out[id] = rating.SkillOf(v.Mu, v.Sigma)
+			continue
+		}
+		if seed, ok := seeds[id]; ok {
+			out[id] = rating.SkillOf(seed.Rating.Mu, seed.Rating.Sigma)
 			continue
 		}
 		out[id] = rating.UnratedSkill()

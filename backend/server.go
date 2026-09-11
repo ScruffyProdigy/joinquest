@@ -10,10 +10,13 @@ import (
 	"time"
 
 	"github.com/99designs/gqlgen/graphql/playground"
+	"github.com/google/uuid"
+
 	"github.com/scruffyprodigy/joinquest/database"
 	"github.com/scruffyprodigy/joinquest/graph"
 	"github.com/scruffyprodigy/joinquest/internal/auth"
 	"github.com/scruffyprodigy/joinquest/internal/avatars"
+	"github.com/scruffyprodigy/joinquest/internal/coldstart"
 	"github.com/scruffyprodigy/joinquest/internal/formingworker"
 	"github.com/scruffyprodigy/joinquest/internal/pubsub"
 	"github.com/scruffyprodigy/joinquest/internal/rating"
@@ -106,15 +109,37 @@ func main() {
 			ratingTick = d
 		}
 	}
-	ratingEngine, err := rating.NewWengLin("plackett-luce")
+	// The default engine, for every mode whose performance variance has not
+	// been measured — which is most of them. A mode with its own beta is rated
+	// through an engine built per replay below (JQ-227); the model name lives
+	// here, in the one place that chooses it, rather than in the data layer.
+	const ratingModel = "plackett-luce"
+	ratingEngine, err := rating.NewWengLin(ratingModel)
 	if err != nil {
 		log.Fatalf("rating engine: %v", err)
 	}
-	resolver.RatingWorker = ratingworker.New(func() ratingworker.Replayer {
-		return rating.NewReplayer(ratingEngine, dataStore.RatingSource())
-	}, ratingTick)
+	modeRatingEngine := func(ctx context.Context, gameID uuid.UUID, modeKey string) (rating.Engine, error) {
+		constants, measured, err := dataStore.GetModeRatingConstants(ctx, gameID, modeKey)
+		if err != nil {
+			return nil, err
+		}
+		if !measured {
+			return ratingEngine, nil
+		}
+		return rating.NewWengLinBeta(ratingModel, constants.Beta)
+	}
+	resolver.RatingWorker = ratingworker.New(modeRatingEngine, func(engine rating.Engine) ratingworker.Replayer {
+		return rating.NewReplayer(engine, dataStore.RatingSource())
+	}, ratingEngine.ID(), ratingTick)
 	resolver.RatingWorker.SetSweeper(dataStore, 10*time.Minute)
 	go resolver.RatingWorker.Start(context.Background())
+
+	// Cold-start seeding measures on its own schedule and serves only behind
+	// COLD_START_SEEDING (see internal/coldstart). The recompute runs whether
+	// or not the flag is on, because the decision to turn it on is supposed to
+	// be made by reading the residuals it produces — a deployment that fitted
+	// nothing until seeding was enabled would have to enable it blind.
+	go coldstart.NewRecomputer(dataStore).Start(context.Background(), coldstart.RefitIntervalFromEnv())
 
 	mux := http.NewServeMux()
 

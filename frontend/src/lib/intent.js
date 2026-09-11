@@ -101,14 +101,7 @@ export function playingIntentTitle(activeIntent, activeTableSeat) {
   return ''
 }
 
-export function hasFormingTableIntent(activeIntent, activeTableSeat) {
-  if (hasReadyToPlayIntent(activeIntent, activeTableSeat) || hasWaitingIntent(activeIntent)) {
-    return false
-  }
-  return Boolean(activeTableSeat?.tableId && activeTableSeat.status !== 'started')
-}
-
-/** Catalog play intent plus table seat for the intent banner. */
+/** Catalog play intent plus table seat, for a one-shot read of both. */
 export async function fetchPlayerIntentState() {
   const [activeIntent, activeTableSeat] = await Promise.all([fetchMyActiveIntent(), fetchMyTableSeat()])
   return { activeIntent, activeTableSeat }

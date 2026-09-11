@@ -167,13 +167,13 @@ type ModeReport struct {
 	TrainMatches   int
 	HeldOutMatches int
 
-	// Modifiers is rating.ModifierIdentifiability over this mode's full
+	// IdentifiabilityReport is rating.Identifiability over this mode's full
 	// history. It sits beside the scores because it qualifies them: a
 	// modifier with PlayersWithMultipleValues of zero is confounded with
 	// player skill, so every engine ran over history that cannot tell the
 	// two apart, and a comparison between them is suspect no matter how
 	// clean the numbers look.
-	Modifiers map[string]rating.ModifierReport
+	rating.IdentifiabilityReport
 
 	// Engines holds one score per engine, in the order the engines were
 	// supplied — all of them over this identical history, which is what
@@ -226,12 +226,12 @@ func (h *Harness) Run(ctx context.Context, targets []Target, engines ...rating.E
 
 		train := h.split.trainCount(len(inputs))
 		mode := ModeReport{
-			Target:         target,
-			Matches:        len(inputs),
-			TrainMatches:   train,
-			HeldOutMatches: len(inputs) - train,
-			Modifiers:      rating.ModifierIdentifiability(inputs),
-			Engines:        make([]EngineScore, 0, len(engines)),
+			Target:                target,
+			Matches:               len(inputs),
+			TrainMatches:          train,
+			HeldOutMatches:        len(inputs) - train,
+			IdentifiabilityReport: rating.Identifiability(inputs),
+			Engines:               make([]EngineScore, 0, len(engines)),
 		}
 
 		for _, engine := range engines {

@@ -155,7 +155,18 @@ export const LEAVE_GAME = 'Leave game'
 export const LEAVE_MATCH = 'Leave match'
 export const LEAVE_GAME_FAILED = 'Could not leave right now. Please try again.'
 export const LEAVE_GAME_NOT_FOUND =
-  'We could not find that game to leave. Reload the page if this banner stays.'
+  'We could not find that game to leave. Reload the page if this stays.'
+
+// The returning player's launch step (JQ-261). The match forming was news and got
+// "You're in!"; coming back to a game already in progress is not, so this names the
+// situation instead of announcing it.
+export const MATCH_IN_PROGRESS = "You're in a game"
+// Names the dialog itself for assistive tech. Deliberately not the heading's words:
+// the heading is read on its own right after, and hearing the same phrase twice tells
+// the player nothing the first one did not.
+export const MATCH_DIALOG_TITLE = 'Your live match'
+export const REJOIN_AUTO_HINT = 'Taking you back in — no need to click.'
+export const REJOIN_HELD_HINT = 'Paused while you were away. Rejoin when you are ready.'
 
 
 export const OPTIONS_UNAVAILABLE =
@@ -246,10 +257,6 @@ export function bannerIntentPlayingLine(gameName, modeName, roleLabel) {
   return `Playing ${gameName}`
 }
 
-export function bannerIntentPlayingHint() {
-  return 'Your seat is held — rejoin whenever you are ready.'
-}
-
 export function bannerIntentLaunchPendingHint() {
   return 'Preparing your launch link…'
 }
@@ -317,18 +324,6 @@ export const DISCARD = 'Discard'
 export const KING_LABEL = 'King'
 export const LEAVE_TABLE_SEAT = 'Leave seat'
 
-export function bannerTableSeatHint() {
-  return 'Use Room below to manage seats or start the game.'
-}
-
-export function bannerTableBackfillHint(formingGaps) {
-  const needLine = formatFormingGapsNeedLine(formingGaps)
-  if (needLine) {
-    return `Your table is queued to start — ${needLine.charAt(0).toLowerCase()}${needLine.slice(1)}`
-  }
-  return 'Your table is queued to start — waiting for players from the lobby.'
-}
-
 /** e.g. "Need 1 Clue Giver, 3 Guessers" */
 export function formatFormingGapsNeedLine(formingGaps) {
   const parts = formatFormingGapParts(formingGaps)
@@ -366,14 +361,6 @@ export function bannerTableStartedLine(gameName, modeName) {
 
 export function bannerTableStartedHint() {
   return 'Launch when you are ready — your seat is reserved.'
-}
-
-export function bannerTableSeatLine(gameName, modeName, seatDisplayName) {
-  const role = seatDisplayName?.trim()
-  if (role) {
-    return `Seated at ${gameName} (${modeName}) as ${role}`
-  }
-  return `Seated at ${gameName} (${modeName})`
 }
 
 export function switchedFromGroupMessage(gameName) {

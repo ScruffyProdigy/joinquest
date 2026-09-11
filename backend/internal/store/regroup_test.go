@@ -310,15 +310,14 @@ func onlyOpenSeatKey(t *testing.T, st *Store, ctx context.Context, table *RoomTa
 	return ""
 }
 
-// TestGetSessionIDByRegroupTableFollowsTheLatestMatch pins the ordering half of the reverse
-// lookup. regroup_table_id has no uniqueness constraint and nothing ever clears it, so a
-// group that plays a second match at the same table leaves TWO rows carrying that table id:
-// ClaimRegroupTable stamps the first match's session, and CompleteSession's
-// resetRoomTableAfterSessionTx stamps the second's without touching the first. An unordered
-// SELECT is free to answer with either — here the stale row is physically first, so it
-// reliably answers with the wrong match — and the roster then names players who already
-// left while omitting anyone who backfilled since.
-func TestGetSessionIDByRegroupTableFollowsTheLatestMatch(t *testing.T) {
+// TestRegroupSessionFollowsTheLatestMatch pins which match a table names as the one it is
+// regrouping from. A group that plays twice at the same room table leaves TWO game_sessions
+// rows carrying that table id — ClaimRegroupTable stamps the first, CompleteSession's
+// resetRoomTableAfterSessionTx stamps the second — and the roster must follow the newer one
+// or it names players who already left and omits anyone who joined since. The forward
+// pointer answers that by being overwritten, where the old reverse lookup answered it with
+// an ORDER BY (JQ-177).
+func TestRegroupSessionFollowsTheLatestMatch(t *testing.T) {
 	st := openTestStore(t)
 	cleaner := st.NewTestCleaner(t)
 	ctx := context.Background()
@@ -332,60 +331,89 @@ func TestGetSessionIDByRegroupTableFollowsTheLatestMatch(t *testing.T) {
 		t.Fatalf("ClaimRegroupTable: %v", err)
 	}
 
-	// One match points at the table so far, so the lookup is unambiguous.
-	got, err := st.GetSessionIDByRegroupTable(ctx, table.ID)
-	if err != nil {
-		t.Fatalf("GetSessionIDByRegroupTable: %v", err)
+	// Claiming stamps the table in the same transaction, so the returned value is already
+	// the answer — no reload needed to see it.
+	if table.RegroupSessionID == nil || *table.RegroupSessionID != firstSession {
+		t.Fatalf("claimed table names %v, want the match it came from %s", table.RegroupSessionID, firstSession)
 	}
-	if got == nil || *got != firstSession {
-		t.Fatalf("lookup = %v, want the only match %s", got, firstSession)
+	if got := reloadRegroupSessionID(t, st, ctx, table.ID); got == nil || *got != firstSession {
+		t.Fatalf("stored pointer = %v, want %s", got, firstSession)
 	}
 
-	// The group plays again at the same table. The second match starts later, ends there,
-	// and is stamped with the same regroup table; the first row stays behind unchanged.
+	// The group plays again at the same table: a second match starts there and completes,
+	// which is what resetRoomTableAfterSessionTx stamps.
 	var secondSession uuid.UUID
 	if err := st.db.QueryRowContext(ctx, `
-		INSERT INTO game_sessions (game_id, status, mode_id, started_at, ended_at, regroup_table_id)
-		SELECT game_id, 'completed', mode_id, started_at + interval '1 hour', NOW(), $2
+		INSERT INTO game_sessions (game_id, status, mode_id, started_at)
+		SELECT game_id, 'active', mode_id, started_at + interval '1 hour'
 		FROM game_sessions
 		WHERE id = $1
 		RETURNING id
-	`, firstSession, table.ID).Scan(&secondSession); err != nil {
+	`, firstSession).Scan(&secondSession); err != nil {
 		t.Fatalf("insert the second match: %v", err)
 	}
 	t.Cleanup(func() {
 		_, _ = st.db.ExecContext(context.Background(), `DELETE FROM game_sessions WHERE id = $1`, secondSession)
 	})
-
-	got, err = st.GetSessionIDByRegroupTable(ctx, table.ID)
-	if err != nil {
-		t.Fatalf("GetSessionIDByRegroupTable after the second match: %v", err)
+	if _, err := st.db.ExecContext(ctx, `
+		UPDATE room_tables SET session_id = $2, status = $3 WHERE id = $1
+	`, table.ID, secondSession, TableStatusStarted); err != nil {
+		t.Fatalf("start the second match at the table: %v", err)
 	}
+	if err := st.CompleteSession(ctx, secondSession, time.Now()); err != nil {
+		t.Fatalf("CompleteSession second: %v", err)
+	}
+
+	got := reloadRegroupSessionID(t, st, ctx, table.ID)
 	if got == nil {
-		t.Fatal("lookup returned no session for a table two matches point at")
+		t.Fatal("table names no match after playing two")
 	}
 	if *got == firstSession {
-		t.Fatalf("lookup returned the stale first match %s; want the latest %s", firstSession, secondSession)
+		t.Fatalf("table still names the stale first match %s; want the latest %s", firstSession, secondSession)
 	}
 	if *got != secondSession {
-		t.Fatalf("lookup = %s, want the latest match %s", *got, secondSession)
+		t.Fatalf("table names %s, want the latest match %s", *got, secondSession)
 	}
 }
 
-// TestGetSessionIDByRegroupTableNilForOrdinaryTable keeps the "no originating match" case an
-// ordinary nil answer rather than an error: every table not reached through playAgain hits
-// this path on every render.
-func TestGetSessionIDByRegroupTableNilForOrdinaryTable(t *testing.T) {
+// TestRegroupSessionNilForOrdinaryTable keeps "no originating match" a plain nil on a table
+// that was created directly. Every table not reached through playAgain is in this state, and
+// it is the state Table.regroupRoster short-circuits on without touching the database.
+func TestRegroupSessionNilForOrdinaryTable(t *testing.T) {
 	st := openTestStore(t)
+	cleaner := st.NewTestCleaner(t)
 	ctx := context.Background()
 
-	got, err := st.GetSessionIDByRegroupTable(ctx, uuid.New())
+	host, err := st.CreateUser(ctx, CreateUserParams{Email: "ordinary-" + uuid.NewString() + "@example.com"})
 	if err != nil {
-		t.Fatalf("GetSessionIDByRegroupTable = %v, want a nil id and no error", err)
+		t.Fatalf("CreateUser: %v", err)
 	}
-	if got != nil {
-		t.Fatalf("lookup = %s, want nil for a table no match points at", *got)
+	cleaner.TrackUser(host.ID)
+	game, mode := setupDuelMode(t, st, cleaner)
+	room, err := st.CreateRoom(ctx, host.ID)
+	if err != nil {
+		t.Fatalf("CreateRoom: %v", err)
 	}
+	table, err := st.CreateTable(ctx, room.ID, game.ID, mode.ID, host.ID)
+	if err != nil {
+		t.Fatalf("CreateTable: %v", err)
+	}
+
+	if table.RegroupSessionID != nil {
+		t.Fatalf("a freshly created table names match %s", *table.RegroupSessionID)
+	}
+	if got := reloadRegroupSessionID(t, st, ctx, table.ID); got != nil {
+		t.Fatalf("stored pointer = %s, want nil for a table no match points at", *got)
+	}
+}
+
+func reloadRegroupSessionID(t *testing.T, st *Store, ctx context.Context, tableID uuid.UUID) *uuid.UUID {
+	t.Helper()
+	table, err := st.GetRoomTableByID(ctx, tableID)
+	if err != nil {
+		t.Fatalf("GetRoomTableByID: %v", err)
+	}
+	return table.RegroupSessionID
 }
 
 // TestClaimRegroupTableRebuildsWhenTheRoomClosed is the bricked-forever case. The table a
