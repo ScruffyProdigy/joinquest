@@ -266,6 +266,9 @@ func (s *Store) fireFormingMatchTx(
 	seen := make(map[uuid.UUID]struct{})
 	tableSeen := make(map[uuid.UUID]struct{})
 	partySeen := make(map[uuid.UUID]struct{})
+	// One lookup per table rather than per player: a six-seat match formed from two
+	// backfilling tables asks twice, not six times.
+	returnCtxByTable := make(map[uuid.UUID]ReturnContext)
 
 	for _, assignment := range assignments {
 		if assignment.UserID == nil {
@@ -283,7 +286,10 @@ func (s *Store) fireFormingMatchTx(
 			if err := markQueueEntryMatchedTx(ctx, tx, entry.ID); err != nil {
 				return nil, err
 			}
-			returnCtx := CatalogLFGReturnContext(joinCtx.Game.ID, joinCtx.ModeQueue.ID)
+			returnCtx, err := formingReturnContextTx(ctx, tx, joinCtx, assignment.TableID, returnCtxByTable)
+			if err != nil {
+				return nil, err
+			}
 			if err := addSessionParticipantTx(ctx, tx, joinCtx.Mode, session.ID, userID, assignment.SeatKey, returnCtx, entry.QueueOptions); err != nil {
 				return nil, err
 			}
@@ -309,6 +315,59 @@ func (s *Store) fireFormingMatchTx(
 	}
 
 	return &formingFireResult{session: session, notifyIDs: notifyIDs, tableIDs: tableIDs}, nil
+}
+
+// formingReturnContextTx answers "where did this player come from" for a matchmade session:
+// the room table they were sitting at, or the catalog queue when they joined on their own.
+//
+// This is the only record of who arrived with whom that survives the fire. A table that
+// backfills goes through matchmaking as a party, and both `forming_match_assignments.party_id`
+// and `.table_id` belong to the forming map, which is finished with the moment this commits —
+// nothing copies them onto the participant row. Stamping the room here is what lets the
+// post-match screen partition six players back into the two groups that arrived (JQ-291),
+// and `return_context` is the right place for it because it is written once at session start
+// and never rewritten: room_tables.session_id is cleared by the post-match reset, and
+// game_sessions.regroup_table_id is stamped by whichever player claims first.
+//
+// A vanished table is not an error. Nothing stops a room closing between the backfill and the
+// fire, and a lost arrival room costs the player their group's regroup card — worth far less
+// than failing the match everyone is waiting on. They fall back to arriving alone.
+func formingReturnContextTx(
+	ctx context.Context,
+	tx *sql.Tx,
+	joinCtx *ModeQueueJoinContext,
+	tableID *uuid.UUID,
+	cache map[uuid.UUID]ReturnContext,
+) (ReturnContext, error) {
+	lfg := CatalogLFGReturnContext(joinCtx.Game.ID, joinCtx.ModeQueue.ID)
+	if tableID == nil {
+		return lfg, nil
+	}
+	if cached, ok := cache[*tableID]; ok {
+		return cached, nil
+	}
+
+	var (
+		roomID     uuid.UUID
+		inviteCode string
+	)
+	err := tx.QueryRowContext(ctx, `
+		SELECT t.room_id, r.invite_code
+		FROM room_tables t
+		INNER JOIN rooms r ON r.id = t.room_id
+		WHERE t.id = $1 AND r.status = 'open'
+	`, *tableID).Scan(&roomID, &inviteCode)
+	if errors.Is(err, sql.ErrNoRows) {
+		cache[*tableID] = lfg
+		return lfg, nil
+	}
+	if err != nil {
+		return ReturnContext{}, err
+	}
+
+	returnCtx := RoomTableReturnContext(inviteCode, joinCtx.Game.ID, roomID, *tableID)
+	cache[*tableID] = returnCtx
+	return returnCtx, nil
 }
 
 func getWaitingQueueEntryForUserTx(ctx context.Context, tx *sql.Tx, modeQueueID, userID uuid.UUID) (*QueueEntry, error) {

@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"errors"
+	"strings"
 
 	"github.com/google/uuid"
 	"github.com/scruffyprodigy/joinquest/internal/prequeue"
@@ -64,6 +65,12 @@ type participantSeating struct {
 	// room_tables.session_id, which resetRoomTableAfterSessionTx clears, and unlike
 	// game_sessions.regroup_table_id, which the first claimant stamps for everyone.
 	GroupPlay bool
+	// Arrival is who this player came into the match with, and ArrivalRoomID /
+	// ArrivalTableID are where — the room the party regroups into and the table it
+	// left behind (JQ-291). All three are nil/empty for a player who arrived alone.
+	Arrival        ArrivalParty
+	ArrivalRoomID  *uuid.UUID
+	ArrivalTableID *uuid.UUID
 }
 
 func loadParticipantSeatingTx(ctx context.Context, tx *sql.Tx, sessionID, userID uuid.UUID) (*participantSeating, error) {
@@ -92,8 +99,23 @@ func loadParticipantSeatingTx(ctx context.Context, tx *sql.Tx, sessionID, userID
 		return nil, err
 	}
 	return &participantSeating{
-		SeatKey:   seatKey.String,
-		Options:   options,
-		GroupPlay: rc.Kind == ReturnKindRoom,
+		SeatKey:        seatKey.String,
+		Options:        options,
+		GroupPlay:      rc.Kind == ReturnKindRoom,
+		Arrival:        ArrivalPartyOf(rc),
+		ArrivalRoomID:  optionalUUIDFromString(rc.RoomID),
+		ArrivalTableID: optionalUUIDFromString(rc.TableID),
 	}, nil
+}
+
+// optionalUUIDFromString reads an id out of the return context's string fields. They are
+// JSON, written by an older build or by hand in a fixture, so an unparseable value reads as
+// absent rather than failing a rejoin: the cost is one player regrouping as if they arrived
+// alone, against failing their claim outright.
+func optionalUUIDFromString(raw string) *uuid.UUID {
+	id, err := uuid.Parse(strings.TrimSpace(raw))
+	if err != nil {
+		return nil
+	}
+	return &id
 }

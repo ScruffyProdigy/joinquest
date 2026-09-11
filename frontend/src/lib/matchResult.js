@@ -52,6 +52,9 @@ const MATCH_RESULT_FIELDS = `
     winner
     reason
     regroup
+    # Did this player come into the match with the viewer — the same room table. The
+    # regroup card shows the viewer's own group, not everyone the match contained (JQ-291).
+    arrivalParty
   }
 `
 

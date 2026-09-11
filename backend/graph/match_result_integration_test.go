@@ -35,6 +35,7 @@ const matchResultQuery = `query Result($matchId: ID!) {
 			placement
 			winner
 			regroup
+			arrivalParty
 		}
 	}
 }`
@@ -64,13 +65,14 @@ type matchResultResponse struct {
 					ID          string  `json:"id"`
 					DisplayName *string `json:"displayName"`
 				} `json:"user"`
-				Role       *string `json:"role"`
-				Finished   bool    `json:"finished"`
-				FinishedAt *string `json:"finishedAt"`
-				Reason     *string `json:"reason"`
-				Placement  *int    `json:"placement"`
-				Winner     bool    `json:"winner"`
-				Regroup    string  `json:"regroup"`
+				Role         *string `json:"role"`
+				Finished     bool    `json:"finished"`
+				FinishedAt   *string `json:"finishedAt"`
+				Reason       *string `json:"reason"`
+				Placement    *int    `json:"placement"`
+				Winner       bool    `json:"winner"`
+				Regroup      string  `json:"regroup"`
+				ArrivalParty bool    `json:"arrivalParty"`
 			} `json:"participants"`
 		} `json:"matchResult"`
 	} `json:"data"`
@@ -84,6 +86,92 @@ type finishedMatch struct {
 	userB     *store.User
 	cookieA   *http.Cookie
 	cookieB   *http.Cookie
+}
+
+// seedFinishedPartyMatch is seedFinishedMatch for two players who arrived together: one
+// room, one table, one match started from it, so both carry the room return context that
+// makes them a single arrival party (JQ-291).
+//
+// Every regroup rule is scoped to that party, so it is the seed any test about regrouping
+// wants. seedFinishedMatch's two catalog joiners share a match and nothing else — they are
+// two parties of one, and each regroups alone by design.
+func seedFinishedPartyMatch(t *testing.T, env *queueIntegrationEnv, cleaner *store.TestCleaner) finishedMatch {
+	t.Helper()
+	ctx := context.Background()
+
+	t.Setenv("LOBBY_ISSUER_URL", "http://localhost:8080")
+	t.Setenv("LOBBY_PUBLIC_URL", "http://localhost:5173")
+	t.Setenv("LOBBY_GAME_TOKEN_PEPPER", "match-result-pepper")
+
+	env.resolverWithProvisioner(t, &syncProvisioner{})
+
+	userA := createTestUser(t, ctx, env, cleaner, "party-a-"+uuid.NewString()+"@example.com", "Party A")
+	_, cookieA := createTestUserSessionForUser(t, env, userA.ID)
+	userB := createTestUser(t, ctx, env, cleaner, "party-b-"+uuid.NewString()+"@example.com", "Party B")
+	_, cookieB := createTestUserSessionForUser(t, env, userB.ID)
+
+	gameID := uuid.MustParse(store.DemoPrimaryGameIDStr)
+	modeID := demoDefaultModeID(t, env)
+
+	room, err := env.Store.CreateRoom(ctx, userA.ID)
+	if err != nil {
+		t.Fatalf("CreateRoom: %v", err)
+	}
+	if _, err := env.Store.JoinRoom(ctx, userB.ID, room.InviteCode); err != nil {
+		t.Fatalf("JoinRoom B: %v", err)
+	}
+	table, err := env.Store.CreateTable(ctx, room.ID, gameID, modeID, userA.ID)
+	if err != nil {
+		t.Fatalf("CreateTable: %v", err)
+	}
+	seats, err := env.Store.ListGameModeSeats(ctx, modeID)
+	if err != nil {
+		t.Fatalf("ListGameModeSeats: %v", err)
+	}
+	if len(seats) < 2 {
+		t.Fatalf("demo mode has %d seats, need 2", len(seats))
+	}
+	if _, err := env.Store.SitAtTable(ctx, table.ID, userA.ID, seats[0].SeatKey); err != nil {
+		t.Fatalf("sit A: %v", err)
+	}
+	if _, err := env.Store.SitAtTable(ctx, table.ID, userB.ID, seats[1].SeatKey); err != nil {
+		t.Fatalf("sit B: %v", err)
+	}
+	started, err := env.Store.StartTable(ctx, table.ID, userA.ID)
+	if err != nil {
+		t.Fatalf("StartTable: %v", err)
+	}
+
+	match := finishedMatch{sessionID: started.SessionID, userA: userA, userB: userB, cookieA: cookieA, cookieB: cookieB}
+	reportPlayerFinished(t, env, match.sessionID, match.userA.ID, 1)
+	reportMatchResult(t, env, match.sessionID, "COMPLETED", match.userA.ID.String())
+	return match
+}
+
+// demoDefaultModeID resolves the mode behind demoDefaultQueueID, so a room table can be
+// created for the same mode the queue-based seeds match on.
+func demoDefaultModeID(t *testing.T, env *queueIntegrationEnv) uuid.UUID {
+	t.Helper()
+	ctx := context.Background()
+	queueID := uuid.MustParse(demoDefaultQueueID)
+
+	modes, err := env.Store.ListGameModesByGameID(ctx, uuid.MustParse(store.DemoPrimaryGameIDStr))
+	if err != nil {
+		t.Fatalf("ListGameModesByGameID: %v", err)
+	}
+	for _, mode := range modes {
+		queues, err := env.Store.ListModeQueuesByModeID(ctx, mode.ID)
+		if err != nil {
+			t.Fatalf("ListModeQueuesByModeID: %v", err)
+		}
+		for _, queue := range queues {
+			if queue.ID == queueID {
+				return mode.ID
+			}
+		}
+	}
+	t.Fatalf("no demo mode owns queue %s", demoDefaultQueueID)
+	return uuid.Nil
 }
 
 func seedFinishedMatch(t *testing.T, env *queueIntegrationEnv, cleaner *store.TestCleaner) finishedMatch {
@@ -333,7 +421,7 @@ func TestMatchResultSurfacesClaimedRegroupTable(t *testing.T) {
 	env := newQueueIntegrationEnv(t)
 	cleaner := env.newCleaner(t)
 	ctx := context.Background()
-	match := seedFinishedMatch(t, env, cleaner)
+	match := seedFinishedPartyMatch(t, env, cleaner)
 
 	_, room, err := env.Store.ClaimRegroupTable(ctx, match.sessionID, match.userA.ID)
 	if err != nil {
@@ -438,7 +526,7 @@ func declinePlayAgain(t *testing.T, env *queueIntegrationEnv, sessionID uuid.UUI
 func TestPlayAgainSeatsBothPlayersAtOneTable(t *testing.T) {
 	env := newQueueIntegrationEnv(t)
 	cleaner := env.newCleaner(t)
-	match := seedFinishedMatch(t, env, cleaner)
+	match := seedFinishedPartyMatch(t, env, cleaner)
 
 	first := playAgain(t, env, match.sessionID, match.cookieA)
 	if len(first.Errors) > 0 || first.Data.PlayAgain == nil {

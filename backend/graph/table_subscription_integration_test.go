@@ -179,7 +179,7 @@ func watchRoomTables(t *testing.T, env *queueIntegrationEnv, userID, roomID uuid
 func TestTableUpdatedPushesOnPlayAgain(t *testing.T) {
 	env := newQueueIntegrationEnv(t)
 	cleaner := env.newCleaner(t)
-	match := seedFinishedMatch(t, env, cleaner)
+	match := seedFinishedPartyMatch(t, env, cleaner)
 
 	table := claimRegroupTable(t, env, match)
 	conn, subID := watchRoomTables(t, env, match.userA.ID, table.RoomID)
@@ -214,7 +214,7 @@ func TestTableUpdatedPushesOnPlayAgain(t *testing.T) {
 func TestTableUpdatedPushesOnDeclinePlayAgain(t *testing.T) {
 	env := newQueueIntegrationEnv(t)
 	cleaner := env.newCleaner(t)
-	match := seedFinishedMatch(t, env, cleaner)
+	match := seedFinishedPartyMatch(t, env, cleaner)
 
 	table := claimRegroupTable(t, env, match)
 

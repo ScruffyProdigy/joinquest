@@ -34,6 +34,16 @@ type MatchParticipantResult {
   placement: Int
   winner: Boolean!
   regroup: RegroupState!
+  """
+  Whether this player came into the match with the viewer — the same room table — so the
+  viewer's regroup card can show their own group and not the six people the match happened
+  to contain (JQ-291).
+
+  Per viewer, like `groupPlay`: in a 3v3 between two groups, each group's members see their
+  own three as true and the opposing three as false. A player who joined the catalog queue
+  on their own arrived with nobody, so every row reads false for them — including their own.
+  """
+  arrivalParty: Boolean!
 }
 
 type MatchResult {

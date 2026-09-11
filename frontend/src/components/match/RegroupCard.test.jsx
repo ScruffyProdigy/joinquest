@@ -3,13 +3,17 @@ import { describe, expect, it } from 'vitest'
 import RegroupCard from './RegroupCard'
 
 // Group play, and nobody left early: the one combination that gets the roster at all.
+//
+// `arrivalParty` is true on both because Ada and Bo came in together. It is a per-row answer
+// to "did this player arrive with the viewer", so a match's other groups sit in the same
+// `participants` list reading false (JQ-291) — see the two-group test at the bottom.
 const base = {
   game: { name: 'Word Hunt', modes: [{ id: '1' }, { id: '2' }] },
   complete: true,
   groupPlay: true,
   participants: [
-    { user: { id: 'a', displayName: 'Ada' }, regroup: 'IN', reason: 'COMPLETED' },
-    { user: { id: 'b', displayName: 'Bo' }, regroup: 'PENDING', reason: 'COMPLETED' },
+    { user: { id: 'a', displayName: 'Ada' }, regroup: 'IN', reason: 'COMPLETED', arrivalParty: true },
+    { user: { id: 'b', displayName: 'Bo' }, regroup: 'PENDING', reason: 'COMPLETED', arrivalParty: true },
   ],
 }
 
@@ -45,13 +49,46 @@ describe('RegroupCard', () => {
     const outAndIn = {
       ...base,
       participants: [
-        { user: { id: 'a', displayName: 'Ada' }, regroup: 'IN', reason: 'COMPLETED' },
-        { user: { id: 'b', displayName: 'Bo' }, regroup: 'OUT', reason: 'COMPLETED' },
+        { user: { id: 'a', displayName: 'Ada' }, regroup: 'IN', reason: 'COMPLETED', arrivalParty: true },
+        { user: { id: 'b', displayName: 'Bo' }, regroup: 'OUT', reason: 'COMPLETED', arrivalParty: true },
       ],
     }
     render(<RegroupCard result={outAndIn} viewerId="b" minPlayers={2} />)
     expect(screen.getByText('Out')).toBeInTheDocument()
     expect(screen.getByTestId('regroup-count')).toHaveTextContent('1 of 2 back and in')
+  })
+
+  /**
+   * The JQ-291 regression, and the mainline case for any team mode: a 3v3 is ordinarily two
+   * groups who each queued from their own room, and the card used to list all six interleaved
+   * by role with nothing saying which three were yours. Answering it sent both groups to one
+   * table — two sets of strangers in a room neither agreed to.
+   *
+   * The count moves with the list on purpose. "1 of 3" is about the group you came with; the
+   * mode minimum beside it is what backfill still has to fill, and that is a different number
+   * by design.
+   */
+  it('shows the viewer’s own group, not everyone in the match', () => {
+    const threeVthree = {
+      ...base,
+      participants: [
+        { user: { id: 'a', displayName: 'Ada' }, regroup: 'IN', reason: 'COMPLETED', arrivalParty: true },
+        { user: { id: 'b', displayName: 'Bo' }, regroup: 'PENDING', reason: 'COMPLETED', arrivalParty: true },
+        { user: { id: 'c', displayName: 'Cy' }, regroup: 'PENDING', reason: 'COMPLETED', arrivalParty: true },
+        { user: { id: 'x', displayName: 'Xan' }, regroup: 'IN', reason: 'COMPLETED', arrivalParty: false },
+        { user: { id: 'y', displayName: 'Yuri' }, regroup: 'IN', reason: 'COMPLETED', arrivalParty: false },
+        { user: { id: 'z', displayName: 'Zed' }, regroup: 'IN', reason: 'COMPLETED', arrivalParty: false },
+      ],
+    }
+    render(<RegroupCard result={threeVthree} viewerId="a" minPlayers={6} />)
+
+    expect(screen.getByText('You')).toBeInTheDocument()
+    expect(screen.getByText('Bo')).toBeInTheDocument()
+    expect(screen.getByText('Cy')).toBeInTheDocument()
+    for (const opponent of ['Xan', 'Yuri', 'Zed']) {
+      expect(screen.queryByText(opponent)).not.toBeInTheDocument()
+    }
+    expect(screen.getByTestId('regroup-count')).toHaveTextContent('1 of 3 back and in · needs 6 to start')
   })
 
   /**

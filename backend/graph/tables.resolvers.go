@@ -550,7 +550,21 @@ func (r *tableResolver) RegroupRoster(ctx context.Context, obj *model.Table) ([]
 	if err != nil {
 		return nil, err
 	}
-	return loadRegroupRosterEntries(ctx, st, *obj.OriginSessionID)
+	tableID, err := tableRoomIDFromObj(obj)
+	if err != nil {
+		return nil, err
+	}
+	// The table's room is the arrival party this roster is for (JQ-291). A match can leave
+	// behind one regroup table per party, and each shows only the group whose room it is in.
+	//
+	// The lookup costs a query, but only on a table that came from a match — the ordinary
+	// table in a room returned above without touching the store at all, which is the case
+	// JQ-177 cared about.
+	table, err := st.GetRoomTableByID(ctx, tableID)
+	if err != nil {
+		return nil, err
+	}
+	return loadRegroupRosterEntries(ctx, st, *obj.OriginSessionID, table.RoomID)
 }
 
 // User is the resolver for the user field.

@@ -230,14 +230,15 @@ type ComplexityRoot struct {
 	}
 
 	MatchParticipantResult struct {
-		Finished   func(childComplexity int) int
-		FinishedAt func(childComplexity int) int
-		Placement  func(childComplexity int) int
-		Reason     func(childComplexity int) int
-		Regroup    func(childComplexity int) int
-		Role       func(childComplexity int) int
-		User       func(childComplexity int) int
-		Winner     func(childComplexity int) int
+		ArrivalParty func(childComplexity int) int
+		Finished     func(childComplexity int) int
+		FinishedAt   func(childComplexity int) int
+		Placement    func(childComplexity int) int
+		Reason       func(childComplexity int) int
+		Regroup      func(childComplexity int) int
+		Role         func(childComplexity int) int
+		User         func(childComplexity int) int
+		Winner       func(childComplexity int) int
 	}
 
 	MatchResult struct {
@@ -1621,6 +1622,12 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 
 		return e.complexity.JoinResult.SessionID(childComplexity), true
 
+	case "MatchParticipantResult.arrivalParty":
+		if e.complexity.MatchParticipantResult.ArrivalParty == nil {
+			break
+		}
+
+		return e.complexity.MatchParticipantResult.ArrivalParty(childComplexity), true
 	case "MatchParticipantResult.finished":
 		if e.complexity.MatchParticipantResult.Finished == nil {
 			break
@@ -4832,6 +4839,16 @@ type MatchParticipantResult {
   placement: Int
   winner: Boolean!
   regroup: RegroupState!
+  """
+  Whether this player came into the match with the viewer — the same room table — so the
+  viewer's regroup card can show their own group and not the six people the match happened
+  to contain (JQ-291).
+
+  Per viewer, like ` + "`" + `groupPlay` + "`" + `: in a 3v3 between two groups, each group's members see their
+  own three as true and the opposing three as false. A player who joined the catalog queue
+  on their own arrived with nobody, so every row reads false for them — including their own.
+  """
+  arrivalParty: Boolean!
 }
 
 type MatchResult {
@@ -10292,6 +10309,35 @@ func (ec *executionContext) fieldContext_MatchParticipantResult_regroup(_ contex
 	return fc, nil
 }
 
+func (ec *executionContext) _MatchParticipantResult_arrivalParty(ctx context.Context, field graphql.CollectedField, obj *model.MatchParticipantResult) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_MatchParticipantResult_arrivalParty,
+		func(ctx context.Context) (any, error) {
+			return obj.ArrivalParty, nil
+		},
+		nil,
+		ec.marshalNBoolean2bool,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_MatchParticipantResult_arrivalParty(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "MatchParticipantResult",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Boolean does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _MatchResult_matchId(ctx context.Context, field graphql.CollectedField, obj *model.MatchResult) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
@@ -10629,6 +10675,8 @@ func (ec *executionContext) fieldContext_MatchResult_participants(_ context.Cont
 				return ec.fieldContext_MatchParticipantResult_winner(ctx, field)
 			case "regroup":
 				return ec.fieldContext_MatchParticipantResult_regroup(ctx, field)
+			case "arrivalParty":
+				return ec.fieldContext_MatchParticipantResult_arrivalParty(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type MatchParticipantResult", field.Name)
 		},
@@ -26455,6 +26503,11 @@ func (ec *executionContext) _MatchParticipantResult(ctx context.Context, sel ast
 			}
 		case "regroup":
 			out.Values[i] = ec._MatchParticipantResult_regroup(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "arrivalParty":
+			out.Values[i] = ec._MatchParticipantResult_arrivalParty(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
