@@ -62,10 +62,27 @@ describe('groupStatusLine', () => {
   it('reports readiness once every seat is taken', () => {
     const table = {
       seatSlots: [slot('p-1', 'Player · 1', { id: 'u1' }), slot('p-2', 'Player · 2', { id: 'u2' })],
-      formingGaps: [{ queuePath: 'Player', displayName: 'Player', assigned: 2, needed: 2 }],
+      // `needed` is the remainder the API computed, not the requirement: a filled path
+      // reports zero. (It used to read 2 here, which no live table can produce.)
+      formingGaps: [{ queuePath: 'Player', displayName: 'Player', assigned: 2, needed: 0 }],
     }
 
     expect(groupStatusLine(table)).toBe('2 of 2 seats · ready to start')
+  })
+
+  it('still names a role that needs exactly as many as it already has', () => {
+    // Guards the reading above: `needed > assigned` would call this path satisfied.
+    const table = {
+      seatSlots: [
+        slot('p-1', 'Guesser · 1', { id: 'u1' }),
+        slot('p-2', 'Guesser · 2', { id: 'u2' }),
+        slot('p-3', 'Guesser · 3'),
+        slot('p-4', 'Guesser · 4'),
+      ],
+      formingGaps: [{ queuePath: 'Guesser', displayName: 'Guesser', assigned: 2, needed: 2 }],
+    }
+
+    expect(groupStatusLine(table)).toBe('Still need: Guesser')
   })
 })
 
@@ -257,15 +274,26 @@ describe('groupCtaState', () => {
     })
   })
 
-  it('tells a seated non-king who they are waiting on', () => {
-    const table = {
+  // A table that is playable but not full, with no queue to ask. Both king branches
+  // still live here — a full table no longer reaches either of them.
+  function startableTable(overrides = {}) {
+    return {
       king,
       canStart: true,
-      seats: [{ seatKey: 'p-2', user: { id: 'u9' } }],
-      seatSlots: [slot('p-1', 'Player · 1', king), slot('p-2', 'Player · 2', { id: 'u9' })],
+      seats: [{ seatKey: 'p-1', user: king }, { seatKey: 'p-2', user: { id: 'u9' } }],
+      seatSlots: [
+        slot('p-1', 'Player · 1', king),
+        slot('p-2', 'Player · 2', { id: 'u9' }),
+        slot('p-3', 'Player · 3'),
+      ],
+      lookForGroupOptions: [],
+      formingGaps: [],
+      ...overrides,
     }
+  }
 
-    expect(groupCtaState(table, 'u9')).toMatchObject({
+  it('tells a seated non-king who they are waiting on', () => {
+    expect(groupCtaState(startableTable(), 'u9')).toMatchObject({
       kind: 'waiting',
       label: 'Waiting for Alex to start',
       hint: "You'll be taken in automatically",
@@ -273,14 +301,84 @@ describe('groupCtaState', () => {
   })
 
   it('offers the start control to the king once the table can start', () => {
-    const table = {
-      king,
-      canStart: true,
-      seats: [{ seatKey: 'p-1', user: king }],
-      seatSlots: [slot('p-1', 'Player · 1', king)],
-    }
+    expect(groupCtaState(startableTable(), 'u1')).toMatchObject({
+      kind: 'start',
+      label: 'Start game',
+    })
+  })
 
-    expect(groupCtaState(table, 'u1')).toMatchObject({ kind: 'start', label: 'Start game' })
+  it('offers any seated player the way to ask for the rest of the match', () => {
+    const table = startableTable({
+      canStart: false,
+      lookForGroupOptions: [{ queueId: 'q-1', queueName: 'Ranked', visible: true, enabled: true }],
+    })
+
+    // u9 is not the king. That is the point of the ticket.
+    expect(groupCtaState(table, 'u9')).toMatchObject({
+      kind: 'find',
+      label: 'Find us a match',
+      queueId: 'q-1',
+      startLabel: null,
+    })
+  })
+
+  it('keeps the king’s manual start beside it while the table is playable but not full', () => {
+    const table = startableTable({
+      lookForGroupOptions: [{ queueId: 'q-1', queueName: 'Ranked', visible: true, enabled: true }],
+    })
+
+    expect(groupCtaState(table, 'u1')).toMatchObject({ kind: 'find', startLabel: 'Start game' })
+    expect(groupCtaState(table, 'u9')).toMatchObject({ kind: 'find', startLabel: null })
+  })
+
+  it('ignores a queue the table may not ask right now', () => {
+    const table = startableTable({
+      lookForGroupOptions: [{ queueId: 'q-1', queueName: 'Ranked', visible: true, enabled: false }],
+    })
+
+    expect(groupCtaState(table, 'u9')).toMatchObject({ kind: 'waiting' })
+  })
+
+  it('shows what is still filling, and lets any member stop it', () => {
+    const table = startableTable({
+      backfillActive: true,
+      formingGaps: [
+        { queuePath: 'Attacker', displayName: 'Attacker', assigned: 2, needed: 1 },
+        { queuePath: 'Defender', displayName: 'Defender', assigned: 1, needed: 2 },
+      ],
+    })
+
+    // Both of them, king or not: nobody on this screen can see who pressed the button.
+    for (const viewer of ['u1', 'u9']) {
+      expect(groupCtaState(table, viewer)).toMatchObject({
+        kind: 'filling',
+        label: 'Finding your match',
+        detail: 'Need 1 Attacker, 2 Defender',
+        cancelLabel: 'Stop',
+      })
+    }
+  })
+
+  it('counts rather than names the gap for a mode with no roles of its own', () => {
+    const table = startableTable({
+      backfillActive: true,
+      formingGaps: [{ queuePath: '', displayName: '', assigned: 3, needed: 3 }],
+    })
+
+    expect(groupCtaState(table, 'u9')).toMatchObject({ detail: 'Need 3 more' })
+  })
+
+  it('announces the start once every seat is taken, offering nobody a button', () => {
+    const table = startableTable({
+      seatSlots: [
+        slot('p-1', 'Player · 1', king),
+        slot('p-2', 'Player · 2', { id: 'u9' }),
+        slot('p-3', 'Player · 3', { id: 'u7' }),
+      ],
+    })
+
+    expect(groupCtaState(table, 'u1')).toMatchObject({ kind: 'starting' })
+    expect(groupCtaState(table, 'u9')).toMatchObject({ kind: 'starting' })
   })
 
   it('blocks the king with what is still missing', () => {
@@ -289,6 +387,7 @@ describe('groupCtaState', () => {
       canStart: false,
       seats: [{ seatKey: 'p-1', user: king }],
       seatSlots: [slot('p-1', 'Player · 1', king), slot('p-2', 'Player · 2')],
+      lookForGroupOptions: [],
       formingGaps: [{ queuePath: 'Player', displayName: 'Player', assigned: 1, needed: 2 }],
     }
 

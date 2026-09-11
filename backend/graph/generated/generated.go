@@ -272,6 +272,7 @@ type ComplexityRoot struct {
 
 	Mutation struct {
 		BeginSpiritAnimalReading     func(childComplexity int, forceRestart *bool) int
+		CancelTableBackfill          func(childComplexity int, tableID string) int
 		CompleteLinkEmailWithCode    func(childComplexity int, email string, code string, confirmMerge *bool) int
 		CompleteLinkEmailWithLink    func(childComplexity int, token string, confirmMerge *bool) int
 		CompleteSignInWithCode       func(childComplexity int, email string, code string) int
@@ -788,6 +789,7 @@ type MutationResolver interface {
 	DiscardTable(ctx context.Context, tableID string) (bool, error)
 	StartTable(ctx context.Context, tableID string) (*model.JoinResult, error)
 	StartTableBackfill(ctx context.Context, tableID string, queueID string) (*model.JoinResult, error)
+	CancelTableBackfill(ctx context.Context, tableID string) (bool, error)
 }
 type MyTableSeatResolver interface {
 	BackfillActive(ctx context.Context, obj *model.MyTableSeat) (bool, error)
@@ -1810,6 +1812,17 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.Mutation.BeginSpiritAnimalReading(childComplexity, args["forceRestart"].(*bool)), true
+	case "Mutation.cancelTableBackfill":
+		if e.complexity.Mutation.CancelTableBackfill == nil {
+			break
+		}
+
+		args, err := ec.field_Mutation_cancelTableBackfill_args(ctx, rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.complexity.Mutation.CancelTableBackfill(childComplexity, args["tableId"].(string)), true
 	case "Mutation.completeLinkEmailWithCode":
 		if e.complexity.Mutation.CompleteLinkEmailWithCode == nil {
 			break
@@ -5277,7 +5290,16 @@ extend type Mutation {
   leaveTable(tableId: ID!): Boolean!
   discardTable(tableId: ID!): Boolean!
   startTable(tableId: ID!): JoinResult!
+  """
+  Ask the lobby for the rest of the match. Any seated player may, not only the
+  king (JQ-137) — the request belongs to the table, not to whoever made it.
+  """
   startTableBackfill(tableId: ID!, queueId: ID!): JoinResult!
+  """
+  Withdraw that request for the whole table. False when there was nothing waiting
+  to withdraw — already fired, already cancelled, or never asked for.
+  """
+  cancelTableBackfill(tableId: ID!): Boolean!
 }
 
 extend type Subscription {
@@ -5402,6 +5424,17 @@ func (ec *executionContext) field_Mutation_beginSpiritAnimalReading_args(ctx con
 		return nil, err
 	}
 	args["forceRestart"] = arg0
+	return args, nil
+}
+
+func (ec *executionContext) field_Mutation_cancelTableBackfill_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
+	var err error
+	args := map[string]any{}
+	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "tableId", ec.unmarshalNID2string)
+	if err != nil {
+		return nil, err
+	}
+	args["tableId"] = arg0
 	return args, nil
 }
 
@@ -13989,6 +14022,47 @@ func (ec *executionContext) fieldContext_Mutation_startTableBackfill(ctx context
 	}()
 	ctx = graphql.WithFieldContext(ctx, fc)
 	if fc.Args, err = ec.field_Mutation_startTableBackfill_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Mutation_cancelTableBackfill(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_Mutation_cancelTableBackfill,
+		func(ctx context.Context) (any, error) {
+			fc := graphql.GetFieldContext(ctx)
+			return ec.resolvers.Mutation().CancelTableBackfill(ctx, fc.Args["tableId"].(string))
+		},
+		nil,
+		ec.marshalNBoolean2bool,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_Mutation_cancelTableBackfill(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Mutation",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Boolean does not have child fields")
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Mutation_cancelTableBackfill_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
 		ec.Error(ctx, err)
 		return fc, err
 	}
@@ -27150,6 +27224,13 @@ func (ec *executionContext) _Mutation(ctx context.Context, sel ast.SelectionSet)
 		case "startTableBackfill":
 			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
 				return ec._Mutation_startTableBackfill(ctx, field)
+			})
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "cancelTableBackfill":
+			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
+				return ec._Mutation_cancelTableBackfill(ctx, field)
 			})
 			if out.Values[i] == graphql.Null {
 				out.Invalids++

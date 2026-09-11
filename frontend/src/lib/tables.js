@@ -158,6 +158,12 @@ const START_TABLE_BACKFILL = `
   }
 `
 
+const CANCEL_TABLE_BACKFILL = `
+  mutation CancelTableBackfill($tableId: ID!) {
+    cancelTableBackfill(tableId: $tableId)
+  }
+`
+
 export async function fetchMyTableSeat() {
   const data = await graphqlRequest(MY_TABLE_SEAT_QUERY)
   return data.myTableSeat ?? null
@@ -193,6 +199,14 @@ export async function startTable(tableId) {
 export async function startTableBackfill(tableId, queueId) {
   const data = await graphqlRequest(START_TABLE_BACKFILL, { tableId, queueId })
   return data.startTableBackfill
+}
+
+// Withdraws the request for the whole table, not just for the caller: a group asked for
+// the match together and leaves the queue together (JQ-137). False when there was
+// nothing left to withdraw.
+export async function cancelTableBackfill(tableId) {
+  const data = await graphqlRequest(CANCEL_TABLE_BACKFILL, { tableId })
+  return data.cancelTableBackfill
 }
 
 const MY_TABLE_SEAT_UPDATED_SUBSCRIPTION = `

@@ -41,7 +41,15 @@ func (s *Store) FormingPathGaps(ctx context.Context, fm *FormingMatch) ([]lfg.Pa
 	return gaps, tx.Commit()
 }
 
-// TableBackfillActive is true when a filling forming match has assignments tied to this table.
+// TableBackfillActive is true when this table has a live request for the rest of its
+// match: either its players are on a filling forming map, or they are queued and the map
+// has not been built yet.
+//
+// The second term matters because the forming map is the worker's, not the mutation's.
+// StartTableBackfill queues the table and schedules a reconcile; until that reconcile
+// runs there are no assignments to find, and a table that asked a moment ago would
+// otherwise report itself as not asking — offering every member the button again, and
+// letting a second press queue a group that is already queued (JQ-137).
 func (s *Store) TableBackfillActive(ctx context.Context, tableID uuid.UUID) (bool, error) {
 	var exists bool
 	err := s.db.QueryRowContext(ctx, `
@@ -52,8 +60,15 @@ func (s *Store) TableBackfillActive(ctx context.Context, tableID uuid.UUID) (boo
 			WHERE fma.table_id = $1
 			  AND fma.source = 'table'
 			  AND fm.status = $2
+		) OR EXISTS (
+			SELECT 1
+			FROM game_queues gq
+			INNER JOIN parties p ON p.id = gq.party_id
+			WHERE gq.status = 'waiting'
+			  AND p.status IN ($3, $4)
+			  AND p.party_tree->>'tableId' = $1::text
 		)
-	`, tableID, FormingMatchStatusFilling).Scan(&exists)
+	`, tableID, FormingMatchStatusFilling, PartyStatusWaiting, PartyStatusPlaced).Scan(&exists)
 	return exists, err
 }
 
@@ -70,7 +85,11 @@ func (s *Store) TableFormingGaps(ctx context.Context, tableID uuid.UUID) ([]lfg.
 			return nil, false, err
 		}
 		if fmID == uuid.Nil {
-			return nil, false, nil
+			// Queued, but the worker has not built the map yet. The request is live all
+			// the same, so it is still reported as such, and what the table is short of
+			// is described from its own seats until the map can say it better.
+			gaps, err := s.tableSeatedPathGaps(ctx, tableID)
+			return gaps, true, err
 		}
 		fm, err := s.getFormingMatchByID(ctx, fmID)
 		if err != nil {

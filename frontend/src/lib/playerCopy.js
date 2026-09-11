@@ -419,6 +419,60 @@ export const REGROUP_FIND_SOMETHING_NEW = 'Find something new'
 // choose (JQ-232).
 export const REGROUP_CHOOSE_AGAIN = 'Choose again'
 
+/*
+ * Asking the lobby for the rest of the match (JQ-137).
+ *
+ * Deliberately not "Find more players". What a partly-filled group is short of is
+ * usually not more of itself: three friends on one side of a 3v3 need three
+ * opponents, three friends in an eight-player free-for-all need five other players,
+ * and a group split two-and-one across a 3v3 needs one team-mate and two opponents.
+ * "More players" implies the arrivals join *you*, which is wrong in the common case
+ * — and, sitting directly under the invite card, it reads as inviting more friends,
+ * which is the one thing this does not do.
+ *
+ * So the group is named as the thing that is already complete, and the match as the
+ * thing still missing. Which of the open seats are team-mates and which are
+ * opponents is the seat template's business, and the need line below says it for the
+ * modes that name their roles.
+ */
+export const GROUP_FIND_MATCH = 'Find us a match'
+export const GROUP_FINDING_MATCH = 'Finding your match'
+export const GROUP_FIND_MATCH_HINT = "Your group stays together — we'll fill the rest."
+/** A full table starts itself, so the moment is announced rather than offered. */
+export const GROUP_STARTING = 'Starting your game…'
+
+const GENERIC_ROLE_LABELS = new Set(['seat', 'seats', 'player', 'players'])
+
+/**
+ * A role label is worth saying only when the mode chose it. `displayName` falls back to
+ * the queue path, which for a mode that names no roles is the seat template's own
+ * plumbing ("Seat") or a bare number — neither of which tells a player anything.
+ */
+function isNamedRole(gap) {
+  const label = (gap?.displayName || gap?.queuePath || '').trim()
+  return label !== '' && !/^\d+$/.test(label) && !GENERIC_ROLE_LABELS.has(label.toLowerCase())
+}
+
+/**
+ * What the group is still waiting on: "Need 1 Attacker, 2 Defenders" for a mode that
+ * names its roles, and "Need 3 more" for one that does not — because "Need 3 Seat" says
+ * nothing the count has not already said.
+ *
+ * All-or-nothing on the naming: a line that names two of three paths and numbers the
+ * third reads as a missing word rather than as a deliberate omission.
+ */
+export function formatGroupFillNeedLine(formingGaps) {
+  const gaps = (Array.isArray(formingGaps) ? formingGaps : []).filter((gap) => (gap?.needed ?? 0) > 0)
+  if (gaps.length === 0) {
+    return null
+  }
+  if (!gaps.every(isNamedRole)) {
+    const total = gaps.reduce((sum, gap) => sum + gap.needed, 0)
+    return `Need ${total} more`
+  }
+  return `Need ${gaps.map((gap) => `${gap.needed} ${gap.displayName.trim()}`).join(', ')}`
+}
+
 // Confirms the pre-queue picker when it is claiming a seat rather than joining a queue.
 export const GROUP_TAKE_SEAT = 'Take this seat'
 export const GROUP_TAKING_SEAT = 'Taking your seat…'

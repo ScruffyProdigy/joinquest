@@ -2,7 +2,14 @@ import { useState } from 'react'
 import { useAuth } from '../auth/AuthProvider'
 import { useActiveRoom } from '../rooms/ActiveRoomProvider'
 import { navigateTo } from '../../lib/usePathname'
-import { discardTable, leaveTable, sitAtTable, startTable } from '../../lib/tables'
+import {
+  cancelTableBackfill,
+  discardTable,
+  leaveTable,
+  sitAtTable,
+  startTable,
+  startTableBackfill,
+} from '../../lib/tables'
 import { fetchModeQueueOptions } from '../../lib/games'
 import { GROUP_FIND_SOMETHING_NEW, GROUP_TAKE_SEAT, GROUP_TAKING_SEAT } from '../../lib/playerCopy'
 import { hasReadyToPlayIntent } from '../../lib/intent'
@@ -213,6 +220,14 @@ export default function GroupPage({ intent }) {
             }
           })
         }
+        /*
+          Nothing is followed here on success. Backfill queues the whole table and hands
+          the match back through each player's own seat push, which this page is already
+          watching for — so the player who pressed it takes exactly the same route in as
+          the four people who did not.
+        */
+        onFindMatch={() => run(() => startTableBackfill(table.id, cta.queueId))}
+        onCancelFindMatch={() => run(() => cancelTableBackfill(table.id))}
       />
 
       <PreQueueOptionsSheet

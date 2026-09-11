@@ -10,6 +10,7 @@ import (
 	"fmt"
 	"log"
 
+	"github.com/google/uuid"
 	"github.com/scruffyprodigy/joinquest/graph/generated"
 	"github.com/scruffyprodigy/joinquest/graph/model"
 	"github.com/scruffyprodigy/joinquest/internal/pubsub"
@@ -115,7 +116,39 @@ func (r *mutationResolver) SitAtTable(ctx context.Context, tableID string, seatK
 		}
 		return nil, err
 	}
+
+	// The last seat filling is what starts a friends-only table, not a button (JQ-137).
+	// Everyone reaches the game the same way they already did — the per-seat push carries
+	// each player their own signed launch URL — so the player who happened to claim last
+	// gets no different treatment from the rest.
+	started, err := r.autoStartFullTable(ctx, tid)
+	if err != nil {
+		// The seat is claimed and committed. Failing to start is not a reason to
+		// unseat this player, so it is logged and the table comes back forming; the
+		// king's Start is still there, and the next claim tries again.
+		log.Printf("table auto-start: table %s: %v", tid, err)
+	}
+	if started {
+		// Start published the table itself, and its seats are gone: re-read rather
+		// than returning the forming row this mutation began with.
+		return r.loadTableModel(ctx, tid)
+	}
 	return r.tableAfterMutation(ctx, table)
+}
+
+// autoStartFullTable starts the table when the claim just made completed it. False with
+// no error is the ordinary case: the table still has seats to fill.
+func (r *mutationResolver) autoStartFullTable(ctx context.Context, tableID uuid.UUID) (bool, error) {
+	st, err := r.requireStore()
+	if err != nil {
+		return false, err
+	}
+	result, err := st.AutoStartTable(ctx, tableID)
+	if err != nil || result == nil {
+		return false, err
+	}
+	_, err = r.finishStartedTable(ctx, tableID, result)
+	return true, err
 }
 
 // LeaveTable is the resolver for the leaveTable field.
@@ -242,6 +275,51 @@ func (r *mutationResolver) StartTableBackfill(ctx context.Context, tableID strin
 		joinResult.QueuedCount = &count
 	}
 	return joinResult, nil
+}
+
+// CancelTableBackfill is the resolver for the cancelTableBackfill field.
+func (r *mutationResolver) CancelTableBackfill(ctx context.Context, tableID string) (bool, error) {
+	st, err := r.requireStore()
+	if err != nil {
+		return false, err
+	}
+	userID, err := r.requireIdentityUserID(ctx)
+	if err != nil {
+		return false, err
+	}
+	tid, err := parseUUID(tableID, "table id")
+	if err != nil {
+		return false, err
+	}
+	table, err := r.requireTableRoomMember(ctx, tid, userID)
+	if err != nil {
+		return false, err
+	}
+
+	result, err := st.CancelTableBackfill(ctx, tid, userID)
+	if err != nil {
+		return false, err
+	}
+	if !result.Cancelled {
+		return false, nil
+	}
+
+	if err := r.publishTableUpdated(ctx, table.RoomID, tid); err != nil {
+		return false, err
+	}
+	// Everyone the request carried in is told they are out of it, not only whoever
+	// pressed cancel: the banner they are each watching is the queue's, and one of
+	// them backing out of a screen the others cannot see is the failure this avoids.
+	for _, uid := range result.NotifyUserIDs {
+		if err := r.publishQueueLeft(ctx, result.GameID, result.ModeQueueID, uid, result.QueuedCount, ""); err != nil {
+			log.Printf("table backfill cancel: notify user %s: %v", uid, err)
+		}
+	}
+
+	// The seats this table was holding are back in the pool, so whoever was being
+	// formed around it is re-placed now rather than on the next tick.
+	r.scheduleFormingReconcile(result.ModeQueueID)
+	return true, nil
 }
 
 // BackfillActive is the resolver for the backfillActive field.
