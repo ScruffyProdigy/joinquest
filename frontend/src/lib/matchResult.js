@@ -186,9 +186,14 @@ export async function subscribeToMatchResult(matchId, { onUpdate, onError } = {}
 }
 
 /**
- * The three regroup failures a client should treat differently, as the resolver phrases
- * them (backend/graph/match_helpers.go, `regroupClientError`). GraphQL carries no error
- * code on this path, so the sent message text is all there is to match on.
+ * The three regroup failures a client should treat differently, as the backend names them
+ * in the `RegroupErrorCode` enum (backend/graph/schema/match.graphqls). The resolver puts
+ * one of these in the GraphQL error's `code` extension; `graphqlRequest` hangs it on the
+ * thrown Error as `.code`.
+ *
+ * Values are the enum's, exactly — `src/test/regroupErrorCodes.test.js` reads the schema
+ * and fails if one of them stops existing. `UNKNOWN` is this module's own: it is every
+ * failure the backend sends no code with, and has no enum member.
  */
 export const REGROUP_ERROR = {
   NO_MODE: 'NO_REGROUP_MODE',
@@ -197,17 +202,18 @@ export const REGROUP_ERROR = {
   UNKNOWN: 'UNKNOWN',
 }
 
+const REGROUP_ERROR_CODES = new Set([
+  REGROUP_ERROR.NO_MODE,
+  REGROUP_ERROR.NOT_FINISHED,
+  REGROUP_ERROR.TABLE_FULL,
+])
+
+/**
+ * Which of the three a thrown error is, or UNKNOWN. Reads the code and nothing else: the
+ * messages beside these codes are copy, and rewording one must not move a player onto a
+ * different branch (JQ-176).
+ */
 export function classifyRegroupError(error) {
-  const message = typeof error === 'string' ? error : error?.message || ''
-  if (/no longer has a mode/i.test(message)) {
-    return REGROUP_ERROR.NO_MODE
-  }
-  // The server writes a straight apostrophe; tolerate a curly one in case the copy is retouched.
-  if (/hasn['\u2019]t finished yet/i.test(message)) {
-    return REGROUP_ERROR.NOT_FINISHED
-  }
-  if (/table is full/i.test(message)) {
-    return REGROUP_ERROR.TABLE_FULL
-  }
-  return REGROUP_ERROR.UNKNOWN
+  const code = typeof error === 'object' && error !== null ? error.code : undefined
+  return REGROUP_ERROR_CODES.has(code) ? code : REGROUP_ERROR.UNKNOWN
 }

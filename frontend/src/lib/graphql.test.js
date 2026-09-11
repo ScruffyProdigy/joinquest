@@ -56,6 +56,39 @@ describe('graphqlRequest', () => {
     unsubscribe()
   })
 
+  // The machine-readable half of a failure. Dropping it here would silently degrade every
+  // caller that branches on a code back to matching message text (JQ-176).
+  it('carries the server error code onto the thrown error', async () => {
+    vi.stubGlobal(
+      'fetch',
+      respondWith({ errors: [{ message: 'the table is full', extensions: { code: 'TABLE_FULL' } }] }),
+    )
+
+    await expect(graphqlRequest('mutation { playAgain(matchId: "m") { seated } }')).rejects.toMatchObject({
+      message: 'the table is full',
+      code: 'TABLE_FULL',
+    })
+  })
+
+  it('carries the code through an HTTP-level failure too', async () => {
+    vi.stubGlobal(
+      'fetch',
+      respondWith({ errors: [{ message: 'nope', extensions: { code: 'TABLE_FULL' } }] }, false, 500),
+    )
+
+    await expect(graphqlRequest('mutation { playAgain(matchId: "m") { seated } }')).rejects.toMatchObject({
+      code: 'TABLE_FULL',
+    })
+  })
+
+  it('leaves the code undefined when the server sends none', async () => {
+    vi.stubGlobal('fetch', respondWith({ errors: [{ message: 'could not start another round' }] }))
+
+    await expect(graphqlRequest('mutation { playAgain(matchId: "m") { seated } }')).rejects.toSatisfy(
+      (error) => error.code === undefined,
+    )
+  })
+
   it('stops notifying once unsubscribed', async () => {
     vi.stubGlobal('fetch', respondWith({ errors: [{ message: 'identity required' }] }))
     const raised = vi.fn()

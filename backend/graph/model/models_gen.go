@@ -1321,6 +1321,73 @@ func (e QueueStatus) MarshalJSON() ([]byte, error) {
 	return buf.Bytes(), nil
 }
 
+// Why a `playAgain` call failed, in the `code` extension of the GraphQL error — the three
+// failures a player should experience differently. Declared here rather than on a payload
+// because these are errors, not results: the client reads
+// `errors[0].extensions.code`, never the message text, so the user-facing copy can be
+// reworded without changing which branch the client takes (JQ-176).
+//
+// Any other failure carries no code and is shown as a generic "try again".
+type RegroupErrorCode string
+
+const (
+	// The finished session has no mode left to rebuild a table from. The client falls back to the game's detail page.
+	RegroupErrorCodeNoRegroupMode RegroupErrorCode = "NO_REGROUP_MODE"
+	// The match is still running — deliberately distinct from "no such match".
+	RegroupErrorCodeSessionNotFinished RegroupErrorCode = "SESSION_NOT_FINISHED"
+	// Every seat is taken and the caller was not marked as opted in.
+	RegroupErrorCodeTableFull RegroupErrorCode = "TABLE_FULL"
+)
+
+var AllRegroupErrorCode = []RegroupErrorCode{
+	RegroupErrorCodeNoRegroupMode,
+	RegroupErrorCodeSessionNotFinished,
+	RegroupErrorCodeTableFull,
+}
+
+func (e RegroupErrorCode) IsValid() bool {
+	switch e {
+	case RegroupErrorCodeNoRegroupMode, RegroupErrorCodeSessionNotFinished, RegroupErrorCodeTableFull:
+		return true
+	}
+	return false
+}
+
+func (e RegroupErrorCode) String() string {
+	return string(e)
+}
+
+func (e *RegroupErrorCode) UnmarshalGQL(v any) error {
+	str, ok := v.(string)
+	if !ok {
+		return fmt.Errorf("enums must be strings")
+	}
+
+	*e = RegroupErrorCode(str)
+	if !e.IsValid() {
+		return fmt.Errorf("%s is not a valid RegroupErrorCode", str)
+	}
+	return nil
+}
+
+func (e RegroupErrorCode) MarshalGQL(w io.Writer) {
+	fmt.Fprint(w, strconv.Quote(e.String()))
+}
+
+func (e *RegroupErrorCode) UnmarshalJSON(b []byte) error {
+	s, err := strconv.Unquote(string(b))
+	if err != nil {
+		return err
+	}
+	return e.UnmarshalGQL(s)
+}
+
+func (e RegroupErrorCode) MarshalJSON() ([]byte, error) {
+	var buf bytes.Buffer
+	e.MarshalGQL(&buf)
+	return buf.Bytes(), nil
+}
+
 type RegroupState string
 
 const (

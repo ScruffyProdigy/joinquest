@@ -40,6 +40,17 @@ const game = {
   ],
 }
 
+/**
+ * A rejected `playAgain` as the real client builds one: `graphqlRequest` hangs the server's
+ * `extensions.code` on the Error, and the message is deliberately nonsense here — the page
+ * must branch on the code alone (JQ-176).
+ */
+function regroupFailure(code) {
+  const error = new Error('reworded server copy')
+  error.code = code
+  return error
+}
+
 function makeResult(overrides = {}) {
   return {
     matchId: 'match-1',
@@ -356,9 +367,7 @@ describe('ReturnPage', () => {
     it('falls back to the game page when the match has no mode to rebuild from', async () => {
       const user = userEvent.setup()
       await renderComplete()
-      vi.mocked(matchResultLib.playAgain).mockRejectedValue(
-        new Error('this match no longer has a mode to build a table from'),
-      )
+      vi.mocked(matchResultLib.playAgain).mockRejectedValue(regroupFailure('NO_REGROUP_MODE'))
 
       await user.click(screen.getByRole('button', { name: 'Another round' }))
 
@@ -368,7 +377,7 @@ describe('ReturnPage', () => {
     it('says the match is not finished rather than routing away', async () => {
       const user = userEvent.setup()
       await renderComplete()
-      vi.mocked(matchResultLib.playAgain).mockRejectedValue(new Error("this match hasn't finished yet"))
+      vi.mocked(matchResultLib.playAgain).mockRejectedValue(regroupFailure('SESSION_NOT_FINISHED'))
 
       await user.click(screen.getByRole('button', { name: 'Another round' }))
 
@@ -379,7 +388,7 @@ describe('ReturnPage', () => {
     it('says the table filled up rather than routing away', async () => {
       const user = userEvent.setup()
       await renderComplete()
-      vi.mocked(matchResultLib.playAgain).mockRejectedValue(new Error('the table is full'))
+      vi.mocked(matchResultLib.playAgain).mockRejectedValue(regroupFailure('TABLE_FULL'))
 
       await user.click(screen.getByRole('button', { name: 'Another round' }))
 
