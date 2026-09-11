@@ -2,7 +2,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '../ui/card'
 import { Badge } from '../ui/badge'
 import PlayerAvatar from '../avatars/PlayerAvatar'
 import { displayName } from '../../lib/tables'
-import { showsRegroupRoster } from '../../lib/regroup'
+import { arrivalPartyOf, showsRegroupRoster } from '../../lib/regroup'
 import { cn } from '../../lib/utils'
 import {
   formatRegroupInCount,
@@ -63,12 +63,18 @@ function RegroupRow({ participant, viewerId }) {
  * where the prototype puts them and where they can still be offered to the players this card
  * is not for (JQ-277). It renders for exactly one of them: a group who played the match out.
  * See `showsRegroupRoster` for why solo and exited-early are not on that list.
+ *
+ * The viewer's own group, not the match's standings. A 3v3 is ordinarily two groups who each
+ * queued from their own room, and listing all six interleaved by role — with nothing marking
+ * which three were yours — was the card asking you to regroup with strangers you never
+ * agreed to come back with (JQ-291). The count below it reads the same way: "2 of 3 back and
+ * in" is about your group, and the mode minimum beside it is what backfill still has to fill.
  */
 export default function RegroupCard({ result, viewerId, minPlayers }) {
   if (!showsRegroupRoster(result, viewerId)) {
     return null
   }
-  const participants = result?.participants ?? []
+  const participants = arrivalPartyOf(result)
 
   return (
     <Card>

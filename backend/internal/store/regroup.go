@@ -25,9 +25,16 @@ var ErrSessionNotFinished = errors.New("store: session is still in progress")
 // caller is not opted in: regroup_opted_in_at must only ever mark a real seat holder.
 var ErrTableFull = errors.New("store: table has no open seat")
 
-// ClaimRegroupTable returns the single forming table for a finished match, creating it on
-// first call, and seats the caller. The SELECT ... FOR UPDATE is what makes every player
-// converge on one table instead of each creating their own.
+// ClaimRegroupTable returns the forming table the caller's arrival party regroups at,
+// creating it on first call, and seats the caller. The SELECT ... FOR UPDATE is what makes
+// the party converge on one table instead of each member creating their own.
+//
+// The unit is the party, not the match (JQ-291). A 3v3 is ordinarily two groups of three
+// who each came in through their own room, and converging the whole session on one table
+// merged two sets of strangers into a room neither agreed to — whichever player claimed
+// first decided where five other people went. Each party now regroups in the room it
+// arrived from, so the two groups go home separately and each leaves the seats the other
+// group filled genuinely open for backfill.
 func (s *Store) ClaimRegroupTable(ctx context.Context, sessionID, userID uuid.UUID) (*RoomTable, *Room, error) {
 	tx, err := s.db.BeginTx(ctx, nil)
 	if err != nil {
@@ -36,17 +43,19 @@ func (s *Store) ClaimRegroupTable(ctx context.Context, sessionID, userID uuid.UU
 	defer func() { _ = tx.Rollback() }()
 
 	var (
-		status    string
-		gameID    *uuid.UUID
-		modeID    *uuid.UUID
-		regroupID *uuid.UUID
+		status string
+		gameID *uuid.UUID
+		modeID *uuid.UUID
 	)
+	// The lock is still taken on the session rather than on the party's room, because it is
+	// what orders two claims that will build the *same* party's table. Locking per party
+	// would let two members of one party each create one.
 	err = tx.QueryRowContext(ctx, `
-		SELECT status, game_id, mode_id, regroup_table_id
+		SELECT status, game_id, mode_id
 		FROM game_sessions
 		WHERE id = $1
 		FOR UPDATE
-	`, sessionID).Scan(&status, &gameID, &modeID, &regroupID)
+	`, sessionID).Scan(&status, &gameID, &modeID)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return nil, nil, ErrNotFound
@@ -75,30 +84,25 @@ func (s *Store) ClaimRegroupTable(ctx context.Context, sessionID, userID uuid.UU
 		return nil, nil, ErrNoRegroupMode
 	}
 
-	table, err := s.loadFormingRegroupTableTx(ctx, tx, regroupID)
+	previous, err := loadParticipantSeatingTx(ctx, tx, sessionID, userID)
 	if err != nil {
 		return nil, nil, err
 	}
-	if table == nil {
-		room, err := s.getUserRoomTx(ctx, tx, userID)
-		if err != nil {
-			if !errors.Is(err, ErrNotFound) {
-				return nil, nil, err
-			}
-			room, err = s.createRoomTx(ctx, tx, userID)
-			if err != nil {
-				return nil, nil, err
-			}
-		}
-		table, err = s.createTableTx(ctx, tx, room.ID, *gameID, *modeID)
-		if err != nil {
-			return nil, nil, err
-		}
-		if _, err := tx.ExecContext(ctx, `
-			UPDATE game_sessions SET regroup_table_id = $2 WHERE id = $1
-		`, sessionID, table.ID); err != nil {
-			return nil, nil, err
-		}
+
+	table, err := s.partyRegroupTableTx(ctx, tx, sessionID, userID, *gameID, *modeID, previous)
+	if err != nil {
+		return nil, nil, err
+	}
+	// regroup_table_id is one column and a session can now have as many regroup tables as
+	// it had arrival parties, so it records the first only and no longer answers "where
+	// does this player go" — GetRegroupTableIDForUser does, per party. It is still stamped
+	// because resetRoomTableAfterSessionTx writes it for the room-table path and a column
+	// that is sometimes written and sometimes not is worse than one that means "the first
+	// table this match produced". Guarded on NULL so a second party cannot overwrite it.
+	if _, err := tx.ExecContext(ctx, `
+		UPDATE game_sessions SET regroup_table_id = $2 WHERE id = $1 AND regroup_table_id IS NULL
+	`, sessionID, table.ID); err != nil {
+		return nil, nil, err
 	}
 	// The forward pointer is stamped whether the table was just created or adopted from an
 	// earlier claimant: a table reached from resetRoomTableAfterSessionTx already carries
@@ -115,10 +119,6 @@ func (s *Store) ClaimRegroupTable(ctx context.Context, sessionID, userID uuid.UU
 	}
 
 	mode, err := getGameModeByID(ctx, tx, table.ModeID)
-	if err != nil {
-		return nil, nil, err
-	}
-	previous, err := loadParticipantSeatingTx(ctx, tx, sessionID, userID)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -180,10 +180,10 @@ func (s *Store) ClaimRegroupTable(ctx context.Context, sessionID, userID uuid.UU
 //
 // One constant rather than a copy per caller, for the reason roomHasLivePlayClause gives —
 // two hand-maintained copies of a liveness test drift, and the drift reads as correct in
-// review. That is not hypothetical here. The claim path applied this test and
-// GetRegroupTableID did not, so a finished match went on handing out the invite code of a
-// table its own playAgain would refuse to adopt: the code looked live, and following it
-// failed. Anything that answers "where is this match's regroup offer" goes through here.
+// review. That is not hypothetical here. The claim path applied this test and the read path
+// did not, so a finished match went on handing out the invite code of a table its own
+// playAgain would refuse to adopt: the code looked live, and following it failed. Anything
+// that answers "where is this party's regroup offer" goes through here.
 //
 // REQUIRES the caller to alias room_tables as `t` and rooms as `r`, so the correlation
 // cannot be rewritten differently at each site.
@@ -191,30 +191,146 @@ const liveRegroupTableClause = `
 	t.status = 'forming'
 	  AND r.status = 'open'`
 
-// loadFormingRegroupTableTx returns the claimed table only if the offer is still live by
-// liveRegroupTableClause. A swept, started or closed-room table reads as unclaimed so the
-// caller creates a fresh one.
+// partyRegroupTableTx finds or builds the table the claimant's arrival party regroups at.
+// Three steps, most-specific first:
 //
-// The room-status half is load-bearing, not defensive. leaveRoomTx closes a room once the
-// last member leaves but the table survives, and regroup_table_id still points at it.
-// Adopting that table would insert the claimant into a closed room, and sitAtTableTx's
-// isRoomMemberTx requires r.status = open — so the claim fails with ErrNotFound, which
-// regroupClientError reports as "you did not play in this match", permanently, with no
-// path to a fresh table. Treating it as unclaimed makes the next claim build a new one.
-func (s *Store) loadFormingRegroupTableTx(ctx context.Context, tx *sql.Tx, regroupID *uuid.UUID) (*RoomTable, error) {
-	if regroupID == nil {
+//  1. a table this party already claimed for this match — the second and third members to
+//     press "Another round" land here, which is what converges a party on one table;
+//  2. the table the party arrived from, still sitting forming in their room. This is the
+//     ordinary case for a room-table group: resetRoomTableAfterSessionTx hands their own
+//     table back the moment the match completes, already stamped, so step 1 usually catches
+//     it — but a group that reached the match through matchmaking never went through that
+//     reset, and their table is still there unstamped;
+//  3. a fresh table in the party's room.
+//
+// A player who arrived alone has no party room and no arrival table, so they fall to step 3
+// in a room of their own. Two of them in one match get two tables: they did not arrive
+// together, so they do not go back together (JQ-291).
+func (s *Store) partyRegroupTableTx(
+	ctx context.Context,
+	tx *sql.Tx,
+	sessionID, userID, gameID, modeID uuid.UUID,
+	arrival *participantSeating,
+) (*RoomTable, error) {
+	room, err := s.regroupRoomTx(ctx, tx, userID, arrival)
+	if err != nil {
+		return nil, err
+	}
+
+	table, err := s.liveRegroupTableInRoomTx(ctx, tx, sessionID, room.ID)
+	if err != nil {
+		return nil, err
+	}
+	if table != nil {
+		return table, nil
+	}
+
+	table, err = s.adoptArrivalTableTx(ctx, tx, room.ID, gameID, modeID, arrival)
+	if err != nil {
+		return nil, err
+	}
+	if table != nil {
+		return table, nil
+	}
+
+	return s.createTableTx(ctx, tx, room.ID, gameID, modeID)
+}
+
+// regroupRoomTx answers which room this claimant regroups into: the one they arrived from
+// while it is still open, and otherwise a room of their own.
+//
+// The fallback is not only for solo players. A room that emptied while the match ran is
+// closed by leaveRoomTx, and sitAtTableTx's isRoomMemberTx requires an open room — so
+// returning the arrival room regardless would fail every claim from that party with
+// ErrNotFound, which regroupClientError reports as "you did not play in this match",
+// permanently. A fresh room is a worse answer than their own room and a far better one than
+// no way back at all.
+func (s *Store) regroupRoomTx(ctx context.Context, tx *sql.Tx, userID uuid.UUID, arrival *participantSeating) (*Room, error) {
+	if arrival.ArrivalRoomID != nil {
+		room, err := s.getRoomByIDTx(ctx, tx, *arrival.ArrivalRoomID)
+		if err != nil && !errors.Is(err, ErrNotFound) {
+			return nil, err
+		}
+		if err == nil && room.Status == RoomStatusOpen {
+			return room, nil
+		}
+	}
+	room, err := s.getUserRoomTx(ctx, tx, userID)
+	if err == nil {
+		return room, nil
+	}
+	if !errors.Is(err, ErrNotFound) {
+		return nil, err
+	}
+	return s.createRoomTx(ctx, tx, userID)
+}
+
+// liveRegroupTableInRoomTx returns this party's already-claimed table for the match, or nil.
+// The (regroup_session_id, room_id) pair is the index that replaced the single
+// game_sessions.regroup_table_id column: one row per party rather than one per session, with
+// no migration, because both columns already existed.
+//
+// A swept, started or closed-room table reads as unclaimed so the caller builds a fresh one —
+// see liveRegroupTableClause for why the room half of that test is load-bearing.
+func (s *Store) liveRegroupTableInRoomTx(ctx context.Context, tx *sql.Tx, sessionID, roomID uuid.UUID) (*RoomTable, error) {
+	row := tx.QueryRowContext(ctx, `
+		SELECT `+roomTableColumnsT+`
+		FROM room_tables t
+		INNER JOIN rooms r ON r.id = t.room_id
+		WHERE t.regroup_session_id = $1 AND t.room_id = $2 AND `+liveRegroupTableClause+`
+		ORDER BY t.created_at DESC
+		LIMIT 1
+	`, sessionID, roomID)
+	table, err := scanRoomTable(row)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) || errors.Is(err, ErrNotFound) {
+			return nil, nil
+		}
+		return nil, err
+	}
+	return table, nil
+}
+
+// adoptArrivalTableTx reclaims the table the party left to play the match, when it is still
+// forming in the room they came back to and still set up for the same game and mode.
+//
+// Without this a group matched through the queue comes home to two tables: the one they were
+// sitting at, which nothing reset because they never went through StartTable, and a brand new
+// one beside it. Adopting theirs is both tidier and more honest — it is the table their room
+// already shows.
+//
+// Its seats are cleared on the way in, for the reason resetRoomTableAfterSessionTx clears
+// them: they are last round's, and a group came back to rotate the spymaster or bring a
+// different character (JQ-232). The caller's seating rules then run per claimant, which
+// re-seats everyone where the mode offers nothing to choose.
+func (s *Store) adoptArrivalTableTx(
+	ctx context.Context,
+	tx *sql.Tx,
+	roomID, gameID, modeID uuid.UUID,
+	arrival *participantSeating,
+) (*RoomTable, error) {
+	if arrival.ArrivalTableID == nil {
 		return nil, nil
 	}
 	row := tx.QueryRowContext(ctx, `
 		SELECT `+roomTableColumnsT+`
 		FROM room_tables t
 		INNER JOIN rooms r ON r.id = t.room_id
-		WHERE t.id = $1 AND `+liveRegroupTableClause, *regroupID)
+		WHERE t.id = $1
+		  AND t.room_id = $2
+		  AND t.game_id = $3
+		  AND t.mode_id = $4
+		  AND t.session_id IS NULL
+		  AND t.regroup_session_id IS NULL
+		  AND `+liveRegroupTableClause, *arrival.ArrivalTableID, roomID, gameID, modeID)
 	table, err := scanRoomTable(row)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) || errors.Is(err, ErrNotFound) {
 			return nil, nil
 		}
+		return nil, err
+	}
+	if _, err := tx.ExecContext(ctx, `DELETE FROM table_seats WHERE table_id = $1`, table.ID); err != nil {
 		return nil, err
 	}
 	return table, nil
@@ -374,11 +490,16 @@ func (s *Store) DeclineRegroup(ctx context.Context, sessionID, userID uuid.UUID,
 		return nil, err
 	}
 
+	// Any of this match's regroup tables, not game_sessions.regroup_table_id: that column
+	// names the first party's table only, so reading it freed a seat for one group and left
+	// every other group's decliner sitting there — visibly IN, blocking the backfill their
+	// own king is waiting on (JQ-291). Matching on the seat's owner is exact anyway, since a
+	// player holds at most one seat and only ever at their own party's table.
 	var release RegroupSeatRelease
 	err = tx.QueryRowContext(ctx, `
 		DELETE FROM table_seats
 		WHERE user_id = $2
-		  AND table_id = (SELECT regroup_table_id FROM game_sessions WHERE id = $1)
+		  AND table_id IN (SELECT id FROM room_tables WHERE regroup_session_id = $1)
 		RETURNING table_id, (SELECT room_id FROM room_tables WHERE id = table_seats.table_id)
 	`, sessionID, userID).Scan(&release.TableID, &release.RoomID)
 	if err != nil && !errors.Is(err, sql.ErrNoRows) {
@@ -395,34 +516,50 @@ func (s *Store) DeclineRegroup(ctx context.Context, sessionID, userID uuid.UUID,
 	return &release, nil
 }
 
-// GetRegroupTableID returns the claimed regroup table, or nil when there is no live offer —
-// none claimed yet, or one that has since stopped being real.
+// GetRegroupTableIDForUser returns the regroup table this player's arrival party claimed, or
+// nil when their party has no live offer yet.
 //
-// The liveRegroupTableClause subquery is the whole point, and reading regroup_table_id bare
-// was the bug. This feeds regroupInviteCode, so a raw pointer put the room code of a swept,
-// started or closed-room table on the results screen of every participant: an invite that
-// rendered as live and dead-ended on use, because ClaimRegroupTable applies this same test
-// and would build a fresh table instead. The two answers have to agree, and now they are
-// the same string.
+// Per viewer, because a match has one regroup table per arrival party and handing everyone
+// the first one stamped is the merge this ticket exists to stop (JQ-291): the invite code on
+// the results screen is a link people follow, so pointing the losing group at the winners'
+// room puts them in it.
 //
-// Nil-versus-error is unchanged and load-bearing: a session that does not exist is
-// ErrNotFound, while a session whose offer is not live is (nil, nil) — the caller renders
-// no invite code, exactly as it does before anyone claims.
-func (s *Store) GetRegroupTableID(ctx context.Context, sessionID uuid.UUID) (*uuid.UUID, error) {
+// Nil-versus-error is load-bearing and unchanged: a session that does not exist is
+// ErrNotFound, a party with no live offer is (nil, nil), and the caller renders no invite
+// code — exactly as it does before anyone claims.
+func (s *Store) GetRegroupTableIDForUser(ctx context.Context, sessionID, userID uuid.UUID) (*uuid.UUID, error) {
+	var participates bool
+	if err := s.db.QueryRowContext(ctx, `
+		SELECT EXISTS(SELECT 1 FROM game_session_participants WHERE session_id = $1 AND user_id = $2)
+	`, sessionID, userID).Scan(&participates); err != nil {
+		return nil, err
+	}
+	if !participates {
+		return nil, ErrNotFound
+	}
+
+	// "A regroup table of this match, in a room I am in" — room membership is what makes
+	// this the viewer's own party without re-reading their return context. ClaimRegroupTable
+	// puts every claimant in their party's room (ensureRoomMemberTx) and a group never left
+	// the room it queued from, so a member sees their group's table the moment any one of
+	// them claims it, and the opposing group — members of a different room — sees nothing.
+	//
+	// It also keeps answering for a player who arrived alone, whose table is in a room of
+	// their own: scoping on return_context.roomId instead would read nil for them and take
+	// away the link back to the table they just claimed.
 	var id *uuid.UUID
 	err := s.db.QueryRowContext(ctx, `
-		SELECT (
-			SELECT t.id
-			FROM room_tables t
-			INNER JOIN rooms r ON r.id = t.room_id
-			WHERE t.id = gs.regroup_table_id AND `+liveRegroupTableClause+`
-		)
-		FROM game_sessions gs
-		WHERE gs.id = $1
-	`, sessionID).Scan(&id)
+		SELECT t.id
+		FROM room_tables t
+		INNER JOIN rooms r ON r.id = t.room_id
+		INNER JOIN room_members rm ON rm.room_id = t.room_id AND rm.user_id = $2
+		WHERE t.regroup_session_id = $1 AND `+liveRegroupTableClause+`
+		ORDER BY t.created_at DESC
+		LIMIT 1
+	`, sessionID, userID).Scan(&id)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
-			return nil, ErrNotFound
+			return nil, nil
 		}
 		return nil, err
 	}

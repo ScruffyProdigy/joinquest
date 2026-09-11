@@ -10,15 +10,84 @@ import (
 	"github.com/google/uuid"
 )
 
-func TestClaimRegroupTableConvergesOnOneTable(t *testing.T) {
+// roomTableMatch is a party that arrived together: one room, one table, one match started
+// from it. Every regroup rule is written in terms of the arrival party (JQ-291), and
+// seedMatchedSession's two catalog joiners are two parties of one — they share a match but
+// not an arrival, so they deliberately do not converge on anything.
+type roomTableMatch struct {
+	SessionID uuid.UUID
+	Room      *Room
+	Table     *RoomTable
+	Mode      *GameMode
+	Users     []uuid.UUID
+}
+
+// seedRoomTableMatch seats two players at one room's table and plays a match from it, so both
+// carry the room arrival context a real group has. mode decides whether the post-match reset
+// re-seats them: a single-seat-class mode does, a roles mode leaves the table empty (JQ-232).
+func seedRoomTableMatch(t *testing.T, st *Store, ctx context.Context, cleaner *TestCleaner, game *Game, mode *GameMode) roomTableMatch {
+	t.Helper()
+
+	host := newRejoinUser(t, st, ctx, cleaner, "party-host")
+	guest := newRejoinUser(t, st, ctx, cleaner, "party-guest")
+
+	room, err := st.CreateRoom(ctx, host.ID)
+	if err != nil {
+		t.Fatalf("CreateRoom: %v", err)
+	}
+	if err := st.addRoomMemberDirect(ctx, room.ID, guest.ID); err != nil {
+		t.Fatalf("add guest to room: %v", err)
+	}
+	table, err := st.CreateTable(ctx, room.ID, game.ID, mode.ID, host.ID)
+	if err != nil {
+		t.Fatalf("CreateTable: %v", err)
+	}
+
+	seats, err := st.ListGameModeSeats(ctx, mode.ID)
+	if err != nil {
+		t.Fatalf("ListGameModeSeats: %v", err)
+	}
+	if len(seats) < 2 {
+		t.Fatalf("need at least 2 seats, got %d", len(seats))
+	}
+	if _, err := st.SitAtTable(ctx, table.ID, host.ID, seats[0].SeatKey); err != nil {
+		t.Fatalf("host sit: %v", err)
+	}
+	if _, err := st.SitAtTable(ctx, table.ID, guest.ID, seats[1].SeatKey); err != nil {
+		t.Fatalf("guest sit: %v", err)
+	}
+
+	started, err := st.StartTable(ctx, table.ID, host.ID)
+	if err != nil {
+		t.Fatalf("StartTable: %v", err)
+	}
+	if err := st.CompleteSession(ctx, started.SessionID, time.Now()); err != nil {
+		t.Fatalf("CompleteSession: %v", err)
+	}
+	return roomTableMatch{
+		SessionID: started.SessionID,
+		Room:      room,
+		Table:     table,
+		Mode:      mode,
+		Users:     []uuid.UUID{host.ID, guest.ID},
+	}
+}
+
+// TestClaimRegroupTableConvergesTheArrivalParty pins what the session row lock is for: two
+// members of one party pressing "Another round" at the same instant land on one table rather
+// than each building their own.
+//
+// The unit is the party, not the match (JQ-291) — see
+// TestTwoArrivalPartiesGetTwoRegroupTables for the other half, where converging is exactly
+// what must not happen.
+func TestClaimRegroupTableConvergesTheArrivalParty(t *testing.T) {
 	st := openTestStore(t)
 	cleaner := st.NewTestCleaner(t)
 	ctx := context.Background()
 
-	sessionID, userA, userB := seedMatchedSession(t, st, ctx, cleaner)
-	if err := st.CompleteSession(ctx, sessionID, time.Now()); err != nil {
-		t.Fatalf("CompleteSession: %v", err)
-	}
+	game, mode := setupDuelMode(t, st, cleaner)
+	match := seedRoomTableMatch(t, st, ctx, cleaner, game, mode)
+	sessionID, userA, userB := match.SessionID, match.Users[0], match.Users[1]
 
 	var wg sync.WaitGroup
 	tables := make([]*RoomTable, 2)
@@ -117,41 +186,54 @@ func TestClaimRegroupTableRefusesFullTableWithoutOptingIn(t *testing.T) {
 	cleaner := st.NewTestCleaner(t)
 	ctx := context.Background()
 
-	sessionID, userA, userB := seedMatchedSession(t, st, ctx, cleaner)
+	sessionID, userA, _ := seedMatchedSession(t, st, ctx, cleaner)
 	if err := st.CompleteSession(ctx, sessionID, time.Now()); err != nil {
 		t.Fatalf("CompleteSession: %v", err)
 	}
 
+	// A player who arrived alone, because they are the only kind who can meet a full table:
+	// a group-play claimant is left seatless on purpose (JQ-232), so "every seat is taken"
+	// is not a refusal for them, and a party never shares a table with another party.
+	//
+	// Saying no and then changing their mind is what puts them in front of one. The regroup
+	// table lives in a room they already had, and its other members can take its seats
+	// through the ordinary sit mutation while it stands empty.
 	table, room, err := st.ClaimRegroupTable(ctx, sessionID, userA)
 	if err != nil {
 		t.Fatalf("ClaimRegroupTable A: %v", err)
 	}
+	if _, err := st.DeclineRegroup(ctx, sessionID, userA, time.Now()); err != nil {
+		t.Fatalf("DeclineRegroup A: %v", err)
+	}
 
-	// The catalog-origin regroup table is created in A's pre-existing room, so an
-	// unrelated room member can take the last seat through the ordinary sit mutation.
-	outsider, err := st.CreateUser(ctx, CreateUserParams{Email: "full-" + uuid.NewString() + "@example.com"})
+	modeSeats, err := st.ListGameModeSeats(ctx, table.ModeID)
 	if err != nil {
-		t.Fatalf("CreateUser outsider: %v", err)
+		t.Fatalf("ListGameModeSeats: %v", err)
 	}
-	cleaner.TrackUser(outsider.ID)
-	if _, err := st.JoinRoom(ctx, outsider.ID, room.InviteCode); err != nil {
-		t.Fatalf("JoinRoom outsider: %v", err)
+	for range modeSeats {
+		outsider, err := st.CreateUser(ctx, CreateUserParams{Email: "full-" + uuid.NewString() + "@example.com"})
+		if err != nil {
+			t.Fatalf("CreateUser outsider: %v", err)
+		}
+		cleaner.TrackUser(outsider.ID)
+		if _, err := st.JoinRoom(ctx, outsider.ID, room.InviteCode); err != nil {
+			t.Fatalf("JoinRoom outsider: %v", err)
+		}
+		seatKey := onlyOpenSeatKey(t, st, ctx, table)
+		if _, err := st.SitAtTable(ctx, table.ID, outsider.ID, seatKey); err != nil {
+			t.Fatalf("SitAtTable outsider: %v", err)
+		}
 	}
 
-	seatKey := onlyOpenSeatKey(t, st, ctx, table)
-	if _, err := st.SitAtTable(ctx, table.ID, outsider.ID, seatKey); err != nil {
-		t.Fatalf("SitAtTable outsider: %v", err)
-	}
-
-	if _, _, err := st.ClaimRegroupTable(ctx, sessionID, userB); !errors.Is(err, ErrTableFull) {
-		t.Fatalf("ClaimRegroupTable B on full table = %v, want ErrTableFull", err)
+	if _, _, err := st.ClaimRegroupTable(ctx, sessionID, userA); !errors.Is(err, ErrTableFull) {
+		t.Fatalf("ClaimRegroupTable A on full table = %v, want ErrTableFull", err)
 	}
 
 	var optedIn *time.Time
 	if err := st.db.QueryRowContext(ctx, `
 		SELECT regroup_opted_in_at FROM game_session_participants
 		WHERE session_id = $1 AND user_id = $2
-	`, sessionID, userB).Scan(&optedIn); err != nil {
+	`, sessionID, userA).Scan(&optedIn); err != nil {
 		t.Fatalf("read regroup_opted_in_at: %v", err)
 	}
 	if optedIn != nil {
@@ -163,7 +245,7 @@ func TestClaimRegroupTableRefusesFullTableWithoutOptingIn(t *testing.T) {
 		t.Fatalf("ListTableSeats: %v", err)
 	}
 	for _, seat := range seats {
-		if seat.UserID == userB {
+		if seat.UserID == userA {
 			t.Fatal("player was seated at a table reported as full")
 		}
 	}
@@ -482,10 +564,9 @@ func TestDeclineRegroupReportsTheFreedSeat(t *testing.T) {
 	cleaner := st.NewTestCleaner(t)
 	ctx := context.Background()
 
-	sessionID, userA, userB := seedMatchedSession(t, st, ctx, cleaner)
-	if err := st.CompleteSession(ctx, sessionID, time.Now()); err != nil {
-		t.Fatalf("CompleteSession: %v", err)
-	}
+	game, mode := setupDuelMode(t, st, cleaner)
+	match := seedRoomTableMatch(t, st, ctx, cleaner, game, mode)
+	sessionID, userA, userB := match.SessionID, match.Users[0], match.Users[1]
 
 	table, _, err := st.ClaimRegroupTable(ctx, sessionID, userA)
 	if err != nil {
@@ -523,13 +604,13 @@ func TestDeclineRegroupReportsTheFreedSeat(t *testing.T) {
 // TestGetRegroupTableIDStopsAdvertisingAClosedRoomsOffer is the read half of
 // TestClaimRegroupTableRebuildsWhenTheRoomClosed, and the two used to disagree.
 //
-// Same setup: the table a match converged on outlives its room, and regroup_table_id still
-// points at it. ClaimRegroupTable has always read that as unclaimed. GetRegroupTableID read
-// the column bare, so regroupInviteCode kept putting the dead table's room code on every
-// participant's results screen — an invite that rendered as live and dead-ended on use,
-// because following it lands in ClaimRegroupTable, which refuses the table and builds
-// another. Both now apply liveRegroupTableClause, so there is one answer to "where is this
-// match's regroup offer" instead of two.
+// Same setup: the table a party regrouped at outlives its room. ClaimRegroupTable has always
+// read that as unclaimed, while the read path read the stored pointer bare — so
+// regroupInviteCode kept putting the dead table's room code on the results screen, an invite
+// that rendered as live and dead-ended on use, because following it lands in
+// ClaimRegroupTable, which refuses the table and builds another. Both now apply
+// liveRegroupTableClause, so there is one answer to "where is this party's regroup offer"
+// instead of two.
 func TestGetRegroupTableIDStopsAdvertisingAClosedRoomsOffer(t *testing.T) {
 	st := openTestStore(t)
 	cleaner := st.NewTestCleaner(t)
@@ -547,9 +628,9 @@ func TestGetRegroupTableIDStopsAdvertisingAClosedRoomsOffer(t *testing.T) {
 
 	// While the offer is live the lookup must still answer, or this test would pass on a
 	// function that had simply stopped working.
-	live, err := st.GetRegroupTableID(ctx, sessionID)
+	live, err := st.GetRegroupTableIDForUser(ctx, sessionID, userA)
 	if err != nil {
-		t.Fatalf("GetRegroupTableID while live: %v", err)
+		t.Fatalf("GetRegroupTableIDForUser while live: %v", err)
 	}
 	if live == nil || *live != claimed.ID {
 		t.Fatalf("live lookup = %v, want the claimed table %s", live, claimed.ID)
@@ -570,9 +651,9 @@ func TestGetRegroupTableIDStopsAdvertisingAClosedRoomsOffer(t *testing.T) {
 		t.Fatalf("GetRoomTableByID: %v — the table must outlive the room for this to bite", err)
 	}
 
-	got, err := st.GetRegroupTableID(ctx, sessionID)
+	got, err := st.GetRegroupTableIDForUser(ctx, sessionID, userA)
 	if err != nil {
-		t.Fatalf("GetRegroupTableID after the room closed: %v", err)
+		t.Fatalf("GetRegroupTableIDForUser after the room closed: %v", err)
 	}
 	if got != nil {
 		t.Fatalf("lookup = %s, want nil: the offer died with its room, so no invite code"+
@@ -581,8 +662,8 @@ func TestGetRegroupTableIDStopsAdvertisingAClosedRoomsOffer(t *testing.T) {
 
 	// A session that does not exist is still an error, not a quiet nil — the caller
 	// distinguishes "no live offer" from "no such match".
-	if _, err := st.GetRegroupTableID(ctx, uuid.New()); !errors.Is(err, ErrNotFound) {
-		t.Fatalf("GetRegroupTableID for an unknown session = %v, want ErrNotFound", err)
+	if _, err := st.GetRegroupTableIDForUser(ctx, uuid.New(), userA); !errors.Is(err, ErrNotFound) {
+		t.Fatalf("GetRegroupTableIDForUser for an unknown session = %v, want ErrNotFound", err)
 	}
 }
 
@@ -616,9 +697,9 @@ func TestAbandonedRegroupOfferStopsBeingOffered(t *testing.T) {
 	if err != nil {
 		t.Fatalf("ClaimRegroupTable A: %v", err)
 	}
-	offered, err := st.GetRegroupTableID(ctx, sessionID)
+	offered, err := st.GetRegroupTableIDForUser(ctx, sessionID, userA)
 	if err != nil {
-		t.Fatalf("GetRegroupTableID while live: %v", err)
+		t.Fatalf("GetRegroupTableIDForUser while live: %v", err)
 	}
 	if offered == nil || *offered != claimed.ID {
 		t.Fatalf("offer = %v, want the claimed table %s", offered, claimed.ID)
@@ -661,9 +742,9 @@ func TestAbandonedRegroupOfferStopsBeingOffered(t *testing.T) {
 	}
 
 	// Still offered, on purpose: empty is not abandoned, and B may yet come back to it.
-	stillOffered, err := st.GetRegroupTableID(ctx, sessionID)
+	stillOffered, err := st.GetRegroupTableIDForUser(ctx, sessionID, userA)
 	if err != nil {
-		t.Fatalf("GetRegroupTableID between the windows: %v", err)
+		t.Fatalf("GetRegroupTableIDForUser between the windows: %v", err)
 	}
 	if stillOffered == nil || *stillOffered != claimed.ID {
 		t.Fatalf("offer = %v between the windows, want it still live: an empty offer is"+
@@ -681,9 +762,9 @@ func TestAbandonedRegroupOfferStopsBeingOffered(t *testing.T) {
 	}
 
 	// And the offer is gone: no invite code reaches anyone's results screen. AC 1.
-	gone, err := st.GetRegroupTableID(ctx, sessionID)
+	gone, err := st.GetRegroupTableIDForUser(ctx, sessionID, userA)
 	if err != nil {
-		t.Fatalf("GetRegroupTableID after the room closed: %v", err)
+		t.Fatalf("GetRegroupTableIDForUser after the room closed: %v", err)
 	}
 	if gone != nil {
 		t.Fatalf("offer = %s, want nil: the abandoned offer should no longer be advertised", *gone)

@@ -25,6 +25,24 @@
  */
 const EXITED_EARLY_REASONS = new Set(['ELIMINATED', 'FORFEIT'])
 
+/**
+ * The people the viewer came into the match with — their own group, not the six players the
+ * match happened to contain (JQ-291).
+ *
+ * The server answers this per row, because "with whom" is a fact about arrival that only it
+ * holds: everyone who queued from the same room table shares an arrival party, and a player
+ * who joined the catalog queue alone shares one with nobody. A 3v3 between two groups puts
+ * three names on each group's card, and the opposing three on neither.
+ *
+ * The viewer's own row is included, because the card marks it "You" and counts it. It is
+ * absent only for a player who arrived alone, whose party is empty — and whose card
+ * `showsRegroupRoster` does not render at all.
+ */
+export function arrivalPartyOf(result) {
+  const participants = result?.participants ?? []
+  return participants.filter((participant) => participant?.arrivalParty === true)
+}
+
 /** The viewer's own row, or null when they are not on this roster at all. */
 export function viewerParticipantOf(result, viewerId) {
   if (!viewerId) {

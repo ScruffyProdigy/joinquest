@@ -102,11 +102,15 @@ func loadMatchResultModel(ctx context.Context, st *store.Store, sessionID, viewe
 	if err != nil {
 		return nil, err
 	}
+	parties, err := st.GetArrivalParties(ctx, sessionID)
+	if err != nil {
+		return nil, err
+	}
 	game, err := loader.loadGame(ctx, st, result.GameID)
 	if err != nil {
 		return nil, err
 	}
-	inviteCode, err := regroupInviteCode(ctx, st, sessionID)
+	inviteCode, err := regroupInviteCode(ctx, st, sessionID, viewerID)
 	if err != nil {
 		return nil, err
 	}
@@ -163,6 +167,10 @@ func loadMatchResultModel(ctx context.Context, st *store.Store, sessionID, viewe
 			Placement: p.Placement,
 			Winner:    p.IsWinner,
 			Regroup:   toGraphQLRegroupState(roster[p.UserID]),
+			// Note this is false for the viewer's own row when they arrived alone:
+			// SameArrivalParty refuses to match two empty parties, so "I came alone"
+			// never reads as a group of one (JQ-291).
+			ArrivalParty: store.SameArrivalParty(parties[viewerID], parties[p.UserID]),
 		}
 		if role := strings.TrimSpace(p.Role); role != "" {
 			entry.Role = &role
@@ -182,7 +190,13 @@ func loadMatchResultModel(ctx context.Context, st *store.Store, sessionID, viewe
 // The result is ordered by seat, then by user id. GetMatchResult returns participants
 // ordered by placement, and passing that order through would hand a non-participant the
 // finishing order of a match they never played — a shorter field list would not help.
-func loadRegroupRosterEntries(ctx context.Context, st *store.Store, sessionID uuid.UUID) ([]*model.RegroupRosterEntry, error) {
+//
+// roomID scopes it to one arrival party: the people who queued from this table's room, and
+// nobody else from the match (JQ-291). Scoping by the room rather than by the viewer is what
+// makes the field answerable for a backfill joiner who never played — they have no arrival
+// party of their own, and the ghosted pending seats they are shown are the party whose room
+// they just walked into.
+func loadRegroupRosterEntries(ctx context.Context, st *store.Store, sessionID, roomID uuid.UUID) ([]*model.RegroupRosterEntry, error) {
 	result, err := st.GetMatchResult(ctx, sessionID)
 	if err != nil {
 		return nil, err
@@ -191,6 +205,11 @@ func loadRegroupRosterEntries(ctx context.Context, st *store.Store, sessionID uu
 	if err != nil {
 		return nil, err
 	}
+	parties, err := st.GetArrivalParties(ctx, sessionID)
+	if err != nil {
+		return nil, err
+	}
+	party := store.ArrivalPartyOfRoom(roomID)
 
 	out := make([]*model.RegroupRosterEntry, 0, len(result.Participants))
 	for i := range result.Participants {
@@ -198,6 +217,11 @@ func loadRegroupRosterEntries(ctx context.Context, st *store.Store, sessionID uu
 		// Same skip as loadMatchResultModel: a participant who left is not on the roster,
 		// and a nil user would null the whole non-null list.
 		if p.LeftAt != nil {
+			continue
+		}
+		// A table built for a player who arrived alone matches nobody, so its roster is
+		// empty rather than listing the strangers they were matched with.
+		if !store.SameArrivalParty(party, parties[p.UserID]) {
 			continue
 		}
 		entry := &model.RegroupRosterEntry{
@@ -245,10 +269,14 @@ func matchResultMode(ctx context.Context, st *store.Store, modeID *uuid.UUID) (*
 	return ToGraphQLGameMode(mode), nil
 }
 
-// regroupInviteCode resolves the room code of the table this match converged on, or nil
-// when no table has been claimed yet.
-func regroupInviteCode(ctx context.Context, st *store.Store, sessionID uuid.UUID) (*string, error) {
-	tableID, err := st.GetRegroupTableID(ctx, sessionID)
+// regroupInviteCode resolves the room code of the table the viewer's own arrival party
+// converged on, or nil when that party has claimed no table yet.
+//
+// Viewer-scoped since a match has one regroup table per arrival party (JQ-291). It is the
+// code the results screen renders as a link, so answering it session-wide would invite the
+// group that lost the 3v3 into the winners' room.
+func regroupInviteCode(ctx context.Context, st *store.Store, sessionID, viewerID uuid.UUID) (*string, error) {
+	tableID, err := st.GetRegroupTableIDForUser(ctx, sessionID, viewerID)
 	if err != nil {
 		return nil, err
 	}

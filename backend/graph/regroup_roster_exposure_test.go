@@ -65,7 +65,7 @@ func seedRegroupTableWithStranger(t *testing.T, env *queueIntegrationEnv, cleane
 	t.Helper()
 	ctx := context.Background()
 
-	match := seedFinishedMatch(t, env, cleaner)
+	match := seedFinishedPartyMatch(t, env, cleaner)
 	claim := playAgain(t, env, match.sessionID, match.cookieA)
 	if len(claim.Errors) > 0 || claim.Data.PlayAgain == nil {
 		t.Fatalf("playAgain A: %+v", claim.Errors)

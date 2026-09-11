@@ -160,7 +160,7 @@ type playAgainWithRosterResponse struct {
 func TestTableRegroupRosterNamesPendingPlayers(t *testing.T) {
 	env := newQueueIntegrationEnv(t)
 	cleaner := env.newCleaner(t)
-	match := seedFinishedMatch(t, env, cleaner)
+	match := seedFinishedPartyMatch(t, env, cleaner)
 
 	body := postGraphQL(t, env.Handler, playAgainWithRosterMutation,
 		map[string]any{"matchId": match.sessionID.String()}, match.cookieA)
@@ -361,7 +361,7 @@ func TestTableRegroupRosterFollowsTheLatestMatch(t *testing.T) {
 
 	// Match 1, from the queue: A and B. Both accept play-again, converging on regroup
 	// table T and stamping session 1's regroup_table_id.
-	first := seedFinishedMatch(t, env, cleaner)
+	first := seedFinishedPartyMatch(t, env, cleaner)
 	claimA := playAgain(t, env, first.sessionID, first.cookieA)
 	if len(claimA.Errors) > 0 || claimA.Data.PlayAgain == nil {
 		t.Fatalf("playAgain A: %+v", claimA.Errors)
