@@ -6,6 +6,7 @@ package graph
 
 import (
 	"context"
+	"errors"
 
 	"github.com/scruffyprodigy/joinquest/graph/model"
 	"github.com/scruffyprodigy/joinquest/internal/auth"
@@ -54,6 +55,51 @@ func (r *mutationResolver) DeletePushSubscription(ctx context.Context, endpoint 
 	}
 
 	return r.pushCapabilityFor(ctx, userID)
+}
+
+// VerifyPushSubscription is the resolver for the verifyPushSubscription field.
+func (r *mutationResolver) VerifyPushSubscription(ctx context.Context, endpoint string) (*model.PushVerification, error) {
+	userID, err := requireAuthUserID(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	sent, err := r.StartPushVerification(ctx, userID, endpoint)
+	if err != nil {
+		return nil, err
+	}
+
+	// Deliberately the pre-ack snapshot: the round trip has not finished, and
+	// reporting anything else would be the promise this whole mechanism exists
+	// to avoid making.
+	capability, err := r.pushCapabilityFor(ctx, userID)
+	if err != nil {
+		return nil, err
+	}
+	return &model.PushVerification{Sent: sent, Capability: capability}, nil
+}
+
+// ConfirmPushVerification is the resolver for the confirmPushVerification field.
+func (r *mutationResolver) ConfirmPushVerification(ctx context.Context, token string) (*model.PushVerificationResult, error) {
+	// No auth check: the token is the credential. It is single-use, short
+	// lived, and only the browser the push reached is holding it -- and that
+	// browser may be acking for a page that has already closed, which is
+	// exactly the case this has to keep working for.
+	st, err := r.requireStore()
+	if err != nil {
+		return nil, err
+	}
+
+	if _, err := st.ConfirmPushSubscriptionVerification(ctx, token); err != nil {
+		if errors.Is(err, store.ErrPushVerificationNotFound) {
+			// Unknown, replayed, or stale. A normal outcome, not a fault: say
+			// "not verified" rather than raising an error the caller would
+			// have to tell apart from a real one.
+			return &model.PushVerificationResult{Verified: false}, nil
+		}
+		return nil, err
+	}
+	return &model.PushVerificationResult{Verified: true}, nil
 }
 
 // PushCapability is the resolver for the pushCapability field.

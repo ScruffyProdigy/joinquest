@@ -7,7 +7,21 @@ import (
 	"github.com/google/uuid"
 )
 
-// The three-way distinction is the whole point of the record: each reason has a
+// verifyTestSubscription stands in for the round trip: a push went out and the
+// service worker acked it. A bare save is only the browser's claim.
+func verifyTestSubscription(t *testing.T, st *Store, userID uuid.UUID, endpoint string) {
+	t.Helper()
+	ctx := context.Background()
+	_, token, err := st.StartPushSubscriptionVerification(ctx, userID, endpoint)
+	if err != nil {
+		t.Fatalf("StartPushSubscriptionVerification: %v", err)
+	}
+	if _, err := st.ConfirmPushSubscriptionVerification(ctx, token); err != nil {
+		t.Fatalf("ConfirmPushSubscriptionVerification: %v", err)
+	}
+}
+
+// The distinctions are the whole point of the record: each reason has a
 // different fix, so a bare boolean would make JQ-199's tier values untunable.
 func TestGetPushReachabilityDistinguishesWhyAPlayerIsUnreachable(t *testing.T) {
 	st := openTestStore(t)
@@ -29,14 +43,40 @@ func TestGetPushReachabilityDistinguishesWhyAPlayerIsUnreachable(t *testing.T) {
 		}
 	})
 
-	t.Run("opted in and still live", func(t *testing.T) {
-		userID := createPushTestUser(t, st, cleaner, "reach-live")
+	t.Run("registered but never reached", func(t *testing.T) {
+		userID := createPushTestUser(t, st, cleaner, "reach-unverified")
 		if _, err := st.SavePushSubscription(ctx, SavePushSubscriptionParams{
 			UserID: userID, Endpoint: "https://push.example.com/" + uuid.NewString(),
+			P256dh: "k", Auth: "a",
+		}); err != nil {
+			t.Fatalf("SavePushSubscription: %v", err)
+		}
+
+		reach, err := st.GetPushReachability(ctx, userID)
+		if err != nil {
+			t.Fatalf("GetPushReachability: %v", err)
+		}
+		// Its own reason, and its own fix: the endpoint may be stale, the keys
+		// wrong, or the push service dropping us. None of those is a player
+		// who did not opt in.
+		if reach.Reason(true) != ReachabilityUnverified {
+			t.Fatalf("expected unverified, got %q", reach.Reason(true))
+		}
+		if reach.Reachable(true) {
+			t.Fatal("a claim is not a delivery path")
+		}
+	})
+
+	t.Run("opted in and still live", func(t *testing.T) {
+		userID := createPushTestUser(t, st, cleaner, "reach-live")
+		endpoint := "https://push.example.com/" + uuid.NewString()
+		if _, err := st.SavePushSubscription(ctx, SavePushSubscriptionParams{
+			UserID: userID, Endpoint: endpoint,
 			P256dh: "k", Auth: "a", UserAgent: "Mozilla/5.0 (iPhone)",
 		}); err != nil {
 			t.Fatalf("SavePushSubscription: %v", err)
 		}
+		verifyTestSubscription(t, st, userID, endpoint)
 
 		reach, err := st.GetPushReachability(ctx, userID)
 		if err != nil {
@@ -88,12 +128,14 @@ func TestGetPushReachabilityReportsNotConfiguredWhateverIsStored(t *testing.T) {
 	ctx := context.Background()
 
 	userID := createPushTestUser(t, st, cleaner, "reach-unconfigured")
+	endpoint := "https://push.example.com/" + uuid.NewString()
 	if _, err := st.SavePushSubscription(ctx, SavePushSubscriptionParams{
-		UserID: userID, Endpoint: "https://push.example.com/" + uuid.NewString(),
+		UserID: userID, Endpoint: endpoint,
 		P256dh: "k", Auth: "a",
 	}); err != nil {
 		t.Fatalf("SavePushSubscription: %v", err)
 	}
+	verifyTestSubscription(t, st, userID, endpoint)
 
 	reach, err := st.GetPushReachability(ctx, userID)
 	if err != nil {
@@ -130,6 +172,7 @@ func TestGetPushReachabilityKeepsALiveInstallWhenAnotherExpires(t *testing.T) {
 		}); err != nil {
 			t.Fatalf("SavePushSubscription: %v", err)
 		}
+		verifyTestSubscription(t, st, userID, endpoint)
 	}
 	if err := st.MarkPushSubscriptionExpired(ctx, deadEndpoint); err != nil {
 		t.Fatalf("MarkPushSubscriptionExpired: %v", err)

@@ -1,9 +1,14 @@
 import { render, screen, waitFor, act } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { describe, it, expect, beforeEach, vi } from 'vitest'
+import { describe, it, expect, afterEach, beforeEach, vi } from 'vitest'
 import WaitingPage from './WaitingPage'
 import { useLeaveQueueOnExit } from './useLeaveQueueOnExit'
-import { LEAVE_GAME_FAILED } from '../../lib/playerCopy'
+import { LEAVE_GAME_FAILED, NOTIFY_ME } from '../../lib/playerCopy'
+import {
+  mockAuthenticatedSession,
+  mockPushSupported,
+  mockPushUnsupported,
+} from '../../test/setup'
 
 const authState = { user: { id: 'u1' }, loading: false }
 const intentState = {}
@@ -61,6 +66,55 @@ describe('WaitingPage', () => {
     expect(screen.getByText('Looking for players… (3 players looking)')).toBeInTheDocument()
     expect(screen.getByText('We will notify you here when your group is ready.')).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Stop' })).toBeInTheDocument()
+  })
+
+  describe('the notify opt-in', () => {
+    const PUBLIC_KEY =
+      'BNcRdreALRFXTkOOUHK1EtK2wtaz5Ry4YfYCA_0QTpQtUbVlUls0VJXg7A8u-Ts1XbjhazAkj7I99e8QcYP7DkM'
+
+    afterEach(() => {
+      mockPushUnsupported()
+      vi.restoreAllMocks()
+    })
+
+    it('offers it on a long queue', async () => {
+      mockPushSupported()
+      mockAuthenticatedSession()
+      setIntentState({ activeIntent: { ...waitingIntent, estimatedWaitSeconds: 240 } })
+      render(<WaitingPage intent={intentState} />)
+
+      expect(await screen.findByRole('button', { name: NOTIFY_ME })).toBeInTheDocument()
+    })
+
+    it('withholds it on a short queue', async () => {
+      mockPushSupported()
+      mockAuthenticatedSession()
+      setIntentState({ activeIntent: { ...waitingIntent, estimatedWaitSeconds: 15 } })
+      render(<WaitingPage intent={intentState} />)
+
+      // The queue pops before leaving the page is worth doing, and the
+      // permission prompt only comes round once.
+      await waitFor(() => expect(screen.getByRole('button', { name: 'Stop' })).toBeInTheDocument())
+      expect(screen.queryByRole('button', { name: NOTIFY_ME })).not.toBeInTheDocument()
+    })
+
+    it('changes what the page says once the opt-in is in force', async () => {
+      mockPushSupported()
+      mockAuthenticatedSession(undefined, {
+        pushCapability: { reachable: true, subscriptionCount: 1, publicKey: PUBLIC_KEY },
+      })
+      setIntentState({ activeIntent: { ...waitingIntent, estimatedWaitSeconds: 240 } })
+      render(<WaitingPage intent={intentState} />)
+
+      // A page that still says "we will notify you here" is not permission to
+      // stop looking at it.
+      expect(
+        await screen.findByText("Put your phone away — we'll notify you when your group is ready."),
+      ).toBeInTheDocument()
+      expect(
+        screen.queryByText('We will notify you here when your group is ready.'),
+      ).not.toBeInTheDocument()
+    })
   })
 
   it('shows how much longer the player is likely to wait', () => {

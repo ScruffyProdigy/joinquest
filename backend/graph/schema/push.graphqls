@@ -7,17 +7,28 @@ the browser once granted: a grant on a platform that cannot deliver, or a
 subscription the push service has since expired, is not reachability. Staying
 queued while away is gated on this, because a queue held open for a player who
 will never be told is worse than one that lets them go.
+
+Nor is a stored subscription enough on its own. It is the browser's claim that
+an endpoint works; reachability is the claim having been tested. See
+`verifyPushSubscription`.
 """
 type PushCapability {
   """
-  True when at least one live subscription is stored for this player.
+  True when at least one stored subscription has been verified -- a push was
+  sent to it and acked. Registering alone does not set this.
   """
   reachable: Boolean!
   """
-  How many browser installs are subscribed. A player may queue from a phone and
-  a desktop at once; both ring.
+  How many browser installs are subscribed, verified or not. A player may queue
+  from a phone and a desktop at once; both ring.
   """
   subscriptionCount: Int!
+  """
+  How many of those installs have been verified. Zero with a non-zero
+  `subscriptionCount` is the interesting state: the browser registered and
+  nothing we sent ever came back.
+  """
+  verifiedCount: Int!
   """
   The VAPID application server key the browser needs to subscribe. Null when
   push is not configured on this deployment, which is the signal to hide the
@@ -45,6 +56,45 @@ extend type Mutation {
   notifications off, or when the browser reports the subscription has changed.
   """
   deletePushSubscription(endpoint: String!): PushCapability!
+  """
+  Test one browser install by sending it a push, so the answer to "can we reach
+  this player" is a fact rather than an assumption.
+
+  Sends immediately and returns; the proof arrives separately, when the service
+  worker that received the push calls `confirmPushVerification`. Poll
+  `pushCapability`, or wait for the service worker's message, to learn the
+  outcome. Nothing here promises the push will land -- that is the point of
+  sending it.
+  """
+  verifyPushSubscription(endpoint: String!): PushVerification!
+  """
+  Redeem a verification token, marking the subscription that received it
+  verified.
+
+  The token is the credential, so this needs no session: by design it can be
+  called by a service worker whose page has already gone away. An unknown,
+  replayed, or expired token is reported as not verified rather than as an
+  error -- it is a normal outcome, not a fault.
+  """
+  confirmPushVerification(token: String!): PushVerificationResult!
+}
+
+"""The outcome of asking to verify one browser install."""
+type PushVerification {
+  """
+  True when a push was actually handed to the push service. False when this
+  deployment cannot send, or the endpoint is already gone -- in both cases no
+  ack is coming and the caller should stop waiting.
+  """
+  sent: Boolean!
+  """This player's reachability as it stands now, before any ack."""
+  capability: PushCapability!
+}
+
+"""The outcome of redeeming a verification token."""
+type PushVerificationResult {
+  """True when the token was live and a subscription is now verified."""
+  verified: Boolean!
 }
 
 input SavePushSubscriptionInput {

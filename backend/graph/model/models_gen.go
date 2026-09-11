@@ -430,16 +430,41 @@ type PublicPlayer struct {
 // subscription the push service has since expired, is not reachability. Staying
 // queued while away is gated on this, because a queue held open for a player who
 // will never be told is worse than one that lets them go.
+//
+// Nor is a stored subscription enough on its own. It is the browser's claim that
+// an endpoint works; reachability is the claim having been tested. See
+// `verifyPushSubscription`.
 type PushCapability struct {
-	// True when at least one live subscription is stored for this player.
+	// True when at least one stored subscription has been verified -- a push was
+	// sent to it and acked. Registering alone does not set this.
 	Reachable bool `json:"reachable"`
-	// How many browser installs are subscribed. A player may queue from a phone and
-	// a desktop at once; both ring.
+	// How many browser installs are subscribed, verified or not. A player may queue
+	// from a phone and a desktop at once; both ring.
 	SubscriptionCount int `json:"subscriptionCount"`
+	// How many of those installs have been verified. Zero with a non-zero
+	// `subscriptionCount` is the interesting state: the browser registered and
+	// nothing we sent ever came back.
+	VerifiedCount int `json:"verifiedCount"`
 	// The VAPID application server key the browser needs to subscribe. Null when
 	// push is not configured on this deployment, which is the signal to hide the
 	// affordance entirely rather than offer a control that cannot work.
 	PublicKey *string `json:"publicKey,omitempty"`
+}
+
+// The outcome of asking to verify one browser install.
+type PushVerification struct {
+	// True when a push was actually handed to the push service. False when this
+	// deployment cannot send, or the endpoint is already gone -- in both cases no
+	// ack is coming and the caller should stop waiting.
+	Sent bool `json:"sent"`
+	// This player's reachability as it stands now, before any ack.
+	Capability *PushCapability `json:"capability"`
+}
+
+// The outcome of redeeming a verification token.
+type PushVerificationResult struct {
+	// True when the token was live and a subscription is now verified.
+	Verified bool `json:"verified"`
 }
 
 type Query struct {

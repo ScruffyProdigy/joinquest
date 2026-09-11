@@ -1,6 +1,8 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import {
+  PUSH_VERIFIED_EVENT,
   applicationServerKeyMatches,
+  confirmPushVerification,
   disablePushNotifications,
   enablePushNotifications,
   isIOS,
@@ -8,6 +10,7 @@ import {
   isStandalone,
   pushBlockedReason,
   urlBase64ToUint8Array,
+  waitForVerification,
 } from './push'
 import {
   makePushSubscription,
@@ -223,5 +226,73 @@ describe('disablePushNotifications', () => {
   it('is a no-op on a browser that cannot do push', async () => {
     mockPushUnsupported()
     await expect(disablePushNotifications()).resolves.toBeNull()
+  })
+})
+
+describe('verification', () => {
+  beforeEach(() => {
+    setUserAgent(DESKTOP_UA)
+    mockAuthenticatedSession()
+  })
+
+  afterEach(() => {
+    vi.restoreAllMocks()
+    mockPushUnsupported()
+  })
+
+  it('does not report success until a push has actually come back', async () => {
+    // The push went out and nothing acked it. Reporting reachable here is the
+    // silent downgrade the whole mechanism exists to prevent.
+    mockAuthenticatedSession(undefined, { pushVerificationAcked: false })
+    mockPushSupported({ requestResult: 'granted' })
+
+    const result = await enablePushNotifications()
+
+    expect(result.blocked).toBe('unverified')
+    expect(result.capability.reachable).not.toBe(true)
+  })
+
+  it('does not wait for an ack that was never sent', async () => {
+    mockAuthenticatedSession(undefined, { pushVerificationSent: false })
+    mockPushSupported({ requestResult: 'granted' })
+
+    const started = Date.now()
+    const result = await enablePushNotifications()
+
+    expect(result.blocked).toBe('unverified')
+    // Nothing left the building, so there is nothing to wait for.
+    expect(Date.now() - started).toBeLessThan(1000)
+  })
+
+  it('finishes as soon as an ack lands, without waiting for the next poll', async () => {
+    mockAuthenticatedSession(undefined, { pushVerificationAcked: false })
+
+    const pending = waitForVerification({ timeoutMs: 5000, pollMs: 60000 })
+    // The ack arrives through whichever tab the worker reached, which is why
+    // this is a window event rather than a return value. The poll interval is
+    // set past the timeout on purpose: only the event can settle this.
+    mockAuthenticatedSession(undefined, {
+      pushCapability: { reachable: true, subscriptionCount: 1, publicKey: TEST_PUBLIC_KEY },
+    })
+    window.dispatchEvent(new CustomEvent(PUSH_VERIFIED_EVENT))
+
+    await expect(pending).resolves.toMatchObject({ reachable: true })
+  })
+
+  it('gives up rather than hanging when no ack arrives', async () => {
+    mockAuthenticatedSession(undefined, { pushVerificationAcked: false })
+
+    await expect(waitForVerification({ timeoutMs: 40, pollMs: 10 })).resolves.toBeNull()
+  })
+
+  it('announces a redeemed token so a waiting opt-in can finish', async () => {
+    const heard = vi.fn()
+    window.addEventListener(PUSH_VERIFIED_EVENT, heard)
+    try {
+      await expect(confirmPushVerification('token-abc')).resolves.toBe(true)
+      expect(heard).toHaveBeenCalled()
+    } finally {
+      window.removeEventListener(PUSH_VERIFIED_EVENT, heard)
+    }
   })
 })

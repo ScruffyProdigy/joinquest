@@ -2,6 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import {
   SEAT_HELD,
   NOTIFICATION_CLICK,
+  PUSH_VERIFY,
   SUBSCRIPTION_CHANGED,
   listenForPushMessages,
 } from './pushMessages'
@@ -24,6 +25,7 @@ describe('listenForPushMessages', () => {
     vi.spyOn(signals, 'startSeatHeldSignals').mockImplementation(() => {})
     vi.spyOn(signals, 'stopSeatHeldSignals').mockImplementation(() => {})
     vi.spyOn(push, 'resubscribeAfterChange').mockResolvedValue(null)
+    vi.spyOn(push, 'confirmPushVerification').mockResolvedValue(true)
   })
 
   afterEach(() => {
@@ -79,6 +81,25 @@ describe('listenForPushMessages', () => {
     listenForPushMessages()
 
     expect(() => emit({ type: SUBSCRIPTION_CHANGED })).not.toThrow()
+    await Promise.resolve()
+  })
+
+  it('hands a verification token back to the server', () => {
+    listenForPushMessages()
+
+    emit({ type: PUSH_VERIFY, token: 'token-abc' })
+
+    // Receiving the push is the proof. The tab that got it need not be the one
+    // that opted in, which is why this goes through the server rather than
+    // straight back to the caller.
+    expect(push.confirmPushVerification).toHaveBeenCalledWith('token-abc')
+  })
+
+  it('survives a failed ack', async () => {
+    push.confirmPushVerification.mockRejectedValue(new Error('offline'))
+    listenForPushMessages()
+
+    expect(() => emit({ type: PUSH_VERIFY, token: 'token-abc' })).not.toThrow()
     await Promise.resolve()
   })
 

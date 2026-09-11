@@ -195,6 +195,17 @@
   margin-top: 0.4rem;
 }
 
+/* The round trip failed. Coloured like the error it is, because a player who
+   pressed this believes they are covered and has to be told otherwise before
+   they act on it. */
+.notify-me--unverified .notify-me__state {
+  color: #ffb4b4;
+}
+
+.notify-me--unverified .notify-me__action {
+  margin-top: 0.4rem;
+}
+
 /* The value line only appears once the control is promoted, so fade it rather
    than having it snap in beside a button the player may be reading. */
 .notify-me--promoted .notify-me__value {

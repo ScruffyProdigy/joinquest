@@ -15,6 +15,7 @@ import {
   WAITING_REGION_LABEL,
   bannerIntentWaitingHint,
   bannerLiveUpdatesPausedHint,
+  waitingPageNotifiedHint,
   formatFormingGapsNeedLine,
   estimatedWaitLine,
   waitingForGroupLine,
@@ -54,6 +55,11 @@ export default function WaitingPage({ intent }) {
   const { activeIntent, activeTableSeat, loading, busy, queueWsConnected, leaveError, handleLeave } =
     intent
   const [confirmingLeave, setConfirmingLeave] = useState(false)
+  // Whether a verified push subscription is in force. Owned here rather than
+  // inside the control, because opting in changes the page around it too — a
+  // screen that still says "we will notify you here" is not permission to
+  // leave it.
+  const [notified, setNotified] = useState(false)
 
   const waiting = hasWaitingIntent(activeIntent)
   // A formed match stays on this page: the launch moment is the point of it (JQ-136).
@@ -122,7 +128,11 @@ export default function WaitingPage({ intent }) {
         {waitLine ? <p className="waiting-page__estimate">{waitLine}</p> : null}
 
         <p className="waiting-page__hint">
-          {liveUpdatesConnected ? bannerIntentWaitingHint() : bannerLiveUpdatesPausedHint()}
+          {notified && liveUpdatesConnected
+            ? waitingPageNotifiedHint()
+            : liveUpdatesConnected
+              ? bannerIntentWaitingHint()
+              : bannerLiveUpdatesPausedHint()}
         </p>
 
         {leaveError ? (
@@ -134,7 +144,11 @@ export default function WaitingPage({ intent }) {
         {/* Offered from the moment the player joins, not after a delay: someone
             who pockets their phone at 8s must already have been given the
             option. The timer inside only promotes it. */}
-        <NotifyMeControl disabled={busy} />
+        <NotifyMeControl
+          disabled={busy}
+          estimatedWaitSeconds={activeIntent.estimatedWaitSeconds}
+          onReachableChange={setNotified}
+        />
 
         <Button
           type="button"

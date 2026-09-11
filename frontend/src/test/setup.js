@@ -144,6 +144,18 @@ const defaultPushCapability = {
 }
 
 function createFetchMock(handlers) {
+  /*
+   * The verification round trip, simulated end to end: a save leaves the
+   * player subscribed but not reachable, and only a verify that "lands" flips
+   * it. Modelling it as a flag rather than a fixed answer is what keeps a test
+   * from passing on a registration alone -- which is exactly the mistake the
+   * feature exists to stop the product making.
+   *
+   * `pushVerificationSent: false` is a deployment that could not send.
+   * `pushVerificationAcked: false` is a push that went out and never came back.
+   */
+  let pushVerified = false
+
   return vi.fn(async (_url, init) => {
     const body = JSON.parse(init?.body ?? '{}')
     const query = body.query ?? ''
@@ -166,23 +178,48 @@ function createFetchMock(handlers) {
     } else if (query.includes('completeSignInWithLink')) {
       data = { completeSignInWithLink: handlers.me ?? null }
     } else if (query.includes('savePushSubscription')) {
-      // A save that succeeded leaves the player reachable -- returning the
-      // pre-save default here would make every registration test pass for the
-      // wrong reason.
+      // Subscribed, not yet reachable. The browser has handed over an endpoint
+      // and nothing has come back from it, which is a claim rather than a
+      // capability.
       data = {
         savePushSubscription: handlers.pushCapabilityAfterSave ?? {
-          reachable: true,
+          reachable: false,
           subscriptionCount: 1,
           publicKey: defaultPushCapability.publicKey,
         },
       }
+    } else if (query.includes('verifyPushSubscription')) {
+      const sent = handlers.pushVerificationSent !== false
+      // A push that went out and was acked is what makes the player reachable.
+      if (sent && handlers.pushVerificationAcked !== false) {
+        pushVerified = true
+      }
+      data = {
+        verifyPushSubscription: {
+          sent,
+          capability: {
+            reachable: false,
+            subscriptionCount: 1,
+            publicKey: defaultPushCapability.publicKey,
+          },
+        },
+      }
+    } else if (query.includes('confirmPushVerification')) {
+      pushVerified = true
+      data = { confirmPushVerification: { verified: true } }
     } else if (query.includes('deletePushSubscription')) {
+      pushVerified = false
       data = {
         deletePushSubscription: handlers.pushCapabilityAfterDelete
           ?? { reachable: false, subscriptionCount: 0, publicKey: defaultPushCapability.publicKey },
       }
     } else if (query.includes('pushCapability')) {
-      data = { pushCapability: handlers.pushCapability ?? defaultPushCapability }
+      const base = handlers.pushCapability ?? defaultPushCapability
+      data = {
+        pushCapability: pushVerified
+          ? { ...base, reachable: true, subscriptionCount: Math.max(1, base.subscriptionCount) }
+          : base,
+      }
     } else if (query.includes('logout')) {
       data = { logout: true }
     } else if (query.includes('subscriptionAuth')) {

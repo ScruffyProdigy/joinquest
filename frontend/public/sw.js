@@ -31,6 +31,32 @@ function parsePayload(event) {
 
 self.addEventListener('push', (event) => {
   const payload = parsePayload(event)
+
+  /*
+   * The verification round trip. Arriving here is the entire point of it: the
+   * backend wanted to know whether a push to this endpoint lands, and it just
+   * did. Hand the token back through whichever page is open and show nothing —
+   * the player pressed a button a second ago and is looking at the answer.
+   *
+   * Relayed through a page rather than posted from here because the ack is a
+   * GraphQL call, and the page is what knows the API's address. Verification is
+   * always started by a press, so there is always a page to relay it.
+   */
+  if (payload.type === 'verify' && payload.token) {
+    event.waitUntil(
+      (async () => {
+        const clients = await self.clients.matchAll({
+          type: 'window',
+          includeUncontrolled: true,
+        })
+        for (const client of clients) {
+          client.postMessage({ type: 'joinquest:push-verify', token: payload.token })
+        }
+      })(),
+    )
+    return
+  }
+
   const title = payload.title || DEFAULT_TITLE
   const url = payload.url || DEFAULT_URL
 

@@ -38,7 +38,49 @@ export const DELETE_PUSH_SUBSCRIPTION_MUTATION = `
   }
 `
 
+export const VERIFY_PUSH_SUBSCRIPTION_MUTATION = `
+  mutation VerifyPushSubscription($endpoint: String!) {
+    verifyPushSubscription(endpoint: $endpoint) {
+      sent
+      capability {
+        reachable
+        subscriptionCount
+        publicKey
+      }
+    }
+  }
+`
+
+export const CONFIRM_PUSH_VERIFICATION_MUTATION = `
+  mutation ConfirmPushVerification($token: String!) {
+    confirmPushVerification(token: $token) {
+      verified
+    }
+  }
+`
+
 const SERVICE_WORKER_PATH = '/sw.js'
+
+/**
+ * Fired on `window` once a verification push has been acked, so a pending
+ * opt-in can finish the moment the round trip closes instead of on its next
+ * poll.
+ */
+export const PUSH_VERIFIED_EVENT = 'joinquest:push-verified'
+
+/**
+ * How long to wait for the round trip before telling the player we cannot
+ * reach them.
+ *
+ * Long enough for a slow push service, short enough that nobody is left
+ * looking at a spinner deciding whether it is safe to close the tab -- the one
+ * question this control exists to answer.
+ */
+export const VERIFICATION_TIMEOUT_MS = 12000
+
+/** How often to re-ask the server while waiting, in case the ack came in via a
+ * tab this one cannot hear from. */
+export const VERIFICATION_POLL_MS = 1000
 
 /** True when this browser has the APIs Web Push needs at all. */
 export function isPushSupported() {
@@ -176,6 +218,13 @@ export async function enablePushNotifications() {
   if (!registration) {
     return { blocked: 'unsupported' }
   }
+  // A worker predating verification would show the silent push as a
+  // notification instead of acking it. Cheap insurance, once, on a press.
+  try {
+    await registration.update?.()
+  } catch {
+    // An update check that fails leaves the worker we already have.
+  }
 
   const permission = await Notification.requestPermission()
   if (permission !== 'granted') {
@@ -203,7 +252,98 @@ export async function enablePushNotifications() {
   const data = await graphqlRequest(SAVE_PUSH_SUBSCRIPTION_MUTATION, {
     input: serializeSubscription(subscription),
   })
-  return data.savePushSubscription
+
+  // Registering is a claim, not a capability. Prove it before the player acts
+  // on it: this is the difference between "we think we can reach you" and a
+  // fact recorded seconds ago, which is what decides whether leaving costs
+  // them their place.
+  return verifySubscription(subscription.endpoint, data.savePushSubscription)
+}
+
+/**
+ * Runs the round trip: ask the backend to push this endpoint, then wait for the
+ * service worker's ack to come back through the server.
+ *
+ * Returns the verified capability, or `{ blocked: 'unverified', capability }`
+ * when nothing arrives. Never reports success on a timeout -- a silent
+ * downgrade here is the failure mode the whole mechanism is built to avoid.
+ */
+export async function verifySubscription(endpoint, saved) {
+  const data = await graphqlRequest(VERIFY_PUSH_SUBSCRIPTION_MUTATION, { endpoint })
+  const verification = data.verifyPushSubscription
+
+  if (!verification?.sent) {
+    // Nothing left the building, so no ack is coming and waiting would only
+    // spend the player's patience.
+    return { blocked: 'unverified', capability: verification?.capability ?? saved }
+  }
+
+  const capability = await waitForVerification()
+  if (!capability?.reachable) {
+    return { blocked: 'unverified', capability: capability ?? saved }
+  }
+  return capability
+}
+
+/**
+ * Waits for the server to agree this player is reachable.
+ *
+ * Two ways in, because the ack does not come back through this call: the tab
+ * that received the push fires PUSH_VERIFIED_EVENT, and a poll covers the case
+ * where that tab is a different one. Resolves with the capability, or null on
+ * timeout.
+ */
+export function waitForVerification({
+  timeoutMs = VERIFICATION_TIMEOUT_MS,
+  pollMs = VERIFICATION_POLL_MS,
+} = {}) {
+  return new Promise((resolve) => {
+    let settled = false
+
+    const finish = (value) => {
+      if (settled) {
+        return
+      }
+      settled = true
+      clearInterval(poll)
+      clearTimeout(deadline)
+      window.removeEventListener(PUSH_VERIFIED_EVENT, onVerified)
+      resolve(value)
+    }
+
+    const check = async () => {
+      try {
+        const capability = await fetchPushCapability()
+        if (capability?.reachable) {
+          finish(capability)
+        }
+      } catch {
+        // Keep waiting: a dropped poll is not an answer.
+      }
+    }
+
+    const onVerified = () => {
+      void check()
+    }
+
+    const poll = setInterval(check, pollMs)
+    const deadline = setTimeout(() => finish(null), timeoutMs)
+    window.addEventListener(PUSH_VERIFIED_EVENT, onVerified)
+    void check()
+  })
+}
+
+/**
+ * Hands a verification token back to the server. Called by whichever tab the
+ * service worker reached, which need not be the one that opted in.
+ */
+export async function confirmPushVerification(token) {
+  const data = await graphqlRequest(CONFIRM_PUSH_VERIFICATION_MUTATION, { token })
+  const verified = data.confirmPushVerification?.verified === true
+  if (verified) {
+    window.dispatchEvent(new CustomEvent(PUSH_VERIFIED_EVENT))
+  }
+  return verified
 }
 
 /** True when a subscription was created with the current VAPID key. */
@@ -281,5 +421,9 @@ export async function resubscribeAfterChange() {
   const data = await graphqlRequest(SAVE_PUSH_SUBSCRIPTION_MUTATION, {
     input: serializeSubscription(subscription),
   })
-  return data.savePushSubscription
+
+  // The rotation cleared the old proof server-side, and rightly: it was about
+  // keys this endpoint no longer holds. Earn it again, quietly -- no player
+  // pressed anything here.
+  return verifySubscription(subscription.endpoint, data.savePushSubscription)
 }

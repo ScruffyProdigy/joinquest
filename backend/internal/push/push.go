@@ -22,7 +22,19 @@ type Notification struct {
 	Tag string
 	// TTL is how long the push service keeps trying. Must not outlive the seat.
 	TTL time.Duration
+	// Kind tells the service worker what this is. Empty means a come-back
+	// ping, the only kind that existed before verification.
+	Kind string
+	// Token is the single-use nonce a KindVerify push carries. Receiving it is
+	// the proof; the worker hands it straight back.
+	Token string
 }
+
+// KindVerify marks the silent round-trip push sent at opt-in. The service
+// worker acks it and shows nothing: the player pressed a button a moment ago
+// and is looking at the page, so a notification would be reporting news they
+// already have.
+const KindVerify = "verify"
 
 // Subscription is one browser install's push endpoint and keys.
 type Subscription struct {
