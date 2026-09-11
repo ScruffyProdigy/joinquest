@@ -11,6 +11,22 @@ import (
 	"github.com/scruffyprodigy/joinquest/internal/coldstart"
 )
 
+// Every query in this file reads mode-level ratings only, which is what the
+// `seat_class = ''` predicate on each of them is for.
+//
+// player_ratings holds one row per (user, game, mode, seat class) since
+// JQ-229: the mode-level rating under the empty seat class, plus one row per
+// seat the player has sat in. Cold-start seeding correlates a player's
+// standing in one mode against their standing in another, so a per-seat row
+// is not another observation of the same quantity — it is a different
+// quantity, and counting it as evidence would let one player contribute
+// several times to a mode they play one of.
+//
+// ListGamesWithRatings would survive without the predicate, since DISTINCT
+// game_id cannot change. It carries it anyway so the rule here is one rule
+// rather than three separate judgements, and so widening that SELECT later
+// stays correct by default.
+
 // ListGamesWithRatings returns every game holding at least one cached player
 // rating, in a stable order.
 //
@@ -20,7 +36,9 @@ import (
 // fixed so a recompute covers games the same way on every pass.
 func (s *Store) ListGamesWithRatings(ctx context.Context) ([]uuid.UUID, error) {
 	rows, err := s.db.QueryContext(ctx, `
-		SELECT DISTINCT game_id FROM player_ratings ORDER BY game_id
+		SELECT DISTINCT game_id FROM player_ratings
+		WHERE seat_class = ''
+		ORDER BY game_id
 	`)
 	if err != nil {
 		return nil, err
@@ -57,6 +75,7 @@ func (s *Store) ListConvergedRatings(ctx context.Context, gameID uuid.UUID, maxS
 		SELECT user_id, mode_key, mu
 		FROM player_ratings
 		WHERE game_id = $1 AND sigma <= $2
+		  AND seat_class = ''
 		ORDER BY mode_key, user_id
 	`, gameID, maxSigma)
 	if err != nil {
@@ -190,6 +209,7 @@ func (s *Store) ListSeedSources(ctx context.Context, gameID uuid.UUID, excludeMo
 		  AND mode_key <> $2
 		  AND sigma <= $3
 		  AND user_id = ANY($4::uuid[])
+		  AND seat_class = ''
 		ORDER BY user_id, mode_key
 	`, gameID, excludeMode, maxSigma, pq.Array(ids))
 	if err != nil {
