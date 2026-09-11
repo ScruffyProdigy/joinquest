@@ -184,7 +184,10 @@ func (s *Store) fireFormingMatchTx(
 	// now would drop someone into a game they are not looking at, and the seat is
 	// only recoverable before this point -- once the session exists there is no
 	// chair left to put a replacement in.
-	away, err := awayAssignedUsersTx(ctx, tx, assignments)
+	// By unit, not by player: a party counts once and is away only when every one of
+	// its members is, so a group gets the single hold a solo player gets rather than
+	// tripping the two-absences rule against itself (JQ-299).
+	away, err := awayAssignedUnitsTx(ctx, tx, assignments)
 	if err != nil {
 		return nil, err
 	}
@@ -203,12 +206,12 @@ func (s *Store) fireFormingMatchTx(
 			return nil, err
 		}
 		kept := false
-		for _, userID := range away {
-			if holding != nil && *holding == userID {
+		for _, unit := range away {
+			if holding != nil && *holding == unit.UserID {
 				kept = true
 				continue
 			}
-			if err := s.releaseFormingSlotsForUserTx(ctx, tx, userID); err != nil {
+			if err := s.releaseFormingUnitTx(ctx, tx, unit); err != nil {
 				return nil, err
 			}
 		}
@@ -221,7 +224,7 @@ func (s *Store) fireFormingMatchTx(
 		return nil, nil
 
 	case len(away) == 1:
-		expired, err := advanceHoldTx(ctx, tx, fm.ID, away[0], holdWindowFor(false))
+		expired, err := advanceHoldTx(ctx, tx, fm.ID, away[0].UserID, holdWindowFor(false))
 		if err != nil {
 			return nil, err
 		}
@@ -234,7 +237,7 @@ func (s *Store) fireFormingMatchTx(
 		// Out of time. Vacating the chair is not ejecting the player: their waiting
 		// row is untouched, so they stay in line for the next table. They were never
 		// told a match formed, so there is nothing to explain to them.
-		if err := s.releaseFormingSlotsForUserTx(ctx, tx, away[0]); err != nil {
+		if err := s.releaseFormingUnitTx(ctx, tx, away[0]); err != nil {
 			return nil, err
 		}
 		if err := clearHoldTx(ctx, tx, fm.ID); err != nil {
