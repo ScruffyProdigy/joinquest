@@ -679,7 +679,7 @@ func TestListModesNeedingReplayFindsUnappliedInputs(t *testing.T) {
 	}
 	// An input has been appended and nothing has replayed it yet.
 
-	modes, err := st.ListModesNeedingReplay(context.Background())
+	modes, err := st.ListModesNeedingReplay(context.Background(), defaultRatingEngineID(t))
 	if err != nil {
 		t.Fatalf("ListModesNeedingReplay: %v", err)
 	}
@@ -716,7 +716,7 @@ func TestListModesNeedingReplaySkipsAppliedModes(t *testing.T) {
 		t.Fatalf("ReplayMode: %v", err)
 	}
 
-	modes, err := st.ListModesNeedingReplay(context.Background())
+	modes, err := st.ListModesNeedingReplay(context.Background(), defaultRatingEngineID(t))
 	if err != nil {
 		t.Fatalf("ListModesNeedingReplay: %v", err)
 	}

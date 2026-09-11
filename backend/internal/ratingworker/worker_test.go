@@ -26,9 +26,36 @@ func (f *fakeReplayer) ReplayMode(ctx context.Context, gameID, modeKey string) (
 	return rating.Report{}, nil
 }
 
+// testEngineID is the default engine identity these tests run under. Its exact
+// value does not matter; that the worker passes it to the sweep unchanged does.
+const testEngineID = "test-engine@1"
+
+// newTestWorker builds a Worker whose modes all resolve to one stub engine.
+// Tests about queueing and coalescing have no interest in which engine a mode
+// is rated by; the ones that do build their own ModeEngine.
+func newTestWorker(newReplayer func() Replayer, tick time.Duration) *Worker {
+	engine := stubEngine{id: testEngineID}
+	return New(
+		func(context.Context, uuid.UUID, string) (rating.Engine, error) { return engine, nil },
+		func(rating.Engine) Replayer { return newReplayer() },
+		testEngineID,
+		tick,
+	)
+}
+
+// stubEngine is an Engine that never rates anything: the worker only ever
+// reads its ID and hands it to newReplayer.
+type stubEngine struct{ id string }
+
+func (stubEngine) Prior() rating.Rating { return rating.Rating{} }
+
+func (stubEngine) Rate([]rating.Side) ([][]rating.Rating, error) { return nil, nil }
+
+func (e stubEngine) ID() string { return e.id }
+
 func TestDrainCoalescesRepeatedSchedules(t *testing.T) {
 	fake := &fakeReplayer{}
-	w := New(func() Replayer { return fake }, time.Hour)
+	w := newTestWorker(func() Replayer { return fake }, time.Hour)
 
 	game := uuid.New()
 	w.Schedule(game, "arena")
@@ -46,7 +73,7 @@ func TestDrainCoalescesRepeatedSchedules(t *testing.T) {
 
 func TestDrainClearsTheQueue(t *testing.T) {
 	fake := &fakeReplayer{}
-	w := New(func() Replayer { return fake }, time.Hour)
+	w := newTestWorker(func() Replayer { return fake }, time.Hour)
 
 	w.Schedule(uuid.New(), "arena")
 	if err := w.DrainNow(context.Background()); err != nil {
@@ -63,7 +90,7 @@ func TestDrainClearsTheQueue(t *testing.T) {
 
 func TestNewReplayerIsCalledPerRun(t *testing.T) {
 	built := 0
-	w := New(func() Replayer { built++; return &fakeReplayer{} }, time.Hour)
+	w := newTestWorker(func() Replayer { built++; return &fakeReplayer{} }, time.Hour)
 
 	w.Schedule(uuid.New(), "arena")
 	if err := w.DrainNow(context.Background()); err != nil {
@@ -108,7 +135,7 @@ func TestDrainRequeuesModeWhoseReplayFails(t *testing.T) {
 	game := uuid.New()
 	key := game.String() + "/arena"
 	fake := &flakyReplayer{failFor: map[string]bool{key: true}}
-	w := New(func() Replayer { return fake }, time.Hour)
+	w := newTestWorker(func() Replayer { return fake }, time.Hour)
 
 	w.Schedule(game, "arena")
 	if err := w.DrainNow(context.Background()); err != nil {
@@ -144,16 +171,18 @@ func TestDrainRequeuesModeWhoseReplayFails(t *testing.T) {
 // store-backed Sweeper would after ListModesNeedingReplay found inputs newer
 // than their last replay.
 type fakeSweeper struct {
-	mu    sync.Mutex
-	modes []store.RatedMode
-	err   error
-	calls int
+	mu          sync.Mutex
+	modes       []store.RatedMode
+	err         error
+	calls       int
+	sawEngineID string
 }
 
-func (f *fakeSweeper) ListModesNeedingReplay(ctx context.Context) ([]store.RatedMode, error) {
+func (f *fakeSweeper) ListModesNeedingReplay(ctx context.Context, defaultEngineID string) ([]store.RatedMode, error) {
 	f.mu.Lock()
 	defer f.mu.Unlock()
 	f.calls++
+	f.sawEngineID = defaultEngineID
 	return f.modes, f.err
 }
 
@@ -177,7 +206,7 @@ func (f replayerFunc) ReplayMode(ctx context.Context, gameID, modeKey string) (r
 // into the same drain rather than racing each other.
 func TestSweepOnceSchedulesModesFromSweeper(t *testing.T) {
 	fake := &fakeReplayer{}
-	w := New(func() Replayer { return fake }, time.Hour)
+	w := newTestWorker(func() Replayer { return fake }, time.Hour)
 
 	game := uuid.New()
 	sweeper := &fakeSweeper{modes: []store.RatedMode{{GameID: game, ModeKey: "arena"}}}
@@ -202,7 +231,7 @@ func TestSweepOnceSchedulesModesFromSweeper(t *testing.T) {
 // same shape as DrainNow's own per-mode error handling.
 func TestSweepOnceSurvivesSweeperError(t *testing.T) {
 	fake := &fakeReplayer{}
-	w := New(func() Replayer { return fake }, time.Hour)
+	w := newTestWorker(func() Replayer { return fake }, time.Hour)
 	sweeper := &fakeSweeper{err: errors.New("boom")}
 	w.SetSweeper(sweeper, time.Hour)
 
@@ -222,7 +251,7 @@ func TestSweepOnceSurvivesSweeperError(t *testing.T) {
 // of serving stale ratings for a whole sweepEvery interval.
 func TestStartSweepsBeforeEnteringTheLoop(t *testing.T) {
 	fake := &fakeReplayer{}
-	w := New(func() Replayer { return fake }, time.Hour)
+	w := newTestWorker(func() Replayer { return fake }, time.Hour)
 
 	game := uuid.New()
 	sweeper := &fakeSweeper{modes: []store.RatedMode{{GameID: game, ModeKey: "arena"}}}
@@ -252,7 +281,7 @@ func TestStartSweepsBeforeEnteringTheLoop(t *testing.T) {
 // told about.
 func TestStartWithoutSweeperNeverSweeps(t *testing.T) {
 	fake := &fakeReplayer{}
-	w := New(func() Replayer { return fake }, time.Hour)
+	w := newTestWorker(func() Replayer { return fake }, time.Hour)
 
 	ctx, cancel := context.WithTimeout(context.Background(), 50*time.Millisecond)
 	defer cancel()
@@ -293,7 +322,7 @@ func TestStartNeverRunsConcurrentDrains(t *testing.T) {
 		return rating.Report{}, nil
 	})
 
-	w := New(func() Replayer { return fake }, 2*time.Millisecond)
+	w := newTestWorker(func() Replayer { return fake }, 2*time.Millisecond)
 	sweeper := &fakeSweeper{modes: []store.RatedMode{
 		{GameID: uuid.New(), ModeKey: "arena"},
 		{GameID: uuid.New(), ModeKey: "duel"},
