@@ -281,8 +281,9 @@ describe('GroupPage', () => {
       expect(screen.queryByRole('button', { name: 'Stop' })).not.toBeInTheDocument()
     })
 
-    it('says a full table is starting rather than asking anyone to press anything', () => {
-      currentUser = { id: 'u9', displayName: 'Jo' }
+    it('leaves a full table waiting on the king rather than starting it for them', async () => {
+      const user = userEvent.setup()
+      mutations.startTable.mockResolvedValue({ joinUrl: null })
       currentRoom = makeRoom(
         startableTable({
           seatSlots: [
@@ -294,8 +295,9 @@ describe('GroupPage', () => {
       )
       render(<GroupPage />)
 
-      expect(screen.getByText('Starting your game…')).toBeInTheDocument()
-      expect(screen.queryByRole('button', { name: 'Start game' })).not.toBeInTheDocument()
+      await user.click(screen.getByRole('button', { name: 'Start game' }))
+
+      expect(mutations.startTable).toHaveBeenCalledWith('table-1')
     })
 
     it('surfaces a refused request instead of leaving the button looking pressed', async () => {

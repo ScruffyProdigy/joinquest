@@ -386,90 +386,6 @@ func TestCancelTableBackfillWithNothingWaiting(t *testing.T) {
 	}
 }
 
-// A full table starts itself; a table merely past the mode's minimum does not, because
-// waiting for the friend still on their way is the whole reason a group screen exists.
-func TestAutoStartTableOnlyWhenEverySeatIsTaken(t *testing.T) {
-	st := openTestStore(t)
-	cleaner := st.NewTestCleaner(t)
-	ctx := context.Background()
-
-	game, mode, _ := setupTeamMode(t, st, cleaner)
-	users := make([]*User, 6)
-	seating := map[*User]string{}
-	seatKeys := []string{
-		"Team-1-Seat-1", "Team-1-Seat-2", "Team-1-Seat-3",
-		"Team-2-Seat-1", "Team-2-Seat-2", "Team-2-Seat-3",
-	}
-	for i := range users {
-		users[i] = mustUser(t, st, cleaner, "autostart")
-	}
-	for i := 0; i < 5; i++ {
-		seating[users[i]] = seatKeys[i]
-	}
-	table := mustGroupTable(t, st, game, mode, users[0], seating, users[5])
-
-	result, err := st.AutoStartTable(ctx, table.ID)
-	if err != nil {
-		t.Fatalf("AutoStartTable with one seat open: %v", err)
-	}
-	if result != nil {
-		t.Fatal("expected no start while a seat is still open")
-	}
-
-	if _, err := st.SitAtTable(ctx, table.ID, users[5].ID, seatKeys[5]); err != nil {
-		t.Fatalf("sit last: %v", err)
-	}
-	result, err = st.AutoStartTable(ctx, table.ID)
-	if err != nil {
-		t.Fatalf("AutoStartTable when full: %v", err)
-	}
-	if result == nil {
-		t.Fatal("expected a full table to start itself")
-	}
-	if len(result.NotifyUserIDs) != 6 {
-		t.Fatalf("expected all 6 players told the game started, got %d", len(result.NotifyUserIDs))
-	}
-}
-
-// A table with a live request is the queue's to fill: firing a private session under it
-// would strand the strangers being formed around it.
-func TestAutoStartTableSkippedWhileBackfillIsLive(t *testing.T) {
-	st := openTestStore(t)
-	cleaner := st.NewTestCleaner(t)
-	ctx := context.Background()
-
-	game, mode, queueID := setupTeamMode(t, st, cleaner)
-	seatKeys := []string{
-		"Team-1-Seat-1", "Team-1-Seat-2", "Team-1-Seat-3",
-		"Team-2-Seat-1", "Team-2-Seat-2", "Team-2-Seat-3",
-	}
-	users := make([]*User, 6)
-	seating := map[*User]string{}
-	for i := range users {
-		users[i] = mustUser(t, st, cleaner, "autostart-backfill")
-		if i < 5 {
-			seating[users[i]] = seatKeys[i]
-		}
-	}
-	table := mustGroupTable(t, st, game, mode, users[0], seating, users[5])
-
-	if _, err := st.StartTableBackfill(ctx, table.ID, users[0].ID, queueID); err != nil {
-		t.Fatalf("StartTableBackfill: %v", err)
-	}
-	mustReconcileForming(t, st, ctx, queueID)
-
-	if _, err := st.SitAtTable(ctx, table.ID, users[5].ID, seatKeys[5]); err != nil {
-		t.Fatalf("sit last: %v", err)
-	}
-	result, err := st.AutoStartTable(ctx, table.ID)
-	if err != nil {
-		t.Fatalf("AutoStartTable: %v", err)
-	}
-	if result != nil {
-		t.Fatal("expected no auto-start while the table is waiting on matchmaking")
-	}
-}
-
 // Three friends group up, land together, and matchmaking finds them three opponents —
 // the ticket's headline case, and the reason a symmetric template pools its seats.
 //
@@ -577,16 +493,11 @@ func TestTwoGroupsOfThreeMeetOnOppositeSides(t *testing.T) {
 	}
 }
 
-// Starting before the table is full is the king's alone, and stays so (JQ-137).
+// Starting the game is the king's alone, whether the table is full or short (JQ-137).
 //
-// Nothing else on the group screen is theirs any more — anyone seated may ask for the
-// rest of the match, and anyone may stop it — which is exactly why this one needs pinning
-// rather than leaving to hold by accident. Deciding not to wait for the friend still on
-// their way is a decision taken on everybody's behalf, so it keeps an owner.
-//
-// The nil-actor arm of startTable exists only for a full table, and is asserted here
-// alongside the king gate because the two are one rule: a start nobody authorised is
-// permitted only when there is nothing left to decide.
+// The short case is the one worth a test: a table five seats from full is playable, and
+// every seated player can see that it is. Nothing about being ready makes it anyone's
+// call but the king's.
 func TestOnlyTheKingCanStartEarly(t *testing.T) {
 	st := openTestStore(t)
 	cleaner := st.NewTestCleaner(t)
@@ -640,16 +551,6 @@ func TestOnlyTheKingCanStartEarly(t *testing.T) {
 		if _, err := st.StartTable(ctx, table.ID, other.ID); err == nil {
 			t.Fatalf("player %s started the game early without being the king", other.ID)
 		}
-	}
-
-	// Nor may the automatic path stand in for them: it starts a full table, never an
-	// early one.
-	auto, err := st.AutoStartTable(ctx, table.ID)
-	if err != nil {
-		t.Fatalf("AutoStartTable: %v", err)
-	}
-	if auto != nil {
-		t.Fatal("a table five seats short of full started itself")
 	}
 
 	result, err := st.StartTable(ctx, table.ID, king.ID)

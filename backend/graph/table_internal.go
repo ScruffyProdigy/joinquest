@@ -400,38 +400,16 @@ func (r *mutationResolver) startTableInternal(ctx context.Context, tableID uuid.
 		return nil, err
 	}
 
+	table, err := st.GetRoomTableByID(ctx, tableID)
+	if err != nil {
+		return nil, err
+	}
+
 	result, err := st.StartTable(ctx, tableID, userID)
 	if err != nil {
 		return nil, err
 	}
 
-	launchURLs, err := r.finishStartedTable(ctx, tableID, result)
-	if err != nil {
-		return nil, err
-	}
-
-	launch := launchURLs[userID]
-	sessionID := result.SessionID.String()
-	return &model.JoinResult{
-		Queued:    false,
-		SessionID: &sessionID,
-		JoinURL:   &launch,
-	}, nil
-}
-
-// finishStartedTable provisions the session a start produced and tells every player who
-// was seated, returning each one's signed launch URL. Shared by the king's Start and by
-// the automatic start a full table triggers for itself (JQ-137) — the two differ in what
-// makes them happen, never in what the players then see.
-func (r *Resolver) finishStartedTable(ctx context.Context, tableID uuid.UUID, result *store.StartTableResult) (map[uuid.UUID]string, error) {
-	st, err := r.requireStore()
-	if err != nil {
-		return nil, err
-	}
-	table, err := st.GetRoomTableByID(ctx, tableID)
-	if err != nil {
-		return nil, err
-	}
 	game, err := st.GetGameByID(ctx, result.GameID)
 	if err != nil {
 		return nil, err
@@ -446,7 +424,14 @@ func (r *Resolver) finishStartedTable(ctx context.Context, tableID uuid.UUID, re
 	if err := r.publishTableUpdated(ctx, table.RoomID, tableID); err != nil {
 		return nil, err
 	}
-	return launchURLs, nil
+
+	launch := launchURLs[userID]
+	sessionID := result.SessionID.String()
+	return &model.JoinResult{
+		Queued:    false,
+		SessionID: &sessionID,
+		JoinURL:   &launch,
+	}, nil
 }
 
 func (r *Resolver) requireTableRoomMember(ctx context.Context, tableID, userID uuid.UUID) (*store.RoomTable, error) {

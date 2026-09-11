@@ -382,17 +382,18 @@ describe('groupCtaState', () => {
     expect(groupCtaState(table, 'u1')).toMatchObject({ detail: 'Need 3 more' })
   })
 
-  it('announces the start once every seat is taken, offering nobody a button', () => {
+  it('still waits for the king once every seat is taken — full is ready, not decided', () => {
     const table = startableTable({
       seatSlots: [
         slot('p-1', 'Player · 1', king),
         slot('p-2', 'Player · 2', { id: 'u9' }),
         slot('p-3', 'Player · 3', { id: 'u7' }),
       ],
+      lookForGroupOptions: [],
     })
 
-    expect(groupCtaState(table, 'u1')).toMatchObject({ kind: 'starting' })
-    expect(groupCtaState(table, 'u9')).toMatchObject({ kind: 'starting' })
+    expect(groupCtaState(table, 'u1')).toMatchObject({ kind: 'start', label: 'Start game' })
+    expect(groupCtaState(table, 'u9')).toMatchObject({ kind: 'waiting' })
   })
 
   it('blocks the king with what is still missing', () => {

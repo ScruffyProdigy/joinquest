@@ -4,7 +4,6 @@ import {
   GROUP_FIND_MATCH,
   GROUP_FIND_MATCH_HINT,
   GROUP_FINDING_MATCH,
-  GROUP_STARTING,
   STOP_FINDING,
 } from './playerCopy'
 
@@ -157,12 +156,6 @@ export function playersPickingASeat(room, table, viewerId = null) {
   return [...viewer, ...here, ...awaiting, ...out]
 }
 
-/** Every seat the mode declares is taken. */
-function isFull(table) {
-  const slots = table?.seatSlots ?? []
-  return slots.length > 0 && slots.every((slot) => slot.user)
-}
-
 /**
  * The queue a request for the rest of the match would go to, or null when there is none
  * to ask. `lookForGroupOptions` is the API's own answer to both questions — whether this
@@ -176,13 +169,15 @@ export function findMatchQueueId(table) {
 /**
  * The sticky bottom control.
  *
- * One decision sits behind every branch here: when does the group stop waiting for the
- * people who are not in it yet. Filling the remaining seats from the lobby and starting
- * short-handed are two spellings of it rather than two powers — for a mode whose minimum
- * is its full complement, filling *is* how a partial group starts at all — and it ends
- * the wait for anyone still on their way either way, selling their seat instead of
- * playing without them. So it keeps one owner, the king, exactly as starting early always
- * did (JQ-137).
+ * One decision sits behind every branch here: when the group starts playing. Filling the
+ * remaining seats from the lobby and starting short-handed are two spellings of it rather
+ * than two powers — for a mode whose minimum is its full complement, filling *is* how a
+ * partial group starts at all — and either way it ends the wait for anyone still on their
+ * way. So it keeps one owner, the king (JQ-137).
+ *
+ * That includes a table with every seat taken. Full is ready, not decided; nothing here
+ * starts a game on its own, because the moment a group is complete is exactly the moment
+ * somebody may still want to swap a seat, wait for one more, or give up and discard.
  *
  * Everyone else is told what is happening and that they need do nothing. The page still
  * never says "king" — it names the person, the way the prototype does.
@@ -204,14 +199,6 @@ export function groupCtaState(table, userId) {
       // committed them. Everybody else keeps the line telling them to sit tight.
       cancelLabel: king ? STOP_FINDING : null,
     }
-  }
-
-  // A full table starts itself, so there is nothing here to press — only the moment to
-  // announce. This is what retires the king-gated Start for the friends-only case: the
-  // button is not disabled, it is gone, because waiting for one person to notice a full
-  // table was never the point of having a king.
-  if (isFull(table)) {
-    return { kind: 'starting', label: GROUP_STARTING }
   }
 
   const queueId = findMatchQueueId(table)

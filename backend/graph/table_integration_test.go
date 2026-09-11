@@ -418,21 +418,32 @@ func TestTableRegroupRosterFollowsTheLatestMatch(t *testing.T) {
 	requireNoGraphQLErrors(t, postGraphQL(t, env.Handler, sitMutation,
 		map[string]any{"tableId": tableID, "seatKey": openSeat}, cookieC))
 
-	// Match 2 has already begun: C's claim above took the last seat, and a full table
-	// starts itself (JQ-137) rather than waiting for the king to press anything. The
-	// session it created is on the table row, so that is where the id comes from — there
-	// is no longer a startTable call here to return one.
-	var secondSessionID uuid.UUID
-	if err := env.DB.QueryRow(
-		`SELECT session_id FROM room_tables WHERE id = $1`, tableID,
-	).Scan(&secondSessionID); err != nil {
-		t.Fatalf("read the session the filled table started: %v", err)
+	// Match 2: A (the king) starts the table, and the game reports it complete. That
+	// completion runs resetRoomTableAfterSessionTx, which stamps session 2 with the SAME
+	// regroup_table_id session 1 already carries.
+	startMutation := `mutation Start($tableId: ID!) { startTable(tableId: $tableId) { sessionId } }`
+	startBody := postGraphQL(t, env.Handler, startMutation, map[string]any{"tableId": tableID}, first.cookieA)
+	requireNoGraphQLErrors(t, startBody)
+	var startResp struct {
+		Data struct {
+			StartTable struct {
+				SessionID *string `json:"sessionId"`
+			} `json:"startTable"`
+		} `json:"data"`
+	}
+	if err := json.Unmarshal(startBody, &startResp); err != nil {
+		t.Fatalf("decode startTable: %v body=%s", err, startBody)
+	}
+	if startResp.Data.StartTable.SessionID == nil {
+		t.Fatalf("startTable returned no sessionId; body=%s", startBody)
+	}
+	secondSessionID, err := uuid.Parse(*startResp.Data.StartTable.SessionID)
+	if err != nil {
+		t.Fatalf("parse second session id: %v", err)
 	}
 	if secondSessionID == first.sessionID {
-		t.Fatal("the auto-start reused the first match's session id")
+		t.Fatal("startTable reused the first match's session id")
 	}
-	// The game reporting it complete runs resetRoomTableAfterSessionTx, which stamps
-	// session 2 with the SAME regroup_table_id session 1 already carries.
 	reportMatchResult(t, env, secondSessionID, "COMPLETED")
 
 	// Precondition for the whole test: table T really is stamped on both sessions now, so

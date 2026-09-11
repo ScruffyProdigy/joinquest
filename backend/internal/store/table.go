@@ -244,19 +244,6 @@ func tableCanStart(mode *GameMode, modeSeats []GameModeSeat, seated []TableSeat,
 	return true, nil
 }
 
-// tableIsFull reports whether every seat the mode declares is taken. Distinct from
-// tableCanStart, which is satisfied by each path's minimum: a 3v3 with four players can
-// start but is not full.
-func tableIsFull(mode *GameMode, modeSeats []GameModeSeat, seated []TableSeat) bool {
-	capacity := len(modeSeats)
-	if capacity == 0 {
-		// A mode with no seat rows has no seats to fill, so its own ceiling is the
-		// only statement of what full means.
-		capacity = mode.MaxPlayers
-	}
-	return capacity > 0 && len(seated) >= capacity
-}
-
 func tableCanDiscard(table *RoomTable, seatedCount int, callerID uuid.UUID, kingID *uuid.UUID) bool {
 	if table.Status != TableStatusForming || seatedCount > 0 {
 		return false
@@ -804,34 +791,6 @@ func (s *Store) DiscardTable(ctx context.Context, tableID, userID uuid.UUID) (bo
 
 // StartTable provisions a session from seated players; caller must be king.
 func (s *Store) StartTable(ctx context.Context, tableID, userID uuid.UUID) (*StartTableResult, error) {
-	return s.startTable(ctx, tableID, &userID)
-}
-
-// AutoStartTable starts a table nobody pressed anything to start: the last seat being
-// claimed is the trigger (JQ-137). It runs the same path as StartTable without the two
-// checks that only mean something for a person — room membership, and the king gate that
-// the manual Start keeps — and adds one the manual path does not need: the table must be
-// genuinely full, not merely past the mode's minimum. Starting a group at its minimum
-// would take away the wait for the friend still on their way, which is the whole reason
-// a group screen exists.
-//
-// A table with a live backfill request is never auto-started. Those seats are the queue's
-// to fill, and firing a private session underneath a group that is already matched would
-// strand the strangers being formed around them.
-func (s *Store) AutoStartTable(ctx context.Context, tableID uuid.UUID) (*StartTableResult, error) {
-	active, err := s.TableBackfillActive(ctx, tableID)
-	if err != nil {
-		return nil, err
-	}
-	if active {
-		return nil, nil
-	}
-	return s.startTable(ctx, tableID, nil)
-}
-
-// startTable is the shared body. `actor` is the player who asked, or nil for an
-// automatic start.
-func (s *Store) startTable(ctx context.Context, tableID uuid.UUID, actor *uuid.UUID) (*StartTableResult, error) {
 	tx, err := s.db.BeginTx(ctx, nil)
 	if err != nil {
 		return nil, err
@@ -845,30 +804,21 @@ func (s *Store) startTable(ctx context.Context, tableID uuid.UUID, actor *uuid.U
 	if table.Status != TableStatusForming {
 		return nil, fmt.Errorf("store: table is not forming")
 	}
-	if actor != nil {
-		member, err := s.IsRoomMember(ctx, table.RoomID, *actor)
-		if err != nil {
-			return nil, err
-		}
-		if !member {
-			return nil, ErrNotFound
-		}
+	member, err := s.IsRoomMember(ctx, table.RoomID, userID)
+	if err != nil {
+		return nil, err
+	}
+	if !member {
+		return nil, ErrNotFound
 	}
 
 	seated, err := s.listTableSeatsTx(ctx, tx, tableID)
 	if err != nil {
 		return nil, err
 	}
-	if actor != nil {
-		king := tableKingUserID(seated)
-		if king == nil || *king != *actor {
-			return nil, fmt.Errorf("store: only the king can start the table")
-		}
-	} else if !tableIsFull(mode, modeSeats, seated) {
-		// Re-checked inside the transaction because the trigger is a seat claim, and
-		// two players claiming the last two seats at once would both read "full" from
-		// outside it.
-		return nil, nil
+	king := tableKingUserID(seated)
+	if king == nil || *king != userID {
+		return nil, fmt.Errorf("store: only the king can start the table")
 	}
 	canStart, err := tableCanStart(mode, modeSeats, seated, mode.SeatTemplate)
 	if err != nil {

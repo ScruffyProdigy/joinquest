@@ -438,8 +438,6 @@ export const REGROUP_CHOOSE_AGAIN = 'Choose again'
 export const GROUP_FIND_MATCH = 'Find us a match'
 export const GROUP_FINDING_MATCH = 'Finding your match'
 export const GROUP_FIND_MATCH_HINT = "Your group stays together — we'll fill the rest."
-/** A full table starts itself, so the moment is announced rather than offered. */
-export const GROUP_STARTING = 'Starting your game…'
 
 const GENERIC_ROLE_LABELS = new Set(['seat', 'seats', 'player', 'players'])
 
