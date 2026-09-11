@@ -5,9 +5,8 @@ import {
   APP_TAGLINE,
   LAUNCH_GAME,
   READY_TO_LAUNCH,
+  RESULTS_IN_PROGRESS_TITLE,
   RESULTS_LEAVE_MATCH,
-  RESULTS_STILL_PLAYING,
-  RESULTS_YOUR_RESULT_SO_FAR,
 } from '../../../src/lib/playerCopy.js'
 
 // Seed row ...0001 (JQ-203). It is the only seeded card with a mode queue
@@ -90,11 +89,17 @@ export async function expectNoIntentBanner(page) {
  *
  * `/return?match=…` no longer bounces the player home on its own — it renders the
  * post-match screen, and leaving is an explicit action. No game in these fixtures reports
- * a finish or a result, so the session is still `active` when the browser arrives:
- * `MatchResult.complete` is false and ReturnPage takes its still-playing branch ("Your
- * result so far" + "Still playing" + the exit button). That branch is asserted rather than
- * clicked straight through, so a regression that stops rendering the screen fails here
- * instead of silently falling back to the old redirect.
+ * a finish or a result, and `AcknowledgePlayerReturn` does not complete a session on its
+ * own, so the session is still `active` when either browser arrives: `MatchResult.complete`
+ * is false, the standings card titles itself "Results so far", and the exit button is the
+ * only action offered. That is asserted rather than clicked straight through, so a
+ * regression that stops rendering the screen fails here instead of silently falling back to
+ * the old redirect.
+ *
+ * The title is the marker, not "Still playing" (JQ-277). That is now a per-row badge on the
+ * standings rather than a card of its own, and it is only on rows that have not finished —
+ * so it is there for the first player to return and gone for the second, by which point
+ * both are marked finished.
  *
  * Landing home is still the assertion that matters: it is what proves the return released
  * the player's matched queue row and left them free to queue again.
@@ -102,8 +107,7 @@ export async function expectNoIntentBanner(page) {
 export async function returnFromMatch(page, matchId) {
   await page.goto(`/return?match=${encodeURIComponent(matchId)}`)
 
-  await expect(page.getByText(RESULTS_YOUR_RESULT_SO_FAR)).toBeVisible({ timeout: 20000 })
-  await expect(page.getByText(RESULTS_STILL_PLAYING)).toBeVisible()
+  await expect(page.getByText(RESULTS_IN_PROGRESS_TITLE)).toBeVisible({ timeout: 20000 })
 
   await page.getByRole('button', { name: RESULTS_LEAVE_MATCH }).click()
 
