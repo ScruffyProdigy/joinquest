@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { fetchReturnDestination } from '../../lib/return'
+import { viewerParticipantOf } from '../../lib/regroup'
 import {
   classifyRegroupError,
   declinePlayAgain,
@@ -20,10 +21,10 @@ import {
 import { Button } from '../ui/button'
 import { Link } from '../ui/link'
 import { Card, CardContent, CardHeader, CardTitle } from '../ui/card'
+import MatchActionBar, { RegroupActions } from '../match/MatchActionBar'
+import MatchOutcomeHeader from '../match/MatchOutcomeHeader'
 import MatchStandings from '../match/MatchStandings'
 import RegroupCard from '../match/RegroupCard'
-import StillPlaying from '../match/StillPlaying'
-import YourResult from '../match/YourResult'
 import { useAuth } from './AuthProvider'
 
 function matchIdFromLocation() {
@@ -168,8 +169,7 @@ export default function ReturnPage() {
   }, [leaveTo])
 
   const gameDetailPath = gamePagePath(result?.game) || destinationRef.current
-  const viewerRegroup =
-    (result?.participants ?? []).find((participant) => participant.user?.id === viewerId)?.regroup ?? null
+  const viewerRegroup = viewerParticipantOf(result, viewerId)?.regroup ?? null
 
   const handlePlayAgain = useCallback(async () => {
     setRegroupError('')
@@ -229,62 +229,66 @@ export default function ReturnPage() {
 
   if (status === 'result' && result) {
     const complete = Boolean(result.complete)
-    const others = (result.participants ?? []).filter((participant) => participant.user?.id !== viewerId)
 
     return (
-      <main className="flex min-h-screen flex-col items-center gap-6 bg-background p-6 text-foreground">
-        <h1 className="font-heading text-2xl font-bold">{APP_NAME}</h1>
-        <div className="flex w-full max-w-md flex-col gap-4">
-          {liveUpdatesOff ? (
-            <p className="status-message" role="status">
-              {RESULTS_LIVE_UPDATES_OFF}
-            </p>
-          ) : null}
-          {complete ? (
-            <>
-              <MatchStandings result={result} viewerId={viewerId} />
-              <RegroupCard
-                result={result}
-                viewerId={viewerId}
-                minPlayers={regroupMinPlayers(result)}
-                busy={busy}
-                onPlayAgain={handlePlayAgain}
-                onDecline={() => declineThenLeave(null)}
-                onBackToGame={() => declineThenLeave(gameDetailPath)}
-                // Same destination as "Back to <game>", and only ever offered in its
-                // place: the mode's picker lives on the game page, so re-opening the
-                // choices means going there rather than duplicating the sheet here.
-                // Declining first is right — this player is not taking the fast path
-                // back to this table, and the others should see that (JQ-232).
-                onChooseAgain={() => declineThenLeave(gameDetailPath)}
-              />
-              {regroupError ? (
-                <p className="status-message status-message-error" role="alert">
-                  {regroupError}
-                </p>
-              ) : null}
-            </>
-          ) : (
-            <>
-              {/*
-                The viewer's own result comes first: StillPlaying deliberately lists only the
-                others, so without this the screen answers "how is everyone else doing?" and
-                never "how did I do?".
-              */}
-              <YourResult result={result} viewerId={viewerId} />
-              <StillPlaying participants={others} />
-              {/*
-                The only exit from this branch. Without it a player who returns mid-match
-                can leave only with the browser's back button — and if the subscription
-                never connects, never at all. No decline: the match has not finished, so
-                there is no regroup to answer yet.
-              */}
-              <Button type="button" variant="outline" onClick={() => leaveTo(destinationRef.current)}>
-                {RESULTS_LEAVE_MATCH}
-              </Button>
-            </>
-          )}
+      <main className="flex min-h-screen w-full flex-col bg-background text-foreground">
+        {/*
+          No wordmark here, unlike the fallback below. The prototype gives the top of this
+          screen to the result, and a brand line above it would push the one thing the player
+          came back for below the fold on a phone (JQ-277).
+        */}
+        <div className="flex-1 px-4 pt-6">
+          <div className="mx-auto flex w-full max-w-lg flex-col gap-5 pb-4">
+            {liveUpdatesOff ? (
+              <p className="status-message" role="status">
+                {RESULTS_LIVE_UPDATES_OFF}
+              </p>
+            ) : null}
+            <MatchOutcomeHeader result={result} viewerId={viewerId} />
+            {/*
+              One standings card in both states, as the prototype has it: it already flips its
+              own title between "Results so far" and "Final standings" and marks the rows still
+              in play, so the separate your-result and still-playing cards it replaces were
+              saying the same things in two more places (JQ-277).
+            */}
+            <MatchStandings result={result} viewerId={viewerId} />
+            {/* Renders for a group who played the match out, and nobody else (JQ-233). */}
+            <RegroupCard result={result} viewerId={viewerId} minPlayers={regroupMinPlayers(result)} />
+            {regroupError ? (
+              <p className="status-message status-message-error" role="alert">
+                {regroupError}
+              </p>
+            ) : null}
+          </div>
         </div>
+        <MatchActionBar>
+          {complete ? (
+            <RegroupActions
+              result={result}
+              viewerId={viewerId}
+              busy={busy}
+              onPlayAgain={handlePlayAgain}
+              onDecline={() => declineThenLeave(null)}
+              onBackToGame={() => declineThenLeave(gameDetailPath)}
+              // Same destination as "Back to <game>", and only ever offered in its place: the
+              // mode's picker lives on the game page, so re-opening the choices means going
+              // there rather than duplicating the sheet here. Declining first is right — this
+              // player is not taking the fast path back to this table, and the others should
+              // see that (JQ-232).
+              onChooseAgain={() => declineThenLeave(gameDetailPath)}
+            />
+          ) : (
+            /*
+              The only exit while the match is still running. Without it a player who returns
+              mid-match can leave only with the browser's back button — and if the subscription
+              never connects, never at all. No regroup actions: the match has not finished, so
+              `playAgain` would be refused and there is no decision to answer yet.
+            */
+            <Button type="button" variant="secondary" onClick={() => leaveTo(destinationRef.current)}>
+              {RESULTS_LEAVE_MATCH}
+            </Button>
+          )}
+        </MatchActionBar>
       </main>
     )
   }

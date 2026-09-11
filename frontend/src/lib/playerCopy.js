@@ -376,12 +376,8 @@ export const RESULTS_IN_PROGRESS = 'In progress…'
 /** Screen-reader text for the pulsing placement dot — only when it isn't already covered by "Still playing". */
 export const RESULTS_PLACEMENT_UNKNOWN = 'Placement not yet known'
 export const RESULTS_YOU = 'You'
-export const RESULTS_YOUR_RESULT_SO_FAR = 'Your result so far'
 
 export const REGROUP_TITLE = 'Who’s playing again?'
-// The card with no roster on it: a solo player has nobody to regroup with, and a player who
-// left the match before it ended did not stay for the group's decision either (JQ-233).
-export const REGROUP_TITLE_SIMPLE = 'Play again?'
 export const REGROUP_IN = 'In'
 export const REGROUP_OUT = 'Out'
 export const REGROUP_PENDING = 'Not back yet'
@@ -456,30 +452,57 @@ export function ordinal(n) {
  * than the generic "Waiting for others to finish." and shouldn't be masked
  * by it.
  */
+/**
+ * How the result feels, which is what the mascot panel above the headline is tinted by.
+ * The prototype's `rd()` produces exactly these three — it has a fourth, `waiting`, that
+ * nothing on this screen can reach, so it is not carried over.
+ */
+export const MATCH_MOOD = Object.freeze({ WIN: 'win', LOSE: 'lose', CLOSE: 'close' })
+
+/** The prototype ships the mascot as a labelled placeholder; the label is the copy. */
+export const MASCOT_LABEL = Object.freeze({
+  [MATCH_MOOD.WIN]: 'Mascot illustration · celebrating',
+  [MATCH_MOOD.LOSE]: 'Mascot illustration · sympathetic',
+  [MATCH_MOOD.CLOSE]: 'Mascot illustration · tense',
+})
+
 export function matchHeadline({ reason, complete, placement, playerCount }) {
   // `placement` is nullable on MatchParticipantResult — the game may report a finish with no
   // placement, or not have reported this player at all — and ordinal(null) is "nullth". Such
   // a player keeps the sub that describes their situation and simply loses the number.
   if (placement == null) {
     if (reason === 'ELIMINATED') {
-      return { headline: RESULTS_PLACEMENT_UNKNOWN, sub: 'Eliminated before the end.' }
+      return { headline: RESULTS_PLACEMENT_UNKNOWN, sub: 'Eliminated before the end.', mood: MATCH_MOOD.LOSE }
     }
     if (!complete) {
-      return { headline: RESULTS_PLACEMENT_UNKNOWN, sub: 'Waiting for others to finish.' }
+      return { headline: RESULTS_PLACEMENT_UNKNOWN, sub: 'Waiting for others to finish.', mood: MATCH_MOOD.CLOSE }
     }
-    return { headline: RESULTS_PLACEMENT_UNKNOWN, sub: `Out of ${playerCount} players.` }
+    return { headline: RESULTS_PLACEMENT_UNKNOWN, sub: `Out of ${playerCount} players.`, mood: MATCH_MOOD.CLOSE }
   }
   if (reason === 'ELIMINATED') {
-    return { headline: `${ordinal(placement)} of ${playerCount}.`, sub: 'Eliminated before the end.' }
+    return {
+      headline: `${ordinal(placement)} of ${playerCount}.`,
+      sub: 'Eliminated before the end.',
+      mood: MATCH_MOOD.LOSE,
+    }
   }
   if (!complete) {
-    return { headline: `${ordinal(placement)} place.`, sub: 'Waiting for others to finish.' }
+    return {
+      headline: `${ordinal(placement)} place.`,
+      sub: 'Waiting for others to finish.',
+      // Out in front while the others play on is the one waiting state that is good news.
+      mood: placement === 1 ? MATCH_MOOD.WIN : MATCH_MOOD.CLOSE,
+    }
   }
   if (placement === 1) {
-    return { headline: '1st place.', sub: 'You finished on top.' }
+    return { headline: '1st place.', sub: 'You finished on top.', mood: MATCH_MOOD.WIN }
   }
   if (placement === playerCount) {
-    return { headline: `${ordinal(placement)} place.`, sub: 'Better luck next time.' }
+    return { headline: `${ordinal(placement)} place.`, sub: 'Better luck next time.', mood: MATCH_MOOD.LOSE }
   }
-  return { headline: `${ordinal(placement)} place.`, sub: `Out of ${playerCount} players.` }
+  return {
+    headline: `${ordinal(placement)} place.`,
+    sub: `Out of ${playerCount} players.`,
+    mood: MATCH_MOOD.CLOSE,
+  }
 }

@@ -21,6 +21,9 @@ const MATCH_RESULT_FIELDS = `
     id
     slug
     name
+    # The game's own accent, for the gradient on the primary action — the one place this
+    # screen belongs to the game rather than to JoinQuest (JQ-277).
+    accentColor
     modes {
       id
       status

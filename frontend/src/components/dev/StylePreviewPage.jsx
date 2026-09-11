@@ -1,3 +1,4 @@
+import { Badge } from '../ui/badge'
 import { Button } from '../ui/button'
 import { Link } from '../ui/link'
 import { listAccentColors } from '../../lib/gameAccent'
@@ -131,6 +132,39 @@ export default function StylePreviewPage() {
                 {step} / {step * 4}px
               </span>
             </div>
+          ))}
+        </div>
+      </section>
+
+      <section className="flex flex-col gap-3">
+        <h2 className="font-heading text-xl font-semibold">Outcome colours</h2>
+        <p className="font-sans text-sm text-muted-foreground">
+          <code className="font-mono-display text-2xs">--success</code> and{' '}
+          <code className="font-mono-display text-2xs">--warning</code> report how something went
+          — a winner, a player who has opted back in, a match still running. Each is used as text
+          on its own surface, so both pairings are contrast-checked in{' '}
+          <code className="font-mono-display text-2xs">src/theme.test.js</code>.
+        </p>
+        <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+          {[
+            { name: 'success', color: 'var(--success)', surface: 'var(--success-surface)' },
+            { name: 'warning', color: 'var(--warning)', surface: 'var(--warning-surface)' },
+          ].map((token) => (
+            <div
+              key={token.name}
+              className="flex flex-col gap-2 rounded-2xl p-3"
+              style={{ backgroundColor: token.surface }}
+            >
+              <span className="font-sans text-xs font-bold capitalize" style={{ color: token.color }}>
+                {token.name}
+              </span>
+              <span className="font-sans text-2xs text-foreground">on its surface</span>
+            </div>
+          ))}
+          {['success', 'warning'].map((name) => (
+            <Badge key={name} variant={name} className="self-start">
+              {name}
+            </Badge>
           ))}
         </div>
       </section>

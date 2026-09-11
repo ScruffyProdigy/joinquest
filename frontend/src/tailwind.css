@@ -54,6 +54,16 @@
   --accent-foreground: #e366ff;
   --destructive: #f87171;
   --destructive-foreground: #3b0c0c;
+  /* Outcome colours. The prototype carries --success and --warning and leans on
+     them wherever a result is being reported -- a winner, an opted-in player, a
+     result that went well or nearly did. It is light-first, so as with --primary
+     the hue transfers and the lightness does not: these are picked to clear AA on
+     --background, on --card, and on their own surface, since each is used as text
+     on the tinted panel below it. See src/theme.test.js. */
+  --success: #4ade80;
+  --success-surface: #0f2a1c;
+  --warning: #fbbf24;
+  --warning-surface: #2b2109;
   --border: #ffffff1c;
   --input: transparent;
   --input-background: #1f2220;
@@ -94,6 +104,10 @@
   --color-accent-foreground: var(--accent-foreground);
   --color-destructive: var(--destructive);
   --color-destructive-foreground: var(--destructive-foreground);
+  --color-success: var(--success);
+  --color-success-surface: var(--success-surface);
+  --color-warning: var(--warning);
+  --color-warning-surface: var(--warning-surface);
   --color-border: var(--border);
   --color-input: var(--input);
   --color-input-background: var(--input-background);

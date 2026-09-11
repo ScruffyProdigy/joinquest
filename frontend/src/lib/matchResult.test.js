@@ -11,6 +11,8 @@ import {
   REGROUP_IN,
   REGROUP_OUT,
   REGROUP_PENDING,
+  MASCOT_LABEL,
+  MATCH_MOOD,
   REGROUP_TITLE,
   RESULTS_FINAL_TITLE,
   RESULTS_IN_PROGRESS,
@@ -19,7 +21,6 @@ import {
   RESULTS_STILL_PLAYING,
   RESULTS_WINNER,
   RESULTS_YOU,
-  RESULTS_YOUR_RESULT_SO_FAR,
 } from './playerCopy'
 
 vi.mock('./graphql', () => ({
@@ -47,47 +48,67 @@ describe('ordinal', () => {
 describe('matchHeadline', () => {
   it('celebrates a win when the match is complete', () => {
     expect(matchHeadline({ reason: 'COMPLETED', complete: true, placement: 1, playerCount: 4 }))
-      .toEqual({ headline: '1st place.', sub: 'You finished on top.' })
+      .toEqual({ headline: '1st place.', sub: 'You finished on top.', mood: MATCH_MOOD.WIN })
   })
 
   it('softens last place when the match is complete', () => {
     expect(matchHeadline({ reason: 'COMPLETED', complete: true, placement: 4, playerCount: 4 }))
-      .toEqual({ headline: '4th place.', sub: 'Better luck next time.' })
+      .toEqual({ headline: '4th place.', sub: 'Better luck next time.', mood: MATCH_MOOD.LOSE })
   })
 
   it('reports a mid-pack complete finish as "Out of N players."', () => {
     expect(matchHeadline({ reason: 'COMPLETED', complete: true, placement: 2, playerCount: 4 }))
-      .toEqual({ headline: '2nd place.', sub: 'Out of 4 players.' })
+      .toEqual({ headline: '2nd place.', sub: 'Out of 4 players.', mood: MATCH_MOOD.CLOSE })
   })
 
   it('reports elimination against the field', () => {
     expect(matchHeadline({ reason: 'ELIMINATED', complete: true, placement: 5, playerCount: 6 }))
-      .toEqual({ headline: '5th of 6.', sub: 'Eliminated before the end.' })
+      .toEqual({ headline: '5th of 6.', sub: 'Eliminated before the end.', mood: MATCH_MOOD.LOSE })
   })
 
   it('tells a player who finished early that others are still playing', () => {
     // The participant's own reason is COMPLETED (they finished their play);
     // it's the match, not the participant, that isn't done yet.
     expect(matchHeadline({ reason: 'COMPLETED', complete: false, placement: 2, playerCount: 4 }))
-      .toEqual({ headline: '2nd place.', sub: 'Waiting for others to finish.' })
+      .toEqual({ headline: '2nd place.', sub: 'Waiting for others to finish.', mood: MATCH_MOOD.CLOSE })
   })
 
   it('reports elimination even while the match is still running for others', () => {
     // ELIMINATED is checked ahead of `complete` so the more specific message
     // wins instead of being masked by "Waiting for others to finish."
     expect(matchHeadline({ reason: 'ELIMINATED', complete: false, placement: 5, playerCount: 6 }))
-      .toEqual({ headline: '5th of 6.', sub: 'Eliminated before the end.' })
+      .toEqual({ headline: '5th of 6.', sub: 'Eliminated before the end.', mood: MATCH_MOOD.LOSE })
+  })
+
+  /**
+   * The mood is what the mascot panel above the headline is tinted by (JQ-277), so it has to
+   * track the words rather than the raw placement. Leading a race that is still running is
+   * the case that makes the point: 1st with the match unfinished is good news, and everything
+   * else about waiting is not.
+   */
+  it('calls leading an unfinished match a win, and any other wait tense', () => {
+    expect(matchHeadline({ reason: 'COMPLETED', complete: false, placement: 1, playerCount: 4 }).mood)
+      .toBe(MATCH_MOOD.WIN)
+    expect(matchHeadline({ reason: 'COMPLETED', complete: false, placement: 3, playerCount: 4 }).mood)
+      .toBe(MATCH_MOOD.CLOSE)
+  })
+
+  // A forfeit or a drop is not an elimination, so it keeps the ordinary complete-match copy
+  // and its mood. Only the roster treats them alike (see src/lib/regroup.js).
+  it('does not borrow the elimination copy for a forfeit', () => {
+    expect(matchHeadline({ reason: 'FORFEIT', complete: true, placement: 3, playerCount: 4 }))
+      .toEqual({ headline: '3rd place.', sub: 'Out of 4 players.', mood: MATCH_MOOD.CLOSE })
   })
 
   // placement is nullable on MatchParticipantResult, and ordinal(null) is "nullth".
   // Every branch below would otherwise put that in front of the player.
   it('never builds an ordinal from a missing placement', () => {
     expect(matchHeadline({ reason: null, complete: false, placement: null, playerCount: 4 }))
-      .toEqual({ headline: RESULTS_PLACEMENT_UNKNOWN, sub: 'Waiting for others to finish.' })
+      .toEqual({ headline: RESULTS_PLACEMENT_UNKNOWN, sub: 'Waiting for others to finish.', mood: MATCH_MOOD.CLOSE })
     expect(matchHeadline({ reason: 'ELIMINATED', complete: false, placement: null, playerCount: 4 }))
-      .toEqual({ headline: RESULTS_PLACEMENT_UNKNOWN, sub: 'Eliminated before the end.' })
+      .toEqual({ headline: RESULTS_PLACEMENT_UNKNOWN, sub: 'Eliminated before the end.', mood: MATCH_MOOD.LOSE })
     expect(matchHeadline({ reason: 'COMPLETED', complete: true, placement: null, playerCount: 4 }))
-      .toEqual({ headline: RESULTS_PLACEMENT_UNKNOWN, sub: 'Out of 4 players.' })
+      .toEqual({ headline: RESULTS_PLACEMENT_UNKNOWN, sub: 'Out of 4 players.', mood: MATCH_MOOD.CLOSE })
   })
 })
 
@@ -102,12 +123,17 @@ describe('post-game copy constants', () => {
     expect(RESULTS_WINNER).toBe('Winner')
     expect(RESULTS_STILL_PLAYING).toBe('Still playing')
     expect(RESULTS_YOU).toBe('You')
-    expect(RESULTS_YOUR_RESULT_SO_FAR).toBe('Your result so far')
   })
 
   it('pins RESULTS_IN_PROGRESS, including the ellipsis character (U+2026, not three dots)', () => {
     expect(RESULTS_IN_PROGRESS).toBe('In progress…')
     expect(RESULTS_IN_PROGRESS.codePointAt(RESULTS_IN_PROGRESS.length - 1)).toBe(0x2026)
+  })
+
+  it('pins the mascot placeholder labels the prototype ships', () => {
+    expect(MASCOT_LABEL[MATCH_MOOD.WIN]).toBe('Mascot illustration · celebrating')
+    expect(MASCOT_LABEL[MATCH_MOOD.LOSE]).toBe('Mascot illustration · sympathetic')
+    expect(MASCOT_LABEL[MATCH_MOOD.CLOSE]).toBe('Mascot illustration · tense')
   })
 
   it('pins the regroup panel strings', () => {

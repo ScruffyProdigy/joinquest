@@ -138,3 +138,41 @@ describe('links', () => {
     expect(contrast(tokens['--link'], tokens['--primary'])).toBeGreaterThanOrEqual(1.3)
   })
 })
+
+/**
+ * `--success` and `--warning` name an outcome, so they are almost always the text
+ * of the thing they colour -- a "Winner" badge, an opted-in pill -- sitting on
+ * their own tinted surface rather than on the page. That gives three surfaces to
+ * clear, not one, and the surface is the tightest of them.
+ */
+describe('outcome colours', () => {
+  it.each([
+    ['--success', '--background'],
+    ['--success', '--card'],
+    ['--success', '--success-surface'],
+    ['--warning', '--background'],
+    ['--warning', '--card'],
+    ['--warning', '--warning-surface'],
+  ])('%s reads as text on %s', (token, surface) => {
+    expect(contrast(tokens[token], tokens[surface])).toBeGreaterThanOrEqual(AA)
+  })
+
+  // The surfaces are panel backgrounds too, and a mood panel carries ordinary
+  // body copy as well as its accent.
+  it.each(['--success-surface', '--warning-surface'])('%s carries --foreground', (surface) => {
+    expect(contrast(tokens['--foreground'], tokens[surface])).toBeGreaterThanOrEqual(AA)
+  })
+
+  /**
+   * Green-for-good and amber-for-nearly are only legible as a pair if they are
+   * actually different colours on screen. Luminance is the wrong measure here and
+   * says so loudly -- the two sit at 1.04, near-identical -- because at the
+   * lightness a dark theme needs, what separates them is entirely hue. That is the
+   * opposite of the `--link` / `--primary` case above, where both are accent text
+   * in a paragraph and hue alone does not carry.
+   */
+  it('are distinguishable from each other', () => {
+    const apart = Math.abs(hue(tokens['--success']) - hue(tokens['--warning']))
+    expect(Math.min(apart, 360 - apart)).toBeGreaterThanOrEqual(60)
+  })
+})

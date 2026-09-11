@@ -142,7 +142,7 @@ describe('ReturnPage', () => {
   })
 
   describe('branch 2: the match is still running', () => {
-    it('shows the others as still playing and leaves the viewer out of that list', async () => {
+    it('shows the standings with the unfinished players marked, and no roster', async () => {
       window.location.search = '?match=match-1'
       vi.mocked(returnLib.fetchReturnDestination).mockResolvedValue({ path: '/', kind: 'HOME' })
       vi.mocked(matchResultLib.fetchMatchResult).mockResolvedValue(
@@ -159,14 +159,16 @@ describe('ReturnPage', () => {
 
       expect(await screen.findByText('Still playing')).toBeInTheDocument()
       expect(screen.getByText('Bo')).toBeInTheDocument()
+      // The viewer is on the list too, named as themselves.
+      expect(screen.getByText('You')).toBeInTheDocument()
       expect(screen.queryByText('Ada')).not.toBeInTheDocument()
       expect(screen.queryByText('Who’s playing again?')).not.toBeInTheDocument()
       expect(assign).not.toHaveBeenCalled()
     })
 
-    // Ada is deliberately absent from the StillPlaying list above, so her own result has to
-    // be on the screen some other way — otherwise this branch tells her nothing about how
-    // she did, which is what she came back for.
+    // The standings list everyone, so Ada is on it — but as a row among rows. The outcome
+    // header is what actually answers "how did I do?", and it is the first thing on the
+    // screen in this state as well as the finished one (JQ-277).
     it('tells the viewer their own result while the others play on', async () => {
       window.location.search = '?match=match-1'
       vi.mocked(returnLib.fetchReturnDestination).mockResolvedValue({ path: '/', kind: 'HOME' })
@@ -189,9 +191,9 @@ describe('ReturnPage', () => {
 
       render(<ReturnPage />)
 
-      expect(await screen.findByText('Your result so far')).toBeInTheDocument()
-      expect(screen.getByText('1st place.')).toBeInTheDocument()
+      expect(await screen.findByRole('heading', { name: '1st place.' })).toBeInTheDocument()
       expect(screen.getByText('Waiting for others to finish.')).toBeInTheDocument()
+      expect(screen.getByText('Results so far')).toBeInTheDocument()
     })
 
     it('flips to the standings when the subscription reports the match finished', async () => {
@@ -206,7 +208,9 @@ describe('ReturnPage', () => {
       })
 
       render(<ReturnPage />)
-      await screen.findByText('Still playing')
+      // Everyone on this fixture is finished, so no row is marked; the standings title is
+      // what says the match itself is still open.
+      await screen.findByText('Results so far')
 
       await waitFor(() => expect(push).toBeTypeOf('function'))
       await act(async () => {
@@ -225,7 +229,9 @@ describe('ReturnPage', () => {
       vi.mocked(matchResultLib.fetchMatchResult).mockResolvedValue(makeResult({ complete: false }))
 
       render(<ReturnPage />)
-      await screen.findByText('Still playing')
+      // Everyone on this fixture is finished, so no row is marked; the standings title is
+      // what says the match itself is still open.
+      await screen.findByText('Results so far')
 
       await user.click(screen.getByRole('button', { name: RESULTS_LEAVE_MATCH }))
       await waitFor(() => expect(assign).toHaveBeenCalledWith('/games/word-hunt'))
@@ -244,7 +250,7 @@ describe('ReturnPage', () => {
 
       expect(await screen.findByText(RESULTS_LIVE_UPDATES_OFF)).toBeInTheDocument()
       // The fetched result still stands; this is a notice, not an error state.
-      expect(screen.getByText('Still playing')).toBeInTheDocument()
+      expect(screen.getByText('Results so far')).toBeInTheDocument()
       expect(screen.getByRole('button', { name: RESULTS_LEAVE_MATCH })).toBeInTheDocument()
     })
   })
@@ -285,9 +291,10 @@ describe('ReturnPage', () => {
       )
       render(<ReturnPage />)
 
-      expect(await screen.findByText('Play again?')).toBeInTheDocument()
-      expect(screen.getByText('Final standings')).toBeInTheDocument()
+      expect(await screen.findByText('Final standings')).toBeInTheDocument()
       expect(screen.queryByText('Who’s playing again?')).not.toBeInTheDocument()
+      // No roster card, but the bar is the screen's, not the card's — so the way back in is
+      // still there (JQ-277).
       expect(screen.getByRole('button', { name: 'Another round' })).toBeEnabled()
     })
 
