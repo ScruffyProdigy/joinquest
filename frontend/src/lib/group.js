@@ -1,4 +1,11 @@
 import { displayName, isKing, mySeatKeyOnTable, seatSectionTitle } from './tables'
+import {
+  formatGroupFillNeedLine,
+  GROUP_FIND_MATCH,
+  GROUP_FIND_MATCH_HINT,
+  GROUP_FINDING_MATCH,
+  STOP_FINDING,
+} from './playerCopy'
 
 /**
  * The group screen is a presentation over the room+table substrate: one table in a
@@ -24,8 +31,11 @@ function seatCounts(table) {
  * turns that into "Player".
  */
 function missingRoleNames(table) {
+  // `needed` is already the remainder the API computed (PlayersToStart minus assigned),
+  // so it is the whole test — comparing it against `assigned` drops a path that still
+  // needs exactly as many as it has.
   const gaps = (table?.formingGaps ?? [])
-    .filter((gap) => (gap.needed ?? 0) > (gap.assigned ?? 0))
+    .filter((gap) => (gap.needed ?? 0) > 0)
     .map((gap) => gap.displayName || gap.queuePath)
     .filter(Boolean)
   if (gaps.length > 0) {
@@ -147,21 +157,75 @@ export function playersPickingASeat(room, table, viewerId = null) {
 }
 
 /**
- * The sticky bottom control. The king gate is production's, but the page never says
- * "king" — it names the person, the way the prototype does. Auto-start when a table
- * fills is JQ-137, not this.
+ * The queue a request for the rest of the match would go to, or null when there is none
+ * to ask. `lookForGroupOptions` is the API's own answer to both questions — whether this
+ * table has room left (`visible`) and whether it is free to ask right now (`enabled`).
+ */
+export function findMatchQueueId(table) {
+  const option = (table?.lookForGroupOptions ?? []).find((opt) => opt.visible && opt.enabled)
+  return option?.queueId ?? null
+}
+
+/**
+ * The sticky bottom control.
+ *
+ * One decision sits behind every branch here: when the group starts playing. Filling the
+ * remaining seats from the lobby and starting short-handed are two spellings of it rather
+ * than two powers — for a mode whose minimum is its full complement, filling *is* how a
+ * partial group starts at all — and either way it ends the wait for anyone still on their
+ * way. So it keeps one owner, the king (JQ-137).
+ *
+ * That includes a table with every seat taken. Full is ready, not decided; nothing here
+ * starts a game on its own, because the moment a group is complete is exactly the moment
+ * somebody may still want to swap a seat, wait for one more, or give up and discard.
+ *
+ * Everyone else is told what is happening and that they need do nothing. The page still
+ * never says "king" — it names the person, the way the prototype does.
  */
 export function groupCtaState(table, userId) {
   if (!mySeatKeyOnTable(table, userId)) {
     return { kind: 'claim', label: 'Claim a seat to join' }
   }
-  if (isKing(table, userId)) {
+
+  const king = isKing(table, userId)
+
+  if (table?.backfillActive) {
+    return {
+      kind: 'filling',
+      label: GROUP_FINDING_MATCH,
+      detail: formatGroupFillNeedLine(table.formingGaps),
+      hint: GROUP_FIND_MATCH_HINT,
+      // Withdrawing puts the whole group back to waiting, so it belongs to whoever
+      // committed them. Everybody else keeps the line telling them to sit tight.
+      cancelLabel: king ? STOP_FINDING : null,
+    }
+  }
+
+  const queueId = findMatchQueueId(table)
+
+  if (king) {
+    if (queueId) {
+      return {
+        kind: 'find',
+        label: GROUP_FIND_MATCH,
+        hint: GROUP_FIND_MATCH_HINT,
+        detail: groupStatusLine(table),
+        queueId,
+        // Offered alongside, not instead: a group already past the mode's minimum may
+        // prefer to play short now rather than wait for strangers to arrive. Same
+        // decision, different answer about who fills the gap.
+        startLabel: table?.canStart ? 'Start game' : null,
+      }
+    }
     if (table?.canStart) {
       return { kind: 'start', label: 'Start game' }
     }
     return { kind: 'blocked', label: groupStatusLine(table) }
   }
-  if (table?.king) {
+
+  // Not the king. Anything that could end the wait is theirs to trigger, so say who and
+  // promise the ride in rather than offering a button that would be refused.
+  if (table?.king && (queueId || table?.canStart)) {
     return {
       kind: 'waiting',
       label: `Waiting for ${displayName(table.king)} to start`,

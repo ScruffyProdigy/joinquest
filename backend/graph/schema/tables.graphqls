@@ -80,6 +80,12 @@ type MyTableSeat {
   joinUrl: String
   backfillActive: Boolean!
   formingGaps: [QueuePathGap!]!
+  """
+  Whether this player may withdraw the table's request for the rest of the match.
+  The king's, like making it (JQ-137) — the waiting screen needs it per-viewer,
+  because every seated player is sent there and only one of them may stop it.
+  """
+  canCancelBackfill: Boolean!
 }
 
 extend type Room {
@@ -102,7 +108,16 @@ extend type Mutation {
   leaveTable(tableId: ID!): Boolean!
   discardTable(tableId: ID!): Boolean!
   startTable(tableId: ID!): JoinResult!
+  """
+  Ask the lobby for the rest of the match. Any seated player may, not only the
+  king (JQ-137) — the request belongs to the table, not to whoever made it.
+  """
   startTableBackfill(tableId: ID!, queueId: ID!): JoinResult!
+  """
+  Withdraw that request for the whole table. False when there was nothing waiting
+  to withdraw — already fired, already cancelled, or never asked for.
+  """
+  cancelTableBackfill(tableId: ID!): Boolean!
 }
 
 extend type Subscription {

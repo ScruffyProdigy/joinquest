@@ -284,7 +284,15 @@ func (r *queryResolver) resolveMyTableSeat(ctx context.Context, userID uuid.UUID
 			return nil, err
 		}
 		display := seatDisplayName(modeSeats, view.SeatKey, mode.SeatTemplate)
-		return toGraphQLMyTableSeat(view, display, "forming", ""), nil
+		seat := toGraphQLMyTableSeat(view, display, "forming", "")
+		// Per-viewer, because every seated player is sent to the waiting screen while
+		// the table's request is live and only one of them may withdraw it (JQ-137).
+		king, err := st.TableKingUserID(ctx, view.TableID)
+		if err != nil {
+			return nil, err
+		}
+		seat.CanCancelBackfill = king != nil && *king == userID
+		return seat, nil
 	}
 
 	started, err := st.GetUserStartedTableSession(ctx, userID)

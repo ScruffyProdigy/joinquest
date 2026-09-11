@@ -273,6 +273,7 @@ type ComplexityRoot struct {
 
 	Mutation struct {
 		BeginSpiritAnimalReading     func(childComplexity int, forceRestart *bool) int
+		CancelTableBackfill          func(childComplexity int, tableID string) int
 		CompleteLinkEmailWithCode    func(childComplexity int, email string, code string, confirmMerge *bool) int
 		CompleteLinkEmailWithLink    func(childComplexity int, token string, confirmMerge *bool) int
 		CompleteSignInWithCode       func(childComplexity int, email string, code string) int
@@ -334,19 +335,20 @@ type ComplexityRoot struct {
 	}
 
 	MyTableSeat struct {
-		BackfillActive  func(childComplexity int) int
-		FormingGaps     func(childComplexity int) int
-		GameID          func(childComplexity int) int
-		GameName        func(childComplexity int) int
-		InviteCode      func(childComplexity int) int
-		JoinURL         func(childComplexity int) int
-		ModeID          func(childComplexity int) int
-		ModeName        func(childComplexity int) int
-		RoomID          func(childComplexity int) int
-		SeatDisplayName func(childComplexity int) int
-		SeatKey         func(childComplexity int) int
-		Status          func(childComplexity int) int
-		TableID         func(childComplexity int) int
+		BackfillActive    func(childComplexity int) int
+		CanCancelBackfill func(childComplexity int) int
+		FormingGaps       func(childComplexity int) int
+		GameID            func(childComplexity int) int
+		GameName          func(childComplexity int) int
+		InviteCode        func(childComplexity int) int
+		JoinURL           func(childComplexity int) int
+		ModeID            func(childComplexity int) int
+		ModeName          func(childComplexity int) int
+		RoomID            func(childComplexity int) int
+		SeatDisplayName   func(childComplexity int) int
+		SeatKey           func(childComplexity int) int
+		Status            func(childComplexity int) int
+		TableID           func(childComplexity int) int
 	}
 
 	PlayAgainResult struct {
@@ -789,6 +791,7 @@ type MutationResolver interface {
 	DiscardTable(ctx context.Context, tableID string) (bool, error)
 	StartTable(ctx context.Context, tableID string) (*model.JoinResult, error)
 	StartTableBackfill(ctx context.Context, tableID string, queueID string) (*model.JoinResult, error)
+	CancelTableBackfill(ctx context.Context, tableID string) (bool, error)
 }
 type MyTableSeatResolver interface {
 	BackfillActive(ctx context.Context, obj *model.MyTableSeat) (bool, error)
@@ -1817,6 +1820,17 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.Mutation.BeginSpiritAnimalReading(childComplexity, args["forceRestart"].(*bool)), true
+	case "Mutation.cancelTableBackfill":
+		if e.complexity.Mutation.CancelTableBackfill == nil {
+			break
+		}
+
+		args, err := ec.field_Mutation_cancelTableBackfill_args(ctx, rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.complexity.Mutation.CancelTableBackfill(childComplexity, args["tableId"].(string)), true
 	case "Mutation.completeLinkEmailWithCode":
 		if e.complexity.Mutation.CompleteLinkEmailWithCode == nil {
 			break
@@ -2385,6 +2399,12 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.MyTableSeat.BackfillActive(childComplexity), true
+	case "MyTableSeat.canCancelBackfill":
+		if e.complexity.MyTableSeat.CanCancelBackfill == nil {
+			break
+		}
+
+		return e.complexity.MyTableSeat.CanCancelBackfill(childComplexity), true
 	case "MyTableSeat.formingGaps":
 		if e.complexity.MyTableSeat.FormingGaps == nil {
 			break
@@ -5272,6 +5292,12 @@ type MyTableSeat {
   joinUrl: String
   backfillActive: Boolean!
   formingGaps: [QueuePathGap!]!
+  """
+  Whether this player may withdraw the table's request for the rest of the match.
+  The king's, like making it (JQ-137) — the waiting screen needs it per-viewer,
+  because every seated player is sent there and only one of them may stop it.
+  """
+  canCancelBackfill: Boolean!
 }
 
 extend type Room {
@@ -5294,7 +5320,16 @@ extend type Mutation {
   leaveTable(tableId: ID!): Boolean!
   discardTable(tableId: ID!): Boolean!
   startTable(tableId: ID!): JoinResult!
+  """
+  Ask the lobby for the rest of the match. Any seated player may, not only the
+  king (JQ-137) — the request belongs to the table, not to whoever made it.
+  """
   startTableBackfill(tableId: ID!, queueId: ID!): JoinResult!
+  """
+  Withdraw that request for the whole table. False when there was nothing waiting
+  to withdraw — already fired, already cancelled, or never asked for.
+  """
+  cancelTableBackfill(tableId: ID!): Boolean!
 }
 
 extend type Subscription {
@@ -5419,6 +5454,17 @@ func (ec *executionContext) field_Mutation_beginSpiritAnimalReading_args(ctx con
 		return nil, err
 	}
 	args["forceRestart"] = arg0
+	return args, nil
+}
+
+func (ec *executionContext) field_Mutation_cancelTableBackfill_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
+	var err error
+	args := map[string]any{}
+	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "tableId", ec.unmarshalNID2string)
+	if err != nil {
+		return nil, err
+	}
+	args["tableId"] = arg0
 	return args, nil
 }
 
@@ -14043,6 +14089,47 @@ func (ec *executionContext) fieldContext_Mutation_startTableBackfill(ctx context
 	return fc, nil
 }
 
+func (ec *executionContext) _Mutation_cancelTableBackfill(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_Mutation_cancelTableBackfill,
+		func(ctx context.Context) (any, error) {
+			fc := graphql.GetFieldContext(ctx)
+			return ec.resolvers.Mutation().CancelTableBackfill(ctx, fc.Args["tableId"].(string))
+		},
+		nil,
+		ec.marshalNBoolean2bool,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_Mutation_cancelTableBackfill(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Mutation",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Boolean does not have child fields")
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Mutation_cancelTableBackfill_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _MyGameCredentials_serviceToken(ctx context.Context, field graphql.CollectedField, obj *model.MyGameCredentials) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
@@ -14483,6 +14570,35 @@ func (ec *executionContext) fieldContext_MyTableSeat_formingGaps(_ context.Conte
 				return ec.fieldContext_QueuePathGap_needed(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type QueuePathGap", field.Name)
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _MyTableSeat_canCancelBackfill(ctx context.Context, field graphql.CollectedField, obj *model.MyTableSeat) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_MyTableSeat_canCancelBackfill,
+		func(ctx context.Context) (any, error) {
+			return obj.CanCancelBackfill, nil
+		},
+		nil,
+		ec.marshalNBoolean2bool,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_MyTableSeat_canCancelBackfill(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "MyTableSeat",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Boolean does not have child fields")
 		},
 	}
 	return fc, nil
@@ -17110,6 +17226,8 @@ func (ec *executionContext) fieldContext_Query_myTableSeat(_ context.Context, fi
 				return ec.fieldContext_MyTableSeat_backfillActive(ctx, field)
 			case "formingGaps":
 				return ec.fieldContext_MyTableSeat_formingGaps(ctx, field)
+			case "canCancelBackfill":
+				return ec.fieldContext_MyTableSeat_canCancelBackfill(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type MyTableSeat", field.Name)
 		},
@@ -21458,6 +21576,8 @@ func (ec *executionContext) fieldContext_Subscription_myTableSeatUpdated(_ conte
 				return ec.fieldContext_MyTableSeat_backfillActive(ctx, field)
 			case "formingGaps":
 				return ec.fieldContext_MyTableSeat_formingGaps(ctx, field)
+			case "canCancelBackfill":
+				return ec.fieldContext_MyTableSeat_canCancelBackfill(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type MyTableSeat", field.Name)
 		},
@@ -27207,6 +27327,13 @@ func (ec *executionContext) _Mutation(ctx context.Context, sel ast.SelectionSet)
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
+		case "cancelTableBackfill":
+			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
+				return ec._Mutation_cancelTableBackfill(ctx, field)
+			})
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}
@@ -27409,6 +27536,11 @@ func (ec *executionContext) _MyTableSeat(ctx context.Context, sel ast.SelectionS
 			}
 
 			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
+		case "canCancelBackfill":
+			out.Values[i] = ec._MyTableSeat_canCancelBackfill(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				atomic.AddUint32(&out.Invalids, 1)
+			}
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}

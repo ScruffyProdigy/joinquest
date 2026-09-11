@@ -136,16 +136,28 @@ func (r *mutationResolver) LeaveTable(ctx context.Context, tableID string) (bool
 	if err != nil {
 		return false, err
 	}
-	left, err := st.LeaveTable(ctx, tid, userID)
+	result, err := st.LeaveTableDetached(ctx, tid, userID)
 	if err != nil {
 		return false, err
 	}
-	if left {
-		if err := r.publishTableUpdated(ctx, table.RoomID, tid); err != nil {
-			return false, err
-		}
+	if !result.Left {
+		return false, nil
 	}
-	return left, nil
+	if err := r.publishTableUpdated(ctx, table.RoomID, tid); err != nil {
+		return false, err
+	}
+	if result.Detached {
+		// They were in a queue their table had put them in, and are not any more —
+		// their own banner has to stop saying otherwise. The rest of the group is
+		// untouched and stays exactly where it was, so nobody else is told anything.
+		if err := r.publishQueueLeft(ctx, result.GameID, result.ModeQueueID, userID, result.QueuedCount, ""); err != nil {
+			log.Printf("leave table: notify user %s: %v", userID, err)
+		}
+		// The chair they released is a gap again, so the lobby can fill it now rather
+		// than on the next tick.
+		r.scheduleFormingReconcile(result.ModeQueueID)
+	}
+	return true, nil
 }
 
 // DiscardTable is the resolver for the discardTable field.
@@ -242,6 +254,51 @@ func (r *mutationResolver) StartTableBackfill(ctx context.Context, tableID strin
 		joinResult.QueuedCount = &count
 	}
 	return joinResult, nil
+}
+
+// CancelTableBackfill is the resolver for the cancelTableBackfill field.
+func (r *mutationResolver) CancelTableBackfill(ctx context.Context, tableID string) (bool, error) {
+	st, err := r.requireStore()
+	if err != nil {
+		return false, err
+	}
+	userID, err := r.requireIdentityUserID(ctx)
+	if err != nil {
+		return false, err
+	}
+	tid, err := parseUUID(tableID, "table id")
+	if err != nil {
+		return false, err
+	}
+	table, err := r.requireTableRoomMember(ctx, tid, userID)
+	if err != nil {
+		return false, err
+	}
+
+	result, err := st.CancelTableBackfill(ctx, tid, userID)
+	if err != nil {
+		return false, err
+	}
+	if !result.Cancelled {
+		return false, nil
+	}
+
+	if err := r.publishTableUpdated(ctx, table.RoomID, tid); err != nil {
+		return false, err
+	}
+	// Everyone the request carried in is told they are out of it, not only whoever
+	// pressed cancel: the banner they are each watching is the queue's, and one of
+	// them backing out of a screen the others cannot see is the failure this avoids.
+	for _, uid := range result.NotifyUserIDs {
+		if err := r.publishQueueLeft(ctx, result.GameID, result.ModeQueueID, uid, result.QueuedCount, ""); err != nil {
+			log.Printf("table backfill cancel: notify user %s: %v", uid, err)
+		}
+	}
+
+	// The seats this table was holding are back in the pool, so whoever was being
+	// formed around it is re-placed now rather than on the next tick.
+	r.scheduleFormingReconcile(result.ModeQueueID)
+	return true, nil
 }
 
 // BackfillActive is the resolver for the backfillActive field.

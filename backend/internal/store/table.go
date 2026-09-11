@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/scruffyprodigy/joinquest/internal/lfg/partytree"
 	"github.com/scruffyprodigy/joinquest/internal/prequeue"
 	"github.com/scruffyprodigy/joinquest/internal/seattemplate"
 )
@@ -720,9 +721,38 @@ func (s *Store) sitAtTableTx(ctx context.Context, tx *sql.Tx, tableID, userID uu
 
 // LeaveTable removes the user from a table.
 func (s *Store) LeaveTable(ctx context.Context, tableID, userID uuid.UUID) (bool, error) {
-	tx, err := s.db.BeginTx(ctx, nil)
+	_, err := s.LeaveTableDetached(ctx, tableID, userID)
 	if err != nil {
 		return false, err
+	}
+	return true, nil
+}
+
+// LeaveTableDetachResult reports what leaving the table also took the player out of.
+type LeaveTableDetachResult struct {
+	Left bool
+	// Detached is true when the player was also in a queue the table had put them in,
+	// so the caller knows to tell them they are out of it.
+	Detached    bool
+	GameID      uuid.UUID
+	ModeQueueID uuid.UUID
+	QueuedCount int
+}
+
+// LeaveTableDetached removes a player from a table and from anything the table had them
+// doing — including a live request for the rest of the match.
+//
+// The group carries on without them, in the seats it already holds (JQ-137). That is the
+// whole point and it is why this cannot be LeaveTable followed by leaveQueue: the
+// per-player queue leave cancels the party, which strips the remaining members of their
+// forming-match placement and re-enters them as strangers. Here only the leaver's own
+// chair is released — their seat on the forming map goes back to the pool for a stranger
+// to take — and everyone else's assignment row is untouched, so they neither move nor
+// lose their place in line.
+func (s *Store) LeaveTableDetached(ctx context.Context, tableID, userID uuid.UUID) (*LeaveTableDetachResult, error) {
+	tx, err := s.db.BeginTx(ctx, nil)
+	if err != nil {
+		return nil, err
 	}
 	defer tx.Rollback()
 
@@ -731,24 +761,131 @@ func (s *Store) LeaveTable(ctx context.Context, tableID, userID uuid.UUID) (bool
 		WHERE table_id = $1 AND user_id = $2
 	`, tableID, userID)
 	if err != nil {
-		return false, err
+		return nil, err
 	}
 	affected, err := result.RowsAffected()
 	if err != nil {
-		return false, err
+		return nil, err
 	}
 	if affected == 0 {
-		return false, nil
+		return &LeaveTableDetachResult{}, nil
+	}
+
+	out := &LeaveTableDetachResult{Left: true}
+	if err := s.detachFromTableBackfillTx(ctx, tx, userID, out); err != nil {
+		return nil, err
 	}
 	if _, err := tx.ExecContext(ctx, `
 		UPDATE room_tables SET updated_at = NOW() WHERE id = $1
 	`, tableID); err != nil {
-		return false, err
+		return nil, err
 	}
 	if err := tx.Commit(); err != nil {
-		return false, err
+		return nil, err
 	}
-	return true, nil
+	return out, nil
+}
+
+// detachFromTableBackfillTx takes one player out of the queue their table put them in,
+// leaving the party — and every other member's placement — standing.
+func (s *Store) detachFromTableBackfillTx(
+	ctx context.Context,
+	tx *sql.Tx,
+	userID uuid.UUID,
+	out *LeaveTableDetachResult,
+) error {
+	var partyID sql.NullString
+	var modeQueueID, gameID uuid.UUID
+	err := tx.QueryRowContext(ctx, `
+		SELECT party_id, mode_queue_id, game_id
+		FROM game_queues
+		WHERE user_id = $1 AND status = 'waiting' AND mode_queue_id IS NOT NULL
+		ORDER BY joined_at DESC
+		LIMIT 1
+	`, userID).Scan(&partyID, &modeQueueID, &gameID)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			// Seated at a table that was not looking for anybody. Nothing to detach.
+			return nil
+		}
+		return err
+	}
+
+	if _, err := tx.ExecContext(ctx, `
+		UPDATE game_queues SET status = 'cancelled'
+		WHERE user_id = $1 AND status = 'waiting'
+	`, userID); err != nil {
+		return err
+	}
+	// Only this player's chair. The others keep the rows that hold them where they are.
+	if err := s.releaseFormingSlotsForUserTx(ctx, tx, userID); err != nil {
+		return err
+	}
+
+	out.Detached = true
+	out.GameID = gameID
+	out.ModeQueueID = modeQueueID
+
+	if partyID.Valid {
+		pid, err := uuid.Parse(partyID.String)
+		if err != nil {
+			return err
+		}
+		if err := s.dropPartyMemberTx(ctx, tx, pid, userID); err != nil {
+			return err
+		}
+	}
+
+	waiting, err := listWaitingModeQueueEntriesTx(ctx, tx, modeQueueID)
+	if err != nil {
+		return err
+	}
+	out.QueuedCount = len(waiting)
+	return nil
+}
+
+// dropPartyMemberTx removes one member from a party that is carrying on without them,
+// or cancels the party outright when they were the last of it.
+func (s *Store) dropPartyMemberTx(ctx context.Context, tx *sql.Tx, partyID, userID uuid.UUID) error {
+	if _, err := tx.ExecContext(ctx, `
+		DELETE FROM party_members WHERE party_id = $1 AND user_id = $2
+	`, partyID, userID); err != nil {
+		return err
+	}
+
+	var remaining int
+	if err := tx.QueryRowContext(ctx, `
+		SELECT COUNT(*) FROM game_queues
+		WHERE party_id = $1 AND status = 'waiting'
+	`, partyID).Scan(&remaining); err != nil {
+		return err
+	}
+	if remaining == 0 {
+		// The last one out takes the party with them, and the seats it was holding.
+		return s.cancelPartyTx(ctx, tx, partyID, userID)
+	}
+
+	// The layout the party would be re-placed from must stop naming someone who is no
+	// longer in it. The members still on the map are not moved by this — nothing
+	// re-places an already-assigned party — but a tree that still listed the leaver
+	// would ask for a seat on their behalf if it ever were.
+	var raw []byte
+	if err := tx.QueryRowContext(ctx, `SELECT party_tree FROM parties WHERE id = $1`, partyID).Scan(&raw); err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return nil
+		}
+		return err
+	}
+	tree, err := decodePartyTree(raw)
+	if err != nil {
+		return err
+	}
+	pruned, err := json.Marshal(partytree.WithoutMember(tree, userID.String()))
+	if err != nil {
+		return fmt.Errorf("store: encode party tree: %w", err)
+	}
+	_, err = tx.ExecContext(ctx, `UPDATE parties SET party_tree = $2 WHERE id = $1`, partyID, pruned)
+	return err
 }
 
 // DiscardTable removes an empty forming table.

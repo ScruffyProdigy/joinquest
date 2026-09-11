@@ -74,6 +74,18 @@ export function hasWaitingIntent(activeIntent) {
   return activeIntent?.status === 'WAITING'
 }
 
+/**
+ * A queue wait that belongs to a table rather than to one player (JQ-137).
+ *
+ * The whole group is queued together and sent to the waiting screen together, so the
+ * page's ordinary exits are wrong here: leaving the queue per player cancels the party
+ * and leaves everyone else in it as strangers. This is what tells the waiting page it is
+ * holding a group.
+ */
+export function hasGroupWaitingIntent(activeIntent, activeTableSeat) {
+  return hasWaitingIntent(activeIntent) && Boolean(activeTableSeat?.tableId)
+}
+
 export function hasStartedTableSession(activeTableSeat) {
   return activeTableSeat?.status === 'started'
 }

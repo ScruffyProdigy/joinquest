@@ -360,6 +360,10 @@ type MyTableSeat struct {
 	JoinURL        *string         `json:"joinUrl,omitempty"`
 	BackfillActive bool            `json:"backfillActive"`
 	FormingGaps    []*QueuePathGap `json:"formingGaps"`
+	// Whether this player may withdraw the table's request for the rest of the match.
+	// The king's, like making it (JQ-137) — the waiting screen needs it per-viewer,
+	// because every seated player is sent there and only one of them may stop it.
+	CanCancelBackfill bool `json:"canCancelBackfill"`
 }
 
 type PartyMemberInput struct {
