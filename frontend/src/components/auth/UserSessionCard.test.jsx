@@ -58,7 +58,9 @@ describe('UserSessionCard', () => {
     await person.click(await screen.findByRole('button', { name: 'Change display' }))
 
     const list = await screen.findByRole('list')
-    expect(list).toHaveClass('sm:grid-cols-2')
+    // Two up at every width now, not only from `sm`: one up on a phone is what
+    // made the identity gate taller than the screen it had to fit on.
+    expect(list).toHaveClass('grid-cols-2')
     expect(list).toHaveClass('list-none')
     expect(list).toHaveClass('p-0')
     expect(list).toHaveClass('m-0')

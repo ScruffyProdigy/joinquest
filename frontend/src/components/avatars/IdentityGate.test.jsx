@@ -128,6 +128,36 @@ describe('IdentityGate', () => {
     ).toBeInTheDocument()
   })
 
+  it('selects on the first tap and takes nothing until it is confirmed', async () => {
+    const user = userEvent.setup()
+    mockAuthenticatedSession(NAMELESS_GUEST)
+    renderGate()
+    await waitForGate()
+
+    const choice = avatarChoices()[0]
+    const chosenName = choice.textContent.trim()
+    await user.click(choice)
+
+    // Selected, named on the confirm button, and nothing sent yet.
+    expect(choice).toHaveAttribute('aria-pressed', 'true')
+    expect(screen.getByRole('button', { name: `Jump in as ${chosenName}` })).toBeInTheDocument()
+    expect(profileCallVariables()).toBeUndefined()
+  })
+
+  it('moves the selection when a second avatar is tapped, rather than taking it', async () => {
+    const user = userEvent.setup()
+    mockAuthenticatedSession(NAMELESS_GUEST)
+    renderGate()
+    await waitForGate()
+
+    await user.click(avatarChoices()[0])
+    await user.click(avatarChoices()[1])
+
+    expect(avatarChoices()[0]).toHaveAttribute('aria-pressed', 'false')
+    expect(avatarChoices()[1]).toHaveAttribute('aria-pressed', 'true')
+    expect(profileCallVariables()).toBeUndefined()
+  })
+
   it('assigns the name and avatar, then dismisses onto whatever is behind it', async () => {
     const user = userEvent.setup()
     mockAuthenticatedSession(NAMELESS_GUEST)
@@ -137,6 +167,7 @@ describe('IdentityGate', () => {
     const choice = avatarChoices()[0]
     const chosenName = choice.textContent.trim()
     await user.click(choice)
+    await user.click(screen.getByRole('button', { name: `Jump in as ${chosenName}` }))
 
     await waitFor(() => {
       expect(screen.queryByRole('heading', { name: 'Welcome to JoinQuest' })).not.toBeInTheDocument()
@@ -153,6 +184,8 @@ describe('IdentityGate', () => {
     renderGate()
     await waitForGate()
 
+    // Tapping the selected row again is the other way to confirm it.
+    await user.click(avatarChoices()[0])
     await user.click(avatarChoices()[0])
 
     await waitFor(() => {
@@ -202,6 +235,33 @@ describe('IdentityGate', () => {
     expect(list).toHaveClass('list-none')
     expect(list).toHaveClass('p-0')
     expect(list).toHaveClass('m-0')
+  })
+
+  // The gate used to be a centred card sized to its content, which on a phone was
+  // taller than the screen: the sign-in offer and everything under it fell off the
+  // bottom, with the page behind showing through. A takeover cannot outgrow the
+  // screen, and scrolls if the content ever does.
+  it('fills the screen rather than floating a card over it', async () => {
+    mockUnauthenticatedSession()
+    renderGate()
+    await waitForGate()
+
+    const dialog = screen.getByRole('dialog')
+    expect(dialog).toHaveAttribute('data-takeover')
+    expect(dialog).toHaveClass('inset-0')
+    expect(dialog).toHaveClass('overflow-y-auto')
+    expect(dialog).not.toHaveClass('rounded-lg')
+  })
+
+  it('offers the avatars two up, at every width', async () => {
+    mockUnauthenticatedSession()
+    renderGate()
+    await waitForGate()
+
+    const list = screen.getByRole('list')
+    expect(list).toHaveClass('grid-cols-2')
+    // Not `sm:grid-cols-2`: one up below `sm` is what made six rows too tall.
+    expect(list.className).not.toMatch(/sm:grid-cols/)
   })
 
   it('cannot be dismissed without picking an avatar or signing in', async () => {
