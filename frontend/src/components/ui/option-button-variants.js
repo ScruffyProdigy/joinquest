@@ -20,6 +20,12 @@ export const optionButtonVariants = cva(
     variants: {
       variant: {
         row: 'items-center gap-3 rounded-full px-4 py-2.5 text-left',
+        // The prototype's avatar row, and a rounded rectangle rather than a pill
+        // for a reason: two of these sit side by side on a phone, which leaves a
+        // generated handle narrow enough to run to a second line, and a pill's
+        // radius turns into a lozenge the moment the row grows past one line.
+        // `h-full` so a wrapped row and its short neighbour end up the same height.
+        choice: 'h-full items-center gap-2 rounded-2xl px-3 py-3 text-left',
         tile: 'flex-col items-center gap-1 rounded-2xl px-2 py-3',
       },
       selected: {

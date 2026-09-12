@@ -80,6 +80,11 @@ export const IDENTITY_GATE_SCOPE_HINT =
 export const IDENTITY_GATE_DIVIDER = 'or'
 export const IDENTITY_GATE_SIGN_IN = 'Log in or create account'
 export const IDENTITY_GATE_ERROR = 'Could not start your session. Pick an avatar to try again.'
+/** The confirm step: a pick selects, this commits. Named, so it says what you get. */
+export const IDENTITY_GATE_STARTING = 'Starting…'
+export function jumpInAsLine(name) {
+  return `Jump in as ${name}`
+}
 export const IDENTITY_GATE_BACK_TO_AVATARS = 'Back to avatars'
 export const IDENTITY_GATE_BACK = 'Back'
 

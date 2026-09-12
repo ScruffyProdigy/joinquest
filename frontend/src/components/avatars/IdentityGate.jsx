@@ -54,6 +54,13 @@ const FRAMING = {
  *
  * The sign-in path is offered by *tier*, not by what is missing: it is a real
  * upgrade for a guest, and nonsense to show someone already holding an account.
+ *
+ * It is a takeover rather than a centred card, which is what the prototype
+ * draws and what a phone needs: the card shape floated a screen's worth of
+ * content over the page with nothing holding it in, so the bottom of it — the
+ * sign-in offer, and the button that starts the game — fell off the end of
+ * anything shorter than a tall handset, with the page behind showing through
+ * where the gate had run out of room.
  */
 export default function IdentityGate() {
   const { user, loading, acceptSessionUser } = useAuth()
@@ -73,22 +80,49 @@ export default function IdentityGate() {
     notifyAuthComplete()
   }
 
+  /**
+   * The prototype's rule, and the reason this is passed down rather than
+   * rendered here: the sign-in offer belongs under the choices it is an
+   * alternative to, inside the same block, not in one of its own.
+   */
+  const signIn = offerSignIn ? (
+    <div className="mt-6">
+      <div className="mb-6 flex items-center gap-3">
+        <span className="h-px flex-1 bg-border" aria-hidden="true" />
+        <span className="text-sm text-muted-foreground">{IDENTITY_GATE_DIVIDER}</span>
+        <span className="h-px flex-1 bg-border" aria-hidden="true" />
+      </div>
+      <Link variant="pill" disabled={busy} onClick={() => setShowSignIn(true)}>
+        {IDENTITY_GATE_SIGN_IN}
+      </Link>
+    </div>
+  ) : null
+
   return (
     <Dialog open>
       <DialogContent
+        takeover
         showCloseButton={false}
-        className="max-w-xl gap-6 border-border/60 bg-background/95 backdrop-blur"
         onEscapeKeyDown={(event) => event.preventDefault()}
         onPointerDownOutside={(event) => event.preventDefault()}
         onInteractOutside={(event) => event.preventDefault()}
       >
-        <div className="flex flex-col items-center gap-1 text-center">
-          <DialogTitle className="font-heading text-2xl font-semibold">{framing.heading}</DialogTitle>
-          <DialogDescription>{framing.tagline}</DialogDescription>
+        <div className="w-full shrink-0 pb-2">
+          {/* 30px rather than the scale's 34, and rather than the prototype's 32:
+              our heading face is wider than the prototype's, and 30 is where
+              "Welcome to JoinQuest" still lands on one line at 375px. The
+              prototype's composition is a single-line greeting, so the line
+              matters more here than the number does. */}
+          <DialogTitle className="w-full text-center font-heading text-[1.875rem] leading-tight font-bold">
+            {framing.heading}
+          </DialogTitle>
+          <DialogDescription className="w-full text-center font-heading text-lg font-normal">
+            {framing.tagline}
+          </DialogDescription>
         </div>
 
         {showSignIn ? (
-          <div className="flex flex-col gap-4">
+          <div className="flex w-full flex-1 flex-col justify-center gap-4 pb-8">
             <SignInPanel heading={null} showGuestOption={false} />
             <Link variant="quiet" onClick={() => setShowSignIn(false)}>
               {framing.back}
@@ -97,24 +131,28 @@ export default function IdentityGate() {
         ) : (
           <>
             {gap === IDENTITY_GAP_NAME ? (
-              <DisplayNamePrompt user={user} onSaved={handleSaved} onBusyChange={setBusy} />
+              <div className="flex w-full flex-1 flex-col justify-center pb-8">
+                <div className="flex flex-col gap-6">
+                  <DisplayNamePrompt user={user} onSaved={handleSaved} onBusyChange={setBusy} />
+                </div>
+                {signIn}
+              </div>
             ) : null}
             {gap === IDENTITY_GAP_AVATAR ? (
-              <AvatarPrompt user={user} onSaved={handleSaved} onBusyChange={setBusy} />
+              <div className="flex w-full flex-1 flex-col justify-center pb-8">
+                <div className="flex flex-col gap-6">
+                  <AvatarPrompt user={user} onSaved={handleSaved} onBusyChange={setBusy} />
+                </div>
+                {signIn}
+              </div>
             ) : null}
             {gap !== IDENTITY_GAP_NAME && gap !== IDENTITY_GAP_AVATAR ? (
-              <GuestIdentityPicker user={user} onSaved={handleSaved} onBusyChange={setBusy} />
-            ) : null}
-
-            {offerSignIn ? (
-              <div className="flex flex-col items-center gap-2">
-                <span className="text-2xs uppercase tracking-wide text-muted-foreground">
-                  {IDENTITY_GATE_DIVIDER}
-                </span>
-                <Link variant="pill" disabled={busy} onClick={() => setShowSignIn(true)}>
-                  {IDENTITY_GATE_SIGN_IN}
-                </Link>
-              </div>
+              <GuestIdentityPicker
+                user={user}
+                onSaved={handleSaved}
+                onBusyChange={setBusy}
+                signIn={signIn}
+              />
             ) : null}
           </>
         )}
