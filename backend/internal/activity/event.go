@@ -106,6 +106,23 @@ type Event struct {
 	// event was constructed. Where a database clock already holds the honest answer
 	// -- game_sessions.started_at, for instance -- callers pass that through rather
 	// than stamping their own process's clock. Zero means "now", resolved by Writer.
+	//
+	// WHICH CLOCK THIS IS depends on where the caller got it, and the two do not
+	// agree. Postgres's NOW() and the Go process clock have been observed several
+	// seconds apart in both directions on the local Docker stack, so this is not a
+	// theoretical caveat:
+	//
+	//	match_started    database clock (game_sessions.started_at, transaction start)
+	//	everything else  the emitting process's clock
+	//
+	// The consequence for analysis: subtracting occurred_at across two event types
+	// that use different clocks is not a duration, it is a duration plus an unknown
+	// skew. Comparing like with like is fine -- player_activity_first_match's
+	// gap_to_second_match subtracts two match_started values and is sound for exactly
+	// that reason. Anything new that crosses the boundary needs to say so.
+	//
+	// recorded_at, by contrast, is always the database's clock: the writer leaves it
+	// to the column default rather than passing one.
 	OccurredAt time.Time
 
 	// Whatever this event type knows. Ids, enums, counts and durations only; see

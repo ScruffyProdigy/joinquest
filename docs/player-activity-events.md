@@ -92,6 +92,39 @@ The temptation with a funnel is to infer the missing half so every column has a 
 in it. That would make the platform's blind spots invisible at precisely the moment
 someone is deciding whether a game is hard to get into. **Unknown stays unknown.**
 
+## Clocks
+
+**`occurred_at` is not always on the same clock, and the clocks disagree.**
+
+Postgres's `NOW()` and the Go process clock have been observed several seconds apart
+**in both directions** on the local Docker stack. This is not a theoretical caveat —
+it is the root cause of a real bug elsewhere in this repo, where a hold window
+compared a database-stamped timestamp against `time.Since` and stopped expiring.
+
+| Column | Clock |
+|---|---|
+| `occurred_at` on `match_started` | Database (`game_sessions.started_at`, stamped at transaction start) |
+| `occurred_at` on every other event | The emitting process |
+| `recorded_at` | Always the database — the writer never supplies it |
+
+**The rule for analysis:** subtracting `occurred_at` across two event types that use
+different clocks gives you a duration *plus an unknown skew*, not a duration.
+
+Comparing like with like is sound. `player_activity_first_match.gap_to_second_match`
+subtracts two `match_started` values — both database-stamped — and is correct for
+exactly that reason. Anything new that crosses the boundary needs to account for it,
+or say plainly that it does not.
+
+`recorded_at − occurred_at` is *approximately* the instrumentation's own lag, and only
+approximately, for the same reason. It is pinned to the database clock precisely so a
+row can never appear to have been written before the event it records, which would be
+nonsense on an append-only table.
+
+Database time is the right default in a multi-pod deployment — every API process has
+its own clock, and only the database's is shared — so the fix for a future
+cross-clock comparison is to move the other side onto the database, not to move
+`match_started` off it.
+
 ## Querying it
 
 Two views, so analysis does not mean ad-hoc SQL against production tables:

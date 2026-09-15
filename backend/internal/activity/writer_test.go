@@ -285,3 +285,39 @@ func TestWriterFlushesMoreThanOneBatch(t *testing.T) {
 		t.Errorf("stored %d events, want %d", stored, count)
 	}
 }
+
+// recorded_at must come from the DATABASE, not this process. The two clocks disagree
+// -- by seconds, in both directions, on the local Docker stack -- and occurred_at is a
+// database value for some event types, so a process-stamped recorded_at could appear
+// to precede the event it recorded.
+func TestWriterLetsTheDatabaseStampRecordedAt(t *testing.T) {
+	db := openTestDB(t)
+	w := NewWriter(db)
+	t.Cleanup(func() { _ = w.Close() })
+
+	gameID := uuid.New()
+	// An occurred_at far in the past, so a recorded_at copied from it would be obvious.
+	stamp := time.Date(2020, 1, 1, 0, 0, 0, 0, time.UTC)
+	w.Record(Event{Type: EventQueueJoined, GameID: &gameID, OccurredAt: stamp})
+	if err := w.Close(); err != nil {
+		t.Fatalf("Close() = %v", err)
+	}
+	t.Cleanup(func() {
+		_, _ = db.Exec(`DELETE FROM player_activity_events WHERE game_id = $1`, gameID)
+	})
+
+	var driftSeconds float64
+	err := db.QueryRow(`
+		SELECT EXTRACT(EPOCH FROM (NOW() - recorded_at))
+		FROM player_activity_events WHERE game_id = $1
+	`, gameID).Scan(&driftSeconds)
+	if err != nil {
+		t.Fatalf("reading recorded_at: %v", err)
+	}
+
+	// Measured entirely inside the database, so this comparison involves one clock and
+	// cannot itself be thrown off by skew.
+	if driftSeconds < 0 || driftSeconds > 60 {
+		t.Errorf("recorded_at is %.1fs from the database's own NOW(); it was not stamped by the database", driftSeconds)
+	}
+}

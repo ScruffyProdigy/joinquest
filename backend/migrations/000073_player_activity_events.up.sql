@@ -52,12 +52,23 @@ CREATE TABLE IF NOT EXISTS player_activity_events (
     -- transaction began. Emitting after commit and stamping NOW() here would quietly
     -- substitute this process's clock, drifting by however long the rest of that
     -- transaction took.
+    --
+    -- Which clock produced it therefore varies by event type: match_started carries
+    -- the database's, everything else the emitting process's. Subtracting occurred_at
+    -- ACROSS those two groups yields a duration plus an unknown skew, not a duration.
+    -- See docs/player-activity-events.md.
     occurred_at TIMESTAMPTZ NOT NULL,
 
-    -- When the row was actually written. Kept separate from occurred_at rather than
-    -- collapsed into it: writes are asynchronous by design (see below), so the gap
-    -- between the two is the instrumentation's own lag. An analysis that cannot see
-    -- that gap cannot tell a late-arriving event from a slow one.
+    -- When the row was actually written, always on the DATABASE's clock -- the writer
+    -- deliberately never supplies this, so the default below is what stamps it.
+    --
+    -- Kept separate from occurred_at rather than collapsed into it: writes are
+    -- asynchronous by design, so the gap between the two is roughly the
+    -- instrumentation's own lag. Roughly, and not exactly, because occurred_at may
+    -- have come from the emitting process's clock rather than this one, and the two
+    -- disagree -- by seconds, in both directions, on the local Docker stack. A
+    -- recorded_at that appeared to precede its own event would be nonsense on an
+    -- append-only table, which is why this one column is pinned to the database.
     recorded_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
 
     -- Whatever this event type knows. Per the ticket: no personally identifying data

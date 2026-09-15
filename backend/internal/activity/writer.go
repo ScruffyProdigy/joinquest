@@ -35,7 +35,7 @@ const (
 )
 
 // Column types for the VALUES list in writeBatch, in column order.
-var columnTypes = [9]string{
+var columnTypes = [8]string{
 	"text",        // event_type
 	"text",        // source
 	"uuid",        // user_id
@@ -43,7 +43,6 @@ var columnTypes = [9]string{
 	"text",        // mode_key
 	"uuid",        // session_id
 	"timestamptz", // occurred_at
-	"timestamptz", // recorded_at
 	"jsonb",       // payload
 }
 
@@ -212,7 +211,7 @@ func (w *Writer) writeBatch(batch []Event) {
 		return
 	}
 
-	const columns = 9
+	const columns = 8
 	values := make([]string, 0, len(batch))
 	args := make([]any, 0, len(batch)*columns)
 
@@ -243,7 +242,6 @@ func (w *Writer) writeBatch(batch []Event) {
 			textArg(e.ModeKey),
 			uuidArg(e.SessionID),
 			e.OccurredAt.UTC(),
-			w.now().UTC(),
 			encoded,
 		)
 	}
@@ -270,9 +268,17 @@ func (w *Writer) writeBatch(batch []Event) {
 	// COALESCE, not an unconditional overwrite: a caller that knows the game is
 	// authoritative, and an event with no session (a queue that never formed a match)
 	// keeps whatever it was given.
+	// recorded_at is left to the column's DEFAULT NOW(), so the database stamps it.
+	// Passing this process's clock instead looks equivalent and is not: NOW() and the
+	// Go clock are two different clocks, and they do disagree -- on the local Docker
+	// stack they have been observed several seconds apart in both directions. Since
+	// occurred_at is a database value for some events, a process-clock recorded_at
+	// could come out BEFORE the event it recorded, which is nonsense on an append-only
+	// table whose whole purpose is chronology. Both columns now come from whichever
+	// clock actually produced the instant, and recorded_at is always the database's.
 	query := `
 		INSERT INTO player_activity_events
-			(event_type, source, user_id, game_id, mode_key, session_id, occurred_at, recorded_at, payload)
+			(event_type, source, user_id, game_id, mode_key, session_id, occurred_at, payload)
 		SELECT
 			v.event_type,
 			v.source,
@@ -281,11 +287,10 @@ func (w *Writer) writeBatch(batch []Event) {
 			COALESCE(v.mode_key, gm.mode_key),
 			v.session_id,
 			v.occurred_at,
-			v.recorded_at,
 			v.payload
 		FROM (VALUES ` + strings.Join(values, ", ") + `) AS v (
 			event_type, source, user_id, game_id, mode_key, session_id,
-			occurred_at, recorded_at, payload
+			occurred_at, payload
 		)
 		LEFT JOIN game_sessions gs ON gs.id = v.session_id
 		LEFT JOIN game_modes gm ON gm.id = gs.mode_id`
