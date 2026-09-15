@@ -47,6 +47,8 @@ models:
         resolver: true
       waitEstimatesByPath:
         resolver: true
+      waitingCountsByPath:
+        resolver: true
   PublicPlayer:
     fields:
       # Forced to a resolver, not bound to a model field. The mode argument

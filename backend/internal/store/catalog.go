@@ -13,6 +13,7 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/scruffyprodigy/joinquest/internal/gameclient"
+	"github.com/scruffyprodigy/joinquest/internal/queuewait"
 	"github.com/scruffyprodigy/joinquest/internal/seattemplate"
 )
 
@@ -288,6 +289,57 @@ func (s *Store) CountWaitingInModeQueue(ctx context.Context, modeQueueID uuid.UU
 		WHERE mode_queue_id = $1 AND status = 'waiting'
 	`, modeQueueID).Scan(&count)
 	return count, err
+}
+
+// CountWaitingByQueue reports how many players are waiting in every line right
+// now, for the whole catalog, in one grouped aggregate.
+//
+// This is the batch form of CountWaitingInModeQueue, and exists because a
+// game-detail page renders a card per mode and polls: read one queue at a time
+// and the same COUNT(*) runs once per card per poll. CountWaitingInModeQueue
+// stays for the single-queue callers — matchmaking, queue notifications — where
+// asking about one line is genuinely all that is wanted.
+//
+// Keyed per path, because a composition mode's players wait in separate lines
+// and "how many tanks are waiting" is a different question from how many are
+// waiting for the mode at all. Callers wanting the mode-wide total sum the
+// paths; every waiting row lands in exactly one bucket, so the sum is exact
+// rather than an approximation.
+//
+// This is the whole-catalog depth read that RecentQueueFlow's doc comment
+// anticipates. It is deliberately its own query rather than a leg of that one:
+// unwindowed and filtered to waiting rows, it plans as an index-only scan of
+// 000015's partial idx_game_queues_mode_queue_path_waiting, which stays small
+// however much finished history game_queues accumulates.
+//
+// Lines with nobody waiting are absent from the map rather than present and
+// zero — the same shape as RecentFills next door, and what lets a caller treat
+// a missing key as the zero it is.
+func (s *Store) CountWaitingByQueue(ctx context.Context) (map[queuewait.QueueKey]int, error) {
+	rows, err := s.db.QueryContext(ctx, `
+		SELECT
+			mode_queue_id,
+			COALESCE(queue_path, '') AS queue_path,
+			COUNT(*) AS waiting
+		FROM game_queues
+		WHERE status = 'waiting' AND mode_queue_id IS NOT NULL
+		GROUP BY mode_queue_id, COALESCE(queue_path, '')
+	`)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	byQueue := make(map[queuewait.QueueKey]int)
+	for rows.Next() {
+		var key queuewait.QueueKey
+		var waiting int
+		if err := rows.Scan(&key.ModeQueueID, &key.QueuePath, &waiting); err != nil {
+			return nil, err
+		}
+		byQueue[key] = waiting
+	}
+	return byQueue, rows.Err()
 }
 
 // ListWaitingUserIDsInModeQueue returns user ids with a waiting row in the queue.

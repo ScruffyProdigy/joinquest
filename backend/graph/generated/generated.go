@@ -269,6 +269,7 @@ type ComplexityRoot struct {
 		Status               func(childComplexity int) int
 		WaitEstimatesByPath  func(childComplexity int) int
 		WaitingCount         func(childComplexity int) int
+		WaitingCountsByPath  func(childComplexity int) int
 	}
 
 	Mutation struct {
@@ -470,6 +471,11 @@ type ComplexityRoot struct {
 	QueuePathWaitEstimate struct {
 		EstimatedWaitSeconds func(childComplexity int) int
 		QueuePath            func(childComplexity int) int
+	}
+
+	QueuePathWaitingCount struct {
+		QueuePath    func(childComplexity int) int
+		WaitingCount func(childComplexity int) int
 	}
 
 	QueueUpdate struct {
@@ -735,6 +741,7 @@ type ModeQueueResolver interface {
 	WaitingCount(ctx context.Context, obj *model.ModeQueue) (int, error)
 	EstimatedWaitSeconds(ctx context.Context, obj *model.ModeQueue) (*int, error)
 	WaitEstimatesByPath(ctx context.Context, obj *model.ModeQueue) ([]*model.QueuePathWaitEstimate, error)
+	WaitingCountsByPath(ctx context.Context, obj *model.ModeQueue) ([]*model.QueuePathWaitingCount, error)
 }
 type MutationResolver interface {
 	JoinQueue(ctx context.Context, queueID string, queuePath *string, options []*model.QueueOptionSelectionInput, party *model.PartyNodeInput) (*model.JoinResult, error)
@@ -1808,6 +1815,12 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.ModeQueue.WaitingCount(childComplexity), true
+	case "ModeQueue.waitingCountsByPath":
+		if e.complexity.ModeQueue.WaitingCountsByPath == nil {
+			break
+		}
+
+		return e.complexity.ModeQueue.WaitingCountsByPath(childComplexity), true
 
 	case "Mutation.beginSpiritAnimalReading":
 		if e.complexity.Mutation.BeginSpiritAnimalReading == nil {
@@ -3040,6 +3053,19 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.QueuePathWaitEstimate.QueuePath(childComplexity), true
+
+	case "QueuePathWaitingCount.queuePath":
+		if e.complexity.QueuePathWaitingCount.QueuePath == nil {
+			break
+		}
+
+		return e.complexity.QueuePathWaitingCount.QueuePath(childComplexity), true
+	case "QueuePathWaitingCount.waitingCount":
+		if e.complexity.QueuePathWaitingCount.WaitingCount == nil {
+			break
+		}
+
+		return e.complexity.QueuePathWaitingCount.WaitingCount(childComplexity), true
 
 	case "QueueUpdate.formingGaps":
 		if e.complexity.QueueUpdate.FormingGaps == nil {
@@ -4440,6 +4466,14 @@ type ModeQueue {
   name: String!
   playersToStart: Int!
   status: String!
+  """
+  How many players are waiting in this queue right now — the live number, not a
+  habit of the queue. A player joining should see themselves in it within
+  seconds.
+
+  For a composition mode this is the whole mode's total across its per-role
+  lines. Read ` + "`" + `waitingCountsByPath` + "`" + ` for the breakdown.
+  """
   waitingCount: Int!
   """
   How long a player typically waits in this queue before being matched, in
@@ -4470,6 +4504,20 @@ type ModeQueue {
   quiet without silencing the others.
   """
   waitEstimatesByPath: [QueuePathWaitEstimate!]!
+  """
+  Per-role waiting counts for a composition mode, sorted by queue path so a card
+  renders in a stable order across polls.
+
+  The live counterpart to ` + "`" + `waitEstimatesByPath` + "`" + `: that field says how long a role
+  usually takes, this one says how many people are in it at this moment. A role
+  can be crowded and quick, or empty and slow, so neither field implies the
+  other.
+
+  Empty for modes that do not split by path — their players wait in one line,
+  which ` + "`" + `waitingCount` + "`" + ` reports. Roles with nobody waiting are omitted rather
+  than listed as zero, so a card paints the roles that have a queue.
+  """
+  waitingCountsByPath: [QueuePathWaitingCount!]!
 }
 
 """How long one role's line of a composition mode typically takes to fill."""
@@ -4477,6 +4525,13 @@ type QueuePathWaitEstimate {
   """Matches ` + "`" + `GameModeQueuePath.queuePath` + "`" + `."""
   queuePath: String!
   estimatedWaitSeconds: Int!
+}
+
+"""How many players are waiting in one role's line of a composition mode."""
+type QueuePathWaitingCount {
+  """Matches ` + "`" + `GameModeQueuePath.queuePath` + "`" + `."""
+  queuePath: String!
+  waitingCount: Int!
 }
 
 extend type Game {
@@ -9401,6 +9456,8 @@ func (ec *executionContext) fieldContext_GameMode_queues(_ context.Context, fiel
 				return ec.fieldContext_ModeQueue_estimatedWaitSeconds(ctx, field)
 			case "waitEstimatesByPath":
 				return ec.fieldContext_ModeQueue_waitEstimatesByPath(ctx, field)
+			case "waitingCountsByPath":
+				return ec.fieldContext_ModeQueue_waitingCountsByPath(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type ModeQueue", field.Name)
 		},
@@ -11126,6 +11183,41 @@ func (ec *executionContext) fieldContext_ModeQueue_waitEstimatesByPath(_ context
 				return ec.fieldContext_QueuePathWaitEstimate_estimatedWaitSeconds(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type QueuePathWaitEstimate", field.Name)
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _ModeQueue_waitingCountsByPath(ctx context.Context, field graphql.CollectedField, obj *model.ModeQueue) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_ModeQueue_waitingCountsByPath,
+		func(ctx context.Context) (any, error) {
+			return ec.resolvers.ModeQueue().WaitingCountsByPath(ctx, obj)
+		},
+		nil,
+		ec.marshalNQueuePathWaitingCount2ᚕᚖgithubᚗcomᚋscruffyprodigyᚋjoinquestᚋgraphᚋmodelᚐQueuePathWaitingCountᚄ,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_ModeQueue_waitingCountsByPath(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "ModeQueue",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "queuePath":
+				return ec.fieldContext_QueuePathWaitingCount_queuePath(ctx, field)
+			case "waitingCount":
+				return ec.fieldContext_QueuePathWaitingCount_waitingCount(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type QueuePathWaitingCount", field.Name)
 		},
 	}
 	return fc, nil
@@ -17951,6 +18043,64 @@ func (ec *executionContext) _QueuePathWaitEstimate_estimatedWaitSeconds(ctx cont
 func (ec *executionContext) fieldContext_QueuePathWaitEstimate_estimatedWaitSeconds(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	fc = &graphql.FieldContext{
 		Object:     "QueuePathWaitEstimate",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Int does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _QueuePathWaitingCount_queuePath(ctx context.Context, field graphql.CollectedField, obj *model.QueuePathWaitingCount) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_QueuePathWaitingCount_queuePath,
+		func(ctx context.Context) (any, error) {
+			return obj.QueuePath, nil
+		},
+		nil,
+		ec.marshalNString2string,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_QueuePathWaitingCount_queuePath(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "QueuePathWaitingCount",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _QueuePathWaitingCount_waitingCount(ctx context.Context, field graphql.CollectedField, obj *model.QueuePathWaitingCount) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_QueuePathWaitingCount_waitingCount,
+		func(ctx context.Context) (any, error) {
+			return obj.WaitingCount, nil
+		},
+		nil,
+		ec.marshalNInt2int,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_QueuePathWaitingCount_waitingCount(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "QueuePathWaitingCount",
 		Field:      field,
 		IsMethod:   false,
 		IsResolver: false,
@@ -26925,6 +27075,42 @@ func (ec *executionContext) _ModeQueue(ctx context.Context, sel ast.SelectionSet
 			}
 
 			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
+		case "waitingCountsByPath":
+			field := field
+
+			innerFunc := func(ctx context.Context, fs *graphql.FieldSet) (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._ModeQueue_waitingCountsByPath(ctx, field, obj)
+				if res == graphql.Null {
+					atomic.AddUint32(&fs.Invalids, 1)
+				}
+				return res
+			}
+
+			if field.Deferrable != nil {
+				dfs, ok := deferred[field.Deferrable.Label]
+				di := 0
+				if ok {
+					dfs.AddField(field)
+					di = len(dfs.Values) - 1
+				} else {
+					dfs = graphql.NewFieldSet([]graphql.CollectedField{field})
+					deferred[field.Deferrable.Label] = dfs
+				}
+				dfs.Concurrently(di, func(ctx context.Context) graphql.Marshaler {
+					return innerFunc(ctx, dfs)
+				})
+
+				// don't run the out.Concurrently() call below
+				out.Values[i] = graphql.Null
+				continue
+			}
+
+			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}
@@ -29031,6 +29217,50 @@ func (ec *executionContext) _QueuePathWaitEstimate(ctx context.Context, sel ast.
 			}
 		case "estimatedWaitSeconds":
 			out.Values[i] = ec._QueuePathWaitEstimate_estimatedWaitSeconds(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch(ctx)
+	if out.Invalids > 0 {
+		return graphql.Null
+	}
+
+	atomic.AddInt32(&ec.deferred, int32(len(deferred)))
+
+	for label, dfs := range deferred {
+		ec.processDeferredGroup(graphql.DeferredGroup{
+			Label:    label,
+			Path:     graphql.GetPath(ctx),
+			FieldSet: dfs,
+			Context:  ctx,
+		})
+	}
+
+	return out
+}
+
+var queuePathWaitingCountImplementors = []string{"QueuePathWaitingCount"}
+
+func (ec *executionContext) _QueuePathWaitingCount(ctx context.Context, sel ast.SelectionSet, obj *model.QueuePathWaitingCount) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, queuePathWaitingCountImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	deferred := make(map[string]*graphql.FieldSet)
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("QueuePathWaitingCount")
+		case "queuePath":
+			out.Values[i] = ec._QueuePathWaitingCount_queuePath(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "waitingCount":
+			out.Values[i] = ec._QueuePathWaitingCount_waitingCount(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
@@ -33200,6 +33430,60 @@ func (ec *executionContext) marshalNQueuePathWaitEstimate2ᚖgithubᚗcomᚋscru
 		return graphql.Null
 	}
 	return ec._QueuePathWaitEstimate(ctx, sel, v)
+}
+
+func (ec *executionContext) marshalNQueuePathWaitingCount2ᚕᚖgithubᚗcomᚋscruffyprodigyᚋjoinquestᚋgraphᚋmodelᚐQueuePathWaitingCountᚄ(ctx context.Context, sel ast.SelectionSet, v []*model.QueuePathWaitingCount) graphql.Marshaler {
+	ret := make(graphql.Array, len(v))
+	var wg sync.WaitGroup
+	isLen1 := len(v) == 1
+	if !isLen1 {
+		wg.Add(len(v))
+	}
+	for i := range v {
+		i := i
+		fc := &graphql.FieldContext{
+			Index:  &i,
+			Result: &v[i],
+		}
+		ctx := graphql.WithFieldContext(ctx, fc)
+		f := func(i int) {
+			defer func() {
+				if r := recover(); r != nil {
+					ec.Error(ctx, ec.Recover(ctx, r))
+					ret = nil
+				}
+			}()
+			if !isLen1 {
+				defer wg.Done()
+			}
+			ret[i] = ec.marshalNQueuePathWaitingCount2ᚖgithubᚗcomᚋscruffyprodigyᚋjoinquestᚋgraphᚋmodelᚐQueuePathWaitingCount(ctx, sel, v[i])
+		}
+		if isLen1 {
+			f(i)
+		} else {
+			go f(i)
+		}
+
+	}
+	wg.Wait()
+
+	for _, e := range ret {
+		if e == graphql.Null {
+			return graphql.Null
+		}
+	}
+
+	return ret
+}
+
+func (ec *executionContext) marshalNQueuePathWaitingCount2ᚖgithubᚗcomᚋscruffyprodigyᚋjoinquestᚋgraphᚋmodelᚐQueuePathWaitingCount(ctx context.Context, sel ast.SelectionSet, v *model.QueuePathWaitingCount) graphql.Marshaler {
+	if v == nil {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			ec.Errorf(ctx, "the requested element is null which the schema does not allow")
+		}
+		return graphql.Null
+	}
+	return ec._QueuePathWaitingCount(ctx, sel, v)
 }
 
 func (ec *executionContext) unmarshalNQueueStatus2githubᚗcomᚋscruffyprodigyᚋjoinquestᚋgraphᚋmodelᚐQueueStatus(ctx context.Context, v any) (model.QueueStatus, error) {

@@ -207,6 +207,14 @@ type ModeQueue {
   name: String!
   playersToStart: Int!
   status: String!
+  """
+  How many players are waiting in this queue right now — the live number, not a
+  habit of the queue. A player joining should see themselves in it within
+  seconds.
+
+  For a composition mode this is the whole mode's total across its per-role
+  lines. Read `waitingCountsByPath` for the breakdown.
+  """
   waitingCount: Int!
   """
   How long a player typically waits in this queue before being matched, in
@@ -237,6 +245,20 @@ type ModeQueue {
   quiet without silencing the others.
   """
   waitEstimatesByPath: [QueuePathWaitEstimate!]!
+  """
+  Per-role waiting counts for a composition mode, sorted by queue path so a card
+  renders in a stable order across polls.
+
+  The live counterpart to `waitEstimatesByPath`: that field says how long a role
+  usually takes, this one says how many people are in it at this moment. A role
+  can be crowded and quick, or empty and slow, so neither field implies the
+  other.
+
+  Empty for modes that do not split by path — their players wait in one line,
+  which `waitingCount` reports. Roles with nobody waiting are omitted rather
+  than listed as zero, so a card paints the roles that have a queue.
+  """
+  waitingCountsByPath: [QueuePathWaitingCount!]!
 }
 
 """How long one role's line of a composition mode typically takes to fill."""
@@ -244,6 +266,13 @@ type QueuePathWaitEstimate {
   """Matches `GameModeQueuePath.queuePath`."""
   queuePath: String!
   estimatedWaitSeconds: Int!
+}
+
+"""How many players are waiting in one role's line of a composition mode."""
+type QueuePathWaitingCount {
+  """Matches `GameModeQueuePath.queuePath`."""
+  queuePath: String!
+  waitingCount: Int!
 }
 
 extend type Game {
