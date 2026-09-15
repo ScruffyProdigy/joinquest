@@ -247,13 +247,43 @@ function getSubscriptionConnectionParams() {
   }
 }
 
+/**
+ * How long this client keeps asking to come back before it gives up, expressed as a
+ * retry count because that is what graphql-ws takes.
+ *
+ * This number and `store.DefaultTableSeatDisconnectGrace`
+ * (backend/internal/store/room_presence.go) are one decision with two homes, and moving
+ * either alone is a bug: the table holds a seat for exactly as long as the player's
+ * client is still asking for it. `rooms.js` states the same rule for rooms and
+ * `queue.js` for queue places; this is the third pair.
+ *
+ * graphql-ws passes `retryWait` a 0-based count, so the budget is
+ * sum(min(500 * i, 5000)) for i in 0..10 — 22.5s across the ramp, then one wait at the
+ * 5s ceiling, for 27.5s. That lands just under the seat's 30s.
+ *
+ * Was 10 attempts (22.5s), which stopped asking 7.5s before the server released the
+ * seat (JQ-283). A small gap next to the queue's 67s one, but the same wrong side of
+ * the same line: for those 7.5s the seat was held for a client that had given up, and
+ * a player whose phone came back at 25s found the seat gone while their own client
+ * still believed it was reconnecting.
+ *
+ * The seat window is deliberately impatient — 30s and not the room's 5m, because a held
+ * seat is the one thing another player at a forming table actively wants. That argues
+ * for closing this gap by raising the client, not by lengthening the window: Bob should
+ * not wait longer for Alice's seat, but while he is waiting Alice should still be trying.
+ */
+export const TABLE_SEAT_RECONNECT_ATTEMPTS = 11
+
+/** The backoff curve itself, exported so the budget above can be verified rather than asserted. */
+export const tableSeatReconnectWaitMs = (retries) => Math.min(500 * retries, 5000)
+
 function getWsClient() {
   if (!wsClient) {
     wsClient = createClient({
       url: getGraphQLWsUrl(),
       connectionParams: getSubscriptionConnectionParams(),
-      retryAttempts: 10,
-      retryWait: async (retries) => Math.min(500 * retries, 5000),
+      retryAttempts: TABLE_SEAT_RECONNECT_ATTEMPTS,
+      retryWait: async (retries) => tableSeatReconnectWaitMs(retries),
       shouldRetry: () => true,
       lazy: false,
     })
