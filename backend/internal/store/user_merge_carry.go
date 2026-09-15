@@ -126,6 +126,26 @@ func carrySourceHistoryTx(ctx context.Context, tx *sql.Tx, sourceID, targetID uu
 		return err
 	}
 
+	// JQ-143. Unguarded and unconditional: player_activity_events is append-only and
+	// constrained on nothing per user, so both accounts' rows coexist happily and
+	// every one of them moves.
+	//
+	// This is the difference between a usable signal and a useless one. Almost every
+	// player arrives as a guest, so a player's first-ever match of a game -- the
+	// single sharpest reading of that game's floor -- is nearly always recorded
+	// against the guest identity they have since stopped being. Leaving these rows
+	// behind would scatter the evidence across throwaway accounts and make it look
+	// like a catalog of players who each tried one game once and never came back.
+	//
+	// It follows that after a merge the target's "first match" is the guest's first
+	// match, and the gap to their second match may span the signup. That is the
+	// intended reading: it is one person, and it was one person all along.
+	if _, err := tx.ExecContext(ctx, `
+		UPDATE player_activity_events SET user_id = $2 WHERE user_id = $1
+	`, sourceID, targetID); err != nil {
+		return err
+	}
+
 	// UNIQUE(party_id, user_id).
 	if _, err := tx.ExecContext(ctx, `
 		UPDATE party_members

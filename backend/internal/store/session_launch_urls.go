@@ -37,6 +37,10 @@ func (s *Store) GetSessionParticipantLaunchURLBase(ctx context.Context, sessionI
 	if base == nil {
 		return "", nil
 	}
+	// The closest the platform gets to "the player launched", and no closer: a URL
+	// handed over is not a URL opened, and an opened URL is not a game entered
+	// (JQ-143). Nothing downstream may read this as confirmed entry.
+	s.recordLaunchURLRequested(sessionID, userID)
 	return *base, nil
 }
 

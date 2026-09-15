@@ -34,6 +34,19 @@ const (
 	defaultFlushInterval = 500 * time.Millisecond
 )
 
+// Column types for the VALUES list in writeBatch, in column order.
+var columnTypes = [9]string{
+	"text",        // event_type
+	"text",        // source
+	"uuid",        // user_id
+	"uuid",        // game_id
+	"text",        // mode_key
+	"uuid",        // session_id
+	"timestamptz", // occurred_at
+	"timestamptz", // recorded_at
+	"jsonb",       // payload
+}
+
 // Writer records events into Postgres from a background goroutine.
 //
 // The split is the point. Record only hands the event to a buffered channel and
@@ -215,7 +228,10 @@ func (w *Writer) writeBatch(batch []Event) {
 		n := len(args)
 		placeholders := make([]string, columns)
 		for i := range placeholders {
-			placeholders[i] = "$" + strconv.Itoa(n+i+1)
+			// Cast every placeholder. The VALUES list below feeds a SELECT rather
+			// than going straight into the table, so Postgres has no target column
+			// to infer a type from and rejects the statement without these.
+			placeholders[i] = "$" + strconv.Itoa(n+i+1) + "::" + columnTypes[i]
 		}
 		values = append(values, "("+strings.Join(placeholders, ", ")+")")
 
@@ -241,10 +257,38 @@ func (w *Writer) writeBatch(batch []Event) {
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 
+	// game_id and mode_key are filled in from the session when the caller did not
+	// have them, which is the common case: several emit points -- a player finishing,
+	// a session completing, a launch URL being fetched -- are reached knowing only a
+	// session id.
+	//
+	// Resolved here, on the writer's own goroutine, rather than by looking the game up
+	// at the call site. A lookup at the call site would put an extra query on a
+	// player-facing path for the sake of instrumentation, which is the cost this whole
+	// package is arranged to avoid. Here it is a join the player never waits for.
+	//
+	// COALESCE, not an unconditional overwrite: a caller that knows the game is
+	// authoritative, and an event with no session (a queue that never formed a match)
+	// keeps whatever it was given.
 	query := `
 		INSERT INTO player_activity_events
 			(event_type, source, user_id, game_id, mode_key, session_id, occurred_at, recorded_at, payload)
-		VALUES ` + strings.Join(values, ", ")
+		SELECT
+			v.event_type,
+			v.source,
+			v.user_id,
+			COALESCE(v.game_id, gs.game_id),
+			COALESCE(v.mode_key, gm.mode_key),
+			v.session_id,
+			v.occurred_at,
+			v.recorded_at,
+			v.payload
+		FROM (VALUES ` + strings.Join(values, ", ") + `) AS v (
+			event_type, source, user_id, game_id, mode_key, session_id,
+			occurred_at, recorded_at, payload
+		)
+		LEFT JOIN game_sessions gs ON gs.id = v.session_id
+		LEFT JOIN game_modes gm ON gm.id = gs.mode_id`
 
 	if _, err := w.db.ExecContext(ctx, query, args...); err != nil {
 		log.Printf("activity: dropping %d events, insert failed: %v", len(values), err)

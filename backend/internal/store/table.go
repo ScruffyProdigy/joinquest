@@ -1018,6 +1018,8 @@ func (s *Store) StartTable(ctx context.Context, tableID, userID uuid.UUID) (*Sta
 		return nil, err
 	}
 
+	s.recordMatchStarted(game.ID, session.ID, session.StartedAt, notifyIDs, "room_table")
+
 	return &StartTableResult{
 		GameID:        game.ID,
 		SessionID:     session.ID,

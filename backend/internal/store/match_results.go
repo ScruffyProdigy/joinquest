@@ -157,6 +157,12 @@ func (s *Store) RecordPlayerFinish(ctx context.Context, sessionID, userID uuid.U
 	if err := tx.Commit(); err != nil {
 		return nil, err
 	}
+
+	// The finish reason is the sharpest floor reading JQ-143 identifies: FORFEIT or
+	// DISCONNECT on a player's first-ever match of a game says a great deal about how
+	// hard that game is to get into.
+	s.recordMatchFinished(sessionID, userID, reason, placement)
+
 	return rated, nil
 }
 
