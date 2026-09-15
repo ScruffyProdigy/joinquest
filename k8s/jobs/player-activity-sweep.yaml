@@ -1,0 +1,66 @@
+# Enforce the retention window on the player activity event stream (JQ-143), and
+# preserve the answers before the rows behind them go.
+#
+# Each run does three things, strictly in this order:
+#
+# 1. Roll raw events up into per-game, per-mode, per-day counts.
+# 2. Refresh the per-player first-match summary — who met which game when, how that
+#    first match ended, and whether they came back.
+# 3. Delete raw events older than ACTIVITY_EVENT_RETENTION.
+#
+# THE ORDER IS THE JOB. Steps 1 and 2 produce the only record that outlives step 3, so
+# a failure in either ABORTS the run rather than being logged and stepped over. This is
+# deliberately unlike the queue and room sweeps, whose passes are independent and all
+# run regardless: those sweeps delete rows that are reconstructible or worthless, and
+# this one deletes the only copy. Keeping data too long costs storage; dropping it
+# early is permanent, and the ticket is explicit that longitudinal analysis will be
+# wanted at a point when volume does not yet justify having kept everything.
+#
+# THE DAILY CADENCE GOVERNS NO WINDOW. Retention is measured from each event's own
+# occurred_at, so the schedule only decides how promptly expired rows are noticed. Daily
+# rather than the queue sweep's */15 because nothing here is player-visible at all: no
+# player waits on it, and a week-old event surviving an extra day costs a row. Early
+# morning UTC keeps a potentially large DELETE away from peak play.
+#
+# Retention IS tunable here, unlike the room and queue grace windows. Those are code
+# constants shared with the live timers that are the real removal path, so a manifest
+# that disagreed would be a bug. This one is a storage-and-analysis policy with no
+# runtime counterpart — but it is documented in docs/player-activity-events.md and
+# defaults to 180d in code (store.DefaultActivityRetention), and changing it here
+# without changing it there leaves the documentation lying about what is kept.
+#
+# Metrics per run: lobby.activity.daily_rollup.rows,
+# lobby.activity.first_match_summary.rows, and
+# lobby.activity.expired.{count,deleted,remaining}.
+# See docs/player-activity-events.md and docs/lobby-maintenance.md.
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: lobby-player-activity-sweep
+  namespace: joinquest
+spec:
+  schedule: "41 4 * * *"
+  concurrencyPolicy: Forbid
+  successfulJobsHistoryLimit: 3
+  failedJobsHistoryLimit: 3
+  jobTemplate:
+    spec:
+      ttlSecondsAfterFinished: 86400
+      template:
+        spec:
+          restartPolicy: Never
+          containers:
+            - name: activitysweep
+              image: docker.io/scruffyprodigy/joinquest-backend:latest
+              command: ["./activitysweep"]
+              env:
+                - name: DATABASE_URL
+                  valueFrom:
+                    secretKeyRef:
+                      name: pg-dsn
+                      key: DATABASE_URL
+                # How long raw events survive. Defaults to 180d in code. Raising it
+                # costs storage; lowering it destroys raw detail that nothing can
+                # rebuild, so treat a reduction as a one-way decision.
+                - name: ACTIVITY_EVENT_RETENTION
+                  value: "4320h"

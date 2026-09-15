@@ -587,9 +587,33 @@ git push origin main
 
 Each destructive step needs explicit user approval.
 
+## Player activity events (JQ-143)
+
+An append-only record of what players did, swept daily by
+`k8s/jobs/player-activity-sweep.yaml`. Raw events are kept for 180 days; the daily
+rollup and the per-player first-match summary are kept indefinitely.
+
+Unlike every other sweep in this document, **a failure aborts the run rather than being
+reported and stepped over**. The rollup and summary are the only record that outlives
+the raw rows, so those rows must not be deleted on a run that failed to fold them up
+first. Keeping data too long costs storage; dropping it early is permanent.
+
+```bash
+./activitysweep -dry-run          # how many raw events are past the window
+ACTIVITY_EVENT_RETENTION=4320h ./activitysweep
+```
+
+Metrics per run: `lobby.activity.daily_rollup.rows`,
+`lobby.activity.first_match_summary.rows`, and
+`lobby.activity.expired.{count,deleted,remaining}`.
+
+Full reference, including what the platform can and cannot observe about a player
+reaching a game: [player-activity-events.md](player-activity-events.md).
+
 ## Related docs
 
 - [AGENTS.md](../AGENTS.md) — agent quick reference
+- [player-activity-events.md](player-activity-events.md) — the activity event stream
 - [development.md](development.md) — contributor setup
 - [contributing.md](contributing.md) — PR guidelines
 - [environment-configuration.md](environment-configuration.md) — k8s env injection

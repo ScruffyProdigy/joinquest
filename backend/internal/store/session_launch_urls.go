@@ -20,6 +20,13 @@ func (s *Store) SetSessionParticipantLaunchURLBases(ctx context.Context, session
 			return err
 		}
 	}
+
+	// Provisioning is recorded here, at the write that completes it, and NOT at
+	// SessionProvisionComplete (JQ-143). That function reads as the obvious hook and is
+	// the wrong one: it is a predicate, polled on every provision retry and again on
+	// every handoff finalize, so emitting there would count one event per CHECK rather
+	// than one per provisioning and silently inflate the funnel.
+	s.recordMatchProvisioned(sessionID, len(bases))
 	return nil
 }
 
@@ -37,6 +44,10 @@ func (s *Store) GetSessionParticipantLaunchURLBase(ctx context.Context, sessionI
 	if base == nil {
 		return "", nil
 	}
+	// The closest the platform gets to "the player launched", and no closer: a URL
+	// handed over is not a URL opened, and an opened URL is not a game entered
+	// (JQ-143). Nothing downstream may read this as confirmed entry.
+	s.recordLaunchURLRequested(sessionID, userID)
 	return *base, nil
 }
 

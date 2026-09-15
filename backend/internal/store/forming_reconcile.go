@@ -150,6 +150,9 @@ func (s *Store) ReconcileFormingModeQueue(ctx context.Context, modeQueueID uuid.
 			if err := tx.Commit(); err != nil {
 				return nil, err
 			}
+
+			s.recordMatchStarted(joinCtx.Game.ID, fired.session.ID, fired.session.StartedAt, fired.notifyIDs, "matchmaking")
+
 			return &FormingReconcileResult{
 				GameID:        joinCtx.Game.ID,
 				ModeQueueID:   modeQueueID,

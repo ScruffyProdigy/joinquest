@@ -96,7 +96,12 @@ func (s *Store) CompleteSession(ctx context.Context, sessionID uuid.UUID, endedA
 		return err
 	}
 
-	return tx.Commit()
+	if err := tx.Commit(); err != nil {
+		return err
+	}
+
+	s.recordMatchCompleted(sessionID, endedAt)
+	return nil
 }
 
 // completeSessionTx is the whole completion — status, participant queue-row cancellation

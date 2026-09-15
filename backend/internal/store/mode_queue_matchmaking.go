@@ -166,7 +166,14 @@ func (s *Store) JoinModeQueueWithOptions(ctx context.Context, modeQueueID, userI
 		return nil, err
 	}
 
-	return s.joinModeQueueFormingTx(ctx, tx, joinCtx, modeQueueID, userID, queuePath, options, party)
+	result, err := s.joinModeQueueFormingTx(ctx, tx, joinCtx, modeQueueID, userID, queuePath, options, party)
+	if err != nil {
+		return nil, err
+	}
+	// After the commit inside joinModeQueueFormingTx: a join that rolled back is not a
+	// join, and instrumentation must never be what aborts one (JQ-143).
+	s.recordQueueJoined(userID, result)
+	return result, nil
 }
 
 func optionalQueuePathRef(value string) *string {
@@ -183,9 +190,17 @@ func (s *Store) LeaveModeQueue(ctx context.Context, modeQueueID, userID uuid.UUI
 		return 0, err
 	}
 
-	_ = s.leaveModeQueueWaiting(ctx, modeQueueID, userID)
+	// Only a player who was actually waiting abandoned anything. Cancelling a
+	// `matched` row is leaving a match that already formed, which is a different
+	// event with a different meaning for difficulty (JQ-143).
+	leftWaiting := s.leaveModeQueueWaiting(ctx, modeQueueID, userID) == nil
+
 	_ = s.cancelUserMatchedModeQueue(ctx, modeQueueID, userID)
 	_ = s.reconcileStaleMatchedQueuesForUser(ctx, userID)
+
+	if leftWaiting {
+		s.recordQueueAbandoned(userID, s.gameIDForUserQueueEntry(ctx, modeQueueID, userID), "left", nil)
+	}
 	return s.CountWaitingInModeQueue(ctx, modeQueueID)
 }
 

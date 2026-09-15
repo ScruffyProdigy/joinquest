@@ -173,6 +173,7 @@ Full runbook: [docs/lobby-maintenance.md](docs/lobby-maintenance.md).
 | Local dev | [docs/development.md](docs/development.md) |
 | Architecture | [docs/architecture.md](docs/architecture.md) |
 | Testing | [docs/testing.md](docs/testing.md) |
+| Player activity events | [docs/player-activity-events.md](docs/player-activity-events.md) |
 | Developer self-service spec | [docs/developer-self-service.md](docs/developer-self-service.md) |
 | Game dev install scripts (manifest) | [scripts/joinquest-setup/README.md](scripts/joinquest-setup/README.md) |
 | Agent playbook (canonical) | [docs/developer-agent-playbook.md](docs/developer-agent-playbook.md) |

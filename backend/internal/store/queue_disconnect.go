@@ -144,6 +144,17 @@ func (s *Store) EvictDisconnectedWaitingEntry(ctx context.Context, userID uuid.U
 	if err := s.reconcileStalePartiesForUser(ctx, userID); err != nil {
 		return out, fmt.Errorf("reconcile parties after eviction: %w", err)
 	}
+
+	// Recorded off the eviction decision rather than the socket edge that started the
+	// timer (JQ-143). A client that drops and reconnects inside the grace window never
+	// abandoned anything, and counting those would read a flaky network as a game
+	// being hard to get into -- the exact signal this data exists to measure honestly.
+	if out.Acted {
+		gameID := out.GameID
+		s.recordQueueAbandoned(userID, &gameID, "evicted", map[string]any{
+			"grace_seconds": DefaultQueueDisconnectGrace.Seconds(),
+		})
+	}
 	return out, nil
 }
 
