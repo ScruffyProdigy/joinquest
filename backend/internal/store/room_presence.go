@@ -65,6 +65,20 @@ const DefaultRoomDisconnectGrace = 5 * time.Minute
 // has her room, her friends and the chat, and re-takes a seat with one tap. Coming back to
 // no room at all is what actually hurts. So the seat goes early and the room waits.
 //
+// This number and the table subscription's retry budget
+// (TABLE_SEAT_RECONNECT_ATTEMPTS, frontend/src/lib/tables.js) are one decision with two
+// homes, the same way this file's room window pairs with rooms.js. 11 attempts on
+// min(500ms*n, 5s) is 27.5s, just under this window, and
+// TestClientReconnectBudgetsMatchTheirGraceWindows derives it from the frontend source
+// so raising one side alone fails.
+//
+// It was 10 attempts (22.5s) until JQ-283 — a 7.5s window in which the seat was held
+// for a client that had stopped asking, and in which a player back at 25s found the
+// seat gone while their own client still believed it was reconnecting. Closed by
+// raising the client rather than lengthening this window, because the asymmetry above
+// is the point: Bob should not wait longer for Alice's seat, but while he waits Alice
+// should still be trying.
+//
 // This is NOT the seat-hold window for an already-formed match (JQ-199), which answers how
 // long a match that has already been made waits for a player who is not there. Do not
 // borrow one for the other.
