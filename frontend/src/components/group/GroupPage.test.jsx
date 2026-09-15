@@ -64,6 +64,8 @@ function makeRoom(table) {
     id: 'room-1',
     inviteCode: 'ABC123',
     joinUrl: 'https://joinquest.cc/room/ABC123',
+    // The viewer created this room, so the invite section starts open (JQ-305).
+    host: { id: 'u1', displayName: 'Pat' },
     members: [
       { user: { id: 'u1', displayName: 'Pat' }, disconnected: false },
       { user: { id: 'u7', displayName: 'Sam' }, disconnected: false },
@@ -426,10 +428,52 @@ describe('GroupPage', () => {
 
     const invite = screen.getByRole('region', { name: /invite friends/i })
     expect(await screen.findByRole('img', { name: /qr code to join/i })).toBeInTheDocument()
-    const labels = [...invite.querySelectorAll('button')].map((button) =>
-      button.textContent.trim(),
-    )
+    // The disclosure toggle is how the section hides (JQ-305), not another way to send
+    // the URL — the ways to send it are what this counts.
+    const labels = [...invite.querySelectorAll('button')]
+      .filter((button) => button.getAttribute('aria-expanded') === null)
+      .map((button) => button.textContent.trim())
     expect(labels).toEqual(['Share Link'])
+  })
+
+  /*
+    JQ-305. Both arrivals land on /group, so the page cannot read the navigation that got
+    here — it reads who hosts the room, which survives a reload either way.
+  */
+  describe('arriving at the group', () => {
+    it('opens the invite section for the player who created the room', async () => {
+      render(<GroupPage />)
+
+      expect(screen.getByRole('button', { name: /invite friends/i })).toHaveAttribute(
+        'aria-expanded',
+        'true',
+      )
+      expect(await screen.findByRole('img', { name: /qr code to join/i })).toBeInTheDocument()
+    })
+
+    it('leads with the seats for a player who followed a QR code or room link', () => {
+      currentUser = { id: 'u7', displayName: 'Sam' }
+      render(<GroupPage />)
+
+      expect(screen.getByRole('button', { name: /invite friends/i })).toHaveAttribute(
+        'aria-expanded',
+        'false',
+      )
+      expect(screen.queryByRole('img', { name: /qr code to join/i })).not.toBeInTheDocument()
+      // What an arrival is here to do, and the sticky control that says so.
+      expect(screen.getAllByRole('button', { name: /claim/i })[0]).toBeInTheDocument()
+      expect(screen.getByText('Claim a seat to join')).toBeInTheDocument()
+    })
+
+    it('still lets an arriving player invite someone of their own', async () => {
+      const user = userEvent.setup()
+      currentUser = { id: 'u7', displayName: 'Sam' }
+      render(<GroupPage />)
+
+      await user.click(screen.getByRole('button', { name: /invite friends/i }))
+
+      expect(await screen.findByRole('img', { name: /qr code to join/i })).toBeInTheDocument()
+    })
   })
 
   it('names the role on the seat row even when the seats are only numbered', () => {
