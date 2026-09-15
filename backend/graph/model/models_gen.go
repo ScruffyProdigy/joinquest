@@ -309,7 +309,13 @@ type ModeQueue struct {
 	Name           string `json:"name"`
 	PlayersToStart int    `json:"playersToStart"`
 	Status         string `json:"status"`
-	WaitingCount   int    `json:"waitingCount"`
+	// How many players are waiting in this queue right now — the live number, not a
+	// habit of the queue. A player joining should see themselves in it within
+	// seconds.
+	//
+	// For a composition mode this is the whole mode's total across its per-role
+	// lines. Read `waitingCountsByPath` for the breakdown.
+	WaitingCount int `json:"waitingCount"`
 	// How long a player typically waits in this queue before being matched, in
 	// whole seconds — the number the mode card paints as "~15 sec wait".
 	//
@@ -335,6 +341,18 @@ type ModeQueue struct {
 	// filled often enough recently to say anything honest — a quiet role stays
 	// quiet without silencing the others.
 	WaitEstimatesByPath []*QueuePathWaitEstimate `json:"waitEstimatesByPath"`
+	// Per-role waiting counts for a composition mode, sorted by queue path so a card
+	// renders in a stable order across polls.
+	//
+	// The live counterpart to `waitEstimatesByPath`: that field says how long a role
+	// usually takes, this one says how many people are in it at this moment. A role
+	// can be crowded and quick, or empty and slow, so neither field implies the
+	// other.
+	//
+	// Empty for modes that do not split by path — their players wait in one line,
+	// which `waitingCount` reports. Roles with nobody waiting are omitted rather
+	// than listed as zero, so a card paints the roles that have a queue.
+	WaitingCountsByPath []*QueuePathWaitingCount `json:"waitingCountsByPath"`
 }
 
 type Mutation struct {
@@ -535,6 +553,13 @@ type QueuePathWaitEstimate struct {
 	// Matches `GameModeQueuePath.queuePath`.
 	QueuePath            string `json:"queuePath"`
 	EstimatedWaitSeconds int    `json:"estimatedWaitSeconds"`
+}
+
+// How many players are waiting in one role's line of a composition mode.
+type QueuePathWaitingCount struct {
+	// Matches `GameModeQueuePath.queuePath`.
+	QueuePath    string `json:"queuePath"`
+	WaitingCount int    `json:"waitingCount"`
 }
 
 type QueueUpdate struct {

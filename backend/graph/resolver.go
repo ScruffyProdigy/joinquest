@@ -61,6 +61,11 @@ type Resolver struct {
 	// meant to be the estimator inside this cache and nothing else. See
 	// internal/queuewait.
 	WaitEstimates *queuewait.Cache
+	// WaitingCounts serves ModeQueue.waitingCount and waitingCountsByPath from
+	// one whole-catalog snapshot, for the same reason WaitEstimates does: a
+	// game-detail page renders a card per mode and polls. nil builds the default
+	// over the store. See internal/queuewait.
+	WaitingCounts *queuewait.CountCache
 	// LiveWait serves ActiveIntent.estimatedWaitSeconds — the per-player
 	// number, which the whole-catalog snapshot cannot supply because it is
 	// keyed by line rather than by who is standing in one. nil builds the
@@ -99,6 +104,33 @@ func (r *Resolver) waitEstimates() *queuewait.Cache {
 		return r.WaitEstimates
 	}
 	return queuewait.NewCache(newMedianEstimator(r.Store), waitEstimateTTL)
+}
+
+// waitingCountTTL is how long one whole-catalog snapshot of waiting counts is
+// served for. Far shorter than waitEstimateTTL, and matching the live-counts
+// TTL instead: this is a live population rather than a median over days, and a
+// player who joins a queue has to see themselves in its count promptly or the
+// number reads as broken.
+const waitingCountTTL = 5 * time.Second
+
+// waitingCounts returns the resolver's waiting-count cache, building the
+// default one over the store when none was injected.
+func (r *Resolver) waitingCounts() *queuewait.CountCache {
+	if r.WaitingCounts != nil {
+		return r.WaitingCounts
+	}
+	return queuewait.NewCountCache(waitingCountSource(r.Store), waitingCountTTL)
+}
+
+// waitingCountSource adapts the store's grouped aggregate to the cache's
+// CountSource signature.
+func waitingCountSource(st *store.Store) queuewait.CountSource {
+	return func(ctx context.Context) (map[queuewait.QueueKey]int, error) {
+		if st == nil {
+			return nil, fmt.Errorf("database store is not configured")
+		}
+		return st.CountWaitingByQueue(ctx)
+	}
 }
 
 // newMedianEstimator builds the default strategy, with its window and sample
@@ -229,6 +261,7 @@ func NewResolver(st *store.Store, authService *auth.Service, broker pubsub.Broke
 		QueueOptionsCache: gameclient.NewQueueOptionsCache(gameclient.NewClient(), 5*time.Second),
 		LiveCountsCache:   catalogstats.NewCache(liveCountsSource(st), 5*time.Second),
 		WaitEstimates:     queuewait.NewCache(newMedianEstimator(st), waitEstimateTTL),
+		WaitingCounts:     queuewait.NewCountCache(waitingCountSource(st), waitingCountTTL),
 		LiveWait:          newLiveEstimator(st),
 		Push:              push.SenderFromEnv(),
 	}
