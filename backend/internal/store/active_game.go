@@ -96,7 +96,7 @@ func ensureNotInActiveGameTx(ctx context.Context, tx *sql.Tx, userID uuid.UUID) 
 	return nil
 }
 
-// ResetRoomTableAfterSession returns a started room table to forming and re-seats players.
+// ResetRoomTableAfterSession returns every started room table to forming and re-seats players.
 func (s *Store) ResetRoomTableAfterSession(ctx context.Context, sessionID uuid.UUID) error {
 	tx, err := s.db.BeginTx(ctx, nil)
 	if err != nil {
@@ -109,18 +109,19 @@ func (s *Store) ResetRoomTableAfterSession(ctx context.Context, sessionID uuid.U
 	return tx.Commit()
 }
 
+// resetRoomTableAfterSessionTx hands every room table that played this session back to its
+// room, forming and empty.
+//
+// Every table, not one: a match can be built from more than one of them — a 3v3 formed from
+// two backfilling rooms is two tables pointed at the same session — and reading the pair with
+// QueryRowContext picked one of them arbitrarily and left the other stale (JQ-298).
 func resetRoomTableAfterSessionTx(ctx context.Context, tx *sql.Tx, sessionID uuid.UUID) error {
-	var tableID uuid.UUID
-	err := tx.QueryRowContext(ctx, `
-		SELECT id
-		FROM room_tables
-		WHERE session_id = $1 AND status = $2
-	`, sessionID, TableStatusStarted).Scan(&tableID)
+	tableIDs, err := startedSessionTableIDsTx(ctx, tx, sessionID)
 	if err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
-			return nil
-		}
 		return err
+	}
+	if len(tableIDs) == 0 {
+		return nil
 	}
 
 	participants, err := listSessionParticipantsTx(ctx, tx, sessionID)
@@ -128,6 +129,49 @@ func resetRoomTableAfterSessionTx(ctx context.Context, tx *sql.Tx, sessionID uui
 		return err
 	}
 
+	for i, tableID := range tableIDs {
+		// regroup_table_id is one column and this match may have produced several
+		// tables, so only the first claims it — the same "first table this match
+		// produced" meaning ClaimRegroupTable's NULL-guarded stamp carries (JQ-291).
+		// Per-party routing reads room_tables.regroup_session_id, stamped below for
+		// every table.
+		if err := resetOneRoomTableTx(ctx, tx, sessionID, tableID, participants, i == 0); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func startedSessionTableIDsTx(ctx context.Context, tx *sql.Tx, sessionID uuid.UUID) ([]uuid.UUID, error) {
+	rows, err := tx.QueryContext(ctx, `
+		SELECT id
+		FROM room_tables
+		WHERE session_id = $1 AND status = $2
+		ORDER BY created_at ASC, id ASC
+	`, sessionID, TableStatusStarted)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var ids []uuid.UUID
+	for rows.Next() {
+		var id uuid.UUID
+		if err := rows.Scan(&id); err != nil {
+			return nil, err
+		}
+		ids = append(ids, id)
+	}
+	return ids, rows.Err()
+}
+
+func resetOneRoomTableTx(
+	ctx context.Context,
+	tx *sql.Tx,
+	sessionID, tableID uuid.UUID,
+	participants []sessionParticipantArrival,
+	stampSessionRegroupTable bool,
+) error {
 	var modeID uuid.UUID
 	if err := tx.QueryRowContext(ctx, `
 		SELECT mode_id FROM room_tables WHERE id = $1
@@ -155,8 +199,17 @@ func resetRoomTableAfterSessionTx(ctx context.Context, tx *sql.Tx, sessionID uui
 	// there is nothing to choose at all — one seat class and no pre-queue options — and
 	// is then pure convenience (JQ-232). Everywhere else the table comes back empty and
 	// every returner appears on the "Picking a seat" card until they answer.
+	//
+	// Only the players who arrived from this table are seated back at it. For a table
+	// started with StartTable that is everybody, but a matchmade session also holds the
+	// strangers who filled the gaps, and seating them here would put non-members at a
+	// table in a room they were never in — the same party scoping the regroup screen
+	// uses, read off the arrival context stamped at session start (JQ-291).
 	if !ModeOffersPreMatchChoice(mode) {
 		for _, p := range participants {
+			if p.ArrivalTableID == nil || *p.ArrivalTableID != tableID {
+				continue
+			}
 			if _, err := tx.ExecContext(ctx, `
 				INSERT INTO table_seats (table_id, user_id, seat_key)
 				VALUES ($1, $2, $3)
@@ -171,10 +224,12 @@ func resetRoomTableAfterSessionTx(ctx context.Context, tx *sql.Tx, sessionID uui
 	// the table needs to name its originating match without reading game_sessions
 	// backwards on every render, and a room's persistent table is reused match after
 	// match, so the newer stamp replacing the older is exactly the wanted answer (JQ-177).
-	if _, err := tx.ExecContext(ctx, `
-		UPDATE game_sessions SET regroup_table_id = $2 WHERE id = $1
-	`, sessionID, tableID); err != nil {
-		return err
+	if stampSessionRegroupTable {
+		if _, err := tx.ExecContext(ctx, `
+			UPDATE game_sessions SET regroup_table_id = $2 WHERE id = $1
+		`, sessionID, tableID); err != nil {
+			return err
+		}
 	}
 	if _, err := tx.ExecContext(ctx, `
 		UPDATE room_tables SET regroup_session_id = $2 WHERE id = $1
@@ -185,9 +240,17 @@ func resetRoomTableAfterSessionTx(ctx context.Context, tx *sql.Tx, sessionID uui
 	return nil
 }
 
-func listSessionParticipantsTx(ctx context.Context, tx *sql.Tx, sessionID uuid.UUID) ([]SessionParticipant, error) {
+// sessionParticipantArrival is a participant plus the table they came into the match from,
+// which is what scopes the post-match reset to one arrival party per table.
+type sessionParticipantArrival struct {
+	SessionParticipant
+	ArrivalTableID *uuid.UUID
+}
+
+func listSessionParticipantsTx(ctx context.Context, tx *sql.Tx, sessionID uuid.UUID) ([]sessionParticipantArrival, error) {
 	rows, err := tx.QueryContext(ctx, `
-		SELECT u.id, COALESCE(NULLIF(p.role, ''), 'player'), COALESCE(NULLIF(u.display_name, ''), u.username, u.email)
+		SELECT u.id, COALESCE(NULLIF(p.role, ''), 'player'), COALESCE(NULLIF(u.display_name, ''), u.username, u.email),
+		       COALESCE(p.return_context->>'tableId', '')
 		FROM game_session_participants p
 		JOIN users u ON u.id = p.user_id
 		WHERE p.session_id = $1 AND p.left_at IS NULL AND p.finished_at IS NULL
@@ -198,12 +261,16 @@ func listSessionParticipantsTx(ctx context.Context, tx *sql.Tx, sessionID uuid.U
 	}
 	defer rows.Close()
 
-	var out []SessionParticipant
+	var out []sessionParticipantArrival
 	for rows.Next() {
-		var p SessionParticipant
-		if err := rows.Scan(&p.UserID, &p.SeatKey, &p.DisplayName); err != nil {
+		var (
+			p            sessionParticipantArrival
+			arrivalTable string
+		)
+		if err := rows.Scan(&p.UserID, &p.SeatKey, &p.DisplayName, &arrivalTable); err != nil {
 			return nil, err
 		}
+		p.ArrivalTableID = optionalUUIDFromString(arrivalTable)
 		out = append(out, p)
 	}
 	return out, rows.Err()

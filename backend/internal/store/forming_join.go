@@ -313,11 +313,52 @@ func (s *Store) fireFormingMatchTx(
 		}
 	}
 
+	if err := markTablesStartedTx(ctx, tx, tableIDs, session.ID); err != nil {
+		return nil, err
+	}
+
 	if err := s.MarkFormingMatchFiredTx(ctx, tx, fm.ID, time.Now()); err != nil {
 		return nil, err
 	}
 
 	return &formingFireResult{session: session, notifyIDs: notifyIDs, tableIDs: tableIDs}, nil
+}
+
+// markTablesStartedTx puts every room table that reached this match through matchmaking
+// into the state StartTable leaves its own table in: seats cleared, status started, and
+// pointed at the session.
+//
+// It is what makes the table's match visible to everything keyed on that pair. The room UI
+// renders status, so without it a table whose players are mid-match still reads as joinable
+// and StartTable's forming-only gate would let a second session be started out from under
+// them; and resetRoomTableAfterSessionTx selects on exactly (session_id, started), so a
+// table never stamped here is never reset either — it comes back to the room still holding
+// last round's seats (JQ-298).
+//
+// Gated on forming so a table discarded while its players queued is not resurrected. Such a
+// table simply misses the reset, which is the right answer for a table nobody kept.
+func markTablesStartedTx(ctx context.Context, tx *sql.Tx, tableIDs []uuid.UUID, sessionID uuid.UUID) error {
+	for _, tableID := range tableIDs {
+		res, err := tx.ExecContext(ctx, `
+			UPDATE room_tables
+			SET status = $2, session_id = $3, updated_at = NOW()
+			WHERE id = $1 AND status = $4
+		`, tableID, TableStatusStarted, sessionID, TableStatusForming)
+		if err != nil {
+			return err
+		}
+		affected, err := res.RowsAffected()
+		if err != nil {
+			return err
+		}
+		if affected == 0 {
+			continue
+		}
+		if _, err := tx.ExecContext(ctx, `DELETE FROM table_seats WHERE table_id = $1`, tableID); err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 // formingReturnContextTx answers "where did this player come from" for a matchmade session:

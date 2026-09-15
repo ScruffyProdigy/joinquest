@@ -551,12 +551,20 @@ func (s *Store) GetUserTableSeat(ctx context.Context, userID uuid.UUID) (*UserTa
 }
 
 // GetUserStartedTableSession returns the user's active launch from a started room table.
+//
+// The table has to be the one this player arrived from, not merely one pointed at their
+// session. Since a backfilled table is marked started like any other (JQ-298), a session can
+// hold a room's table and strangers who never entered that room, and matching on session
+// alone handed those strangers the room's id and invite code.
 func (s *Store) GetUserStartedTableSession(ctx context.Context, userID uuid.UUID) (*UserTableSeatView, error) {
 	row := s.db.QueryRowContext(ctx, `
 		SELECT rt.id, rt.room_id, r.invite_code, g.id, g.name, gm.id, gm.display_name, COALESCE(NULLIF(gsp.role, ''), 'player'), gs.id
 		FROM game_session_participants gsp
 		INNER JOIN game_sessions gs ON gs.id = gsp.session_id AND gs.status = 'active'
-		INNER JOIN room_tables rt ON rt.session_id = gs.id AND rt.status = $2
+		INNER JOIN room_tables rt
+			ON rt.session_id = gs.id
+			AND rt.status = $2
+			AND rt.id::text = gsp.return_context->>'tableId'
 		INNER JOIN rooms r ON r.id = rt.room_id
 		INNER JOIN games g ON g.id = rt.game_id
 		INNER JOIN game_modes gm ON gm.id = rt.mode_id
