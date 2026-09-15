@@ -298,6 +298,26 @@ All workflows now pass successfully:
    - Frontend default: 5173
    - Change ports in respective config files if needed
 
+5. **Backend tests fail locally but pass in CI**
+   - Suspect the container clock. Docker Desktop and Colima VMs drift after the
+     host sleeps or the VM is restarted, and CI never sees this because its
+     Postgres shares the runner's clock.
+   - Compare the two:
+
+     ```bash
+     docker exec "$(./scripts/db.sh compose-project)-postgres-1" \
+       psql -U app -d postgres -Atc "select now() at time zone 'utc'"
+     date -u
+     ```
+
+   - More than a second or so apart, restart the VM (`colima restart`, or
+     Docker Desktop's restart) and re-run.
+   - The store suite passes against a database deliberately run 5s ahead, so a
+     failure that *only* skew explains is a real bug: something is comparing a
+     database timestamp against `time.Now()`. Do that arithmetic in SQL, where
+     both sides come from one clock — see `advanceHoldTx` in
+     `backend/internal/store/forming_hold.go`.
+
 ### Getting Help
 
 - Check the [API Documentation](api.md)
