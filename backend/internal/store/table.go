@@ -432,6 +432,13 @@ func (s *Store) CreateTable(ctx context.Context, roomID, gameID, modeID, userID 
 	if err != nil {
 		return nil, err
 	}
+	// Opening a table is already the whole decision when the mode has no other: the
+	// player picked the game and the mode, and the table they land on is theirs alone
+	// until somebody else arrives. Sending them to a screen whose only action is to
+	// claim the seat nobody is competing for is a click that decides nothing (JQ-306).
+	if _, err := s.autoSeatArrivalTx(ctx, tx, table, userID); err != nil {
+		return nil, err
+	}
 	if err := tx.Commit(); err != nil {
 		return nil, err
 	}

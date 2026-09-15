@@ -384,39 +384,30 @@ func TestTableRegroupRosterFollowsTheLatestMatch(t *testing.T) {
 	userC := createTestUser(t, ctx, env, cleaner, "regroup-backfill-c-"+uuid.NewString()+"@example.com", "Backfill C")
 	_, cookieC := createTestUserSessionForUser(t, env, userC.ID)
 
+	// The join is the whole backfill. This mode asks for no pick and the room has one
+	// forming table, so C is seated into the seat B vacated on the way in (JQ-306).
 	joinMutation := `mutation Join($inviteCode: String!) { joinRoom(inviteCode: $inviteCode) { id } }`
 	requireNoGraphQLErrors(t, postGraphQL(t, env.Handler, joinMutation,
 		map[string]any{"inviteCode": inviteCode}, cookieC))
 
-	openSeat := ""
+	seatedC := false
 	before := readRoomTable(t, env, first.cookieA, tableID)
 	for _, tbl := range before.Data.MyRoom.Tables {
 		if tbl.ID != tableID {
 			continue
 		}
-		taken := map[string]bool{}
 		for _, seat := range tbl.Seats {
-			taken[seat.SeatKey] = true
 			if seat.User.ID == first.userB.ID.String() {
 				t.Fatalf("player B is still seated at %s after leaveTable", tableID)
 			}
-		}
-		for _, slot := range tbl.SeatSlots {
-			if !taken[slot.SeatKey] {
-				openSeat = slot.SeatKey
-				break
+			if seat.User.ID == userC.ID.String() {
+				seatedC = true
 			}
 		}
 	}
-	if openSeat == "" {
-		t.Fatal("no open seat at the regroup table for C to backfill into")
+	if !seatedC {
+		t.Fatalf("player C was not seated at %s by joining the room", tableID)
 	}
-
-	sitMutation := `mutation Sit($tableId: ID!, $seatKey: String!) {
-		sitAtTable(tableId: $tableId, seatKey: $seatKey) { id }
-	}`
-	requireNoGraphQLErrors(t, postGraphQL(t, env.Handler, sitMutation,
-		map[string]any{"tableId": tableID, "seatKey": openSeat}, cookieC))
 
 	// Match 2: A (the king) starts the table, and the game reports it complete. That
 	// completion runs resetRoomTableAfterSessionTx, which stamps session 2 with the SAME

@@ -339,7 +339,7 @@ func (s *Store) adoptArrivalTableTx(
 // seatRegroupClaimantTx seats a claimant the rules say should be seated, preferring the
 // seat they name. A caller who already holds a seat is left where they are.
 func (s *Store) seatRegroupClaimantTx(ctx context.Context, tx *sql.Tx, table *RoomTable, userID uuid.UUID, preferred string, options []prequeue.Selection) error {
-	seatKey, err := s.regroupSeatKeyTx(ctx, tx, table, userID, preferred)
+	seatKey, err := s.openSeatKeyTx(ctx, tx, table, userID, preferred)
 	if err != nil {
 		return err
 	}
@@ -352,8 +352,10 @@ func (s *Store) seatRegroupClaimantTx(ctx context.Context, tx *sql.Tx, table *Ro
 	return nil
 }
 
-// regroupSeatKeyTx picks the seat a claimant takes: the one they ask for when it is still
+// openSeatKeyTx picks the seat a claimant takes: the one they ask for when it is still
 // theirs to take, otherwise another seat in the same role, otherwise the first open one.
+// An empty preference asks only for the first open seat, which is what an arrival with
+// no history wants (JQ-306).
 //
 // The preference is what makes a solo replay honest. Falling back within the role first
 // matters for a mode whose seats are per-role rather than pooled: "you had a Guesser seat"
@@ -361,10 +363,9 @@ func (s *Store) seatRegroupClaimantTx(ctx context.Context, tx *sql.Tx, table *Ro
 //
 // The two "no seat key to take" outcomes are deliberately distinct. A caller who already
 // holds a seat here gets ("", nil), so claiming twice never moves anyone. A caller who
-// cannot be seated because every seat is taken gets ErrTableFull, because the regroup
-// table lives in a pre-existing room whose other members can take its seats through
-// SitAtTable.
-func (s *Store) regroupSeatKeyTx(ctx context.Context, tx *sql.Tx, table *RoomTable, userID uuid.UUID, preferred string) (string, error) {
+// cannot be seated because every seat is taken gets ErrTableFull, because the table lives
+// in a room whose other members can take its seats through SitAtTable.
+func (s *Store) openSeatKeyTx(ctx context.Context, tx *sql.Tx, table *RoomTable, userID uuid.UUID, preferred string) (string, error) {
 	modeSeats, err := listGameModeSeats(ctx, tx, table.ModeID)
 	if err != nil {
 		return "", err
