@@ -110,6 +110,25 @@ compared a database-stamped timestamp against `time.Since` and stopped expiring.
 **The rule for analysis:** subtracting `occurred_at` across two event types that use
 different clocks gives you a duration *plus an unknown skew*, not a duration.
 
+### The pattern to watch for
+
+The dangerous failure mode is not "two timestamps disagree" — that is visible the
+moment you look at them. It is **elapsed-time arithmetic that silently crosses the
+boundary**, which reads as correct on inspection.
+
+The bug this was found through is the clearest example. `advanceHoldTx` stamps a hold
+with `NOW()` and later tests it with `time.Since(startedAt) >= window`. Nothing about
+that line looks wrong. It is wrong only because `NOW()` and `time.Since` are two
+different clocks, and a hold aged to a one-second margin against a fifteen-second
+window stops expiring whenever the database happens to be running more than a second
+ahead.
+
+So the thing to grep for is not a comparison between two stored timestamps. It is any
+`time.Since`, `time.Until`, or `time.Now().Sub(...)` whose argument came out of the
+database — and, in SQL, any `NOW() - <a value this process supplied>`. Each of those
+is a subtraction with one operand from each clock, and each will read as obviously
+correct right up until it doesn't.
+
 Comparing like with like is sound. `player_activity_first_match.gap_to_second_match`
 subtracts two `match_started` values — both database-stamped — and is correct for
 exactly that reason. Anything new that crosses the boundary needs to account for it,
