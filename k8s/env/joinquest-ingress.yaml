@@ -1,13 +1,17 @@
 # Ingress for GKE + NGINX Ingress + cert-manager.
 # Prereqs: cert-manager, cluster-issuer-letsencrypt-prod.yaml, joinquest-certificate.yaml,
 # and DNS for joinquest.cc -> ingress IP (Cloudflare proxy OK).
+#
+# No cert-manager.io/cluster-issuer annotation here on purpose: joinquest-certificate.yaml
+# already declares the Certificate that issues the joinquest-cc-tls secret. Adding the
+# annotation makes cert-manager's ingress-shim create a *second* Certificate named after
+# the secret, which then fights the declared one and never goes Ready (JQ-322).
 apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
   name: lobby
   namespace: joinquest
   annotations:
-    cert-manager.io/cluster-issuer: letsencrypt-prod
     nginx.ingress.kubernetes.io/ssl-redirect: "true"
     nginx.ingress.kubernetes.io/force-ssl-redirect: "true"
     nginx.ingress.kubernetes.io/proxy-read-timeout: "3600"
