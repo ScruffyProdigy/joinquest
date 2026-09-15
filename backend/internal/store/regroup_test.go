@@ -210,7 +210,10 @@ func TestClaimRegroupTableRefusesFullTableWithoutOptingIn(t *testing.T) {
 	if err != nil {
 		t.Fatalf("ListGameModeSeats: %v", err)
 	}
-	for range modeSeats {
+	// Filling it takes only the joins. This mode has nothing to choose and the regroup
+	// table is the room's only forming one, so each arrival is seated as they come in
+	// (JQ-306) rather than claiming a seat by hand.
+	for i := range modeSeats {
 		outsider, err := st.CreateUser(ctx, CreateUserParams{Email: "full-" + uuid.NewString() + "@example.com"})
 		if err != nil {
 			t.Fatalf("CreateUser outsider: %v", err)
@@ -219,9 +222,12 @@ func TestClaimRegroupTableRefusesFullTableWithoutOptingIn(t *testing.T) {
 		if _, err := st.JoinRoom(ctx, outsider.ID, room.InviteCode); err != nil {
 			t.Fatalf("JoinRoom outsider: %v", err)
 		}
-		seatKey := onlyOpenSeatKey(t, st, ctx, table)
-		if _, err := st.SitAtTable(ctx, table.ID, outsider.ID, seatKey); err != nil {
-			t.Fatalf("SitAtTable outsider: %v", err)
+		occupied, err := st.ListTableSeats(ctx, table.ID)
+		if err != nil {
+			t.Fatalf("ListTableSeats after outsider %d: %v", i, err)
+		}
+		if len(occupied) != i+1 {
+			t.Fatalf("after %d outsiders joined the table holds %d seats, want %d", i+1, len(occupied), i+1)
 		}
 	}
 
@@ -366,30 +372,6 @@ func TestGetRegroupRosterDoesNotInferInFromSeat(t *testing.T) {
 	if roster[guest.ID] != RegroupPending {
 		t.Errorf("seated-but-unconfirmed guest = %v, want PENDING", roster[guest.ID])
 	}
-}
-
-// onlyOpenSeatKey returns the remaining open seat key on the regroup table.
-func onlyOpenSeatKey(t *testing.T, st *Store, ctx context.Context, table *RoomTable) string {
-	t.Helper()
-	modeSeats, err := st.ListGameModeSeats(ctx, table.ModeID)
-	if err != nil {
-		t.Fatalf("ListGameModeSeats: %v", err)
-	}
-	seated, err := st.ListTableSeats(ctx, table.ID)
-	if err != nil {
-		t.Fatalf("ListTableSeats: %v", err)
-	}
-	taken := make(map[string]bool, len(seated))
-	for _, seat := range seated {
-		taken[seat.SeatKey] = true
-	}
-	for _, seat := range modeSeats {
-		if !taken[seat.SeatKey] {
-			return seat.SeatKey
-		}
-	}
-	t.Fatal("expected an open seat on the regroup table")
-	return ""
 }
 
 // TestRegroupSessionFollowsTheLatestMatch pins which match a table names as the one it is

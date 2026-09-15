@@ -296,6 +296,22 @@ func (s *Store) JoinRoom(ctx context.Context, userID uuid.UUID, inviteCode strin
 	if err := s.addRoomMemberTx(ctx, tx, room.ID, userID); err != nil {
 		return nil, err
 	}
+	// A room with one forming table has an obvious destination — it is the room the
+	// invite was for — so an arrival whose mode asks nothing of them is seated at it
+	// rather than shown a screen with one button (JQ-306).
+	//
+	// Only on the path that just added the membership. A player already in this room
+	// returns above without reaching here, which is what keeps a deliberate Leave seat
+	// from being undone by the next refresh: openRoomByCode calls joinRoom every time
+	// it opens a room by code, and re-seating somebody who stood up on purpose would
+	// be worse than the click this saves.
+	table, err := soleFormingTableTx(ctx, tx, room.ID)
+	if err != nil {
+		return nil, err
+	}
+	if _, err := s.autoSeatArrivalTx(ctx, tx, table, userID); err != nil {
+		return nil, err
+	}
 	if _, err := tx.ExecContext(ctx, `UPDATE rooms SET updated_at = NOW() WHERE id = $1`, room.ID); err != nil {
 		return nil, err
 	}

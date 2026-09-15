@@ -5260,8 +5260,8 @@ type Table {
   createdAt: Time!
   """
   forming, started or discarded. Occupancy cannot distinguish a table that emptied
-  because it started from one nobody has sat at yet, and a private table is created
-  with no seats, so clients need the lifecycle itself (JQ-132).
+  because it started from one nobody has sat at yet, and a table whose mode asks for
+  a pick is created with no seats, so clients need the lifecycle itself (JQ-132).
   """
   status: String!
   """No email: a table admits strangers via Look for group and the catalog queue."""

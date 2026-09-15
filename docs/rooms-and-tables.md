@@ -143,8 +143,17 @@ that is deliberately lazy — see *Claiming a seat* below.
   deliberately **no `beforeunload` handler** — a reload, a closed tab or a dropped connection
   keep the seat.
 - **Share links:** `/room/:CODE` joins the room, then lands on `/group` when the room holds
-  exactly one forming table. Arrivals land **unseated**, in *Picking a seat*, and claim their
-  own seat rather than being placed in a role they did not choose.
+  exactly one forming table.
+- **Arrivals are seated when there is nothing to decide (JQ-306).** Creating a table and
+  joining a room both seat the arrival, on the same trigger the rejoin rules use
+  (`store.ModeOffersPreMatchChoice`): one seat class and no pre-queue options. Where a
+  choice *does* exist they land **unseated**, in *Picking a seat*, and claim their own seat
+  rather than being placed in a role they did not choose — as does an arrival into a room
+  of several forming tables, since which table is a decision too. Declining to seat is never
+  an error: a full table, a player mid-match, a mode that asks for a pick all still join
+  fine, just unseated. Joining a room you are already in does not re-seat you, which is what
+  keeps a deliberate *leave seat* from being undone by the next refresh — the client calls
+  `joinRoom` every time it opens a room by code.
 - **A way out, in words.** The header's back arrow leaves, but a rejoining group lands here
   and for some of them the answer is "not this again", so *Find something new* is named
   next to the roster. The rejoin screen is a destination, not a trap.
