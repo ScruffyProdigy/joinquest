@@ -270,13 +270,33 @@ func TestRegroupInviteCodeIsPerParty(t *testing.T) {
 		t.Errorf("group A member sees %v, want their group's table %s", got, tableA.ID)
 	}
 
-	// The opposing group is pointed nowhere, because their own group has claimed nothing.
+	// The opposing group is pointed at their own room's table, never at this one. It is
+	// theirs before anyone in it claims, because the post-match reset hands every table
+	// of the match back to its room already stamped (JQ-298) — the same thing a group
+	// who played from a room table has always got. What must never happen is the losers
+	// being handed the winners' table, and the room_members join is what rules it out.
 	got, err = st.GetRegroupTableIDForUser(ctx, match.SessionID, match.PartyB[0])
 	if err != nil {
 		t.Fatalf("GetRegroupTableIDForUser B: %v", err)
 	}
-	if got != nil {
-		t.Errorf("opposing group sees table %s, want none of their own", *got)
+	if got == nil {
+		t.Fatalf("opposing group sees no table, want the one in their own room")
+	}
+	if *got == tableA.ID {
+		t.Errorf("opposing group was walked into the other group's table %s", tableA.ID)
+	}
+	tablesInB, err := st.ListRoomTables(ctx, match.RoomB.ID)
+	if err != nil {
+		t.Fatalf("ListRoomTables B: %v", err)
+	}
+	inTheirOwnRoom := false
+	for _, table := range tablesInB {
+		if table.ID == *got {
+			inTheirOwnRoom = true
+		}
+	}
+	if !inTheirOwnRoom {
+		t.Errorf("opposing group sees table %s, which is not in their room", *got)
 	}
 }
 
