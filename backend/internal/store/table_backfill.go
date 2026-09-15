@@ -37,7 +37,7 @@ func (s *Store) StartTableBackfill(ctx context.Context, tableID, kingUserID, mod
 	// surely as starting short-handed does — it sells their seat rather than playing
 	// without them — so it is the same decision taken on everybody's behalf, and it keeps
 	// the same owner.
-	king := tableKingUserID(seated)
+	king := tableKingUserID(table, seated)
 	if king == nil || *king != kingUserID {
 		return nil, fmt.Errorf("store: only the king can start backfill")
 	}
@@ -183,7 +183,7 @@ func (s *Store) CancelTableBackfill(ctx context.Context, tableID, actorUserID uu
 	if err != nil {
 		return nil, err
 	}
-	king := tableKingUserID(seated)
+	king := tableKingUserID(table, seated)
 	if king == nil || *king != actorUserID {
 		return nil, fmt.Errorf("store: only the king can cancel backfill")
 	}

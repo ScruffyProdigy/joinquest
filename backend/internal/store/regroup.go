@@ -233,7 +233,7 @@ func (s *Store) partyRegroupTableTx(
 		return table, nil
 	}
 
-	return s.createTableTx(ctx, tx, room.ID, gameID, modeID)
+	return s.createTableTx(ctx, tx, room.ID, gameID, modeID, nil)
 }
 
 // regroupRoomTx answers which room this claimant regroups into: the one they arrived from
