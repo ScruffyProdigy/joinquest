@@ -156,4 +156,24 @@
   ::after {
     border-color: var(--border);
   }
+
+  /* Tailwind loads here without preflight (see the imports at the top), so the
+     browser's own margins on headings and paragraphs are still live. A card
+     dialog absorbs them without anyone noticing; a takeover cannot, because it
+     is sized against the screen. In the first-entry gate they added ~120px of
+     spacing nobody wrote — enough to push the composition past the bottom of
+     every phone once browser chrome is counted, which is what pinned the
+     confirm button over the sign-in offer.
+
+     Scoped to the takeover rather than applied app-wide: the rest of the app
+     has been laid out with these margins in place, and a global reset is a
+     separate change with its own visual sweep. In the `base` layer, so every
+     utility and every legacy rule still wins — a margin asked for in the
+     markup is honoured, only the unasked-for default goes.
+
+     This is the vertical twin of the `box-border` note in ui/dialog.jsx: same
+     missing preflight, other axis. */
+  [data-slot='dialog-content'][data-takeover] :is(h1, h2, h3, h4, h5, h6, p, ul, ol) {
+    margin: 0;
+  }
 }

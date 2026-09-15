@@ -20,7 +20,13 @@ import {
   viewerTier,
 } from '../../lib/viewer'
 import { Link } from '../ui/link'
-import { Dialog, DialogContent, DialogDescription, DialogTitle } from '../ui/dialog'
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogTakeoverBody,
+  DialogTitle,
+} from '../ui/dialog'
 import { useAuth } from '../auth/AuthProvider'
 import SignInPanel from '../auth/SignInPanel'
 import AvatarPrompt from './AvatarPrompt'
@@ -116,35 +122,40 @@ export default function IdentityGate() {
           <DialogTitle className="w-full text-center font-heading text-[1.875rem] leading-tight font-bold">
             {framing.heading}
           </DialogTitle>
-          <DialogDescription className="w-full text-center font-heading text-lg font-normal">
+          {/* The gap under the heading is asked for here rather than left to the
+              browser's default paragraph margin, which is what used to supply it
+              (see the takeover reset in tailwind.css). */}
+          <DialogDescription className="mt-2 w-full text-center font-heading text-lg font-normal">
             {framing.tagline}
           </DialogDescription>
         </div>
 
         {showSignIn ? (
-          <div className="flex w-full flex-1 flex-col justify-center gap-4 pb-8">
-            <SignInPanel heading={null} showGuestOption={false} />
-            <Link variant="quiet" onClick={() => setShowSignIn(false)}>
-              {framing.back}
-            </Link>
-          </div>
+          <DialogTakeoverBody>
+            <div className="flex flex-col gap-4">
+              <SignInPanel heading={null} showGuestOption={false} />
+              <Link variant="quiet" onClick={() => setShowSignIn(false)}>
+                {framing.back}
+              </Link>
+            </div>
+          </DialogTakeoverBody>
         ) : (
           <>
             {gap === IDENTITY_GAP_NAME ? (
-              <div className="flex w-full flex-1 flex-col justify-center pb-8">
+              <DialogTakeoverBody>
                 <div className="flex flex-col gap-6">
                   <DisplayNamePrompt user={user} onSaved={handleSaved} onBusyChange={setBusy} />
                 </div>
                 {signIn}
-              </div>
+              </DialogTakeoverBody>
             ) : null}
             {gap === IDENTITY_GAP_AVATAR ? (
-              <div className="flex w-full flex-1 flex-col justify-center pb-8">
+              <DialogTakeoverBody>
                 <div className="flex flex-col gap-6">
                   <AvatarPrompt user={user} onSaved={handleSaved} onBusyChange={setBusy} />
                 </div>
                 {signIn}
-              </div>
+              </DialogTakeoverBody>
             ) : null}
             {gap !== IDENTITY_GAP_NAME && gap !== IDENTITY_GAP_AVATAR ? (
               <GuestIdentityPicker
