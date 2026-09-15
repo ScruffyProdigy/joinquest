@@ -2,7 +2,6 @@ import { useState } from 'react'
 import { createGuestSession } from '../../lib/auth'
 import { updatePlayerProfile } from '../../lib/avatars'
 import { generateGuestIdentities } from '../../lib/guestIdentity'
-import { cn } from '../../lib/utils'
 import {
   IDENTITY_GATE_ERROR,
   IDENTITY_GATE_PROMPT,
@@ -11,6 +10,7 @@ import {
   jumpInAsLine,
 } from '../../lib/playerCopy'
 import { Button } from '../ui/button'
+import { DialogTakeoverBody } from '../ui/dialog'
 import AvatarChoiceGrid from './AvatarChoiceGrid'
 
 /**
@@ -26,9 +26,11 @@ import AvatarChoiceGrid from './AvatarChoiceGrid'
  *
  * It renders two of the takeover's three blocks — the picking, and the footer
  * the confirm button rises into — because the footer holds the selection and
- * the prototype keeps it pinned to the bottom edge rather than under the grid.
- * The gate owns the third (the heading) and passes the sign-in offer down, so
- * that the blocks arrive in the order the takeover lays out.
+ * the prototype keeps it at the bottom edge rather than under the grid. Both
+ * have to be siblings for the takeover to space them, which is why they come
+ * back as a fragment. The gate owns the third (the heading) and passes the
+ * sign-in offer down, so that the blocks arrive in the order the takeover lays
+ * out.
  */
 export default function GuestIdentityPicker({ user, onSaved, onBusyChange, signIn }) {
   const [identities] = useState(() => generateGuestIdentities())
@@ -74,7 +76,7 @@ export default function GuestIdentityPicker({ user, onSaved, onBusyChange, signI
 
   return (
     <>
-      <div className="flex w-full flex-1 flex-col justify-center pb-8">
+      <DialogTakeoverBody>
         <div className="flex flex-col items-center gap-1 text-center">
           <p className="font-heading text-base font-bold text-muted-foreground">{IDENTITY_GATE_PROMPT}</p>
           <p className="text-2xs text-muted-foreground">{IDENTITY_GATE_SCOPE_HINT}</p>
@@ -100,22 +102,16 @@ export default function GuestIdentityPicker({ user, onSaved, onBusyChange, signI
         ) : null}
 
         {signIn}
-      </div>
+      </DialogTakeoverBody>
 
       {/* The footer keeps its height whether or not anything is in it, so that
           selecting a row moves nothing above it.
 
-          It sticks to the bottom edge once it has something to hold: the whole
-          screen fits a tall handset, but on a short one the takeover scrolls, and
-          the button that starts the game is the last thing that should be the
-          part below the fold. Empty, it stays in the flow — a transparent 56px
-          band pinned over the sign-in pill would swallow taps meant for it. */}
-      <div
-        className={cn(
-          'relative h-14 w-full shrink-0 overflow-hidden',
-          selected && 'sticky bottom-0 bg-background',
-        )}
-      >
+          It sits outside the scroll region rather than sticking to the bottom of
+          one, so the button that starts the game is never the part below the fold
+          and never lands on top of the sign-in offer either. `DialogTakeoverBody`
+          explains why the difference matters. */}
+      <div className="relative h-14 w-full shrink-0 overflow-hidden">
         {selected ? (
           <Button
             className="absolute inset-0 animate-in slide-in-from-bottom duration-300"

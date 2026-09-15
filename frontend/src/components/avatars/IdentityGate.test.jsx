@@ -240,7 +240,7 @@ describe('IdentityGate', () => {
   // The gate used to be a centred card sized to its content, which on a phone was
   // taller than the screen: the sign-in offer and everything under it fell off the
   // bottom, with the page behind showing through. A takeover cannot outgrow the
-  // screen, and scrolls if the content ever does.
+  // screen.
   it('fills the screen rather than floating a card over it', async () => {
     mockUnauthenticatedSession()
     renderGate()
@@ -249,8 +249,31 @@ describe('IdentityGate', () => {
     const dialog = screen.getByRole('dialog')
     expect(dialog).toHaveAttribute('data-takeover')
     expect(dialog).toHaveClass('inset-0')
-    expect(dialog).toHaveClass('overflow-y-auto')
     expect(dialog).not.toHaveClass('rounded-lg')
+  })
+
+  // Where a takeover scrolls decides what it can cover. Scrolling the whole
+  // takeover put the confirm button inside the scroller, where `position: sticky`
+  // pinned it to the bottom of the scrollport regardless of what was underneath —
+  // so on any screen short enough to scroll it was painted over the sign-in offer,
+  // and read as a half-drawn button rather than as a page with more to see. The
+  // scroll belongs to the middle block alone, between a fixed heading and a fixed
+  // footer, which is the one arrangement where nothing can be covered.
+  it('scrolls its middle block rather than the whole screen', async () => {
+    mockUnauthenticatedSession()
+    renderGate()
+    await waitForGate()
+
+    const dialog = screen.getByRole('dialog')
+    expect(dialog).toHaveClass('overflow-hidden')
+    expect(dialog).not.toHaveClass('overflow-y-auto')
+
+    const body = dialog.querySelector('[data-slot="dialog-takeover-body"]')
+    expect(body).toBeInTheDocument()
+    expect(body).toHaveClass('overflow-y-auto')
+    // Without this a flex item refuses to shrink below its content, and the block
+    // grows the takeover instead of scrolling inside it.
+    expect(body).toHaveClass('min-h-0')
   })
 
   it('offers the avatars two up, at every width', async () => {

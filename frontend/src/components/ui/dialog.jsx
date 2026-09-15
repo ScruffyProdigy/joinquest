@@ -41,8 +41,9 @@ function DialogOverlay({ className, ...props }) {
  * A phone is the case it is drawn for, and the geometry comes from the prototype:
  * a top inset that the safe area can push down but not pull up, and blocks spaced
  * by `justify-between` rather than stacked from the top. It scrolls when it has
- * to; the prototype pins its content with `touch-none`, which reads fine at one
- * screen size and clips the bottom off every shorter one.
+ * to — inside `DialogTakeoverBody` rather than as a whole, so the heading and the
+ * footer keep their edges; the prototype pins its content with `touch-none`,
+ * which reads fine at one screen size and clips the bottom off every shorter one.
  *
  * The inset is 56px against the prototype's 100 because `justify-between` already
  * spreads the blocks on a screen with room to spare — the number only decides how
@@ -53,7 +54,7 @@ function DialogOverlay({ className, ...props }) {
  * the same classes would give a 1200px-wide button.
  */
 const TAKEOVER_CLASSES =
-  'inset-0 flex max-w-none translate-x-0 translate-y-0 flex-col items-start justify-between gap-0 overflow-y-auto rounded-none border-0 bg-background p-0 px-5 shadow-none [&>*]:mx-auto [&>*]:w-full [&>*]:max-w-sm pt-[max(env(safe-area-inset-top,0px),56px)] pb-[calc(env(safe-area-inset-bottom,0px)+24px)] data-[state=closed]:zoom-out-100 data-[state=open]:zoom-in-100 data-[state=closed]:slide-out-to-bottom data-[state=open]:slide-in-from-bottom sm:max-w-none'
+  'inset-0 flex max-w-none translate-x-0 translate-y-0 flex-col items-start justify-between gap-0 overflow-hidden rounded-none border-0 bg-background p-0 px-5 shadow-none [&>*]:mx-auto [&>*]:w-full [&>*]:max-w-sm pt-[max(env(safe-area-inset-top,0px),56px)] pb-[calc(env(safe-area-inset-bottom,0px)+24px)] data-[state=closed]:zoom-out-100 data-[state=open]:zoom-in-100 data-[state=closed]:slide-out-to-bottom data-[state=open]:slide-in-from-bottom sm:max-w-none'
 
 function DialogContent({ className, children, showCloseButton = true, takeover = false, ...props }) {
   return (
@@ -87,6 +88,36 @@ function DialogContent({ className, children, showCloseButton = true, takeover =
         ) : null}
       </DialogPrimitive.Content>
     </DialogPortal>
+  )
+}
+
+/**
+ * The middle of a takeover: whatever is being asked for, centred in the room left
+ * between the heading and the footer.
+ *
+ * This is where a takeover scrolls, and the reason it is a component rather than a
+ * class string repeated at each call site. Scrolling the takeover as a whole put
+ * the footer inside the scroller, and `position: sticky` pins to the bottom of the
+ * scrollport no matter what is under it — so on any screen short enough to scroll,
+ * the confirm button was painted straight over the sign-in offer above it, which
+ * read as a half-drawn button rather than as a page with more to see. Bounding the
+ * scroll region above the footer is the only arrangement where that cannot happen.
+ *
+ * Centred with `my-auto` on the inner block rather than `justify-center` on the
+ * scroller: `justify-center` distributes negative free space too, so an overflowing
+ * column is centred past its own top edge and the first rows become unreachable.
+ * An auto margin resolves to zero once the space is gone, which leaves the content
+ * scrolled to the top where it belongs.
+ */
+function DialogTakeoverBody({ className, children, ...props }) {
+  return (
+    <div
+      data-slot="dialog-takeover-body"
+      className={cn('flex w-full min-h-0 flex-1 flex-col overflow-y-auto pb-8', className)}
+      {...props}
+    >
+      <div className="my-auto w-full">{children}</div>
+    </div>
   )
 }
 
@@ -133,6 +164,7 @@ export {
   DialogHeader,
   DialogOverlay,
   DialogPortal,
+  DialogTakeoverBody,
   DialogTitle,
   DialogTrigger,
 }
