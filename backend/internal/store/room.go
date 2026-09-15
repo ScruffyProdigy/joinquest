@@ -499,6 +499,50 @@ func (s *Store) ListRoomRoster(ctx context.Context, roomID uuid.UUID, presenceGr
 	return members, rows.Err()
 }
 
+// RoomForDisconnectedMember names the room of a member the roster has stopped calling
+// present, or reports that there is nothing to say about this player.
+//
+// It exists because Disconnected is derived on read and therefore reaches a client only
+// when something re-sends the room. Time passing is not something with an event, so the
+// one moment the reading changes on its own is the one moment nobody publishes — which is
+// how a dropped player stays drawn as fully present until an unrelated join or leave
+// happens to fire. A caller armed on that boundary asks this, and publishes if the answer
+// is yes.
+//
+// The predicate is ListRoomRoster's, deliberately, rather than "is this player
+// disconnected": the publish announces that the roster now reads differently, so a trigger
+// testing anything looser could fire while the reading has not changed yet, and then never
+// fire again — the event that would have carried the change having already been spent.
+// Sharing the test is what makes "we published" and "it changed" the same statement.
+//
+// Open rooms only, for the reason IsRoomMember gives: a closed room has no watchers left
+// to tell.
+//
+// Nothing here writes. Disconnected stays derived (see RoomMember) — this asks whether it
+// derives differently now, at the one moment somebody needs to know.
+func (s *Store) RoomForDisconnectedMember(ctx context.Context, userID uuid.UUID, presenceGrace time.Duration) (uuid.UUID, bool, error) {
+	var roomID uuid.UUID
+	err := s.db.QueryRowContext(ctx, `
+		SELECT rm.room_id
+		FROM room_members rm
+		INNER JOIN rooms r ON r.id = rm.room_id
+		INNER JOIN user_presence up ON up.user_id = rm.user_id
+		WHERE rm.user_id = $1
+		  AND r.status = $3
+		  AND up.disconnected_at IS NOT NULL
+		  AND up.disconnected_at < NOW() - $2::interval
+	`, userID, pgInterval(presenceGrace), RoomStatusOpen).Scan(&roomID)
+	if errors.Is(err, sql.ErrNoRows) {
+		// Not away, not in a room, or in a closed one. All three are "nothing to
+		// publish", and none of them is an error.
+		return uuid.Nil, false, nil
+	}
+	if err != nil {
+		return uuid.Nil, false, fmt.Errorf("room for disconnected member: %w", err)
+	}
+	return roomID, true, nil
+}
+
 // ListRoomMessages returns recent messages oldest-first for display.
 func (s *Store) ListRoomMessages(ctx context.Context, roomID uuid.UUID, limit int, before *uuid.UUID) ([]RoomMessage, error) {
 	if limit <= 0 {

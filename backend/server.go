@@ -75,11 +75,19 @@ func main() {
 	} else if cleared > 0 {
 		log.Printf("presence: boot reset cleared %d stale rows", cleared)
 	}
-	// Three windows off one socket edge, on deliberately different clocks: a waiting
-	// player keeps their queue place for 90s, their place in a room for 5m, and the seat
-	// they were holding at a forming table for only 30s. Ordered shortest-cost-to-others
-	// last: a seat is the one thing somebody else is waiting on, a room is not. See each
-	// constant for why they are not the same number.
+	// Four windows off one socket edge, on deliberately different clocks: a waiting
+	// player keeps their queue place for 90s, their place in a room for 5m, the seat they
+	// were holding at a forming table for only 30s, and the roster keeps calling them
+	// present for 30s. Ordered shortest-cost-to-others last: a seat is the one thing
+	// somebody else is waiting on, a room is not. See each constant for why they are not
+	// the same number — the last two agree today and are separate constants because they
+	// spend different things.
+	//
+	// The roster window is the odd one out: it takes nothing away, and its expiry exists
+	// only to publish. The other three end something and publish so everyone sees what
+	// ended; this one ends nothing, and publishes because a reading derived on read reaches
+	// nobody until the room is re-sent (see OnRoomRosterPresenceExpired). Its counterpart is
+	// the reconnect hook, which is the same publish on the other edge.
 	resolver.Presence = graph.NewPresenceTracker(
 		dataStore,
 		broker,
@@ -91,6 +99,11 @@ func main() {
 	).WithExpiry(
 		store.DefaultTableSeatDisconnectGrace,
 		resolver.OnTableSeatGraceExpired,
+	).WithExpiry(
+		store.DefaultRoomRosterPresenceGrace,
+		resolver.OnRoomRosterPresenceExpired,
+	).WithReconnect(
+		resolver.OnRoomRosterPresenceRestored,
 	)
 
 	formingTick := 30 * time.Second
