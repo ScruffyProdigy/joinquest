@@ -131,8 +131,40 @@ Post-deploy smoke:
 
 - https://joinquest.cc loads
 - `curl -sI https://joinquest.cc/env.js | grep -i cache-control` shows `no-store` (not `immutable`) — see below if it doesn't
+- `./scripts/check-static-asset-reachability.sh` reports every asset reachable — see below
 - https://joinquest.cc/graphql responds
 - Developer dashboard: https://joinquest.cc/developers
+
+### Static asset reachability (JQ-129)
+
+Every other check above exercises the *app*. None of them exercise the *assets* the app
+serves, and an asset-layer failure renders a page that looks fine: JQ-127 shipped six
+CalSans `.woff` files at 403 behind a green deploy, healthy pods, and four passing smoke
+checks, because the page referencing them still rendered.
+
+`deploy-joinquest.sh` runs this automatically before it reports success, so a broken
+deploy fails loudly rather than silently. To run it by hand against production:
+
+```bash
+./scripts/check-static-asset-reachability.sh
+```
+
+It walks every file under `frontend/public/` — `/fonts`, `/games`, `/avatars`, `/icons`
+and the web root — and requests each one from the deployed site. Pass a base URL to point
+it elsewhere (`./scripts/check-static-asset-reachability.sh http://localhost:8080`); set
+`SKIP_ASSET_SMOKE=true` to skip it during a deploy to a cluster that is not yet publicly
+reachable.
+
+Two failures it distinguishes, because they have different causes:
+
+- **403** — the file shipped unreadable. That is JQ-127: `frontend/Dockerfile` builds from
+  the working tree, so a private-mode file on the build host serves 403 from unprivileged
+  nginx. `scripts/check-static-asset-permissions.sh` catches this before it ships.
+- **404, or a 200 serving `text/html`** — the file is not in the image at all. The 200 case
+  is the SPA fallback in `frontend/nginx.conf` (`try_files $uri $uri/ /index.html`)
+  answering for any path whose extension misses the asset `location` blocks, so a missing
+  `.txt` comes back 200. Status alone would call that healthy; this is why the check reads
+  the content type too.
 
 ### env.js caching (JQ-54)
 

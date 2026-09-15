@@ -150,6 +150,17 @@ kubectl wait --for=condition=available --timeout=300s deployment/lobby-frontend 
 kubectl get pods,svc,ingress -n "$NAMESPACE"
 echo "TLS: kubectl get certificate -n $NAMESPACE"
 kubectl get certificate -n "$NAMESPACE" 2>/dev/null || true
+
+# A rollout going available says the app is up, not that the assets it serves
+# are readable. JQ-127 shipped six fonts at 403 past a green deploy and healthy
+# pods, so the assets get their own check before this script calls it done.
+if [ "${SKIP_ASSET_SMOKE:-false}" = "true" ]; then
+  echo "Skipping static asset reachability check (SKIP_ASSET_SMOKE=true)."
+else
+  echo "Checking static asset reachability..."
+  ./scripts/check-static-asset-reachability.sh "$LOBBY_PUBLIC_URL"
+fi
+
 echo "Done. Public URL: $LOBBY_PUBLIC_URL"
 echo "DNS: point joinquest.cc (A or proxied CNAME) at the ingress ADDRESS below."
 echo "Frontend API URL: $(kubectl get configmap lobby-frontend-config -n "$NAMESPACE" -o jsonpath='{.data.REACT_APP_API_BASE_URL}')"
