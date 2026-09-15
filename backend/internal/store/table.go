@@ -36,8 +36,14 @@ type RoomTable struct {
 	// game_sessions.regroup_table_id, kept here so a table can answer the question without
 	// a reverse lookup into game_sessions on every render (JQ-177).
 	RegroupSessionID *uuid.UUID
-	CreatedAt        time.Time
-	UpdatedAt        time.Time
+	// KingUserID is whose table this is: the player who opened it. Stored rather than
+	// worked out from the seats, because seats are deleted and re-inserted as players
+	// move around and are wiped wholesale between rounds. Nil for a table nobody opened
+	// deliberately (a regroup table), and for one whose king has since left -- both fall
+	// back to the longest-seated player.
+	KingUserID *uuid.UUID
+	CreatedAt  time.Time
+	UpdatedAt  time.Time
 }
 
 // TableSeat is one player seated at a specific seat key.
@@ -47,6 +53,9 @@ type TableSeat struct {
 	UserID   uuid.UUID
 	SeatKey  string
 	SeatedAt time.Time
+	// Seq orders seats against each other. seated_at cannot: it is a wall clock, and
+	// this one runs on a virtual machine where it does not always move forwards.
+	Seq int64
 	// QueueOptions is what this player picked as they claimed the seat.
 	QueueOptions []prequeue.Selection
 }
@@ -71,7 +80,7 @@ type StartTableResult struct {
 	NotifyUserIDs []uuid.UUID
 }
 
-const roomTableColumns = `id, room_id, game_id, mode_id, status, session_id, regroup_session_id, created_at, updated_at`
+const roomTableColumns = `id, room_id, game_id, mode_id, status, session_id, regroup_session_id, king_user_id, created_at, updated_at`
 
 // roomTableColumnsT is roomTableColumns qualified with the alias `t`, for the queries that
 // join rooms — id, status, created_at and updated_at exist on both tables, so an unqualified
@@ -80,10 +89,10 @@ var roomTableColumnsT = "t." + strings.ReplaceAll(roomTableColumns, ", ", ", t."
 
 func scanRoomTable(row interface{ Scan(dest ...any) error }) (*RoomTable, error) {
 	var t RoomTable
-	var sessionID, regroupSessionID sql.NullString
+	var sessionID, regroupSessionID, kingUserID sql.NullString
 	err := row.Scan(
 		&t.ID, &t.RoomID, &t.GameID, &t.ModeID, &t.Status, &sessionID, &regroupSessionID,
-		&t.CreatedAt, &t.UpdatedAt,
+		&kingUserID, &t.CreatedAt, &t.UpdatedAt,
 	)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
@@ -95,6 +104,9 @@ func scanRoomTable(row interface{ Scan(dest ...any) error }) (*RoomTable, error)
 		return nil, err
 	}
 	if t.RegroupSessionID, err = nullableUUID(regroupSessionID); err != nil {
+		return nil, err
+	}
+	if t.KingUserID, err = nullableUUID(kingUserID); err != nil {
 		return nil, err
 	}
 	return &t, nil
@@ -116,7 +128,7 @@ func nullableUUID(raw sql.NullString) (*uuid.UUID, error) {
 func scanTableSeat(row interface{ Scan(dest ...any) error }) (*TableSeat, error) {
 	var s TableSeat
 	var queueOptions []byte
-	if err := row.Scan(&s.ID, &s.TableID, &s.UserID, &s.SeatKey, &s.SeatedAt, &queueOptions); err != nil {
+	if err := row.Scan(&s.ID, &s.TableID, &s.UserID, &s.SeatKey, &s.SeatedAt, &s.Seq, &queueOptions); err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return nil, ErrNotFound
 		}
@@ -203,18 +215,28 @@ func countSeatedByPath(seated []TableSeat, seats []GameModeSeat, queuePath strin
 	return count
 }
 
-func tableKingUserID(seated []TableSeat) *uuid.UUID {
+// tableKingUserID answers whose table this is.
+//
+// The table names its own king, so moving seats, or the whole table being re-seated
+// between rounds, does not pass the crown around. Seats only decide it when that
+// player is not at the table -- they never showed up, or they left -- and then it is
+// the longest-seated player, by a sequence rather than by a clock.
+//
+// seated must be in seat order, which is what listTableSeatsTx and ListTableSeats
+// return.
+func tableKingUserID(table *RoomTable, seated []TableSeat) *uuid.UUID {
 	if len(seated) == 0 {
 		return nil
 	}
-	king := seated[0].UserID
-	earliest := seated[0].SeatedAt
-	for _, s := range seated[1:] {
-		if s.SeatedAt.Before(earliest) {
-			earliest = s.SeatedAt
-			king = s.UserID
+	if table != nil && table.KingUserID != nil {
+		for _, s := range seated {
+			if s.UserID == *table.KingUserID {
+				king := s.UserID
+				return &king
+			}
 		}
 	}
+	king := seated[0].UserID
 	return &king
 }
 
@@ -323,10 +345,10 @@ func (s *Store) sweepStaleEmptyTablesTx(ctx context.Context, tx *sql.Tx, roomID 
 
 func (s *Store) listTableSeatsTx(ctx context.Context, tx *sql.Tx, tableID uuid.UUID) ([]TableSeat, error) {
 	rows, err := tx.QueryContext(ctx, `
-		SELECT id, table_id, user_id, seat_key, seated_at, queue_options
+		SELECT id, table_id, user_id, seat_key, seated_at, seat_seq, queue_options
 		FROM table_seats
 		WHERE table_id = $1
-		ORDER BY seated_at ASC
+		ORDER BY seat_seq ASC
 	`, tableID)
 	if err != nil {
 		return nil, err
@@ -375,7 +397,10 @@ func (s *Store) loadTableContext(ctx context.Context, q sqlQueryRowContext, tabl
 	return table, game, mode, seats, nil
 }
 
-func (s *Store) createTableTx(ctx context.Context, tx *sql.Tx, roomID, gameID, modeID uuid.UUID) (*RoomTable, error) {
+// createTableTx opens a table. kingUserID is the player it belongs to, or nil for a
+// table that nobody opened on purpose -- a regroup table, which the returning group
+// inherits between them.
+func (s *Store) createTableTx(ctx context.Context, tx *sql.Tx, roomID, gameID, modeID uuid.UUID, kingUserID *uuid.UUID) (*RoomTable, error) {
 	if err := s.sweepStaleEmptyTablesTx(ctx, tx, roomID); err != nil {
 		return nil, err
 	}
@@ -394,10 +419,10 @@ func (s *Store) createTableTx(ctx context.Context, tx *sql.Tx, roomID, gameID, m
 	}
 
 	row := tx.QueryRowContext(ctx, `
-		INSERT INTO room_tables (room_id, game_id, mode_id, status)
-		VALUES ($1, $2, $3, $4)
+		INSERT INTO room_tables (room_id, game_id, mode_id, status, king_user_id)
+		VALUES ($1, $2, $3, $4, $5)
 		RETURNING `+roomTableColumns+`
-	`, roomID, gameID, modeID, TableStatusForming)
+	`, roomID, gameID, modeID, TableStatusForming, kingUserID)
 	table, err := scanRoomTable(row)
 	if err != nil {
 		return nil, err
@@ -428,7 +453,7 @@ func (s *Store) CreateTable(ctx context.Context, roomID, gameID, modeID, userID 
 		return nil, err
 	}
 
-	table, err := s.createTableTx(ctx, tx, roomID, gameID, modeID)
+	table, err := s.createTableTx(ctx, tx, roomID, gameID, modeID, &userID)
 	if err != nil {
 		return nil, err
 	}
@@ -502,13 +527,13 @@ func (s *Store) GetRoomTableByID(ctx context.Context, tableID uuid.UUID) (*RoomT
 	return scanRoomTable(row)
 }
 
-// ListTableSeats returns seated players ordered by seated_at.
+// ListTableSeats returns seated players in the order they took their seats.
 func (s *Store) ListTableSeats(ctx context.Context, tableID uuid.UUID) ([]TableSeat, error) {
 	rows, err := s.db.QueryContext(ctx, `
-		SELECT id, table_id, user_id, seat_key, seated_at, queue_options
+		SELECT id, table_id, user_id, seat_key, seated_at, seat_seq, queue_options
 		FROM table_seats
 		WHERE table_id = $1
-		ORDER BY seated_at ASC
+		ORDER BY seat_seq ASC
 	`, tableID)
 	if err != nil {
 		return nil, err
@@ -924,7 +949,7 @@ func (s *Store) DiscardTable(ctx context.Context, tableID, userID uuid.UUID) (bo
 	if err != nil {
 		return false, err
 	}
-	if !tableCanDiscard(table, len(seated), userID, tableKingUserID(seated)) {
+	if !tableCanDiscard(table, len(seated), userID, tableKingUserID(table, seated)) {
 		return false, fmt.Errorf("store: table cannot be discarded")
 	}
 
@@ -968,7 +993,7 @@ func (s *Store) StartTable(ctx context.Context, tableID, userID uuid.UUID) (*Sta
 	if err != nil {
 		return nil, err
 	}
-	king := tableKingUserID(seated)
+	king := tableKingUserID(table, seated)
 	if king == nil || *king != userID {
 		return nil, fmt.Errorf("store: only the king can start the table")
 	}
@@ -1027,13 +1052,17 @@ func (s *Store) StartTable(ctx context.Context, tableID, userID uuid.UUID) (*Sta
 	}, nil
 }
 
-// TableKingUserID returns the king for a table based on current seats.
+// TableKingUserID returns whose table this is.
 func (s *Store) TableKingUserID(ctx context.Context, tableID uuid.UUID) (*uuid.UUID, error) {
+	table, err := s.GetRoomTableByID(ctx, tableID)
+	if err != nil {
+		return nil, err
+	}
 	seated, err := s.ListTableSeats(ctx, tableID)
 	if err != nil {
 		return nil, err
 	}
-	return tableKingUserID(seated), nil
+	return tableKingUserID(table, seated), nil
 }
 
 // TableCanStart reports whether the table meets start requirements.
@@ -1070,5 +1099,5 @@ func (s *Store) TableCanDiscard(ctx context.Context, tableID, userID uuid.UUID) 
 	if err != nil {
 		return false, err
 	}
-	return tableCanDiscard(table, len(seated), userID, tableKingUserID(seated)), nil
+	return tableCanDiscard(table, len(seated), userID, tableKingUserID(table, seated)), nil
 }

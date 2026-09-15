@@ -54,8 +54,14 @@ func holdWindowFor(pushReachable bool) time.Duration {
 // Starting a fresh window when the held player changes is the point: the window
 // belongs to the absence being waited out, not to the match, so a player who
 // wanders off just as another returns is not charged for the time already spent.
+//
+// The database decides whether the window has run out, rather than the answer
+// being worked out here from the returned timestamp. hold_started_at is stamped by
+// the database clock, and that is not the same clock time.Now() reads -- on a VM or
+// a container they drift apart by as much as they like. Subtracting one from the
+// other yields an elapsed time that is wrong by the drift, which around the
+// boundary is the difference between freeing a chair and wedging the queue.
 func advanceHoldTx(ctx context.Context, tx *sql.Tx, formingMatchID, userID uuid.UUID, window time.Duration) (expired bool, err error) {
-	var startedAt time.Time
 	err = tx.QueryRowContext(ctx, `
 		UPDATE forming_matches
 		SET hold_started_at = CASE
@@ -64,12 +70,12 @@ func advanceHoldTx(ctx context.Context, tx *sql.Tx, formingMatchID, userID uuid.
 		    END,
 		    held_user_id = $2
 		WHERE id = $1
-		RETURNING hold_started_at
-	`, formingMatchID, userID).Scan(&startedAt)
+		RETURNING NOW() - hold_started_at >= ($3 * INTERVAL '1 microsecond')
+	`, formingMatchID, userID, window.Microseconds()).Scan(&expired)
 	if err != nil {
 		return false, fmt.Errorf("advance forming hold: %w", err)
 	}
-	return time.Since(startedAt) >= window, nil
+	return expired, nil
 }
 
 // clearHoldTx forgets any running window. Called both when the held player comes

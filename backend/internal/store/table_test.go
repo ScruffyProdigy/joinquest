@@ -425,3 +425,144 @@ func (s *Store) addRoomMemberDirect(ctx context.Context, roomID, userID uuid.UUI
 	`, roomID, userID)
 	return err
 }
+
+// Changing seats is not abdicating. Sitting down again is a delete and a re-insert
+// underneath, so a king who moves becomes the table's newest seat -- and kingship
+// worked out from "who has been sitting longest" quietly moved to somebody else.
+// One player tapping a different seat is enough to reach this.
+func TestChangingSeatsDoesNotHandOverTheCrown(t *testing.T) {
+	st := openTestStore(t)
+	cleaner := st.NewTestCleaner(t)
+	ctx := context.Background()
+
+	host, err := st.CreateUser(ctx, CreateUserParams{Email: "crown-host-" + uuid.NewString() + "@example.com"})
+	if err != nil {
+		t.Fatalf("create host: %v", err)
+	}
+	cleaner.TrackUser(host.ID)
+	guest, err := st.CreateUser(ctx, CreateUserParams{Email: "crown-guest-" + uuid.NewString() + "@example.com"})
+	if err != nil {
+		t.Fatalf("create guest: %v", err)
+	}
+	cleaner.TrackUser(guest.ID)
+
+	game, mode, _ := setupWordHuntMode(t, st, cleaner)
+
+	room, err := st.CreateRoom(ctx, host.ID)
+	if err != nil {
+		t.Fatalf("create room: %v", err)
+	}
+	if err := st.addRoomMemberDirect(ctx, room.ID, guest.ID); err != nil {
+		t.Fatalf("add guest: %v", err)
+	}
+	table, err := st.CreateTable(ctx, room.ID, game.ID, mode.ID, host.ID)
+	if err != nil {
+		t.Fatalf("create table: %v", err)
+	}
+
+	seats, err := st.ListGameModeSeats(ctx, mode.ID)
+	if err != nil {
+		t.Fatalf("list seats: %v", err)
+	}
+	if len(seats) < 3 {
+		t.Fatalf("need at least 3 seats, got %d", len(seats))
+	}
+
+	if _, err := st.SitAtTable(ctx, table.ID, host.ID, seats[0].SeatKey); err != nil {
+		t.Fatalf("host sit: %v", err)
+	}
+	if _, err := st.SitAtTable(ctx, table.ID, guest.ID, seats[1].SeatKey); err != nil {
+		t.Fatalf("guest sit: %v", err)
+	}
+
+	king, err := st.TableKingUserID(ctx, table.ID)
+	if err != nil {
+		t.Fatalf("king before: %v", err)
+	}
+	if king == nil || *king != host.ID {
+		t.Fatalf("king before the move = %v, want the host %s", king, host.ID)
+	}
+
+	// The host changes their mind about which seat to take.
+	if _, err := st.SitAtTable(ctx, table.ID, host.ID, seats[2].SeatKey); err != nil {
+		t.Fatalf("host moves seat: %v", err)
+	}
+
+	king, err = st.TableKingUserID(ctx, table.ID)
+	if err != nil {
+		t.Fatalf("king after: %v", err)
+	}
+	if king == nil || *king != host.ID {
+		t.Fatalf("king after the host changed seats = %v, want the host %s still; moving seats gave the table away", king, host.ID)
+	}
+}
+
+// A king who leaves takes the crown with them, so somebody at the table has to
+// inherit it -- otherwise nobody can start and the table is stuck. The longest
+// seated player gets it.
+func TestTheLongestSeatedPlayerInheritsWhenTheKingLeaves(t *testing.T) {
+	st := openTestStore(t)
+	cleaner := st.NewTestCleaner(t)
+	ctx := context.Background()
+
+	host, err := st.CreateUser(ctx, CreateUserParams{Email: "inherit-host-" + uuid.NewString() + "@example.com"})
+	if err != nil {
+		t.Fatalf("create host: %v", err)
+	}
+	cleaner.TrackUser(host.ID)
+	first, err := st.CreateUser(ctx, CreateUserParams{Email: "inherit-first-" + uuid.NewString() + "@example.com"})
+	if err != nil {
+		t.Fatalf("create first: %v", err)
+	}
+	cleaner.TrackUser(first.ID)
+	second, err := st.CreateUser(ctx, CreateUserParams{Email: "inherit-second-" + uuid.NewString() + "@example.com"})
+	if err != nil {
+		t.Fatalf("create second: %v", err)
+	}
+	cleaner.TrackUser(second.ID)
+
+	game, mode, _ := setupWordHuntMode(t, st, cleaner)
+
+	room, err := st.CreateRoom(ctx, host.ID)
+	if err != nil {
+		t.Fatalf("create room: %v", err)
+	}
+	for _, u := range []uuid.UUID{first.ID, second.ID} {
+		if err := st.addRoomMemberDirect(ctx, room.ID, u); err != nil {
+			t.Fatalf("add member: %v", err)
+		}
+	}
+	table, err := st.CreateTable(ctx, room.ID, game.ID, mode.ID, host.ID)
+	if err != nil {
+		t.Fatalf("create table: %v", err)
+	}
+	seats, err := st.ListGameModeSeats(ctx, mode.ID)
+	if err != nil {
+		t.Fatalf("list seats: %v", err)
+	}
+	if len(seats) < 3 {
+		t.Fatalf("need at least 3 seats, got %d", len(seats))
+	}
+
+	if _, err := st.SitAtTable(ctx, table.ID, host.ID, seats[0].SeatKey); err != nil {
+		t.Fatalf("host sit: %v", err)
+	}
+	if _, err := st.SitAtTable(ctx, table.ID, first.ID, seats[1].SeatKey); err != nil {
+		t.Fatalf("first sit: %v", err)
+	}
+	if _, err := st.SitAtTable(ctx, table.ID, second.ID, seats[2].SeatKey); err != nil {
+		t.Fatalf("second sit: %v", err)
+	}
+
+	if _, err := st.LeaveTable(ctx, table.ID, host.ID); err != nil {
+		t.Fatalf("host leaves: %v", err)
+	}
+
+	king, err := st.TableKingUserID(ctx, table.ID)
+	if err != nil {
+		t.Fatalf("king after the host left: %v", err)
+	}
+	if king == nil || *king != first.ID {
+		t.Fatalf("king after the host left = %v, want the longest-seated player %s", king, first.ID)
+	}
+}

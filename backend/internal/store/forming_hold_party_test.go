@@ -3,7 +3,6 @@ package store
 import (
 	"context"
 	"testing"
-	"time"
 
 	"github.com/google/uuid"
 )
@@ -166,7 +165,7 @@ func TestAGroupWithEveryoneAwayIsHeldAndVacatedAsOneUnit(t *testing.T) {
 	}
 
 	// Out of time. All three chairs go back to the pool together.
-	backdateHold(t, st, ctx, queueID, HoldUnreachableFloor+time.Second)
+	backdateHold(t, st, ctx, queueID, HoldUnreachableFloor+holdTestMargin)
 	mustReconcileForming(t, st, ctx, queueID)
 	for i, friend := range friends {
 		if n := assignedSeatCount(t, st, ctx, friend.ID); n != 0 {
