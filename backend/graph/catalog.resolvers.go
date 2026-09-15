@@ -231,15 +231,18 @@ func (r *gameModeResolver) QueueOptions(ctx context.Context, obj *model.GameMode
 
 // WaitingCount is the resolver for the waitingCount field.
 func (r *modeQueueResolver) WaitingCount(ctx context.Context, obj *model.ModeQueue) (int, error) {
-	st, err := r.requireStore()
-	if err != nil {
-		return 0, err
-	}
 	queueID, err := parseUUID(obj.ID, "queue id")
 	if err != nil {
 		return 0, err
 	}
-	return st.CountWaitingInModeQueue(ctx, queueID)
+	// Through the whole-catalog snapshot rather than a COUNT(*) per queue: a
+	// game-detail page renders a card per mode and polls, so a per-queue read
+	// here is an N+1 on every poll.
+	//
+	// Deliberately not fail-open to zero. An empty queue and an unreadable one
+	// look identical to a player, and "nobody is waiting" is a claim this must
+	// not make on a broken lookup.
+	return r.waitingCounts().For(ctx, queueID)
 }
 
 // EstimatedWaitSeconds is the resolver for the estimatedWaitSeconds field.
@@ -287,6 +290,32 @@ func (r *modeQueueResolver) WaitEstimatesByPath(ctx context.Context, obj *model.
 		return estimates[i].QueuePath < estimates[j].QueuePath
 	})
 	return estimates, nil
+}
+
+// WaitingCountsByPath is the resolver for the waitingCountsByPath field.
+func (r *modeQueueResolver) WaitingCountsByPath(ctx context.Context, obj *model.ModeQueue) ([]*model.QueuePathWaitingCount, error) {
+	queueID, err := parseUUID(obj.ID, "queue id")
+	if err != nil {
+		return nil, err
+	}
+	paths, err := r.waitingCounts().PathsFor(ctx, queueID)
+	if err != nil {
+		return nil, err
+	}
+
+	counts := make([]*model.QueuePathWaitingCount, 0, len(paths))
+	for path, waiting := range paths {
+		counts = append(counts, &model.QueuePathWaitingCount{
+			QueuePath:    path,
+			WaitingCount: waiting,
+		})
+	}
+	// Map iteration order is random, and a card that reshuffles its roles on
+	// every poll looks broken.
+	sort.Slice(counts, func(i, j int) bool {
+		return counts[i].QueuePath < counts[j].QueuePath
+	})
+	return counts, nil
 }
 
 // RegisterGame is the resolver for the registerGame field.
