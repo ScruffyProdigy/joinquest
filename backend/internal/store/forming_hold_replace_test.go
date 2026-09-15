@@ -3,7 +3,6 @@ package store
 import (
 	"context"
 	"testing"
-	"time"
 )
 
 // After an away player's chair is vacated, somebody else from the queue should end
@@ -34,7 +33,7 @@ func TestVacatedChairIsRefilledBySomebodyElse(t *testing.T) {
 		t.Fatalf("PresenceConnected: %v", err)
 	}
 
-	backdateHold(t, st, ctx, DemoDefaultQueueID, HoldUnreachableFloor+time.Second)
+	backdateHold(t, st, ctx, DemoDefaultQueueID, HoldUnreachableFloor+holdTestMargin)
 	mustReconcileForming(t, st, ctx, DemoDefaultQueueID)
 	t.Logf("after expiry: away=%d present=%d replacement=%d",
 		assignedSeatCount(t, st, ctx, away),

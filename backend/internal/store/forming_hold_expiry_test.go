@@ -8,6 +8,14 @@ import (
 	"github.com/google/uuid"
 )
 
+// How far past or short of the window these tests aim.
+//
+// Comfortably wider than a second, because the margin has to survive the real time
+// the test itself spends between backdating the hold and reconciling it. A margin
+// that thin turns an ordinary slow run -- a loaded machine, the suite running
+// single-threaded -- into a failure that reads like a logic bug.
+const holdTestMargin = 5 * time.Second
+
 // backdateHold ages the running hold so expiry can be tested without sleeping.
 func backdateHold(t *testing.T, st *Store, ctx context.Context, queueID uuid.UUID, by time.Duration) {
 	t.Helper()
@@ -45,7 +53,7 @@ func TestHeldChairIsVacatedOnceTheWindowExpires(t *testing.T) {
 		t.Fatal("fixture fired instead of holding")
 	}
 
-	backdateHold(t, st, ctx, DemoDefaultQueueID, HoldUnreachableFloor+time.Second)
+	backdateHold(t, st, ctx, DemoDefaultQueueID, HoldUnreachableFloor+holdTestMargin)
 	mustReconcileForming(t, st, ctx, DemoDefaultQueueID)
 
 	if n := assignedSeatCount(t, st, ctx, away); n != 0 {
@@ -56,6 +64,65 @@ func TestHeldChairIsVacatedOnceTheWindowExpires(t *testing.T) {
 	// simply still in line.
 	if n := waitingRowCount(t, st, ctx, away); n != 1 {
 		t.Fatalf("expired hold removed the player from the queue (%d waiting rows), want them still queued", n)
+	}
+}
+
+// The window is stamped by the database and has to be measured against the same
+// clock. Measuring it with the Go process clock instead subtracts two clocks that
+// drift apart, so a chair just past the window reads as unexpired and the queue
+// wedges.
+//
+// This calls advanceHoldTx straight after stamping the window, so almost no real
+// time passes in between. That leaves nothing for a clock disagreement to hide
+// behind: the answer has to come out of a single clock to be right.
+func TestHoldExpiryIsMeasuredOnTheClockThatStampedIt(t *testing.T) {
+	st := openTestStore(t)
+	cleaner := st.NewTestCleaner(t)
+	ctx := context.Background()
+	resetDemoQueue(t, st, ctx)
+
+	away := newPresenceUser(t, st, cleaner, ctx)
+	joinAndPlace(t, st, ctx, away)
+	goAway(t, st, ctx, away)
+
+	present := newPresenceUser(t, st, cleaner, ctx)
+	if _, err := st.JoinModeQueue(ctx, DemoDefaultQueueID, present, "", nil); err != nil {
+		t.Fatalf("join second player: %v", err)
+	}
+	if rec := mustReconcileForming(t, st, ctx, DemoDefaultQueueID); rec.Fired {
+		t.Fatal("fixture fired instead of holding")
+	}
+
+	var matchID uuid.UUID
+	var heldUserID uuid.UUID
+	if err := st.db.QueryRowContext(ctx, `
+		SELECT id, held_user_id
+		FROM forming_matches
+		WHERE mode_queue_id = $1 AND status = $2 AND hold_started_at IS NOT NULL
+	`, DemoDefaultQueueID, FormingMatchStatusFilling).Scan(&matchID, &heldUserID); err != nil {
+		t.Fatalf("find the running hold: %v", err)
+	}
+
+	// Stamp the window as having started exactly one full window ago, by the
+	// database's own clock. It is expired by definition, and stays expired however
+	// long the next statement takes.
+	if _, err := st.db.ExecContext(ctx, `
+		UPDATE forming_matches SET hold_started_at = NOW() - $2::interval WHERE id = $1
+	`, matchID, pgInterval(HoldUnreachableFloor)); err != nil {
+		t.Fatalf("age the hold to the window: %v", err)
+	}
+
+	tx, err := st.db.BeginTx(ctx, nil)
+	if err != nil {
+		t.Fatalf("begin: %v", err)
+	}
+	defer tx.Rollback()
+	expired, err := advanceHoldTx(ctx, tx, matchID, heldUserID, HoldUnreachableFloor)
+	if err != nil {
+		t.Fatalf("advance hold: %v", err)
+	}
+	if !expired {
+		t.Fatal("a hold stamped a full window ago reported itself unexpired; the window is being measured against a clock other than the one that stamped it")
 	}
 }
 
@@ -121,7 +188,7 @@ func TestHoldWindowRestartsWhenADifferentPlayerGoesAway(t *testing.T) {
 	mustReconcileForming(t, st, ctx, DemoDefaultQueueID)
 
 	// Age the first player's hold to the brink, then swap who is absent.
-	backdateHold(t, st, ctx, DemoDefaultQueueID, HoldUnreachableFloor-time.Second)
+	backdateHold(t, st, ctx, DemoDefaultQueueID, HoldUnreachableFloor-holdTestMargin)
 	comeBack(t, st, ctx, first)
 	goAway(t, st, ctx, second)
 
