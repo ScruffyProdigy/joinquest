@@ -1,0 +1,31 @@
+name: Migration Versions
+
+# Deliberately has no `paths:` filter, unlike every other workflow here.
+#
+# This is the one check `main` requires before a merge, and a required check
+# that never runs leaves a PR permanently un-mergeable — a docs-only or
+# frontend-only PR would stall waiting for a run a path filter prevented. It
+# also has to be cheap enough to justify running on every PR: a checkout and
+# one bash script, no Go toolchain, no services.
+#
+# It lives outside `backend-tests.yml` so the required check carries only the
+# duplicate-version signal, and does not go red on gofmt or vet churn.
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main, develop ]
+
+jobs:
+  migration-versions:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      # Two agents branching from main at once both pick the same next migration
+      # number, and neither PR's CI can see the other's. GitHub re-runs this
+      # against the merged tree when the base moves (the ruleset on `main` is
+      # strict), which is the only place the collision can be caught before it
+      # is already in.
+      - name: Check migration versions
+        run: ./scripts/check-migration-versions.sh
