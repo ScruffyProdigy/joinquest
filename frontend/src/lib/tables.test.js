@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest'
 import {
+  TABLE_SEAT_RECONNECT_ATTEMPTS,
   enrichTableSeats,
   firstOpenSeatKey,
   formatGroupSeatCaption,
@@ -12,6 +13,7 @@ import {
   seatLabelInSection,
   seatSectionTitle,
   sectionTitleForSeat,
+  tableSeatReconnectWaitMs,
   tableShouldLeaveRoomList,
 } from './tables'
 
@@ -268,5 +270,34 @@ describe('mySeatDisplayName', () => {
       'u1',
     )
     expect(name).toBe('Guesser')
+  })
+})
+
+// The other half of store.DefaultTableSeatDisconnectGrace, which is pinned by its own Go
+// test. The table holds a seat for exactly as long as this client keeps asking for it, so
+// the budget these two constants produce has to land just under the seat's 30s (JQ-283).
+describe('table seat reconnect budget', () => {
+  const budgetMs = () =>
+    Array.from({ length: TABLE_SEAT_RECONNECT_ATTEMPTS }, (_, retries) =>
+      tableSeatReconnectWaitMs(retries),
+    ).reduce((total, wait) => total + wait, 0)
+
+  const TABLE_SEAT_DISCONNECT_GRACE_MS = 30 * 1000
+
+  it('keeps asking for just under the seat 30 second grace', () => {
+    expect(budgetMs()).toBe(27_500)
+    expect(budgetMs()).toBeLessThan(TABLE_SEAT_DISCONNECT_GRACE_MS)
+  })
+
+  // The bug this replaced: 10 attempts is 22.5s, so for 7.5s the seat was held for a
+  // client that had stopped asking, and a player back at 25s found it gone while their
+  // own client still believed it was reconnecting.
+  it('leaves no window where the seat is held for a client that has given up', () => {
+    expect(TABLE_SEAT_DISCONNECT_GRACE_MS - budgetMs()).toBeLessThan(5_000)
+  })
+
+  it('waits nothing before the first retry, because graphql-ws counts from zero', () => {
+    expect(tableSeatReconnectWaitMs(0)).toBe(0)
+    expect(tableSeatReconnectWaitMs(10)).toBe(5000)
   })
 })

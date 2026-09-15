@@ -32,6 +32,25 @@ import (
 // anyway, and the page is not running to show any sheet. Past 90s the server
 // therefore overrides both of those client-side judgements silently.
 //
+// This number and the queue subscription's retry budget
+// (QUEUE_RECONNECT_ATTEMPTS, frontend/src/lib/queue.js) are one decision with two
+// homes, and moving either alone is a bug — the same rule DefaultRoomDisconnectGrace
+// states: the server holds a waiting player's place for exactly as long as their client
+// is still asking for it. 23 attempts on min(500ms*n, 5s) is 87.5s, landing just under
+// this window. TestClientReconnectBudgetsMatchTheirGraceWindows derives that from the
+// frontend source rather than restating it, so raising one side alone fails.
+//
+// It was 10 attempts (22.5s) against this same 90s until JQ-283, which left ~67s in
+// which this window held a rivalrous place for a browser that had already given up.
+//
+// Note which direction that was fixed in, because the arithmetic invites the wrong one.
+// Do NOT re-derive this window down to whatever the retry budget happens to be: the
+// bfcache case below has no retry budget at all — a frozen page runs no JavaScript, so
+// it makes zero attempts regardless of that constant, and reconnects immediately on
+// unfreeze. The retry budget and this window agree on the flaky-network case; only this
+// window covers the frozen one. Cutting it to match the client would silently delete
+// the protection the paragraphs above describe.
+//
 // That is a deliberate trade, not an oversight (decided 2026-09-10): a player absent
 // past this window has arguably left however it started, and holding the slot longer
 // costs every other player in the queue. But it means raising this number protects a

@@ -150,13 +150,45 @@ function wsClientLifecycleHandlers() {
   }
 }
 
+/**
+ * How long this client keeps asking to come back before it gives up, expressed as a
+ * retry count because that is what graphql-ws takes.
+ *
+ * This number and `store.DefaultQueueDisconnectGrace`
+ * (backend/internal/store/queue_disconnect.go) are one decision with two homes, and
+ * moving either alone is a bug: the server holds a waiting player's place for exactly
+ * as long as their client is still asking for it. The same rule `rooms.js` states for
+ * rooms, and it binds harder here, because a queue place is rivalrous — every second
+ * one is held for a browser that stopped trying, strangers behind it wait for nothing.
+ *
+ * graphql-ws passes `retryWait` a 0-based count, so the budget is
+ * sum(min(500 * i, 5000)) for i in 0..22 — 22.5s across the ramp, then 13 waits at the
+ * 5s ceiling, for 87.5s. That lands just under the server's 90s, which is the right
+ * side to be on: the client is still asking at the moment the server gives up.
+ *
+ * Was 10 attempts (22.5s) against the same 90s window, which left ~67s in which the
+ * server held a rivalrous place for a browser that had already given up (JQ-283).
+ *
+ * What this budget does NOT cover, and why the server window is not derived back down
+ * from it: a bfcache-frozen page runs no JavaScript, so it makes zero retries no matter
+ * what this number says, and reconnects immediately on unfreeze. The 90s was sized
+ * against exactly that freeze rather than against a network blip (see the constant's
+ * own comment). So these two numbers agree on the flaky-network case and only the
+ * server window covers the frozen one. Cutting the server window to whatever this
+ * budget happens to be would silently drop that protection.
+ */
+export const QUEUE_RECONNECT_ATTEMPTS = 23
+
+/** The backoff curve itself, exported so the budget above can be verified rather than asserted. */
+export const queueReconnectWaitMs = (retries) => Math.min(500 * retries, 5000)
+
 function getWsClient() {
   if (!wsClient) {
     wsClient = createClient({
       url: getGraphQLWsUrl(),
       connectionParams: getSubscriptionConnectionParams(),
-      retryAttempts: 10,
-      retryWait: async (retries) => Math.min(500 * retries, 5000),
+      retryAttempts: QUEUE_RECONNECT_ATTEMPTS,
+      retryWait: async (retries) => queueReconnectWaitMs(retries),
       shouldRetry: () => true,
       lazy: false,
       on: wsClientLifecycleHandlers(),
