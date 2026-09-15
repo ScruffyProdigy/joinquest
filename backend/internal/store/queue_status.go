@@ -18,7 +18,7 @@ func (s *Store) GetUserModeQueueView(ctx context.Context, modeQueueID, userID uu
 		return nil, err
 	}
 
-	if err := s.expireStaleMatchedModeQueue(ctx, modeQueueID, userID); err != nil {
+	if err := expireStaleMatchedModeQueue(ctx, s.db, modeQueueID, userID); err != nil {
 		return nil, err
 	}
 

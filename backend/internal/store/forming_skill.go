@@ -3,9 +3,11 @@ package store
 import (
 	"context"
 	"database/sql"
+	"fmt"
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/lib/pq"
 	"github.com/scruffyprodigy/joinquest/internal/dispersion"
 	"github.com/scruffyprodigy/joinquest/internal/queuewait"
 	"github.com/scruffyprodigy/joinquest/internal/rating"
@@ -80,16 +82,21 @@ func (s *Store) skillFireDecisionTx(
 		return dispersion.Decision{}, err
 	}
 
+	oldest, err := oldestWaitTx(ctx, tx, waiting)
+	if err != nil {
+		return dispersion.Decision{}, err
+	}
+
 	return dispersion.Decide(dispersion.Input{
 		SkillMatchingEnabled: true,
 		Lambda:               lambda,
 		Seats:                len(assignments),
-		OldestWait:           oldestWait(waiting, now),
+		OldestWait:           oldest,
 		Spread:               dispersion.Of(mus),
 	}), nil
 }
 
-// oldestWait is how long the longest-waiting player on this queue has been
+// oldestWaitTx is how long the longest-waiting player on this queue has been
 // waiting.
 //
 // The oldest rather than the newest, and the reason is perceptual rather than
@@ -103,14 +110,26 @@ func (s *Store) skillFireDecisionTx(
 // It is also what makes the band widen without a second schedule: as this grows
 // the budget shrinks, and at expiry the dispersion constraint is dropped
 // entirely.
-func oldestWait(waiting []QueueEntry, now time.Time) time.Duration {
-	longest := time.Duration(0)
+//
+// The age is measured in SQL so that both ends of the subtraction come from the
+// database's clock -- the one that stamped joined_at. Doing it in this process
+// would mix in the app server's clock, and the difference between the two machines
+// would be added to every wait, which is what sets the deferral budget.
+func oldestWaitTx(ctx context.Context, tx *sql.Tx, waiting []QueueEntry) (time.Duration, error) {
+	ids := make([]uuid.UUID, 0, len(waiting))
 	for _, entry := range waiting {
-		if age := now.Sub(entry.JoinedAt); age > longest {
-			longest = age
-		}
+		ids = append(ids, entry.ID)
 	}
-	return longest
+
+	var seconds float64
+	if err := tx.QueryRowContext(ctx, `
+		SELECT COALESCE(MAX(EXTRACT(EPOCH FROM NOW() - joined_at)), 0)::float8
+		FROM game_queues
+		WHERE id = ANY($1::uuid[])
+	`, pq.Array(queueIDStrings(ids))).Scan(&seconds); err != nil {
+		return 0, fmt.Errorf("oldest queue wait: %w", err)
+	}
+	return time.Duration(seconds * float64(time.Second)), nil
 }
 
 // scarcestArrivalRate is lambda for the slowest line in this queue.

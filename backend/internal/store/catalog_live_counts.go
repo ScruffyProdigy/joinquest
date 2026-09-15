@@ -36,9 +36,17 @@ type GameLiveCounts struct {
 // This is one grouped aggregate for the whole catalog rather than a query per card, so the
 // cost does not grow with the number of games on the page.
 func (s *Store) CountLivePlayersByGame(ctx context.Context) (map[uuid.UUID]GameLiveCounts, error) {
-	cutoff := time.Now().Add(-stalePlayingMaxAge())
+	return countLivePlayersByGame(ctx, s.db)
+}
 
-	rows, err := s.db.QueryContext(ctx, `
+// countLivePlayersByGame runs the aggregate against either the pool or a caller's
+// transaction.
+//
+// The cutoff is built in SQL rather than here so that it and started_at are read off
+// the same clock. Computing it in this process would mix in the app server's clock,
+// and the difference between the two machines would be added to the window.
+func countLivePlayersByGame(ctx context.Context, q sqlQueryRowContext) (map[uuid.UUID]GameLiveCounts, error) {
+	rows, err := q.QueryContext(ctx, `
 		SELECT game_id, SUM(playing)::int, SUM(queued)::int
 		FROM (
 		    SELECT s.game_id, COUNT(*) AS playing, 0 AS queued
@@ -46,7 +54,7 @@ func (s *Store) CountLivePlayersByGame(ctx context.Context) (map[uuid.UUID]GameL
 		    INNER JOIN game_sessions s ON s.id = sp.session_id
 		    WHERE s.status = 'active'
 		      AND s.game_id IS NOT NULL
-		      AND s.started_at >= $1
+		      AND NOW() - s.started_at < make_interval(secs => $1)
 		      AND sp.left_at IS NULL
 		      AND sp.finished_at IS NULL
 		    GROUP BY s.game_id
@@ -58,7 +66,7 @@ func (s *Store) CountLivePlayersByGame(ctx context.Context) (map[uuid.UUID]GameL
 		    GROUP BY q.game_id
 		) live
 		GROUP BY game_id
-	`, cutoff)
+	`, stalePlayingMaxAge().Seconds())
 	if err != nil {
 		return nil, err
 	}

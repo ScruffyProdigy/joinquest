@@ -21,16 +21,20 @@ func staleMatchMaxAge() time.Duration {
 	return defaultStaleMatchMinutes * time.Minute
 }
 
-func (s *Store) expireStaleMatchedModeQueue(ctx context.Context, modeQueueID, userID uuid.UUID) error {
-	cutoff := time.Now().Add(-staleMatchMaxAge())
-	_, err := s.db.ExecContext(ctx, `
+// expireStaleMatchedModeQueue cancels a match the player never acted on.
+//
+// The cutoff is built in SQL rather than here so that it and matched_at are read
+// off the same clock. A cutoff computed in this process is the app server's clock,
+// and the difference between the two machines would be added to the window.
+func expireStaleMatchedModeQueue(ctx context.Context, exec sqlExecContext, modeQueueID, userID uuid.UUID) error {
+	_, err := exec.ExecContext(ctx, `
 		UPDATE game_queues
 		SET status = 'cancelled'
 		WHERE mode_queue_id = $1
 		  AND user_id = $2
 		  AND status = 'matched'
-		  AND (matched_at IS NULL OR matched_at < $3)
-	`, modeQueueID, userID, cutoff)
+		  AND (matched_at IS NULL OR NOW() - matched_at >= make_interval(secs => $3))
+	`, modeQueueID, userID, staleMatchMaxAge().Seconds())
 	return err
 }
 
