@@ -210,7 +210,18 @@ export default function GroupPage({ intent }) {
         </p>
       ) : null}
 
-      <GroupInviteCard room={room} game={table.game} />
+      {/*
+        Hosting the room is what "created it" means here: CreatePrivateTable opens a room
+        with the asking player as its host, and JoinRoom only ever adds a member. So the
+        creator lands on the QR they are about to hold up, and everyone who followed it
+        lands on the seats (JQ-305). Read from the room rather than from the navigation
+        that got here, so a creator who reloads mid-invite keeps their QR.
+      */}
+      <GroupInviteCard
+        room={room}
+        game={table.game}
+        defaultOpen={Boolean(user?.id) && room?.host?.id === user.id}
+      />
 
       <GroupSeatList
         table={table}
