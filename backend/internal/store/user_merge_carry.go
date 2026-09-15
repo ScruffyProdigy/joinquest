@@ -146,6 +146,50 @@ func carrySourceHistoryTx(ctx context.Context, tx *sql.Tx, sourceID, targetID uu
 		return err
 	}
 
+	// JQ-143's first-match rollup, which outlives the raw events it was computed
+	// from. PRIMARY KEY (user_id, game_id), so unlike the events themselves this can
+	// collide: both accounts may have a summary row for the same game.
+	//
+	// On a collision the EARLIER first match wins, which is the opposite of how
+	// game_session_participants above resolves one. That is deliberate. This column
+	// records when a person first met a game, and the guest row is by definition the
+	// earlier encounter -- keeping the target's later row would move a player's first
+	// match forward in time and quietly understate how long they had been bouncing off
+	// that game before signing up. The whole point of carrying the guest's history is
+	// that it was the same person all along.
+	if _, err := tx.ExecContext(ctx, `
+		UPDATE player_first_match_summary AS target
+		SET first_session_id       = source.first_session_id,
+		    first_started_at       = source.first_started_at,
+		    first_outcome_observed = source.first_outcome_observed,
+		    first_finish_reason    = source.first_finish_reason,
+		    second_started_at      = LEAST(target.second_started_at, source.second_started_at)
+		FROM player_first_match_summary AS source
+		WHERE source.user_id = $1
+		  AND target.user_id = $2
+		  AND target.game_id = source.game_id
+		  AND source.first_started_at < target.first_started_at
+	`, sourceID, targetID); err != nil {
+		return err
+	}
+	if _, err := tx.ExecContext(ctx, `
+		UPDATE player_first_match_summary
+		SET user_id = $2
+		WHERE user_id = $1
+		  AND NOT EXISTS (
+			SELECT 1 FROM player_first_match_summary existing
+			WHERE existing.user_id = $2
+			  AND existing.game_id = player_first_match_summary.game_id
+		  )
+	`, sourceID, targetID); err != nil {
+		return err
+	}
+	if _, err := tx.ExecContext(ctx, `
+		DELETE FROM player_first_match_summary WHERE user_id = $1
+	`, sourceID); err != nil {
+		return err
+	}
+
 	// UNIQUE(party_id, user_id).
 	if _, err := tx.ExecContext(ctx, `
 		UPDATE party_members

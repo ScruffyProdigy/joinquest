@@ -24,8 +24,8 @@
 --     below, rather than a column that would quietly be a guess.
 --   * A completion or a finish reason exists only when the game reported one. A
 --     match with no report is an unknown outcome, not an abandoned one and not a
---     completed one -- `match_starts_outcome_unknown` counts exactly those, and it
---     is a real answer, not a gap in the data.
+--     completed one -- `matches_outcome_unknown` counts exactly those, and it is a
+--     real answer, not a gap in the data.
 --
 -- The temptation with a summary like this is to infer the missing half so every
 -- column has a number in it. That would make the platform's blind spots invisible
@@ -89,23 +89,38 @@ WHERE first_start.seq = 1;
 -- Per game: the funnel a developer wants after a playtest, with the platform's blind
 -- spots left visible rather than filled in.
 CREATE OR REPLACE VIEW game_playtest_summary AS
+-- Every column below says its own unit in its name, because the two units here are
+-- easy to confuse and produce a plausible wrong answer when they are. A `match_started`
+-- event is emitted once per PLAYER, so counting those rows gives player-matches, while
+-- a completion is emitted once per SESSION. Dividing one by the other looks like a
+-- completion rate and is really the reciprocal of the party size.
 WITH per_game AS (
     SELECT
         e.game_id,
-        COUNT(*) FILTER (WHERE e.event_type = 'queue_joined')        AS queue_joins,
-        COUNT(*) FILTER (WHERE e.event_type = 'queue_abandoned')     AS queue_abandons,
-        COUNT(*) FILTER (WHERE e.event_type = 'match_started')       AS match_starts,
-        COUNT(*) FILTER (WHERE e.event_type = 'match_provisioned')   AS matches_provisioned,
-        COUNT(*) FILTER (WHERE e.event_type = 'launch_url_requested') AS launch_url_requests,
-        COUNT(*) FILTER (WHERE e.event_type = 'match_finished')      AS player_finishes_reported,
+
+        -- Player-scale: one per player action.
+        COUNT(*) FILTER (WHERE e.event_type = 'queue_joined')    AS queue_joins,
+        COUNT(*) FILTER (WHERE e.event_type = 'queue_abandoned') AS queue_abandons,
+        COUNT(*) FILTER (WHERE e.event_type = 'match_started')   AS player_match_starts,
+        COUNT(*) FILTER (WHERE e.event_type = 'match_finished')  AS player_finishes_reported,
         COUNT(*) FILTER (
             WHERE e.event_type = 'match_finished' AND e.payload->>'reason' = 'FORFEIT'
-        ) AS first_class_forfeits,
+        ) AS finishes_forfeit,
         COUNT(*) FILTER (
             WHERE e.event_type = 'match_finished' AND e.payload->>'reason' = 'DISCONNECT'
-        ) AS first_class_disconnects,
-        COUNT(*) FILTER (WHERE e.event_type = 'match_completed')     AS matches_completed,
-        COUNT(DISTINCT e.user_id) FILTER (WHERE e.event_type = 'match_started') AS distinct_players,
+        ) AS finishes_disconnect,
+
+        -- Match-scale: one per session, however many players were in it.
+        COUNT(DISTINCT e.session_id) FILTER (WHERE e.event_type = 'match_started')     AS matches_started,
+        COUNT(DISTINCT e.session_id) FILTER (WHERE e.event_type = 'match_provisioned') AS matches_provisioned,
+        COUNT(DISTINCT e.session_id) FILTER (WHERE e.event_type = 'match_completed')   AS matches_completed,
+
+        -- Distinct players. Counted rather than summed because a player who asks for
+        -- a launch URL twice -- a refresh, a second device -- has still only got as
+        -- far as asking once, and the funnel step is "how many players reached here".
+        COUNT(DISTINCT e.user_id) FILTER (WHERE e.event_type = 'launch_url_requested') AS players_requesting_launch,
+        COUNT(DISTINCT e.user_id) FILTER (WHERE e.event_type = 'match_started')         AS distinct_players,
+
         MIN(e.occurred_at) AS first_event_at,
         MAX(e.occurred_at) AS last_event_at
     FROM player_activity_events e
@@ -119,7 +134,7 @@ WITH per_game AS (
 unknown_outcomes AS (
     SELECT
         s.game_id,
-        COUNT(*) AS match_starts_outcome_unknown
+        COUNT(*) AS matches_outcome_unknown
     FROM (
         SELECT DISTINCT game_id, session_id
         FROM player_activity_events
@@ -150,17 +165,18 @@ SELECT
     g.game_id,
     g.queue_joins,
     g.queue_abandons,
-    g.match_starts,
+    g.player_match_starts,
+    g.matches_started,
     g.matches_provisioned,
 
     -- Upper bound on players reaching the game, never a confirmation of entry.
-    g.launch_url_requests,
+    g.players_requesting_launch,
 
     g.player_finishes_reported,
-    g.first_class_forfeits,
-    g.first_class_disconnects,
+    g.finishes_forfeit,
+    g.finishes_disconnect,
     g.matches_completed,
-    COALESCE(u.match_starts_outcome_unknown, 0) AS match_starts_outcome_unknown,
+    COALESCE(u.matches_outcome_unknown, 0) AS matches_outcome_unknown,
     g.distinct_players,
     COALESCE(r.players_with_second_match, 0) AS players_with_second_match,
     g.first_event_at,

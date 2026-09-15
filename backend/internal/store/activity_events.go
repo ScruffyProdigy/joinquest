@@ -117,13 +117,16 @@ func (s *Store) recordMatchStarted(gameID uuid.UUID, sessionID uuid.UUID, starte
 	}
 }
 
-// recordMatchProvisioned notes the game reporting itself ready for players. Paired
-// with the launch-URL request below, it is what "time from provision to the player
-// actually launching" is measured across.
-func (s *Store) recordMatchProvisioned(sessionID uuid.UUID) {
+// recordMatchProvisioned notes the game handing back launch URLs for a session.
+//
+// Paired with the launch-URL request below, it is what "time from match provision to
+// the player actually launching" is measured across -- the second half of which the
+// platform can only observe as a request, never as an arrival.
+func (s *Store) recordMatchProvisioned(sessionID uuid.UUID, seatCount int) {
 	s.recordActivity(activity.Event{
 		Type:      activity.EventMatchProvisioned,
 		SessionID: &sessionID,
+		Payload:   map[string]any{"seat_count": seatCount},
 	})
 }
 

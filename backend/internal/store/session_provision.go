@@ -147,8 +147,5 @@ func (s *Store) SessionProvisionComplete(ctx context.Context, sessionID uuid.UUI
 	if err != nil {
 		return false, err
 	}
-	if seated > 0 {
-		s.recordMatchProvisioned(sessionID)
-	}
 	return seated > 0, nil
 }

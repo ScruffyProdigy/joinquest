@@ -14,6 +14,7 @@ import (
 
 	"github.com/scruffyprodigy/joinquest/database"
 	"github.com/scruffyprodigy/joinquest/graph"
+	"github.com/scruffyprodigy/joinquest/internal/activity"
 	"github.com/scruffyprodigy/joinquest/internal/auth"
 	"github.com/scruffyprodigy/joinquest/internal/avatars"
 	"github.com/scruffyprodigy/joinquest/internal/coldstart"
@@ -35,6 +36,18 @@ func main() {
 	if err := dataStore.Ping(context.Background()); err != nil {
 		log.Fatalf("Database connection failed: %v", err)
 	}
+
+	// JQ-143's player activity stream. Wired only here, in the API process: a sweep or
+	// a one-off command has no business emitting queue-join events just because it
+	// constructs a Store.
+	//
+	// Nothing about this can fail startup, and that is deliberate -- recording is
+	// instrumentation, and a platform that refuses to serve players because its
+	// analytics writer is unhappy has its priorities backwards. NewWriter does no I/O,
+	// and every write after it degrades to dropping events.
+	activityWriter := activity.NewWriter(database.GetDB())
+	defer activityWriter.Close()
+	dataStore.WithActivity(activityWriter)
 
 	signer, err := auth.LoadSignerFromEnv()
 	if err != nil {

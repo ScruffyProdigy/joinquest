@@ -250,7 +250,7 @@ func TestGamePlaytestSummaryCountsUnreportedMatchesAsUnknown(t *testing.T) {
 		unknown int
 	)
 	err = st.db.QueryRowContext(ctx, `
-		SELECT match_starts, match_starts_outcome_unknown
+		SELECT matches_started, matches_outcome_unknown
 		FROM game_playtest_summary
 		WHERE game_id = $1
 	`, game.ID).Scan(&starts, &unknown)
@@ -259,10 +259,10 @@ func TestGamePlaytestSummaryCountsUnreportedMatchesAsUnknown(t *testing.T) {
 	}
 
 	if starts != 1 {
-		t.Errorf("match_starts = %d, want 1", starts)
+		t.Errorf("matches_started = %d, want 1", starts)
 	}
 	if unknown != 1 {
-		t.Errorf("match_starts_outcome_unknown = %d, want 1 -- an unreported match must stay unknown", unknown)
+		t.Errorf("matches_outcome_unknown = %d, want 1 -- an unreported match must stay unknown", unknown)
 	}
 }
 
