@@ -169,3 +169,52 @@ func TestASecondAbsenceDoesNotEvictThePlayerAlreadyBeingHeldFor(t *testing.T) {
 		t.Fatalf("the newly absent player kept their chair (%d seats), so two chairs are held at once", n)
 	}
 }
+
+// ageHoldToExactly rewinds the running hold so the database's own clock reads it as
+// exactly window old. Whoever is held stays held, so the next advance continues the
+// window rather than restarting it.
+func ageHoldToExactly(t *testing.T, st *Store, ctx context.Context, queueID uuid.UUID, window time.Duration) {
+	t.Helper()
+	res, err := st.db.ExecContext(ctx, `
+		UPDATE forming_matches
+		SET hold_started_at = NOW() - $2::interval
+		WHERE mode_queue_id = $1 AND status = $3 AND hold_started_at IS NOT NULL
+	`, queueID, pgInterval(window), FormingMatchStatusFilling)
+	if err != nil {
+		t.Fatalf("age hold: %v", err)
+	}
+	if n, _ := res.RowsAffected(); n != 1 {
+		t.Fatalf("age hold touched %d rows, want 1 — no hold was running, so this test proves nothing", n)
+	}
+}
+
+// The window belongs to the clock that stamped it: the database's. Measure it on the
+// app's clock and a containerised Postgres running seconds ahead reads every hold as
+// younger than it is, so the chair is never given up and the mode queue wedges.
+//
+// No margin on the window, deliberately -- a margin is just room for drift to hide in.
+func TestHoldExpiryIsMeasuredOnTheDatabaseClock(t *testing.T) {
+	st := openTestStore(t)
+	cleaner := st.NewTestCleaner(t)
+	ctx := context.Background()
+	resetDemoQueue(t, st, ctx)
+
+	away := newPresenceUser(t, st, cleaner, ctx)
+	joinAndPlace(t, st, ctx, away)
+	goAway(t, st, ctx, away)
+
+	present := newPresenceUser(t, st, cleaner, ctx)
+	if _, err := st.JoinModeQueue(ctx, DemoDefaultQueueID, present, "", nil); err != nil {
+		t.Fatalf("join second player: %v", err)
+	}
+	if rec := mustReconcileForming(t, st, ctx, DemoDefaultQueueID); rec.Fired {
+		t.Fatal("fixture fired instead of holding")
+	}
+
+	ageHoldToExactly(t, st, ctx, DemoDefaultQueueID, HoldUnreachableFloor)
+	mustReconcileForming(t, st, ctx, DemoDefaultQueueID)
+
+	if n := assignedSeatCount(t, st, ctx, away); n != 0 {
+		t.Fatalf("a hold the database reads as a full window old kept the chair (%d seats); expiry is being decided on the app clock", n)
+	}
+}

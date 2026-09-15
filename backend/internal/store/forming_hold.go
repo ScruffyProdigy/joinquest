@@ -54,8 +54,14 @@ func holdWindowFor(pushReachable bool) time.Duration {
 // Starting a fresh window when the held player changes is the point: the window
 // belongs to the absence being waited out, not to the match, so a player who
 // wanders off just as another returns is not charged for the time already spent.
+//
+// The age is measured in SQL because the database clock wrote the stamp, and only
+// that clock can be compared against it. Measured in Go it is wrong by however far
+// the two have drifted -- and a containerised Postgres runs seconds ahead of its
+// host, which reads every hold as younger than it is, so the window never runs out.
+// NOW() is the transaction's timestamp, so a hold that starts here is exactly zero
+// old rather than racing the statement that wrote it.
 func advanceHoldTx(ctx context.Context, tx *sql.Tx, formingMatchID, userID uuid.UUID, window time.Duration) (expired bool, err error) {
-	var startedAt time.Time
 	err = tx.QueryRowContext(ctx, `
 		UPDATE forming_matches
 		SET hold_started_at = CASE
@@ -64,12 +70,12 @@ func advanceHoldTx(ctx context.Context, tx *sql.Tx, formingMatchID, userID uuid.
 		    END,
 		    held_user_id = $2
 		WHERE id = $1
-		RETURNING hold_started_at
-	`, formingMatchID, userID).Scan(&startedAt)
+		RETURNING hold_started_at <= NOW() - $3::interval
+	`, formingMatchID, userID, pgInterval(window)).Scan(&expired)
 	if err != nil {
 		return false, fmt.Errorf("advance forming hold: %w", err)
 	}
-	return time.Since(startedAt) >= window, nil
+	return expired, nil
 }
 
 // clearHoldTx forgets any running window. Called both when the held player comes
