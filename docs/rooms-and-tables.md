@@ -134,6 +134,14 @@ that is deliberately lazy — see *Claiming a seat* below.
   socket always reads as present here, so a player who left a tab open and walked away is
   still *here* — that needs an interaction signal rather than a connection one (JQ-179),
   and is where `UserIsAway` would join this display.
+- **What carries the reading (JQ-281):** because `disconnected` is derived on read, it only
+  reaches a client when something re-sends the room, and time passing has no event of its
+  own. A fourth presence expiry at `DefaultRoomRosterPresenceGrace` exists solely to publish
+  `roomUpdated` at that boundary, and the tracker's reconnect hook publishes the same event
+  when the player's first socket comes back — so a quiet room (nobody joining, nobody
+  leaving) dims and undims on its own. It is deliberately not hung off the seat's 30s timer:
+  the two windows agree today but are free to diverge, and a seat timer would miss every
+  member who was not seated.
 - **Bottom control:** `Claim a seat to join` when unseated; `Start game` for the king once
   `canStart`; otherwise `Waiting for <name> to start`. The king gate is production's, but the
   screen never uses the word "king" — it names the person.

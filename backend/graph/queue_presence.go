@@ -16,6 +16,13 @@ import (
 // DisconnectOutcome.
 type ExpiryFunc func(ctx context.Context, userID uuid.UUID, stamp time.Time)
 
+// ReconnectFunc runs when a player's FIRST socket opens after their last one closed.
+//
+// It takes no stamp because there is nothing left to guard against: the stamp an expiry
+// re-checks is the one this edge just cleared. Where an ExpiryFunc acts on a window that
+// ran out, this acts on one that did not.
+type ReconnectFunc func(ctx context.Context, userID uuid.UUID)
+
 // presenceBackend is the slice of the store the tracker needs, named separately so
 // the tracker's timer and refcount behaviour can be tested without a database.
 type presenceBackend interface {
@@ -56,9 +63,10 @@ func (b storePresenceBackend) ReleaseFormingSlot(ctx context.Context, userID uui
 // user_presence, so a restart is recoverable (see store.ResetPresenceOnBoot); only
 // the pending timers are lost, and the queue sweep is the backstop for those.
 type PresenceTracker struct {
-	backend  presenceBackend
-	broker   pubsub.Broker
-	expiries []presenceExpiry
+	backend   presenceBackend
+	broker    pubsub.Broker
+	expiries  []presenceExpiry
+	reconnect ReconnectFunc
 
 	mu     sync.Mutex
 	timers map[uuid.UUID]*armedWindows
@@ -118,6 +126,25 @@ func (t *PresenceTracker) WithExpiry(grace time.Duration, onExpire ExpiryFunc) *
 	return t
 }
 
+// WithReconnect registers the counterpart to the expiries: what to do when the player
+// comes back. It returns the tracker, so wiring reads as one expression.
+//
+// One hook rather than a list, and no window to pair it with, because a return is a single
+// event however many windows it cancelled. Call it during construction, for the reason
+// WithExpiry gives.
+//
+// The hook is NOT the inverse of any particular expiry, and cannot assume one fired: a
+// player back inside every window cancelled windows nobody was ever told about. So whatever
+// it does has to be harmless for that player too, which is why the one hook there is
+// publishes a re-read rather than asserting a change.
+func (t *PresenceTracker) WithReconnect(onReconnect ReconnectFunc) *PresenceTracker {
+	if t == nil {
+		return nil
+	}
+	t.reconnect = onReconnect
+	return t
+}
+
 // Track records one live socket for the user and returns the release to call when
 // that socket closes.
 //
@@ -141,6 +168,13 @@ func (t *PresenceTracker) Track(ctx context.Context, userID uuid.UUID) func() {
 	if edge {
 		t.cancelTimer(userID)
 		t.publish(ctx, userID, pubsub.PresenceEvent{Status: pubsub.PresenceStatusConnected})
+		// Only on the edge, so one tab's three sockets announce one return. Inline
+		// rather than on a goroutine: this is the same edge the presence write above
+		// was made on, and a return that raced the subscription it arrived with could
+		// read the room before the player is counted in it.
+		if t.reconnect != nil {
+			t.reconnect(ctx, userID)
+		}
 	}
 
 	var once sync.Once
