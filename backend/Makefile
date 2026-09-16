@@ -1,6 +1,6 @@
 # GraphQL Code Generation, Testing, and Database Migrations
 
-.PHONY: generate fmt fmt-check test test-drift test-all migrate-up migrate-down migrate-version migrate-force
+.PHONY: generate fmt fmt-check test test-drift test-all clean migrate-up migrate-down migrate-version migrate-force
 
 # Generate GraphQL code
 generate:
@@ -51,6 +51,15 @@ check-drift:
 	@go test ./graph -run="TestGqlgenDrift" -v || (echo "❌ Drift detected! Run 'make generate' to fix." && exit 1)
 	@echo "✅ No drift detected - generated code is up to date."
 
+# Remove build and test artifacts left in the working tree.
+# These are all gitignored, so this is tidiness rather than correctness.
+clean:
+	@echo "Cleaning build and test artifacts..."
+	rm -f coverage.out
+	rm -f *.test
+	@go clean -testcache
+	@echo "✅ Clean."
+
 # Clean generated files (use with caution)
 clean-generated:
 	@echo "Cleaning generated files..."
@@ -89,6 +98,7 @@ help:
 	@echo "  test           - Run all tests"
 	@echo "  test-drift     - Run only drift detection tests"
 	@echo "  test-all       - Run drift detection and all tests"
+	@echo "  clean          - Remove coverage.out, test binaries, and the test cache"
 	@echo "  check-drift    - Check if generation is needed (for CI)"
 	@echo "  clean-generated - Remove all generated files"
 	@echo "  regenerate     - Clean and regenerate all GraphQL code"
