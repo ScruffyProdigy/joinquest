@@ -141,6 +141,9 @@ go.work
 test-results/
 playwright-report/
 playwright/.cache/
+# Debug screenshots written by tests/e2e/env-debug.spec.js
+env-debug.png
+env-debug-failure.png
 
 # Vite
 .vite/
