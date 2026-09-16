@@ -9,6 +9,8 @@
     "prebuild": "node scripts/generate-env.js",
     "build": "vite build",
     "lint": "eslint .",
+    "format": "prettier --write \"src/**/*.{js,jsx,css}\"",
+    "format:check": "prettier --check \"src/**/*.{js,jsx,css}\"",
     "preview": "vite preview",
     "test": "vitest",
     "test:ui": "vitest --ui",
@@ -55,6 +57,7 @@
     "globals": "^16.4.0",
     "graphql": "^16.14.2",
     "jsdom": "^27.0.1",
+    "prettier": "3.9.6",
     "tailwindcss": "^4.3.3",
     "vite": "^7.1.9",
     "vitest": "^3.2.4"

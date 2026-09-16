@@ -161,6 +161,11 @@ Full runbook: [docs/lobby-maintenance.md](docs/lobby-maintenance.md).
 - **Links** — every link and link-styled action goes through `frontend/src/components/ui/link.jsx`; no bare `<a>` in page code, and nothing underlines in any state (JQ-72). Live reference at `/dev/style-preview`
 - **Minimal scope** — smallest correct diff; don't refactor unrelated code
 - **Match existing style** — Go: `gofmt`, store layer for DB; frontend: JSX + Vitest
+- **Frontend formatting** — `cd frontend && npm run format` (check with `npm run format:check`).
+  The style lives in `.prettierrc.json` at the repo root and prettier is pinned in
+  `frontend/package.json`, so run it through npm rather than a bare `npx prettier` —
+  an unpinned run used to fetch latest and reformat whole files (JQ-257). Keep any
+  reformat in its own commit, never alongside a feature change
 - **No secrets** — never commit `.env`, API keys, k8s secrets, or `.DS_Store`
 - **Tests** — add store/resolver tests for backend logic; component/lib tests for dashboard changes
 - **Human gates** — production deploy, npm publish, and pushes to `main` require explicit user approval; feature-branch pushes and PRs do not, since opening a PR is how work gets reviewed
