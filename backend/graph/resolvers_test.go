@@ -81,41 +81,6 @@ func TestGamesWithPagination(t *testing.T) {
 	}
 }
 
-func TestGoodsResolverRequiresStore(t *testing.T) {
-	resolver := &Resolver{}
-	srv := handler.NewDefaultServer(generated.NewExecutableSchema(generated.Config{Resolvers: resolver}))
-	c := client.New(srv)
-
-	err := c.Post(`query { 
-		goods { 
-			id 
-			code 
-			name 
-		} 
-	}`, &struct{}{})
-	if err == nil {
-		t.Fatal("expected goods query to fail without a configured store")
-	}
-}
-
-func TestMyInventoryResolverRequiresAuthAndStore(t *testing.T) {
-	resolver := &Resolver{}
-	srv := handler.NewDefaultServer(generated.NewExecutableSchema(generated.Config{Resolvers: resolver}))
-	c := client.New(srv)
-
-	err := c.Post(`query { 
-		myInventory { 
-			good { 
-				id 
-			} 
-			quantity 
-		} 
-	}`, &struct{}{})
-	if err == nil {
-		t.Fatal("expected myInventory to fail without auth and store")
-	}
-}
-
 func TestJoinQueueMutationRequiresAuthAndStore(t *testing.T) {
 	resolver := &Resolver{}
 	srv := handler.NewDefaultServer(generated.NewExecutableSchema(generated.Config{Resolvers: resolver}))

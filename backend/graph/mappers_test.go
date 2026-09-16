@@ -49,14 +49,3 @@ func TestToGraphQLSessionStatus(t *testing.T) {
 		}
 	}
 }
-
-func TestToGraphQLDigitalGoodUsesIDAsCode(t *testing.T) {
-	id := uuid.New()
-	good := ToGraphQLDigitalGood(&store.DigitalGood{
-		ID:   id,
-		Name: "Skin",
-	})
-	if good.Code != id.String() {
-		t.Fatalf("expected code %q, got %q", id.String(), good.Code)
-	}
-}

@@ -86,24 +86,10 @@ type DeveloperAPIKey struct {
 	LastUsedAt *time.Time `json:"lastUsedAt,omitempty"`
 }
 
-type DigitalGood struct {
-	ID          string  `json:"id"`
-	Code        string  `json:"code"`
-	Name        string  `json:"name"`
-	Description *string `json:"description,omitempty"`
-	Game        *Game   `json:"game,omitempty"`
-}
-
 type EmailLinkPreview struct {
 	Email                  string  `json:"email"`
 	WillMergeAccounts      bool    `json:"willMergeAccounts"`
 	MergeSourceDisplayName *string `json:"mergeSourceDisplayName,omitempty"`
-}
-
-type Entitlement struct {
-	Good      *DigitalGood `json:"good"`
-	Quantity  int          `json:"quantity"`
-	GrantedAt time.Time    `json:"grantedAt"`
 }
 
 type Game struct {

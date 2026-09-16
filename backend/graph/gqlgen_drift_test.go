@@ -78,7 +78,6 @@ func TestSchemaFilesExist(t *testing.T) {
 		"rooms.graphqls",
 		"tables.graphqls",
 		"users.graphqls",
-		"goods.graphqls",
 		"avatars.graphqls",
 		"spirit_animal.graphqls",
 		"parties.graphqls",

@@ -28,7 +28,7 @@ Browse the catalog, sign in, join mode queues, and launch into registered third-
 
 ### ✅ Implemented
 - **Environment Configuration**: Docker-based runtime environment injection
-- **GraphQL API**: Catalog matchmaking, auth, digital goods, game handoff
+- **GraphQL API**: Catalog matchmaking, auth, game handoff
 - **Frontend Foundation**: React application with testing infrastructure
 - **Kubernetes Deployment**: Multi-environment deployment scripts
 - **Testing Suite**: Comprehensive unit, integration, and E2E tests
