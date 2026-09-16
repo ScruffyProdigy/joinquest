@@ -1,5 +1,5 @@
 import { readFileSync } from 'node:fs'
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
 import {
   GUEST_IDENTITY_CHOICES,
   SIGIL_FAMILIES,
@@ -9,6 +9,7 @@ import {
   generateGuestIdentity,
   generateTint,
   hueWord,
+  perceivedHueOfRgb,
   relativeLuminance,
 } from './guestIdentity'
 
@@ -17,6 +18,16 @@ const HEX = /^[0-9a-f]{6}$/
 function hexToRgb(hex) {
   const bare = hex.replace('#', '')
   return [0, 2, 4].map((offset) => parseInt(bare.slice(offset, offset + 2), 16))
+}
+
+/** Runs `body` with every Math.random() draw pinned to `value`, so a draw repeats. */
+function withRandom(value, body) {
+  const spy = vi.spyOn(Math, 'random').mockReturnValue(value)
+  try {
+    return body()
+  } finally {
+    spy.mockRestore()
+  }
 }
 
 describe('generateGuestIdentity', () => {
@@ -86,17 +97,41 @@ describe('generateTint', () => {
 
   it('spreads guests evenly across the words rather than piling up on green', () => {
     // Drawn uniformly in HSL degrees, green took 29% of guests for under a tenth of
-    // perceived hue. Uniform in perceived hue, no word runs away with the wheel.
-    const counts = new Map(SIGIL_HUE_WORDS.map((word) => [word, 0]))
-    const draws = 8000
-    for (let i = 0; i < draws; i += 1) {
-      const word = generateTint().word
-      counts.set(word, counts.get(word) + 1)
+    // perceived hue. Two separate things keep that from coming back, and both are
+    // exact — so this counts draws analytically rather than sampling them.
+    const slice = 360 / SIGIL_HUE_WORDS.length
+
+    // One: a guest's place on the wheel is the raw uniform draw scaled onto it, and
+    // the wheel is cut into equal slices. Pinning the draw walks that mapping
+    // directly, which is what a draw count was only ever estimating.
+    SIGIL_HUE_WORDS.forEach((word, index) => {
+      const middleOfSlice = (index + 0.5) / SIGIL_HUE_WORDS.length
+      withRandom(middleOfSlice, () => expect(generateTint().word).toBe(word))
+      expect(hueWord(index * slice)).toBe(word)
+      expect(hueWord((index + 1) * slice - 1e-9)).toBe(word)
+    })
+
+    // Two: the slices have to be equal where the eye reads them, not just equal in
+    // the parameter. This is the half the old scheme failed, and the half no number
+    // of draws can see — cutting by HSL degrees still handed every word exactly one
+    // slice in twenty-four. It only shows up in the colour that gets rendered.
+    //
+    // Saturation and lightness are pinned to both ends of their range and the middle,
+    // since the hue is solved per draw against whichever the draw got.
+    for (const draw of [0, 0.5, 0.999]) {
+      const hues = withRandom(draw, () =>
+        SIGIL_HUE_WORDS.map((_, index) =>
+          perceivedHueOfRgb(hexToRgb(generateTint(index * slice).hex)),
+        ),
+      )
+      const spans = hues.map((hue, i) => (hues[(i + 1) % hues.length] - hue + 360) % 360)
+      // An even slice is 15 perceived degrees. Cutting by HSL degrees gave spans from
+      // 3 (Ivy) to 31 (Lagoon); cutting by perceived hue holds every span between 9.6
+      // and 18.8, the wobble being 8-bit rounding at the least saturated end. The
+      // bounds clear that wobble and still exclude anything near the old imbalance.
+      expect(Math.min(...spans)).toBeGreaterThan(8)
+      expect(Math.max(...spans)).toBeLessThan(24)
     }
-    const shares = [...counts.values()].map((n) => n / draws)
-    const expected = 1 / SIGIL_HUE_WORDS.length
-    expect(Math.min(...shares)).toBeGreaterThan(expected * 0.7)
-    expect(Math.max(...shares)).toBeLessThan(expected * 1.3)
   })
 
   it('leans saturated but keeps real spread', () => {
