@@ -14,7 +14,8 @@ import {
 const CONFIGURED = {
   reachable: false,
   subscriptionCount: 0,
-  publicKey: 'BNcRdreALRFXTkOOUHK1EtK2wtaz5Ry4YfYCA_0QTpQtUbVlUls0VJXg7A8u-Ts1XbjhazAkj7I99e8QcYP7DkM',
+  publicKey:
+    'BNcRdreALRFXTkOOUHK1EtK2wtaz5Ry4YfYCA_0QTpQtUbVlUls0VJXg7A8u-Ts1XbjhazAkj7I99e8QcYP7DkM',
 }
 
 function setUserAgent(value, maxTouchPoints = 0) {

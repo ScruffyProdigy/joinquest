@@ -38,14 +38,19 @@ describe('MatchOutcomeHeader', () => {
     expect(screen.getByText('Mascot illustration · celebrating')).toBeInTheDocument()
     unmount()
 
-    render(<MatchOutcomeHeader result={result({ reason: 'ELIMINATED', placement: 3 })} viewerId="a" />)
+    render(
+      <MatchOutcomeHeader result={result({ reason: 'ELIMINATED', placement: 3 })} viewerId="a" />,
+    )
     expect(screen.getByTestId('mascot-panel')).toHaveAttribute('data-mood', 'lose')
     expect(screen.getByText('Mascot illustration · sympathetic')).toBeInTheDocument()
   })
 
   it('tells a player who is out in front that the others are still going', () => {
     render(
-      <MatchOutcomeHeader result={result({ reason: 'COMPLETED' }, { complete: false })} viewerId="a" />,
+      <MatchOutcomeHeader
+        result={result({ reason: 'COMPLETED' }, { complete: false })}
+        viewerId="a"
+      />,
     )
     expect(screen.getByRole('heading', { name: '1st place.' })).toBeInTheDocument()
     expect(screen.getByText('Waiting for others to finish.')).toBeInTheDocument()

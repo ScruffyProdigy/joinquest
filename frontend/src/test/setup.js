@@ -140,7 +140,8 @@ const defaultQueueStatus = { queued: false, queuedCount: 0 }
 const defaultPushCapability = {
   reachable: false,
   subscriptionCount: 0,
-  publicKey: 'BNcRdreALRFXTkOOUHK1EtK2wtaz5Ry4YfYCA_0QTpQtUbVlUls0VJXg7A8u-Ts1XbjhazAkj7I99e8QcYP7DkM',
+  publicKey:
+    'BNcRdreALRFXTkOOUHK1EtK2wtaz5Ry4YfYCA_0QTpQtUbVlUls0VJXg7A8u-Ts1XbjhazAkj7I99e8QcYP7DkM',
 }
 
 function createFetchMock(handlers) {
@@ -210,8 +211,11 @@ function createFetchMock(handlers) {
     } else if (query.includes('deletePushSubscription')) {
       pushVerified = false
       data = {
-        deletePushSubscription: handlers.pushCapabilityAfterDelete
-          ?? { reachable: false, subscriptionCount: 0, publicKey: defaultPushCapability.publicKey },
+        deletePushSubscription: handlers.pushCapabilityAfterDelete ?? {
+          reachable: false,
+          subscriptionCount: 0,
+          publicKey: defaultPushCapability.publicKey,
+        },
       }
     } else if (query.includes('pushCapability')) {
       const base = handlers.pushCapability ?? defaultPushCapability
@@ -279,7 +283,7 @@ function createFetchMock(handlers) {
           ...handlers.me,
           displayName: body.variables?.displayName ?? handlers.me?.displayName,
           // Saving through this mutation is what marks a name as chosen.
-                avatarKey: body.variables?.avatarKey ?? handlers.me?.avatarKey,
+          avatarKey: body.variables?.avatarKey ?? handlers.me?.avatarKey,
         },
       }
     } else if (/\bme\s*\{/.test(query) || query.includes('query Me')) {

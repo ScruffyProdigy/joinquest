@@ -170,7 +170,9 @@ describe('IdentityGate', () => {
     await user.click(screen.getByRole('button', { name: `Jump in as ${chosenName}` }))
 
     await waitFor(() => {
-      expect(screen.queryByRole('heading', { name: 'Welcome to JoinQuest' })).not.toBeInTheDocument()
+      expect(
+        screen.queryByRole('heading', { name: 'Welcome to JoinQuest' }),
+      ).not.toBeInTheDocument()
     })
 
     const variables = profileCallVariables()
@@ -319,7 +321,7 @@ describe('IdentityGate', () => {
     mockAuthenticatedSession({
       ...NAMELESS_GUEST,
       displayName: 'FrostFox4827',
-        avatarKey: 'sigil-canine-frost',
+      avatarKey: 'sigil-canine-frost',
       avatarUrl: '/avatars/sigils/canine-frost.svg',
     })
     renderGate()
@@ -361,7 +363,9 @@ describe('IdentityGate, when only the name is missing', () => {
     await waitForHeading('One more thing')
 
     expect(screen.queryByRole('heading', { name: 'Welcome to JoinQuest' })).not.toBeInTheDocument()
-    expect(screen.queryByRole('button', { name: 'Log in or create account' })).not.toBeInTheDocument()
+    expect(
+      screen.queryByRole('button', { name: 'Log in or create account' }),
+    ).not.toBeInTheDocument()
     expect(screen.queryByRole('button', { name: 'Play as guest' })).not.toBeInTheDocument()
   })
 
@@ -422,7 +426,9 @@ describe('IdentityGate, when only the avatar is missing', () => {
     renderGate()
     await waitForHeading('Pick your face')
 
-    expect(screen.queryByRole('button', { name: 'Log in or create account' })).not.toBeInTheDocument()
+    expect(
+      screen.queryByRole('button', { name: 'Log in or create account' }),
+    ).not.toBeInTheDocument()
   })
 
   it('saves the picked avatar against the name already on file', async () => {

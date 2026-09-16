@@ -121,7 +121,10 @@ describe('GroupPage', () => {
   })
 
   it('lists the viewer alone under Picking a seat before they claim', () => {
-    currentRoom = { ...makeRoom(makeTable()), members: [{ user: { id: 'u1', displayName: 'Pat' }, disconnected: false }] }
+    currentRoom = {
+      ...makeRoom(makeTable()),
+      members: [{ user: { id: 'u1', displayName: 'Pat' }, disconnected: false }],
+    }
     render(<GroupPage />)
 
     const section = screen.getByRole('region', { name: /picking a seat/i })
@@ -131,7 +134,9 @@ describe('GroupPage', () => {
   it('lists a previous match player who has not answered as awaiting', () => {
     currentRoom = makeRoom(
       makeTable({
-        regroupRoster: [{ user: { id: 'u9', displayName: 'Rae' }, role: 'p-2', regroup: 'PENDING' }],
+        regroupRoster: [
+          { user: { id: 'u9', displayName: 'Rae' }, role: 'p-2', regroup: 'PENDING' },
+        ],
       }),
     )
     render(<GroupPage />)
@@ -144,7 +149,9 @@ describe('GroupPage', () => {
   it('never shows the viewer as awaiting, whatever their regroup answer says', () => {
     currentRoom = makeRoom(
       makeTable({
-        regroupRoster: [{ user: { id: 'u1', displayName: 'Pat' }, role: 'p-1', regroup: 'PENDING' }],
+        regroupRoster: [
+          { user: { id: 'u1', displayName: 'Pat' }, role: 'p-1', regroup: 'PENDING' },
+        ],
       }),
     )
     render(<GroupPage />)
@@ -174,7 +181,10 @@ describe('GroupPage', () => {
   function startableTable(overrides = {}) {
     return makeTable({
       canStart: true,
-      seats: [{ seatKey: 'p-1', user: king }, { seatKey: 'p-2', user: { id: 'u9' } }],
+      seats: [
+        { seatKey: 'p-1', user: king },
+        { seatKey: 'p-2', user: { id: 'u9' } },
+      ],
       seatSlots: [
         { seatKey: 'p-1', queuePath: 'Player', displayName: 'Player · 1', user: king },
         { seatKey: 'p-2', queuePath: 'Player', displayName: 'Player · 2', user: { id: 'u9' } },
@@ -257,9 +267,7 @@ describe('GroupPage', () => {
       currentRoom = makeRoom(
         withQueue({
           backfillActive: true,
-          formingGaps: [
-            { queuePath: 'Attacker', displayName: 'Attacker', assigned: 1, needed: 1 },
-          ],
+          formingGaps: [{ queuePath: 'Attacker', displayName: 'Attacker', assigned: 1, needed: 1 }],
         }),
       )
       render(<GroupPage />)
@@ -278,9 +286,7 @@ describe('GroupPage', () => {
       currentRoom = makeRoom(
         withQueue({
           backfillActive: true,
-          formingGaps: [
-            { queuePath: 'Attacker', displayName: 'Attacker', assigned: 1, needed: 1 },
-          ],
+          formingGaps: [{ queuePath: 'Attacker', displayName: 'Attacker', assigned: 1, needed: 1 }],
         }),
       )
       render(<GroupPage />)
@@ -369,7 +375,10 @@ describe('GroupPage', () => {
     mutations.leaveTable.mockResolvedValue(true)
     currentRoom = makeRoom(
       makeTable({
-        seats: [{ seatKey: 'p-1', user: { id: 'u1' } }, { seatKey: 'p-2', user: { id: 'u7' } }],
+        seats: [
+          { seatKey: 'p-1', user: { id: 'u1' } },
+          { seatKey: 'p-2', user: { id: 'u7' } },
+        ],
         seatSlots: [
           { seatKey: 'p-1', queuePath: 'Player', displayName: 'Player · 1', user: { id: 'u1' } },
           { seatKey: 'p-2', queuePath: 'Player', displayName: 'Player · 2', user: { id: 'u7' } },
@@ -568,7 +577,9 @@ describe('GroupPage', () => {
       fetchModeQueueOptions.mockResolvedValue(roster)
       currentRoom = makeRoom(
         tableWithOptions({
-          regroupRoster: [{ user: { id: 'u1', displayName: 'Pat' }, role: 'p-1', regroup: 'PENDING' }],
+          regroupRoster: [
+            { user: { id: 'u1', displayName: 'Pat' }, role: 'p-1', regroup: 'PENDING' },
+          ],
         }),
       )
       render(<GroupPage />)
@@ -576,7 +587,10 @@ describe('GroupPage', () => {
       await user.click(screen.getAllByRole('button', { name: /claim/i })[0])
       await screen.findByRole('dialog')
 
-      expect(screen.getByRole('button', { name: 'Ferrus' })).toHaveAttribute('aria-pressed', 'false')
+      expect(screen.getByRole('button', { name: 'Ferrus' })).toHaveAttribute(
+        'aria-pressed',
+        'false',
+      )
       expect(screen.getByRole('button', { name: 'Take this seat' })).toBeDisabled()
     })
 
@@ -626,7 +640,7 @@ describe('GroupPage when the game starts', () => {
 
   // Nobody in a friend room is surprised the game started — they were watching the
   // button. Waiting out the queue's countdown only strands them behind the host.
-  it('launches the group without the queue\'s countdown', () => {
+  it("launches the group without the queue's countdown", () => {
     currentRoom = { ...makeRoom(makeTable()), tables: [] }
 
     render(<GroupPage intent={makeIntent({ activeTableSeat: startedSeat })} />)

@@ -253,7 +253,11 @@ export default function ReturnPage() {
             */}
             <MatchStandings result={result} viewerId={viewerId} />
             {/* Renders for a group who played the match out, and nobody else (JQ-233). */}
-            <RegroupCard result={result} viewerId={viewerId} minPlayers={regroupMinPlayers(result)} />
+            <RegroupCard
+              result={result}
+              viewerId={viewerId}
+              minPlayers={regroupMinPlayers(result)}
+            />
             {regroupError ? (
               <p className="status-message status-message-error" role="alert">
                 {regroupError}
@@ -284,7 +288,11 @@ export default function ReturnPage() {
               never connects, never at all. No regroup actions: the match has not finished, so
               `playAgain` would be refused and there is no decision to answer yet.
             */
-            <Button type="button" variant="secondary" onClick={() => leaveTo(destinationRef.current)}>
+            <Button
+              type="button"
+              variant="secondary"
+              onClick={() => leaveTo(destinationRef.current)}
+            >
               {RESULTS_LEAVE_MATCH}
             </Button>
           )}
@@ -303,7 +311,11 @@ export default function ReturnPage() {
           </CardTitle>
         </CardHeader>
         <CardContent className="flex flex-col gap-4">
-          <p className={status === 'error' ? 'status-message status-message-error' : 'status-message'}>
+          <p
+            className={
+              status === 'error' ? 'status-message status-message-error' : 'status-message'
+            }
+          >
             {message}
           </p>
           {status === 'error' ? (

@@ -30,9 +30,11 @@ export function hasChosenDisplayName(user) {
 }
 
 export function hasChosenAvatar(user) {
-  return Boolean(user?.avatarKey?.trim())
-    || Boolean(user?.avatarUrl?.trim())
-    || user?.avatarSource === 'SPIRIT_ANIMAL'
+  return (
+    Boolean(user?.avatarKey?.trim()) ||
+    Boolean(user?.avatarUrl?.trim()) ||
+    user?.avatarSource === 'SPIRIT_ANIMAL'
+  )
 }
 
 /** The name to greet someone by, or '' when we do not have one yet. */

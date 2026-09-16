@@ -21,12 +21,16 @@ describe('StylePreviewPage', () => {
     expect(screen.getByRole('heading', { name: 'Links' })).toBeInTheDocument()
     expect(screen.getByRole('link', { name: 'Inline link' })).toHaveClass('text-link')
     expect(screen.getByRole('link', { name: 'Pill link' })).toHaveClass('border-primary')
-    expect(screen.getByRole('button', { name: 'Quiet action' })).toHaveClass('text-muted-foreground')
+    expect(screen.getByRole('button', { name: 'Quiet action' })).toHaveClass(
+      'text-muted-foreground',
+    )
   })
 
   it('shows Button and Link side by side so the shared geometry is checkable (JQ-223)', () => {
     render(<StylePreviewPage />)
-    expect(screen.getByRole('heading', { name: 'Button and Link, side by side' })).toBeInTheDocument()
+    expect(
+      screen.getByRole('heading', { name: 'Button and Link, side by side' }),
+    ).toBeInTheDocument()
     const button = screen.getByRole('button', { name: 'Filled button' })
     const pill = screen.getByRole('link', { name: 'Outlined pill link' })
     for (const control of [button, pill]) {
@@ -39,10 +43,19 @@ describe('StylePreviewPage', () => {
   it('renders all 10 per-game accent swatches', () => {
     render(<StylePreviewPage />)
     expect(screen.getByRole('heading', { name: 'Per-game accents' })).toBeInTheDocument()
-    ;['amber', 'orange', 'lime', 'emerald', 'cyan', 'blue', 'indigo', 'violet', 'fuchsia', 'rose'].forEach(
-      (name) => {
-        expect(screen.getByText(name)).toBeInTheDocument()
-      },
-    )
+    ;[
+      'amber',
+      'orange',
+      'lime',
+      'emerald',
+      'cyan',
+      'blue',
+      'indigo',
+      'violet',
+      'fuchsia',
+      'rose',
+    ].forEach((name) => {
+      expect(screen.getByText(name)).toBeInTheDocument()
+    })
   })
 })

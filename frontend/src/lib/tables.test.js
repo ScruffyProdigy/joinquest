@@ -66,9 +66,7 @@ describe('seatSectionTitle', () => {
 
 describe('seatLabelInSection', () => {
   it('shortens clue giver seats to color only under section header', () => {
-    expect(
-      seatLabelInSection({ displayName: 'Clue Giver · Red' }, 'Clue Giver'),
-    ).toBe('Red')
+    expect(seatLabelInSection({ displayName: 'Clue Giver · Red' }, 'Clue Giver')).toBe('Red')
   })
 
   it('hides numbered guesser seats under section header', () => {
@@ -144,7 +142,13 @@ describe('tableShouldLeaveRoomList', () => {
 
   it('removes a discarded table', () => {
     expect(
-      tableShouldLeaveRoomList({ id: 't1', status: 'discarded', canStart: false, seats: [], seatSlots: [] }),
+      tableShouldLeaveRoomList({
+        id: 't1',
+        status: 'discarded',
+        canStart: false,
+        seats: [],
+        seatSlots: [],
+      }),
     ).toBe(true)
   })
 })
@@ -197,7 +201,9 @@ describe('pooled role helpers', () => {
   })
 
   it('formats min/max captions', () => {
-    expect(formatGroupSeatCaption(1, { minPlayers: 2, maxPlayers: 6 })).toBe('1/6 seated · need 2 to start')
+    expect(formatGroupSeatCaption(1, { minPlayers: 2, maxPlayers: 6 })).toBe(
+      '1/6 seated · need 2 to start',
+    )
     expect(formatGroupSeatCaption(2, { minPlayers: 2, maxPlayers: 6 })).toBe('2/6 seated · ready')
   })
 })
@@ -209,7 +215,11 @@ describe('mergeTableRecord', () => {
       seats: [{ seatKey: '1', user: { id: 'u1' } }],
       seatSlots: [{ seatKey: '1', displayName: '1', user: { id: 'u1' } }],
     }
-    const merged = mergeTableRecord(prev, { id: 't1', seats: [], seatSlots: [{ seatKey: '1', displayName: '1' }] })
+    const merged = mergeTableRecord(prev, {
+      id: 't1',
+      seats: [],
+      seatSlots: [{ seatKey: '1', displayName: '1' }],
+    })
     expect(merged.seats).toEqual([])
     expect(merged.seatSlots[0].user).toBeUndefined()
   })
@@ -227,18 +237,12 @@ describe('enrichTableSeats', () => {
 
 describe('mySeatKeyOnTable', () => {
   it('finds seat from seats array', () => {
-    const key = mySeatKeyOnTable(
-      { seats: [{ seatKey: 'a', user: { id: 'u1' } }] },
-      'u1',
-    )
+    const key = mySeatKeyOnTable({ seats: [{ seatKey: 'a', user: { id: 'u1' } }] }, 'u1')
     expect(key).toBe('a')
   })
 
   it('falls back to seatSlots when seats missing', () => {
-    const key = mySeatKeyOnTable(
-      { seatSlots: [{ seatKey: 'b', user: { id: 'u2' } }] },
-      'u2',
-    )
+    const key = mySeatKeyOnTable({ seatSlots: [{ seatKey: 'b', user: { id: 'u2' } }] }, 'u2')
     expect(key).toBe('b')
   })
 })

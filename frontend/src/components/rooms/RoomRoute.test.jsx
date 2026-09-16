@@ -43,7 +43,9 @@ describe('the /room/:inviteCode route', () => {
 
     render(<App />)
 
-    expect(await screen.findByRole('heading', { level: 1, name: 'Solo or squad, just join.' })).toBeInTheDocument()
+    expect(
+      await screen.findByRole('heading', { level: 1, name: 'Solo or squad, just join.' }),
+    ).toBeInTheDocument()
     expect(screen.queryByRole('heading', { name: 'Page not found' })).not.toBeInTheDocument()
   })
 

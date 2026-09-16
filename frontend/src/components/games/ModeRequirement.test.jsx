@@ -11,7 +11,12 @@ describe('ModeRequirement', () => {
   it('renders a leaf as current/target label', () => {
     render(
       <ModeRequirement
-        requirement={{ __typename: 'RequirementLeaf', label: 'Ranked matches', current: 12, target: 50 }}
+        requirement={{
+          __typename: 'RequirementLeaf',
+          label: 'Ranked matches',
+          current: 12,
+          target: 50,
+        }}
       />,
     )
     expect(screen.getByText('12/50 Ranked matches')).toBeInTheDocument()
@@ -38,7 +43,9 @@ describe('ModeRequirement', () => {
 
   it('renders an empty group without throwing when children is missing (deeper-than-queried tree)', () => {
     const { container } = render(
-      <ModeRequirement requirement={{ __typename: 'RequirementGroup', label: 'x', operator: 'ALL' }} />,
+      <ModeRequirement
+        requirement={{ __typename: 'RequirementGroup', label: 'x', operator: 'ALL' }}
+      />,
     )
     expect(container.querySelector('.mode-requirement--group')).toBeInTheDocument()
     expect(container.querySelector('.mode-requirement--group')).toBeEmptyDOMElement()

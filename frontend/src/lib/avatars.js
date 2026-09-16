@@ -54,7 +54,12 @@ export const STARTER_AVATAR_FALLBACK = [
   { key: 'beacon', name: 'Beacon', slot: 'Beacon', imageUrl: '/avatars/beacon.png' },
   { key: 'angel', name: 'Angel', slot: 'Angel', imageUrl: '/avatars/angel.png' },
   { key: 'bell', name: 'Bell', slot: 'Bell', imageUrl: '/avatars/bell.png' },
-  { key: 'constellation', name: 'Constellation', slot: 'Constellation', imageUrl: '/avatars/constellation.png' },
+  {
+    key: 'constellation',
+    name: 'Constellation',
+    slot: 'Constellation',
+    imageUrl: '/avatars/constellation.png',
+  },
   { key: 'crown', name: 'Crown', slot: 'Crown', imageUrl: '/avatars/crown.png' },
   { key: 'footsteps', name: 'Footsteps', slot: 'Footsteps', imageUrl: '/avatars/footsteps.png' },
   { key: 'forge', name: 'Forge', slot: 'Forge', imageUrl: '/avatars/forge.png' },

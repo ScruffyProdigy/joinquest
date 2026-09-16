@@ -133,7 +133,9 @@ export function modeSocialModeLabel(mode) {
  * about one mode (a room table); omit it on whole-game surfaces.
  */
 export function gameAxisChips(game, mode) {
-  return [gameGenreLabel(game), modeSocialModeLabel(mode), gameDifficultyLabel(game)].filter(Boolean)
+  return [gameGenreLabel(game), modeSocialModeLabel(mode), gameDifficultyLabel(game)].filter(
+    Boolean,
+  )
 }
 
 /**
@@ -251,11 +253,35 @@ const TITLE_INSET_Y_PCT = 6.8
 const TITLE_MAX_HEIGHT_PCT = 26
 
 const TITLE_ANCHORS = {
-  'top-left': { top: `${TITLE_INSET_Y_PCT}%`, left: `${TITLE_INSET_X_PCT}%`, objectPosition: 'left top' },
-  'top-center': { top: `${TITLE_INSET_Y_PCT}%`, left: '50%', translateX: true, objectPosition: 'center top' },
-  'bottom-left': { bottom: `${TITLE_INSET_Y_PCT}%`, left: `${TITLE_INSET_X_PCT}%`, objectPosition: 'left bottom' },
-  'bottom-center': { bottom: `${TITLE_INSET_Y_PCT}%`, left: '50%', translateX: true, objectPosition: 'center bottom' },
-  'middle-center': { top: '50%', left: '50%', translateX: true, translateY: true, objectPosition: 'center' },
+  'top-left': {
+    top: `${TITLE_INSET_Y_PCT}%`,
+    left: `${TITLE_INSET_X_PCT}%`,
+    objectPosition: 'left top',
+  },
+  'top-center': {
+    top: `${TITLE_INSET_Y_PCT}%`,
+    left: '50%',
+    translateX: true,
+    objectPosition: 'center top',
+  },
+  'bottom-left': {
+    bottom: `${TITLE_INSET_Y_PCT}%`,
+    left: `${TITLE_INSET_X_PCT}%`,
+    objectPosition: 'left bottom',
+  },
+  'bottom-center': {
+    bottom: `${TITLE_INSET_Y_PCT}%`,
+    left: '50%',
+    translateX: true,
+    objectPosition: 'center bottom',
+  },
+  'middle-center': {
+    top: '50%',
+    left: '50%',
+    translateX: true,
+    translateY: true,
+    objectPosition: 'center',
+  },
 }
 
 /**
@@ -275,7 +301,10 @@ export function gameTitleArtStyle(titleArt) {
   if (!url || !anchor || !Number.isFinite(width) || width <= 0) {
     return null
   }
-  const transform = [anchor.translateX ? 'translateX(-50%)' : '', anchor.translateY ? 'translateY(-50%)' : '']
+  const transform = [
+    anchor.translateX ? 'translateX(-50%)' : '',
+    anchor.translateY ? 'translateY(-50%)' : '',
+  ]
     .filter(Boolean)
     .join(' ')
   return {

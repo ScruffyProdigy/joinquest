@@ -1,5 +1,9 @@
 import { useEffect, useState } from 'react'
-import { defaultDisplayNameInput, fetchStarterAvatars, updatePlayerProfile } from '../../lib/avatars'
+import {
+  defaultDisplayNameInput,
+  fetchStarterAvatars,
+  updatePlayerProfile,
+} from '../../lib/avatars'
 import { hasChosenAvatar, needsIdentity } from '../../lib/viewer'
 import { useAuth } from '../auth/AuthProvider'
 import { Button } from '../ui/button'
@@ -7,7 +11,13 @@ import { Input } from '../ui/input'
 import AvatarChoiceGrid from './AvatarChoiceGrid'
 import PlayerAvatar from './PlayerAvatar'
 
-export default function PlayerProfileEditor({ user, required = false, onSaved, onCancel, onBeginSpiritAnimal }) {
+export default function PlayerProfileEditor({
+  user,
+  required = false,
+  onSaved,
+  onCancel,
+  onBeginSpiritAnimal,
+}) {
   const { acceptSessionUser } = useAuth()
   const [options, setOptions] = useState([])
   const [displayName, setDisplayName] = useState(() => defaultDisplayNameInput(user))

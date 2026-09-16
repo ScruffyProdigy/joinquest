@@ -31,7 +31,9 @@ export default function GroupStartBar({ cta, busy, onStart, onFindMatch, onCance
       <div className="sticky bottom-0 mt-4 flex flex-col gap-2 border-t bg-background/95 px-4 py-4 text-center backdrop-blur">
         <p className="text-sm font-medium" role="status">
           {cta.label}
-          {cta.detail ? <span className="font-normal text-muted-foreground"> · {cta.detail}</span> : null}
+          {cta.detail ? (
+            <span className="font-normal text-muted-foreground"> · {cta.detail}</span>
+          ) : null}
         </p>
         <p className="text-xs text-muted-foreground">{cta.hint}</p>
         {/*
@@ -40,7 +42,13 @@ export default function GroupStartBar({ cta, busy, onStart, onFindMatch, onCance
           is not theirs to do.
         */}
         {cta.cancelLabel ? (
-          <Button type="button" variant="secondary" size="sm" disabled={busy} onClick={onCancelFindMatch}>
+          <Button
+            type="button"
+            variant="secondary"
+            size="sm"
+            disabled={busy}
+            onClick={onCancelFindMatch}
+          >
             {cta.cancelLabel}
           </Button>
         ) : null}

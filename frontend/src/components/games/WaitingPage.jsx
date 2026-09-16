@@ -64,8 +64,15 @@ function useIntentSettled(loading, authLoading, user) {
 /** The queued state: what the player is waiting for, how it is going, and the way out. */
 export default function WaitingPage({ intent }) {
   const { user, loading: authLoading } = useAuth()
-  const { activeIntent, activeTableSeat, loading, busy, queueWsConnected, leaveError, handleLeave } =
-    intent
+  const {
+    activeIntent,
+    activeTableSeat,
+    loading,
+    busy,
+    queueWsConnected,
+    leaveError,
+    handleLeave,
+  } = intent
   const [confirmingLeave, setConfirmingLeave] = useState(false)
   /*
     A wait that belongs to a table, not to this player (JQ-137). The whole group was
@@ -271,11 +278,7 @@ export default function WaitingPage({ intent }) {
             >
               {GROUP_WAIT_LEAVE_CONFIRM}
             </Button>
-            <Button
-              type="button"
-              variant="secondary"
-              onClick={() => setConfirmingGroupExit(false)}
-            >
+            <Button type="button" variant="secondary" onClick={() => setConfirmingGroupExit(false)}>
               {GROUP_WAIT_STAY}
             </Button>
           </div>
@@ -286,7 +289,10 @@ export default function WaitingPage({ intent }) {
           button here, and a back gesture, which `useLeaveQueueOnExit` undoes so it
           arrives at this same sheet rather than leaving on its own (JQ-218). */}
       <Sheet open={confirmingLeave} onOpenChange={setConfirmingLeave}>
-        <SheetContent side="bottom" aria-label={groupWait ? GROUP_WAIT_STOP_TITLE : LEAVE_QUEUE_TITLE}>
+        <SheetContent
+          side="bottom"
+          aria-label={groupWait ? GROUP_WAIT_STOP_TITLE : LEAVE_QUEUE_TITLE}
+        >
           <SheetTitle>{groupWait ? GROUP_WAIT_STOP_TITLE : LEAVE_QUEUE_TITLE}</SheetTitle>
           <p className="waiting-page__confirm-body">
             {groupWait ? GROUP_WAIT_STOP_BODY : LEAVE_QUEUE_BODY}

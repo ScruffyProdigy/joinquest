@@ -116,7 +116,13 @@ export default function GameDetailPage({
         <p className="font-sans text-destructive" role="status">
           {error}
         </p>
-        <Button type="button" variant="ghost" size="sm" className="mt-3" onClick={navigateBackToCatalog}>
+        <Button
+          type="button"
+          variant="ghost"
+          size="sm"
+          className="mt-3"
+          onClick={navigateBackToCatalog}
+        >
           ← Back to catalog
         </Button>
       </main>
@@ -128,7 +134,13 @@ export default function GameDetailPage({
       <main className="min-h-screen bg-background px-6 py-10 text-foreground">
         <h1 className="font-heading text-2xl font-bold">Game not found</h1>
         <p className="font-sans text-muted-foreground">We could not find a game at this address.</p>
-        <Button type="button" variant="ghost" size="sm" className="mt-3" onClick={navigateBackToCatalog}>
+        <Button
+          type="button"
+          variant="ghost"
+          size="sm"
+          className="mt-3"
+          onClick={navigateBackToCatalog}
+        >
           ← Back to catalog
         </Button>
       </main>
@@ -203,7 +215,12 @@ export default function GameDetailPage({
 
         {game.tutorialUrl ? (
           <p>
-            <Link className="font-sans" href={game.tutorialUrl} target="_blank" rel="noopener noreferrer">
+            <Link
+              className="font-sans"
+              href={game.tutorialUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+            >
               Open tutorial
             </Link>
           </p>
@@ -215,7 +232,12 @@ export default function GameDetailPage({
             <ul className="mt-2 grid grid-cols-[repeat(auto-fill,minmax(220px,1fr))] gap-3">
               {screenshots.map((url) => (
                 <li key={url}>
-                  <img className="block w-full rounded-lg border border-border" src={url} alt="" loading="lazy" />
+                  <img
+                    className="block w-full rounded-lg border border-border"
+                    src={url}
+                    alt=""
+                    loading="lazy"
+                  />
                 </li>
               ))}
             </ul>

@@ -25,7 +25,9 @@ describe('buildMcpServerConfig', () => {
   it('uses mcpServers for Cursor', async () => {
     const { buildMcpServerConfig } = await import('./developers')
     const config = buildMcpServerConfig({ apiKey: 'lq_dev_test', clientId: 'cursor' })
-    expect(config.mcpServers['joinquest-integration'].args).toContain('joinquest-integration-mcp-cursor')
+    expect(config.mcpServers['joinquest-integration'].args).toContain(
+      'joinquest-integration-mcp-cursor',
+    )
   })
 
   it('uses servers for Copilot', async () => {
@@ -38,7 +40,9 @@ describe('buildMcpServerConfig', () => {
   it('uses env interpolation for Windsurf', async () => {
     const { buildMcpServerConfig } = await import('./developers')
     const config = buildMcpServerConfig({ apiKey: 'lq_dev_test', clientId: 'windsurf' })
-    expect(config.mcpServers['joinquest-integration'].env.JOINQUEST_API_KEY).toBe('${env:JOINQUEST_API_KEY}')
+    expect(config.mcpServers['joinquest-integration'].env.JOINQUEST_API_KEY).toBe(
+      '${env:JOINQUEST_API_KEY}',
+    )
   })
 })
 

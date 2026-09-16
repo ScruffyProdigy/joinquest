@@ -154,8 +154,7 @@ export const LAUNCH_GAME = 'Launch Now'
 // A player standing in the lobby with a live match is returning to it, not starting it.
 export const REJOIN_MATCH = 'Rejoin'
 export const REJOIN_FAILED = 'Could not get you back in. Try again in a moment.'
-export const REJOIN_OVER =
-  'That match has finished, so there is nothing to rejoin.'
+export const REJOIN_OVER = 'That match has finished, so there is nothing to rejoin.'
 export const LEAVE_GAME = 'Leave game'
 export const LEAVE_MATCH = 'Leave match'
 export const LEAVE_GAME_FAILED = 'Could not leave right now. Please try again.'
@@ -172,7 +171,6 @@ export const MATCH_IN_PROGRESS = "You're in a game"
 export const MATCH_DIALOG_TITLE = 'Your live match'
 export const REJOIN_AUTO_HINT = 'Taking you back in — no need to click.'
 export const REJOIN_HELD_HINT = 'Paused while you were away. Rejoin when you are ready.'
-
 
 export const OPTIONS_UNAVAILABLE =
   "This game can't tell us your options right now. Try again in a moment."
@@ -496,7 +494,9 @@ function isNamedRole(gap) {
  * third reads as a missing word rather than as a deliberate omission.
  */
 export function formatGroupFillNeedLine(formingGaps) {
-  const gaps = (Array.isArray(formingGaps) ? formingGaps : []).filter((gap) => (gap?.needed ?? 0) > 0)
+  const gaps = (Array.isArray(formingGaps) ? formingGaps : []).filter(
+    (gap) => (gap?.needed ?? 0) > 0,
+  )
   if (gaps.length === 0) {
     return null
   }
@@ -525,7 +525,9 @@ export function formatBackToGame(gameName) {
  */
 export function formatRegroupInCount(inCount, total, minPlayers) {
   const roster = `${inCount} of ${total} back and in`
-  return Number.isFinite(minPlayers) && minPlayers > 0 ? `${roster} · needs ${minPlayers} to start` : roster
+  return Number.isFinite(minPlayers) && minPlayers > 0
+    ? `${roster} · needs ${minPlayers} to start`
+    : roster
 }
 
 /** The still-playing branch's exit, so waiting on a live match is never a dead end. */
@@ -547,10 +549,14 @@ export function ordinal(n) {
   const rem100 = n % 100
   if (rem100 >= 11 && rem100 <= 13) return `${n}th`
   switch (n % 10) {
-    case 1: return `${n}st`
-    case 2: return `${n}nd`
-    case 3: return `${n}rd`
-    default: return `${n}th`
+    case 1:
+      return `${n}st`
+    case 2:
+      return `${n}nd`
+    case 3:
+      return `${n}rd`
+    default:
+      return `${n}th`
   }
 }
 
@@ -589,12 +595,24 @@ export function matchHeadline({ reason, complete, placement, playerCount }) {
   // a player keeps the sub that describes their situation and simply loses the number.
   if (placement == null) {
     if (reason === 'ELIMINATED') {
-      return { headline: RESULTS_PLACEMENT_UNKNOWN, sub: 'Eliminated before the end.', mood: MATCH_MOOD.LOSE }
+      return {
+        headline: RESULTS_PLACEMENT_UNKNOWN,
+        sub: 'Eliminated before the end.',
+        mood: MATCH_MOOD.LOSE,
+      }
     }
     if (!complete) {
-      return { headline: RESULTS_PLACEMENT_UNKNOWN, sub: 'Waiting for others to finish.', mood: MATCH_MOOD.CLOSE }
+      return {
+        headline: RESULTS_PLACEMENT_UNKNOWN,
+        sub: 'Waiting for others to finish.',
+        mood: MATCH_MOOD.CLOSE,
+      }
     }
-    return { headline: RESULTS_PLACEMENT_UNKNOWN, sub: `Out of ${playerCount} players.`, mood: MATCH_MOOD.CLOSE }
+    return {
+      headline: RESULTS_PLACEMENT_UNKNOWN,
+      sub: `Out of ${playerCount} players.`,
+      mood: MATCH_MOOD.CLOSE,
+    }
   }
   if (reason === 'ELIMINATED') {
     return {
@@ -615,7 +633,11 @@ export function matchHeadline({ reason, complete, placement, playerCount }) {
     return { headline: '1st place.', sub: 'You finished on top.', mood: MATCH_MOOD.WIN }
   }
   if (placement === playerCount) {
-    return { headline: `${ordinal(placement)} place.`, sub: 'Better luck next time.', mood: MATCH_MOOD.LOSE }
+    return {
+      headline: `${ordinal(placement)} place.`,
+      sub: 'Better luck next time.',
+      mood: MATCH_MOOD.LOSE,
+    }
   }
   return {
     headline: `${ordinal(placement)} place.`,

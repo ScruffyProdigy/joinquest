@@ -20,7 +20,9 @@ export default function DeveloperNextSteps({ game }) {
               <span className="developer-next-steps__badge">Current</span>
             ) : null}
             {step.status === 'done' ? (
-              <span className="developer-next-steps__badge developer-next-steps__badge--done">Done</span>
+              <span className="developer-next-steps__badge developer-next-steps__badge--done">
+                Done
+              </span>
             ) : null}
             <p className="developer-next-steps__hint">{step.hint}</p>
           </li>

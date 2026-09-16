@@ -37,7 +37,15 @@ export default function MatchActionBar({ children }) {
  * one place on this screen the game gets to be itself, and `accentColorFor` is where every
  * other surface in the app reads the same colour from.
  */
-export function RegroupActions({ result, viewerId, busy, onPlayAgain, onChooseAgain, onBackToGame, onDecline }) {
+export function RegroupActions({
+  result,
+  viewerId,
+  busy,
+  onPlayAgain,
+  onChooseAgain,
+  onBackToGame,
+  onDecline,
+}) {
   const game = result?.game
   const { viewerIn, showChooseAgain, showBackToGame } = regroupActionsFor(result, viewerId)
   const accent = accentColorFor(game?.slug || game?.id || 'game', game?.accentColor)

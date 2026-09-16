@@ -58,7 +58,13 @@ export default function CompleteSignInPage() {
           </CardTitle>
         </CardHeader>
         <CardContent className="flex flex-col gap-4">
-          <p className={status === 'error' ? 'status-message status-message-error' : 'status-message'}>{message}</p>
+          <p
+            className={
+              status === 'error' ? 'status-message status-message-error' : 'status-message'
+            }
+          >
+            {message}
+          </p>
           {status === 'error' ? (
             <Link className="self-start" href="/">
               Back to home

@@ -393,7 +393,9 @@ export default function DeveloperMcpWizard({ defaultExpanded = false, alwaysExpa
                   </Link>{' '}
                   — fill out the registration form on joinquest.cc.
                 </li>
-                <li>After registration, use your game dashboard to run checks and request release.</li>
+                <li>
+                  After registration, use your game dashboard to run checks and request release.
+                </li>
               </ol>
             </div>
           ) : (
@@ -407,7 +409,11 @@ export default function DeveloperMcpWizard({ defaultExpanded = false, alwaysExpa
                     game-repo changes required.
                   </>
                 ) : (
-                  <> Run the install command from your game repo — we&apos;ll add the agent skill and connect MCP.</>
+                  <>
+                    {' '}
+                    Run the install command from your game repo — we&apos;ll add the agent skill and
+                    connect MCP.
+                  </>
                 )}
               </p>
 
@@ -468,8 +474,8 @@ export default function DeveloperMcpWizard({ defaultExpanded = false, alwaysExpa
                     </Button>
                   </div>
                   <p className="developer-form__hint">
-                    We only use this in your browser to build the copy-paste commands below — nothing
-                    gets sent until you run them.
+                    We only use this in your browser to build the copy-paste commands below —
+                    nothing gets sent until you run them.
                   </p>
                 </div>
                 <div className="developer-mcp__key-actions">
@@ -495,7 +501,9 @@ export default function DeveloperMcpWizard({ defaultExpanded = false, alwaysExpa
 
               <div className="developer-mcp__install">
                 <h3>
-                  {usesPlugin ? `2. Install the ${client.label} plugin` : '2. Install the skill and MCP'}
+                  {usesPlugin
+                    ? `2. Install the ${client.label} plugin`
+                    : '2. Install the skill and MCP'}
                 </h3>
                 {usesPlugin ? (
                   <>
@@ -519,15 +527,17 @@ export default function DeveloperMcpWizard({ defaultExpanded = false, alwaysExpa
                     >
                       {copied === 'install-plugin' ? 'Copied' : 'Copy plugin install command'}
                     </Button>
-                    <p className="panel-copy developer-mcp__what-it-does">What the plugin includes:</p>
+                    <p className="panel-copy developer-mcp__what-it-does">
+                      What the plugin includes:
+                    </p>
                     <ul className="developer-mcp__explainer">
                       <li>
                         <strong>joinquest-integration</strong> agent skill — phased playbook for
                         discovery, API, checks, and release.
                       </li>
                       <li>
-                        MCP server via <code>npx @joinquest/mcp-integration</code> (calls joinquest.cc
-                        when tools run).
+                        MCP server via <code>npx @joinquest/mcp-integration</code> (calls
+                        joinquest.cc when tools run).
                       </li>
                     </ul>
                     <p className="panel-copy">
@@ -535,11 +545,7 @@ export default function DeveloperMcpWizard({ defaultExpanded = false, alwaysExpa
                         View plugin source on GitHub
                       </Link>{' '}
                       ·{' '}
-                      <Link
-                        href={installPluginScriptGithub}
-                        target="_blank"
-                        rel="noreferrer"
-                      >
+                      <Link href={installPluginScriptGithub} target="_blank" rel="noreferrer">
                         Read the install script
                       </Link>
                     </p>
@@ -548,9 +554,15 @@ export default function DeveloperMcpWizard({ defaultExpanded = false, alwaysExpa
                       <p className="panel-copy">
                         Adds <code>.agents/skills/joinquest-integration/</code> to your project
                         {clientId === 'cursor' ? (
-                          <> and wires MCP into <code>.cursor/mcp.json</code></>
+                          <>
+                            {' '}
+                            and wires MCP into <code>.cursor/mcp.json</code>
+                          </>
                         ) : (
-                          <> and runs <code>claude mcp add</code> for this project</>
+                          <>
+                            {' '}
+                            and runs <code>claude mcp add</code> for this project
+                          </>
                         )}
                         .
                       </p>
@@ -612,8 +624,8 @@ export default function DeveloperMcpWizard({ defaultExpanded = false, alwaysExpa
                     <details className="developer-mcp__details">
                       <summary>Preview install (--dry-run)</summary>
                       <p className="panel-copy">
-                        Shows what would be written without changing your project. Same package as MCP (
-                        <code>npx joinquest</code>).
+                        Shows what would be written without changing your project. Same package as
+                        MCP (<code>npx joinquest</code>).
                       </p>
                       <pre className="developer-mcp__config">{installInspectCommand}</pre>
                       <Button
@@ -628,7 +640,9 @@ export default function DeveloperMcpWizard({ defaultExpanded = false, alwaysExpa
                 )}
                 <details className="developer-mcp__details">
                   <summary>Offline or pinned install</summary>
-                  <p className="panel-copy">Optional — if you don&apos;t want to use npx each time:</p>
+                  <p className="panel-copy">
+                    Optional — if you don&apos;t want to use npx each time:
+                  </p>
                   <pre className="developer-mcp__config">{INSTALL_GLOBAL_MCP}</pre>
                 </details>
               </div>
@@ -665,8 +679,8 @@ export default function DeveloperMcpWizard({ defaultExpanded = false, alwaysExpa
                   Prefer to paste config yourself?{' '}
                   {clientId === 'claude-desktop' ? (
                     <>
-                      In Claude Desktop: <strong>Settings → Developer → Edit Config</strong>. Or edit
-                      the file directly (macOS:{' '}
+                      In Claude Desktop: <strong>Settings → Developer → Edit Config</strong>. Or
+                      edit the file directly (macOS:{' '}
                       <code>~/Library/Application Support/Claude/claude_desktop_config.json</code>
                       ).
                     </>

@@ -408,7 +408,10 @@ export function seatLabelInSection(slot, sectionTitle) {
     return null
   }
 
-  const parts = full.split(' · ').map((part) => part.trim()).filter(Boolean)
+  const parts = full
+    .split(' · ')
+    .map((part) => part.trim())
+    .filter(Boolean)
   if (parts.length >= 2) {
     const role = parts[0]
     const suffix = parts.slice(1).join(' · ')
@@ -535,7 +538,7 @@ export function isPooledRoleGroup(slots) {
   if (path) {
     return slots.every((slot) => slot.queuePath?.trim() === path)
   }
-  return slots.length > 1 && slots.every((slot) => !(slot.queuePath?.trim()))
+  return slots.length > 1 && slots.every((slot) => !slot.queuePath?.trim())
 }
 
 export function countSeatedInGroup(slots) {

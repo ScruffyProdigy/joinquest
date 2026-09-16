@@ -12,7 +12,12 @@ import { prefetchSubscriptionAuth } from '../../lib/queue'
 import { readRoomInviteHint, readRoomMemberHint, writeRoomDockHint } from '../../lib/roomDockHint'
 import { groupLandingPath } from '../../lib/group'
 import { onTabVisible } from '../../lib/tabVisibility'
-import { fetchMyTableSeat, mergeTableRecord, TABLE_UPDATED_EVENT, tableShouldLeaveRoomList } from '../../lib/tables'
+import {
+  fetchMyTableSeat,
+  mergeTableRecord,
+  TABLE_UPDATED_EVENT,
+  tableShouldLeaveRoomList,
+} from '../../lib/tables'
 
 const ActiveRoomContext = createContext(null)
 

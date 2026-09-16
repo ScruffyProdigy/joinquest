@@ -89,9 +89,7 @@ export default function DeveloperLandingPage() {
 
       <header className="app-header">
         <p className="developer-back">
-          <Link href="/">
-            ← Back to {APP_NAME}
-          </Link>
+          <Link href="/">← Back to {APP_NAME}</Link>
         </p>
         <h1>Have an idea for a multiplayer game?</h1>
       </header>
@@ -102,8 +100,8 @@ export default function DeveloperLandingPage() {
           players — so you can focus on building the game.
         </p>
         <p className="panel-copy">
-          You&apos;ll need some basic web dev experience and a <strong>public URL</strong> where your
-          game can run. That&apos;s it.
+          You&apos;ll need some basic web dev experience and a <strong>public URL</strong> where
+          your game can run. That&apos;s it.
         </p>
         <p className="panel-copy">
           Your game won&apos;t show up for other players until <em>you</em> say it&apos;s ready (and

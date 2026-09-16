@@ -45,10 +45,19 @@ describe('TableCard', () => {
     }
 
     const { container } = render(
-      <TableCard table={table} busy={false} onSit={() => {}} onLeave={() => {}} onStart={() => {}} onDiscard={() => {}} />,
+      <TableCard
+        table={table}
+        busy={false}
+        onSit={() => {}}
+        onLeave={() => {}}
+        onStart={() => {}}
+        onDiscard={() => {}}
+      />,
     )
 
-    const avatar = container.querySelector('[data-slot="avatar-image"][src="/avatars/campfire.png"]')
+    const avatar = container.querySelector(
+      '[data-slot="avatar-image"][src="/avatars/campfire.png"]',
+    )
     expect(avatar).toBeTruthy()
     expect(screen.getByText('You')).toBeInTheDocument()
     expect(screen.getByText('Red')).toBeInTheDocument()
@@ -67,15 +76,32 @@ describe('TableCard', () => {
       },
       seats: [],
       seatSlots: [
-        { seatKey: 'ClueGiver-Red', queuePath: 'ClueGiver', displayName: 'Clue Giver · Red', user: null },
-        { seatKey: 'ClueGiver-Blue', queuePath: 'ClueGiver', displayName: 'Clue Giver · Blue', user: null },
+        {
+          seatKey: 'ClueGiver-Red',
+          queuePath: 'ClueGiver',
+          displayName: 'Clue Giver · Red',
+          user: null,
+        },
+        {
+          seatKey: 'ClueGiver-Blue',
+          queuePath: 'ClueGiver',
+          displayName: 'Clue Giver · Blue',
+          user: null,
+        },
         { seatKey: 'Guesser-1', queuePath: 'Guesser', displayName: 'Guesser · 1', user: null },
       ],
       lookForGroupOptions: [],
     }
 
     render(
-      <TableCard table={table} busy={false} onSit={() => {}} onLeave={() => {}} onStart={() => {}} onDiscard={() => {}} />,
+      <TableCard
+        table={table}
+        busy={false}
+        onSit={() => {}}
+        onLeave={() => {}}
+        onStart={() => {}}
+        onDiscard={() => {}}
+      />,
     )
 
     expect(screen.getByText('0/3 seated · need 2 to start')).toBeInTheDocument()
@@ -95,7 +121,12 @@ describe('TableCard', () => {
       },
       seats: [],
       seatSlots: [
-        { seatKey: 'ClueGiver-Red', queuePath: 'ClueGiver', displayName: 'Clue Giver · Red', user: null },
+        {
+          seatKey: 'ClueGiver-Red',
+          queuePath: 'ClueGiver',
+          displayName: 'Clue Giver · Red',
+          user: null,
+        },
         { seatKey: 'Guesser-1', queuePath: 'Guesser', displayName: 'Guesser · 1', user: null },
         { seatKey: 'Guesser-2', queuePath: 'Guesser', displayName: 'Guesser · 2', user: null },
       ],
@@ -103,7 +134,14 @@ describe('TableCard', () => {
     }
 
     render(
-      <TableCard table={table} busy={false} onSit={() => {}} onLeave={() => {}} onStart={() => {}} onDiscard={() => {}} />,
+      <TableCard
+        table={table}
+        busy={false}
+        onSit={() => {}}
+        onLeave={() => {}}
+        onStart={() => {}}
+        onDiscard={() => {}}
+      />,
     )
 
     expect(screen.getByText('0/6 seated · need 2 to start')).toBeInTheDocument()
@@ -130,16 +168,45 @@ describe('TableCard', () => {
         { seatKey: 'Guesser-2', user: { id: 'user-4', displayName: 'Jordan' } },
       ],
       seatSlots: [
-        { seatKey: 'ClueGiver-Red', queuePath: 'ClueGiver', displayName: 'Clue Giver · Red', user: { id: 'user-1', displayName: 'Pat' } },
-        { seatKey: 'ClueGiver-Blue', queuePath: 'ClueGiver', displayName: 'Clue Giver · Blue', user: { id: 'user-2', displayName: 'Sam' } },
-        { seatKey: 'Guesser-1', queuePath: 'Guesser', displayName: 'Guesser · 1', user: { id: 'user-3', displayName: 'Alex' } },
-        { seatKey: 'Guesser-2', queuePath: 'Guesser', displayName: 'Guesser · 2', user: { id: 'user-4', displayName: 'Jordan' } },
+        {
+          seatKey: 'ClueGiver-Red',
+          queuePath: 'ClueGiver',
+          displayName: 'Clue Giver · Red',
+          user: { id: 'user-1', displayName: 'Pat' },
+        },
+        {
+          seatKey: 'ClueGiver-Blue',
+          queuePath: 'ClueGiver',
+          displayName: 'Clue Giver · Blue',
+          user: { id: 'user-2', displayName: 'Sam' },
+        },
+        {
+          seatKey: 'Guesser-1',
+          queuePath: 'Guesser',
+          displayName: 'Guesser · 1',
+          user: { id: 'user-3', displayName: 'Alex' },
+        },
+        {
+          seatKey: 'Guesser-2',
+          queuePath: 'Guesser',
+          displayName: 'Guesser · 2',
+          user: { id: 'user-4', displayName: 'Jordan' },
+        },
       ],
-      lookForGroupOptions: [{ queueId: 'queue-1', queueName: 'Default', visible: true, enabled: false }],
+      lookForGroupOptions: [
+        { queueId: 'queue-1', queueName: 'Default', visible: true, enabled: false },
+      ],
     }
 
     render(
-      <TableCard table={table} busy={false} onSit={() => {}} onLeave={() => {}} onStart={() => {}} onDiscard={() => {}} />,
+      <TableCard
+        table={table}
+        busy={false}
+        onSit={() => {}}
+        onLeave={() => {}}
+        onStart={() => {}}
+        onDiscard={() => {}}
+      />,
     )
 
     expect(screen.getByRole('button', { name: 'Start now' })).toBeInTheDocument()
@@ -166,16 +233,45 @@ describe('TableCard', () => {
         { seatKey: 'Guesser-2', user: { id: 'user-4', displayName: 'Jordan' } },
       ],
       seatSlots: [
-        { seatKey: 'ClueGiver-Red', queuePath: 'ClueGiver', displayName: 'Clue Giver · Red', user: { id: 'user-1', displayName: 'Pat' } },
-        { seatKey: 'ClueGiver-Blue', queuePath: 'ClueGiver', displayName: 'Clue Giver · Blue', user: { id: 'user-2', displayName: 'Sam' } },
-        { seatKey: 'Guesser-1', queuePath: 'Guesser', displayName: 'Guesser · 1', user: { id: 'user-3', displayName: 'Alex' } },
-        { seatKey: 'Guesser-2', queuePath: 'Guesser', displayName: 'Guesser · 2', user: { id: 'user-4', displayName: 'Jordan' } },
+        {
+          seatKey: 'ClueGiver-Red',
+          queuePath: 'ClueGiver',
+          displayName: 'Clue Giver · Red',
+          user: { id: 'user-1', displayName: 'Pat' },
+        },
+        {
+          seatKey: 'ClueGiver-Blue',
+          queuePath: 'ClueGiver',
+          displayName: 'Clue Giver · Blue',
+          user: { id: 'user-2', displayName: 'Sam' },
+        },
+        {
+          seatKey: 'Guesser-1',
+          queuePath: 'Guesser',
+          displayName: 'Guesser · 1',
+          user: { id: 'user-3', displayName: 'Alex' },
+        },
+        {
+          seatKey: 'Guesser-2',
+          queuePath: 'Guesser',
+          displayName: 'Guesser · 2',
+          user: { id: 'user-4', displayName: 'Jordan' },
+        },
       ],
-      lookForGroupOptions: [{ queueId: 'queue-1', queueName: 'Default', visible: true, enabled: false }],
+      lookForGroupOptions: [
+        { queueId: 'queue-1', queueName: 'Default', visible: true, enabled: false },
+      ],
     }
 
     render(
-      <TableCard table={table} busy={false} onSit={() => {}} onLeave={() => {}} onStart={() => {}} onDiscard={() => {}} />,
+      <TableCard
+        table={table}
+        busy={false}
+        onSit={() => {}}
+        onLeave={() => {}}
+        onStart={() => {}}
+        onDiscard={() => {}}
+      />,
     )
 
     expect(screen.queryByRole('button', { name: 'Jump in (Default)' })).not.toBeInTheDocument()
@@ -199,14 +295,31 @@ describe('TableCard', () => {
         { seatKey: 'ClueGiver-Blue', user: { id: 'user-2', displayName: 'Sam' } },
       ],
       seatSlots: [
-        { seatKey: 'ClueGiver-Red', queuePath: 'ClueGiver', displayName: 'Clue Giver · Red', user: { id: 'user-1', displayName: 'Pat' } },
-        { seatKey: 'ClueGiver-Blue', queuePath: 'ClueGiver', displayName: 'Clue Giver · Blue', user: { id: 'user-2', displayName: 'Sam' } },
+        {
+          seatKey: 'ClueGiver-Red',
+          queuePath: 'ClueGiver',
+          displayName: 'Clue Giver · Red',
+          user: { id: 'user-1', displayName: 'Pat' },
+        },
+        {
+          seatKey: 'ClueGiver-Blue',
+          queuePath: 'ClueGiver',
+          displayName: 'Clue Giver · Blue',
+          user: { id: 'user-2', displayName: 'Sam' },
+        },
       ],
       lookForGroupOptions: [],
     }
 
     const { container } = render(
-      <TableCard table={table} busy={false} onSit={() => {}} onLeave={() => {}} onStart={() => {}} onDiscard={() => {}} />,
+      <TableCard
+        table={table}
+        busy={false}
+        onSit={() => {}}
+        onLeave={() => {}}
+        onStart={() => {}}
+        onDiscard={() => {}}
+      />,
     )
 
     expect(container.querySelectorAll('[data-slot="avatar"][data-ring="king"]')).toHaveLength(1)
@@ -227,7 +340,14 @@ describe('TableCard', () => {
     }
 
     render(
-      <TableCard table={table} busy={false} onSit={() => {}} onLeave={() => {}} onStart={() => {}} onDiscard={() => {}} />,
+      <TableCard
+        table={table}
+        busy={false}
+        onSit={() => {}}
+        onLeave={() => {}}
+        onStart={() => {}}
+        onDiscard={() => {}}
+      />,
     )
 
     expect(screen.getByRole('heading', { name: 'Players' })).toBeInTheDocument()
@@ -251,7 +371,14 @@ describe('TableCard', () => {
     }
 
     const { container } = render(
-      <TableCard table={table} busy={false} onSit={() => {}} onLeave={() => {}} onStart={() => {}} onDiscard={() => {}} />,
+      <TableCard
+        table={table}
+        busy={false}
+        onSit={() => {}}
+        onLeave={() => {}}
+        onStart={() => {}}
+        onDiscard={() => {}}
+      />,
     )
 
     expect(container.querySelector('img[src="/games/word-hunt-icon.png?v=1"]')).toBeInTheDocument()
@@ -269,7 +396,12 @@ describe('TableCard', () => {
       mode: { displayName: 'Party' },
       seats: [{ seatKey: 'ClueGiver-Red', user: { id: 'user-1', displayName: 'Pat' } }],
       seatSlots: [
-        { seatKey: 'ClueGiver-Red', queuePath: 'ClueGiver', displayName: 'Clue Giver · Red', user: { id: 'user-1', displayName: 'Pat' } },
+        {
+          seatKey: 'ClueGiver-Red',
+          queuePath: 'ClueGiver',
+          displayName: 'Clue Giver · Red',
+          user: { id: 'user-1', displayName: 'Pat' },
+        },
         { seatKey: 'Guesser-1', queuePath: 'Guesser', displayName: 'Guesser · 1', user: null },
       ],
       lookForGroupOptions: [{ queueId: 'q1', queueName: 'Default', visible: true, enabled: false }],
@@ -281,7 +413,14 @@ describe('TableCard', () => {
     }
 
     render(
-      <TableCard table={table} busy={false} onSit={() => {}} onLeave={() => {}} onStart={() => {}} onDiscard={() => {}} />,
+      <TableCard
+        table={table}
+        busy={false}
+        onSit={() => {}}
+        onLeave={() => {}}
+        onStart={() => {}}
+        onDiscard={() => {}}
+      />,
     )
 
     expect(screen.getByText('Need 1 Clue Giver, 4 Guesser from the lobby')).toBeInTheDocument()
@@ -303,7 +442,14 @@ describe('TableCard', () => {
     }
 
     render(
-      <TableCard table={table} busy={false} onSit={onSit} onLeave={() => {}} onStart={() => {}} onDiscard={() => {}} />,
+      <TableCard
+        table={table}
+        busy={false}
+        onSit={onSit}
+        onLeave={() => {}}
+        onStart={() => {}}
+        onDiscard={() => {}}
+      />,
     )
 
     await user.click(screen.getByRole('button', { name: 'Sit' }))
@@ -341,7 +487,14 @@ describe('TableCard', () => {
     }
 
     render(
-      <TableCard table={table} busy={false} onSit={() => {}} onLeave={() => {}} onStart={() => {}} onDiscard={() => {}} />,
+      <TableCard
+        table={table}
+        busy={false}
+        onSit={() => {}}
+        onLeave={() => {}}
+        onStart={() => {}}
+        onDiscard={() => {}}
+      />,
     )
 
     expect(screen.getAllByText('Ada')).toHaveLength(1)

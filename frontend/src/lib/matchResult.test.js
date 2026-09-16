@@ -47,37 +47,47 @@ describe('ordinal', () => {
 
 describe('matchHeadline', () => {
   it('celebrates a win when the match is complete', () => {
-    expect(matchHeadline({ reason: 'COMPLETED', complete: true, placement: 1, playerCount: 4 }))
-      .toEqual({ headline: '1st place.', sub: 'You finished on top.', mood: MATCH_MOOD.WIN })
+    expect(
+      matchHeadline({ reason: 'COMPLETED', complete: true, placement: 1, playerCount: 4 }),
+    ).toEqual({ headline: '1st place.', sub: 'You finished on top.', mood: MATCH_MOOD.WIN })
   })
 
   it('softens last place when the match is complete', () => {
-    expect(matchHeadline({ reason: 'COMPLETED', complete: true, placement: 4, playerCount: 4 }))
-      .toEqual({ headline: '4th place.', sub: 'Better luck next time.', mood: MATCH_MOOD.LOSE })
+    expect(
+      matchHeadline({ reason: 'COMPLETED', complete: true, placement: 4, playerCount: 4 }),
+    ).toEqual({ headline: '4th place.', sub: 'Better luck next time.', mood: MATCH_MOOD.LOSE })
   })
 
   it('reports a mid-pack complete finish as "Out of N players."', () => {
-    expect(matchHeadline({ reason: 'COMPLETED', complete: true, placement: 2, playerCount: 4 }))
-      .toEqual({ headline: '2nd place.', sub: 'Out of 4 players.', mood: MATCH_MOOD.CLOSE })
+    expect(
+      matchHeadline({ reason: 'COMPLETED', complete: true, placement: 2, playerCount: 4 }),
+    ).toEqual({ headline: '2nd place.', sub: 'Out of 4 players.', mood: MATCH_MOOD.CLOSE })
   })
 
   it('reports elimination against the field', () => {
-    expect(matchHeadline({ reason: 'ELIMINATED', complete: true, placement: 5, playerCount: 6 }))
-      .toEqual({ headline: '5th of 6.', sub: 'Eliminated before the end.', mood: MATCH_MOOD.LOSE })
+    expect(
+      matchHeadline({ reason: 'ELIMINATED', complete: true, placement: 5, playerCount: 6 }),
+    ).toEqual({ headline: '5th of 6.', sub: 'Eliminated before the end.', mood: MATCH_MOOD.LOSE })
   })
 
   it('tells a player who finished early that others are still playing', () => {
     // The participant's own reason is COMPLETED (they finished their play);
     // it's the match, not the participant, that isn't done yet.
-    expect(matchHeadline({ reason: 'COMPLETED', complete: false, placement: 2, playerCount: 4 }))
-      .toEqual({ headline: '2nd place.', sub: 'Waiting for others to finish.', mood: MATCH_MOOD.CLOSE })
+    expect(
+      matchHeadline({ reason: 'COMPLETED', complete: false, placement: 2, playerCount: 4 }),
+    ).toEqual({
+      headline: '2nd place.',
+      sub: 'Waiting for others to finish.',
+      mood: MATCH_MOOD.CLOSE,
+    })
   })
 
   it('reports elimination even while the match is still running for others', () => {
     // ELIMINATED is checked ahead of `complete` so the more specific message
     // wins instead of being masked by "Waiting for others to finish."
-    expect(matchHeadline({ reason: 'ELIMINATED', complete: false, placement: 5, playerCount: 6 }))
-      .toEqual({ headline: '5th of 6.', sub: 'Eliminated before the end.', mood: MATCH_MOOD.LOSE })
+    expect(
+      matchHeadline({ reason: 'ELIMINATED', complete: false, placement: 5, playerCount: 6 }),
+    ).toEqual({ headline: '5th of 6.', sub: 'Eliminated before the end.', mood: MATCH_MOOD.LOSE })
   })
 
   /**
@@ -87,28 +97,46 @@ describe('matchHeadline', () => {
    * else about waiting is not.
    */
   it('calls leading an unfinished match a win, and any other wait tense', () => {
-    expect(matchHeadline({ reason: 'COMPLETED', complete: false, placement: 1, playerCount: 4 }).mood)
-      .toBe(MATCH_MOOD.WIN)
-    expect(matchHeadline({ reason: 'COMPLETED', complete: false, placement: 3, playerCount: 4 }).mood)
-      .toBe(MATCH_MOOD.CLOSE)
+    expect(
+      matchHeadline({ reason: 'COMPLETED', complete: false, placement: 1, playerCount: 4 }).mood,
+    ).toBe(MATCH_MOOD.WIN)
+    expect(
+      matchHeadline({ reason: 'COMPLETED', complete: false, placement: 3, playerCount: 4 }).mood,
+    ).toBe(MATCH_MOOD.CLOSE)
   })
 
   // A forfeit or a drop is not an elimination, so it keeps the ordinary complete-match copy
   // and its mood. Only the roster treats them alike (see src/lib/regroup.js).
   it('does not borrow the elimination copy for a forfeit', () => {
-    expect(matchHeadline({ reason: 'FORFEIT', complete: true, placement: 3, playerCount: 4 }))
-      .toEqual({ headline: '3rd place.', sub: 'Out of 4 players.', mood: MATCH_MOOD.CLOSE })
+    expect(
+      matchHeadline({ reason: 'FORFEIT', complete: true, placement: 3, playerCount: 4 }),
+    ).toEqual({ headline: '3rd place.', sub: 'Out of 4 players.', mood: MATCH_MOOD.CLOSE })
   })
 
   // placement is nullable on MatchParticipantResult, and ordinal(null) is "nullth".
   // Every branch below would otherwise put that in front of the player.
   it('never builds an ordinal from a missing placement', () => {
-    expect(matchHeadline({ reason: null, complete: false, placement: null, playerCount: 4 }))
-      .toEqual({ headline: RESULTS_PLACEMENT_UNKNOWN, sub: 'Waiting for others to finish.', mood: MATCH_MOOD.CLOSE })
-    expect(matchHeadline({ reason: 'ELIMINATED', complete: false, placement: null, playerCount: 4 }))
-      .toEqual({ headline: RESULTS_PLACEMENT_UNKNOWN, sub: 'Eliminated before the end.', mood: MATCH_MOOD.LOSE })
-    expect(matchHeadline({ reason: 'COMPLETED', complete: true, placement: null, playerCount: 4 }))
-      .toEqual({ headline: RESULTS_PLACEMENT_UNKNOWN, sub: 'Out of 4 players.', mood: MATCH_MOOD.CLOSE })
+    expect(
+      matchHeadline({ reason: null, complete: false, placement: null, playerCount: 4 }),
+    ).toEqual({
+      headline: RESULTS_PLACEMENT_UNKNOWN,
+      sub: 'Waiting for others to finish.',
+      mood: MATCH_MOOD.CLOSE,
+    })
+    expect(
+      matchHeadline({ reason: 'ELIMINATED', complete: false, placement: null, playerCount: 4 }),
+    ).toEqual({
+      headline: RESULTS_PLACEMENT_UNKNOWN,
+      sub: 'Eliminated before the end.',
+      mood: MATCH_MOOD.LOSE,
+    })
+    expect(
+      matchHeadline({ reason: 'COMPLETED', complete: true, placement: null, playerCount: 4 }),
+    ).toEqual({
+      headline: RESULTS_PLACEMENT_UNKNOWN,
+      sub: 'Out of 4 players.',
+      mood: MATCH_MOOD.CLOSE,
+    })
   })
 })
 
@@ -184,7 +212,9 @@ describe('matchResult data layer', () => {
     const data = await fetchMatchResult('m1')
 
     expect(data).toEqual(result)
-    expect(graphqlRequest).toHaveBeenCalledWith(expect.stringContaining('matchResult'), { matchId: 'm1' })
+    expect(graphqlRequest).toHaveBeenCalledWith(expect.stringContaining('matchResult'), {
+      matchId: 'm1',
+    })
   })
 
   it('playAgain passes matchId and unwraps the result', async () => {
@@ -196,7 +226,9 @@ describe('matchResult data layer', () => {
     const data = await playAgain('m1')
 
     expect(data).toEqual(result)
-    expect(graphqlRequest).toHaveBeenCalledWith(expect.stringContaining('playAgain'), { matchId: 'm1' })
+    expect(graphqlRequest).toHaveBeenCalledWith(expect.stringContaining('playAgain'), {
+      matchId: 'm1',
+    })
   })
 
   it('declinePlayAgain passes matchId and unwraps the result', async () => {
@@ -208,7 +240,9 @@ describe('matchResult data layer', () => {
     const data = await declinePlayAgain('m1')
 
     expect(data).toEqual(result)
-    expect(graphqlRequest).toHaveBeenCalledWith(expect.stringContaining('declinePlayAgain'), { matchId: 'm1' })
+    expect(graphqlRequest).toHaveBeenCalledWith(expect.stringContaining('declinePlayAgain'), {
+      matchId: 'm1',
+    })
   })
 })
 
@@ -235,13 +269,19 @@ describe('classifyRegroupError', () => {
   // The point of JQ-176: the message is copy, and rewording it must not move the player
   // onto a different branch.
   it('ignores the message text entirely', () => {
-    expect(classifyRegroupError(coded('TABLE_FULL', 'every seat is taken'))).toBe(REGROUP_ERROR.TABLE_FULL)
+    expect(classifyRegroupError(coded('TABLE_FULL', 'every seat is taken'))).toBe(
+      REGROUP_ERROR.TABLE_FULL,
+    )
     expect(classifyRegroupError(new Error('the table is full'))).toBe(REGROUP_ERROR.UNKNOWN)
-    expect(classifyRegroupError(new Error("this match hasn't finished yet"))).toBe(REGROUP_ERROR.UNKNOWN)
+    expect(classifyRegroupError(new Error("this match hasn't finished yet"))).toBe(
+      REGROUP_ERROR.UNKNOWN,
+    )
   })
 
   it('treats an uncoded failure as unknown', () => {
-    expect(classifyRegroupError(new Error('could not start another round'))).toBe(REGROUP_ERROR.UNKNOWN)
+    expect(classifyRegroupError(new Error('could not start another round'))).toBe(
+      REGROUP_ERROR.UNKNOWN,
+    )
     expect(classifyRegroupError(coded('SOMETHING_ELSE'))).toBe(REGROUP_ERROR.UNKNOWN)
   })
 

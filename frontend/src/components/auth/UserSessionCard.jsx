@@ -1,7 +1,10 @@
 import { useEffect, useState } from 'react'
 import { logout } from '../../lib/auth'
 import { needsIdentity } from '../../lib/viewer'
-import { fetchSpiritAnimalJourneyEligibility, formatSpiritAnimalJourneyCooldown } from '../../lib/spiritAnimal'
+import {
+  fetchSpiritAnimalJourneyEligibility,
+  formatSpiritAnimalJourneyCooldown,
+} from '../../lib/spiritAnimal'
 import { ACCOUNT_LINK_LABEL, GUEST_BADGE, GUEST_SPIRIT_ANIMAL_HINT } from '../../lib/playerCopy'
 import { cn } from '../../lib/utils'
 import { Button } from '../ui/button'
@@ -12,7 +15,12 @@ import PlayerProfileEditor from '../avatars/PlayerProfileEditor'
 import SpiritAnimalFlow from '../avatars/SpiritAnimalFlow'
 import PlayerAvatar from '../avatars/PlayerAvatar'
 
-export default function UserSessionCard({ user, compact = false, showProfileActions = true, showAccountLink = true }) {
+export default function UserSessionCard({
+  user,
+  compact = false,
+  showProfileActions = true,
+  showAccountLink = true,
+}) {
   const { clearSession } = useAuth()
   const [status, setStatus] = useState('idle')
   const [error, setError] = useState('')
@@ -79,7 +87,9 @@ export default function UserSessionCard({ user, compact = false, showProfileActi
     if (updated?.isGuest) {
       setGuestSpiritHint(true)
     }
-    void fetchSpiritAnimalJourneyEligibility().then(setJourneyEligibility).catch(() => {})
+    void fetchSpiritAnimalJourneyEligibility()
+      .then(setJourneyEligibility)
+      .catch(() => {})
   }
 
   return (
@@ -87,10 +97,15 @@ export default function UserSessionCard({ user, compact = false, showProfileActi
       <CardHeader className="flex items-center gap-3">
         <PlayerAvatar user={user} size="md" />
         <div className="flex flex-col gap-0.5">
-          <h2 id="welcome-heading" className={cn('font-heading font-semibold', compact ? 'text-base' : 'text-lg')}>
+          <h2
+            id="welcome-heading"
+            className={cn('font-heading font-semibold', compact ? 'text-base' : 'text-lg')}
+          >
             {setupRequired ? 'Set up your display' : 'Welcome back'}
           </h2>
-          {user.isGuest ? <p className="text-xs font-semibold text-amber-400">{GUEST_BADGE}</p> : null}
+          {user.isGuest ? (
+            <p className="text-xs font-semibold text-amber-400">{GUEST_BADGE}</p>
+          ) : null}
           {user.email ? <p className="text-sm text-foreground">{user.email}</p> : null}
           {!setupRequired && user.displayName ? (
             <p className="text-sm text-muted-foreground">{user.displayName}</p>
@@ -100,7 +115,10 @@ export default function UserSessionCard({ user, compact = false, showProfileActi
 
       <CardContent className={cn('flex flex-col gap-4', compact && 'gap-3')}>
         {spiritFlowOpen ? (
-          <SpiritAnimalFlow onComplete={handleSpiritComplete} onCancel={() => setSpiritFlowOpen(false)} />
+          <SpiritAnimalFlow
+            onComplete={handleSpiritComplete}
+            onCancel={() => setSpiritFlowOpen(false)}
+          />
         ) : editorOpen ? (
           <PlayerProfileEditor
             user={user}
@@ -133,7 +151,12 @@ export default function UserSessionCard({ user, compact = false, showProfileActi
                 className="justify-start gap-2 bg-gradient-to-br from-primary/20 to-accent/30"
                 onClick={() => setSpiritFlowOpen(true)}
               >
-                <svg viewBox="0 0 24 24" className="size-4 fill-primary" aria-hidden="true" focusable="false">
+                <svg
+                  viewBox="0 0 24 24"
+                  className="size-4 fill-primary"
+                  aria-hidden="true"
+                  focusable="false"
+                >
                   <path d="M12 2l1.8 5.6L19.4 9l-5.6 1.4L12 16l-1.8-5.6L4.6 9l5.6-1.4L12 2z" />
                 </svg>
                 Find my spirit animal
@@ -151,8 +174,7 @@ export default function UserSessionCard({ user, compact = false, showProfileActi
 
         {guestSpiritHint ? (
           <p className="text-sm text-muted-foreground">
-            {GUEST_SPIRIT_ANIMAL_HINT}{' '}
-            <Link href="/account">{ACCOUNT_LINK_LABEL}</Link>
+            {GUEST_SPIRIT_ANIMAL_HINT} <Link href="/account">{ACCOUNT_LINK_LABEL}</Link>
           </p>
         ) : null}
 

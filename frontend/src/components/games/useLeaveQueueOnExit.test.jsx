@@ -226,7 +226,9 @@ describe('useLeaveQueueOnExit', () => {
     it('lets a matched player back out without being asked', async () => {
       // The queue place is already spent: there is nothing left to lose.
       const onBackGesture = vi.fn()
-      render(<Probe activeIntent={{ queueId: 'q1', status: 'MATCHED' }} onBackGesture={onBackGesture} />)
+      render(
+        <Probe activeIntent={{ queueId: 'q1', status: 'MATCHED' }} onBackGesture={onBackGesture} />,
+      )
 
       await pressBack()
 

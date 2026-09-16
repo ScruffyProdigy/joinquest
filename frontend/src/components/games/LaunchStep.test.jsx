@@ -1,7 +1,11 @@
 import { render, screen, act, fireEvent } from '@testing-library/react'
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
 import LaunchStep from './LaunchStep'
-import { LAUNCH_COUNTDOWN_SECONDS, MATCH_FOUND_BEAT_MS, navigateToLaunchUrl } from '../../lib/launch'
+import {
+  LAUNCH_COUNTDOWN_SECONDS,
+  MATCH_FOUND_BEAT_MS,
+  navigateToLaunchUrl,
+} from '../../lib/launch'
 
 vi.mock('../../lib/launch', async (importOriginal) => ({
   ...(await importOriginal()),

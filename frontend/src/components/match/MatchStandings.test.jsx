@@ -6,8 +6,20 @@ const result = {
   complete: true,
   reported: true,
   participants: [
-    { user: { id: 'a', displayName: 'Ada' }, placement: 1, winner: true, finished: true, regroup: 'IN' },
-    { user: { id: 'b', displayName: 'Bo' }, placement: null, winner: false, finished: false, regroup: 'PENDING' },
+    {
+      user: { id: 'a', displayName: 'Ada' },
+      placement: 1,
+      winner: true,
+      finished: true,
+      regroup: 'IN',
+    },
+    {
+      user: { id: 'b', displayName: 'Bo' },
+      placement: null,
+      winner: false,
+      finished: false,
+      regroup: 'PENDING',
+    },
   ],
 }
 
@@ -28,7 +40,15 @@ describe('MatchStandings', () => {
     const bare = {
       complete: true,
       reported: false,
-      participants: [{ user: { id: 'a', displayName: 'Ada' }, placement: null, winner: false, finished: true, regroup: 'PENDING' }],
+      participants: [
+        {
+          user: { id: 'a', displayName: 'Ada' },
+          placement: null,
+          winner: false,
+          finished: true,
+          regroup: 'PENDING',
+        },
+      ],
     }
     // viewerId is a non-participant here (not 'a') so this exercises the
     // degraded-roster path in isolation from the "You" substitution, which
@@ -48,7 +68,15 @@ describe('MatchStandings', () => {
     const noRole = {
       complete: true,
       reported: true,
-      participants: [{ user: { id: 'a', displayName: 'Ada' }, placement: 1, winner: true, finished: true, regroup: 'IN' }],
+      participants: [
+        {
+          user: { id: 'a', displayName: 'Ada' },
+          placement: 1,
+          winner: true,
+          finished: true,
+          regroup: 'IN',
+        },
+      ],
     }
     render(<MatchStandings result={noRole} viewerId="a" />)
     const nameEl = screen.getByText('You')
@@ -61,7 +89,13 @@ describe('MatchStandings', () => {
       complete: true,
       reported: true,
       participants: [
-        { user: { id: 'a', displayName: 'Ada' }, placement: null, winner: false, finished: true, regroup: 'PENDING' },
+        {
+          user: { id: 'a', displayName: 'Ada' },
+          placement: null,
+          winner: false,
+          finished: true,
+          regroup: 'PENDING',
+        },
       ],
     }
     render(<MatchStandings result={doneWithoutPlacement} viewerId="z" />)
@@ -82,10 +116,34 @@ describe('MatchStandings', () => {
       complete: false,
       reported: true,
       participants: [
-        { user: { id: 'c', displayName: 'Cy' }, placement: null, winner: false, finished: false, regroup: 'PENDING' },
-        { user: { id: 'b', displayName: 'Bo' }, placement: 2, winner: false, finished: true, regroup: 'IN' },
-        { user: { id: 'd', displayName: 'Di' }, placement: null, winner: false, finished: false, regroup: 'PENDING' },
-        { user: { id: 'a', displayName: 'Ada' }, placement: 1, winner: true, finished: true, regroup: 'IN' },
+        {
+          user: { id: 'c', displayName: 'Cy' },
+          placement: null,
+          winner: false,
+          finished: false,
+          regroup: 'PENDING',
+        },
+        {
+          user: { id: 'b', displayName: 'Bo' },
+          placement: 2,
+          winner: false,
+          finished: true,
+          regroup: 'IN',
+        },
+        {
+          user: { id: 'd', displayName: 'Di' },
+          placement: null,
+          winner: false,
+          finished: false,
+          regroup: 'PENDING',
+        },
+        {
+          user: { id: 'a', displayName: 'Ada' },
+          placement: 1,
+          winner: true,
+          finished: true,
+          regroup: 'IN',
+        },
       ],
     }
     render(<MatchStandings result={mixed} viewerId="z" />)

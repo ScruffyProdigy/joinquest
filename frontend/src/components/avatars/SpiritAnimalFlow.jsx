@@ -47,19 +47,22 @@ export default function SpiritAnimalFlow({ onComplete, onCancel }) {
   const phaseTimingRef = useRef(null)
   const journeyAnchorRef = useRef(null)
 
-  const handleFlowError = useCallback((err, { phaseOnFailure = 'failed' } = {}) => {
-    const message = err?.message || ''
-    const friendly = friendlySpiritAnimalError(message)
-    setError(friendly)
-    if (isSpiritAnimalAuthError(message)) {
-      clearSession()
-    }
-    if (phaseOnFailure) {
-      setPhase(phaseOnFailure)
-      setProcessingPurpose(null)
-    }
-    return friendly
-  }, [clearSession])
+  const handleFlowError = useCallback(
+    (err, { phaseOnFailure = 'failed' } = {}) => {
+      const message = err?.message || ''
+      const friendly = friendlySpiritAnimalError(message)
+      setError(friendly)
+      if (isSpiritAnimalAuthError(message)) {
+        clearSession()
+      }
+      if (phaseOnFailure) {
+        setPhase(phaseOnFailure)
+        setProcessingPurpose(null)
+      }
+      return friendly
+    },
+    [clearSession],
+  )
 
   const clearTransitionTimers = useCallback(() => {
     transitionTimersRef.current.forEach((timer) => window.clearTimeout(timer))
@@ -208,7 +211,11 @@ export default function SpiritAnimalFlow({ onComplete, onCancel }) {
         }
         if (!latest) {
           setPhase('failed')
-          setError(friendlySpiritAnimalError('Mascot image generation failed. Tap Start over to try again.'))
+          setError(
+            friendlySpiritAnimalError(
+              'Mascot image generation failed. Tap Start over to try again.',
+            ),
+          )
           setProcessingPurpose(null)
           return
         }
@@ -249,7 +256,9 @@ export default function SpiritAnimalFlow({ onComplete, onCancel }) {
         setCountdownSeconds(null)
         return
       }
-      setCountdownSeconds(secondsRemainingFromPhase(timing.phaseStartedAt, timing.estimatedPhaseSeconds))
+      setCountdownSeconds(
+        secondsRemainingFromPhase(timing.phaseStartedAt, timing.estimatedPhaseSeconds),
+      )
     }
     tick()
     const timer = window.setInterval(tick, 1000)
@@ -370,13 +379,18 @@ export default function SpiritAnimalFlow({ onComplete, onCancel }) {
     return (
       <Card aria-labelledby="spirit-animal-heading">
         <CardHeader>
-          <CardTitle as="h3" id="spirit-animal-heading" className="font-heading text-lg font-semibold">
+          <CardTitle
+            as="h3"
+            id="spirit-animal-heading"
+            className="font-heading text-lg font-semibold"
+          >
             Find my spirit animal
           </CardTitle>
         </CardHeader>
         <CardContent className="flex flex-col gap-4">
           <p className="text-sm text-muted-foreground">
-            Draw five tarot cards, answer a few symbolic questions, and meet five mascot companions crafted for you.
+            Draw five tarot cards, answer a few symbolic questions, and meet five mascot companions
+            crafted for you.
           </p>
           {journeyBlocked ? (
             <p className="status-message" role="status">
@@ -449,7 +463,12 @@ export default function SpiritAnimalFlow({ onComplete, onCancel }) {
               <Button type="button" disabled={busy} onClick={handleResume}>
                 {busy ? 'Checking…' : 'Check again'}
               </Button>
-              <Button type="button" variant="secondary" disabled={busy} onClick={() => handleBegin({ forceRestart: true })}>
+              <Button
+                type="button"
+                variant="secondary"
+                disabled={busy}
+                onClick={() => handleBegin({ forceRestart: true })}
+              >
                 Start over
               </Button>
             </div>
@@ -468,12 +487,19 @@ export default function SpiritAnimalFlow({ onComplete, onCancel }) {
           </CardTitle>
         </CardHeader>
         <CardContent className="flex flex-col gap-4">
-          <p className="status-message status-message-error">{friendlySpiritAnimalError(error || reading?.errorMessage)}</p>
+          <p className="status-message status-message-error">
+            {friendlySpiritAnimalError(error || reading?.errorMessage)}
+          </p>
           <div className="flex flex-wrap gap-3">
             <Button type="button" disabled={busy} onClick={handleResume}>
               {busy ? 'Checking…' : 'Check again'}
             </Button>
-            <Button type="button" variant="secondary" disabled={busy} onClick={() => handleBegin({ forceRestart: true })}>
+            <Button
+              type="button"
+              variant="secondary"
+              disabled={busy}
+              onClick={() => handleBegin({ forceRestart: true })}
+            >
               Start over
             </Button>
             {onCancel ? (
@@ -494,7 +520,9 @@ export default function SpiritAnimalFlow({ onComplete, onCancel }) {
       return (
         <Card>
           <CardContent className="flex flex-col gap-4">
-            <p className="status-message" role="status">Loading questions…</p>
+            <p className="status-message" role="status">
+              Loading questions…
+            </p>
           </CardContent>
         </Card>
       )
@@ -514,31 +542,28 @@ export default function SpiritAnimalFlow({ onComplete, onCancel }) {
           <div
             className={cn(
               'flex flex-col gap-4 transition-opacity duration-300',
-              (panelState === 'closing' || panelState === 'closed') && 'pointer-events-none opacity-0',
+              (panelState === 'closing' || panelState === 'closed') &&
+                'pointer-events-none opacity-0',
               panelState === 'opening' && 'opacity-0',
               panelState === 'open' && 'opacity-100',
             )}
           >
             <div className="flex flex-col gap-2 rounded-xl border border-border bg-muted/40 p-3">
               <p className="text-sm text-muted-foreground">
-                <span className="font-semibold text-foreground">The {current.slotName}</span>
-                {' '}asks about {slotPrompt.replace(/\.$/, '')}.
+                <span className="font-semibold text-foreground">The {current.slotName}</span> asks
+                about {slotPrompt.replace(/\.$/, '')}.
               </p>
 
               <p className="text-sm text-muted-foreground">
                 <span className="font-semibold text-foreground">Your card: {current.card}</span>
-                {current.cardMeaningInGeneral ? (
-                  <>
-                    {' '}
-                    {current.cardMeaningInGeneral}
-                  </>
-                ) : null}
+                {current.cardMeaningInGeneral ? <> {current.cardMeaningInGeneral}</> : null}
               </p>
 
               {current.cardMeaningForSlot ? (
                 <p className="text-sm text-muted-foreground">
-                  <span className="font-semibold text-foreground">In the {current.slotName} position</span>
-                  {' '}
+                  <span className="font-semibold text-foreground">
+                    In the {current.slotName} position
+                  </span>{' '}
                   {current.cardMeaningForSlot}
                 </p>
               ) : null}
@@ -555,7 +580,9 @@ export default function SpiritAnimalFlow({ onComplete, onCancel }) {
                     disabled={answersDisabled}
                     onClick={() => handlePickAnswer(answer.id)}
                   >
-                    <span className="font-mono-display text-2xs text-muted-foreground">{answer.id}</span>
+                    <span className="font-mono-display text-2xs text-muted-foreground">
+                      {answer.id}
+                    </span>
                     <span className="text-sm text-foreground">{answer.label}</span>
                   </OptionButton>
                 </li>
@@ -572,7 +599,11 @@ export default function SpiritAnimalFlow({ onComplete, onCancel }) {
   return (
     <Card aria-labelledby="spirit-results-heading">
       <CardHeader>
-        <CardTitle as="h3" id="spirit-results-heading" className="font-heading text-lg font-semibold">
+        <CardTitle
+          as="h3"
+          id="spirit-results-heading"
+          className="font-heading text-lg font-semibold"
+        >
           Your spirit animals
         </CardTitle>
       </CardHeader>
@@ -580,24 +611,42 @@ export default function SpiritAnimalFlow({ onComplete, onCancel }) {
         {reading?.personality?.overview ? (
           <p className="text-sm text-muted-foreground">{reading.personality.overview}</p>
         ) : null}
-        {reading?.mascotOverview ? <p className="text-sm text-muted-foreground">{reading.mascotOverview}</p> : null}
+        {reading?.mascotOverview ? (
+          <p className="text-sm text-muted-foreground">{reading.mascotOverview}</p>
+        ) : null}
         {reading?.imagesMissing && phase === 'results' ? (
-          <p className="text-sm text-muted-foreground" role="status">Restoring mascot images…</p>
+          <p className="text-sm text-muted-foreground" role="status">
+            Restoring mascot images…
+          </p>
         ) : null}
         <ul className="grid grid-cols-[repeat(auto-fill,minmax(200px,1fr))] gap-4" role="list">
           {totems.map((totem) => (
-            <li key={totem.name} className="flex flex-col gap-2 rounded-2xl border border-border bg-muted/40 p-4">
+            <li
+              key={totem.name}
+              className="flex flex-col gap-2 rounded-2xl border border-border bg-muted/40 p-4"
+            >
               {totem.imageUrl ? (
-                <img src={totem.imageUrl} alt="" className="aspect-square w-full rounded-xl object-cover" />
+                <img
+                  src={totem.imageUrl}
+                  alt=""
+                  className="aspect-square w-full rounded-xl object-cover"
+                />
               ) : null}
               <div className="flex flex-col gap-1.5">
                 <h4 className="font-heading text-base font-semibold">{totem.name}</h4>
-                {totem.affinity ? <p className="text-xs font-medium text-primary">{totem.affinity}</p> : null}
+                {totem.affinity ? (
+                  <p className="text-xs font-medium text-primary">{totem.affinity}</p>
+                ) : null}
                 <p className="text-sm text-muted-foreground">{totem.personalitySummary}</p>
                 {totem.whyChooseThisAvatar ? (
                   <p className="text-xs text-muted-foreground">{totem.whyChooseThisAvatar}</p>
                 ) : null}
-                <Button type="button" variant="secondary" disabled={busy} onClick={() => handleSelectTotem(totem.name)}>
+                <Button
+                  type="button"
+                  variant="secondary"
+                  disabled={busy}
+                  onClick={() => handleSelectTotem(totem.name)}
+                >
                   Choose {totem.name}
                 </Button>
               </div>

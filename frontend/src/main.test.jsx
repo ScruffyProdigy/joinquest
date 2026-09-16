@@ -14,7 +14,7 @@ vi.mock('react-dom/client', () => ({
 // Mock the CSS import
 vi.mock('./index.css', () => ({}))
 vi.mock('./App.jsx', () => ({
-  default: () => <div data-testid="app">Mock App</div>
+  default: () => <div data-testid="app">Mock App</div>,
 }))
 
 describe('main.jsx', () => {
@@ -25,7 +25,7 @@ describe('main.jsx', () => {
     mockRender = vi.fn()
     mockRoot = { render: mockRender }
     createRoot.mockReturnValue(mockRoot)
-    
+
     // Clear any previous calls
     vi.clearAllMocks()
   })
@@ -82,7 +82,7 @@ describe('main.jsx Integration', () => {
     // This test verifies that the main entry point works correctly
     // by actually rendering the app
     const { container } = render(<App />)
-    
+
     expect(container.firstChild).toBeInTheDocument()
   })
 
@@ -90,7 +90,7 @@ describe('main.jsx Integration', () => {
     // This test verifies that CSS imports don't cause issues
     // In a real app, you might want to test that styles are applied
     const { container } = render(<App />)
-    
+
     // The app should render without CSS-related errors
     expect(container.firstChild).toBeInTheDocument()
   })

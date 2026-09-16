@@ -100,48 +100,53 @@ export function AuthProvider({ children }) {
     [setSessionUser],
   )
 
-  const refreshSession = useCallback(async (options = {}) => {
-    const { silent = false } = options
-    // Retries stretch this call to ~7s, which is the widest window in the app for
-    // a logout to land underneath it.
-    const generation = sessionGenerationRef.current
-    clearSubscriptionAuthCache()
-    if (!silent) {
-      setLoading(true)
-    }
-    setError('')
-    setSessionUnavailable(false)
-    try {
-      const currentUser = await fetchCurrentUserWithRetries()
-      if (generation !== sessionGenerationRef.current) {
-        return
-      }
-      if (currentUser) {
-        setSessionUser(currentUser)
-        void prefetchSubscriptionAuth().catch(() => {})
-      } else if (!silent) {
-        setSessionUser(null)
-      }
-    } catch (err) {
-      if (generation !== sessionGenerationRef.current) {
-        return
-      }
+  const refreshSession = useCallback(
+    async (options = {}) => {
+      const { silent = false } = options
+      // Retries stretch this call to ~7s, which is the widest window in the app for
+      // a logout to land underneath it.
+      const generation = sessionGenerationRef.current
+      clearSubscriptionAuthCache()
       if (!silent) {
-        const message = err.message || 'Could not load session'
-        if (isTransientServerError(message)) {
-          setSessionUnavailable(true)
-          setError('Server briefly unavailable — your session may still be active. Try again in a moment.')
-        } else {
-          setError(message)
+        setLoading(true)
+      }
+      setError('')
+      setSessionUnavailable(false)
+      try {
+        const currentUser = await fetchCurrentUserWithRetries()
+        if (generation !== sessionGenerationRef.current) {
+          return
+        }
+        if (currentUser) {
+          setSessionUser(currentUser)
+          void prefetchSubscriptionAuth().catch(() => {})
+        } else if (!silent) {
           setSessionUser(null)
         }
+      } catch (err) {
+        if (generation !== sessionGenerationRef.current) {
+          return
+        }
+        if (!silent) {
+          const message = err.message || 'Could not load session'
+          if (isTransientServerError(message)) {
+            setSessionUnavailable(true)
+            setError(
+              'Server briefly unavailable — your session may still be active. Try again in a moment.',
+            )
+          } else {
+            setError(message)
+            setSessionUser(null)
+          }
+        }
+      } finally {
+        if (!silent) {
+          setLoading(false)
+        }
       }
-    } finally {
-      if (!silent) {
-        setLoading(false)
-      }
-    }
-  }, [setSessionUser])
+    },
+    [setSessionUser],
+  )
 
   const clearSession = useCallback(() => {
     clearSubscriptionAuthCache()

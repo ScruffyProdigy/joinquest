@@ -46,7 +46,9 @@ describe('gameCard', () => {
   })
 
   it('gameCatalogHeroUrl falls back to heroUrl', () => {
-    expect(gameCatalogHeroUrl({ heroUrl: '/games/rpslr-hero.jpg' })).toBe('/games/rpslr-hero.jpg?v=1')
+    expect(gameCatalogHeroUrl({ heroUrl: '/games/rpslr-hero.jpg' })).toBe(
+      '/games/rpslr-hero.jpg?v=1',
+    )
   })
 
   it('gameCatalogHeroUrl falls back to the placeholder rather than throwing', () => {
@@ -181,10 +183,7 @@ describe('gameCard', () => {
 
   it('gameDurationLabel ignores modes that declare no duration', () => {
     expect(
-      gameDurationLabel([
-        { status: 'active', typicalMinutes: 12 },
-        { status: 'active' },
-      ]),
+      gameDurationLabel([{ status: 'active', typicalMinutes: 12 }, { status: 'active' }]),
     ).toBe('12 min')
   })
 
@@ -257,7 +256,9 @@ describe('gameCard', () => {
   })
 
   it('gameTitleArtStyle clamps a width past the card edge', () => {
-    expect(gameTitleArtStyle({ url: '/t.webp', anchor: 'top-left', widthPct: 140 }).width).toBe('100%')
+    expect(gameTitleArtStyle({ url: '/t.webp', anchor: 'top-left', widthPct: 140 }).width).toBe(
+      '100%',
+    )
   })
 
   it('gameTitleArtStyle returns null without a usable placement', () => {

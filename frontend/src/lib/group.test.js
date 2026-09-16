@@ -92,7 +92,13 @@ describe('playersPickingASeat', () => {
   }
 
   it('lists room members who hold no seat', () => {
-    const room = { members: [{ user: { id: 'u1' }, disconnected: false }, { user: { id: 'u2' }, disconnected: false }, { user: { id: 'u3' }, disconnected: false }] }
+    const room = {
+      members: [
+        { user: { id: 'u1' }, disconnected: false },
+        { user: { id: 'u2' }, disconnected: false },
+        { user: { id: 'u3' }, disconnected: false },
+      ],
+    }
     const table = {
       seats: [{ seatKey: 'p-1', user: { id: 'u2' } }],
       seatSlots: [slot('p-1', 'Player · 1', { id: 'u2' }), slot('p-2', 'Player · 2')],
@@ -128,7 +134,12 @@ describe('playersPickingASeat', () => {
     // A room-table group never leaves the room, so membership cannot stand in for
     // "they are back" the way the prototype's arrival does. The regroup answer is the
     // only thing that actually says whether they have decided.
-    const room = { members: [{ user: { id: 'u1' }, disconnected: false }, { user: { id: 'u2' }, disconnected: false }] }
+    const room = {
+      members: [
+        { user: { id: 'u1' }, disconnected: false },
+        { user: { id: 'u2' }, disconnected: false },
+      ],
+    }
     const table = {
       seatSlots: [slot('p-1', 'Player · 1', { id: 'u1' }), slot('p-2', 'Player · 2')],
       regroupRoster: [{ user: { id: 'u2' }, role: 'p-2', regroup: 'PENDING' }],
@@ -140,7 +151,12 @@ describe('playersPickingASeat', () => {
   })
 
   it('never shows the viewer as awaiting — they are demonstrably back', () => {
-    const room = { members: [{ user: { id: 'u1' }, disconnected: false }, { user: { id: 'u2' }, disconnected: false }] }
+    const room = {
+      members: [
+        { user: { id: 'u1' }, disconnected: false },
+        { user: { id: 'u2' }, disconnected: false },
+      ],
+    }
     const table = {
       seatSlots: [slot('p-1', 'Player · 1'), slot('p-2', 'Player · 2', { id: 'u2' })],
       regroupRoster: [{ user: { id: 'u1' }, role: 'p-1', regroup: 'PENDING' }],
@@ -210,7 +226,12 @@ describe('playersPickingASeat', () => {
   })
 
   it('lists each player once when they are both a room member and on the roster', () => {
-    const room = { members: [{ user: { id: 'u1' }, disconnected: false }, { user: { id: 'u2' }, disconnected: false }] }
+    const room = {
+      members: [
+        { user: { id: 'u1' }, disconnected: false },
+        { user: { id: 'u2' }, disconnected: false },
+      ],
+    }
     const table = {
       seatSlots: [slot('p-1', 'Player · 1'), slot('p-2', 'Player · 2')],
       regroupRoster: [{ user: { id: 'u2' }, role: 'p-2', regroup: 'PENDING' }],
@@ -249,7 +270,12 @@ describe('playersPickingASeat', () => {
   })
 
   it('orders the viewer, then members, then awaiting, then out', () => {
-    const room = { members: [{ user: { id: 'u5' }, disconnected: false }, { user: { id: 'u1' }, disconnected: false }] }
+    const room = {
+      members: [
+        { user: { id: 'u5' }, disconnected: false },
+        { user: { id: 'u1' }, disconnected: false },
+      ],
+    }
     const table = {
       seatSlots: [slot('p-1', 'Player · 1'), slot('p-2', 'Player · 2')],
       regroupRoster: [
@@ -280,7 +306,10 @@ describe('groupCtaState', () => {
     return {
       king,
       canStart: true,
-      seats: [{ seatKey: 'p-1', user: king }, { seatKey: 'p-2', user: { id: 'u9' } }],
+      seats: [
+        { seatKey: 'p-1', user: king },
+        { seatKey: 'p-2', user: { id: 'u9' } },
+      ],
       seatSlots: [
         slot('p-1', 'Player · 1', king),
         slot('p-2', 'Player · 2', { id: 'u9' }),
@@ -421,7 +450,10 @@ describe('isLastSeatedPlayer', () => {
 
   it('is false when somebody else is still seated', () => {
     const table = {
-      seats: [{ seatKey: 'p-1', user: { id: 'u1' } }, { seatKey: 'p-2', user: { id: 'u2' } }],
+      seats: [
+        { seatKey: 'p-1', user: { id: 'u1' } },
+        { seatKey: 'p-2', user: { id: 'u2' } },
+      ],
       seatSlots: [],
     }
     expect(isLastSeatedPlayer(table, 'u1')).toBe(false)

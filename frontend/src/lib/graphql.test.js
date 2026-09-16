@@ -61,10 +61,14 @@ describe('graphqlRequest', () => {
   it('carries the server error code onto the thrown error', async () => {
     vi.stubGlobal(
       'fetch',
-      respondWith({ errors: [{ message: 'the table is full', extensions: { code: 'TABLE_FULL' } }] }),
+      respondWith({
+        errors: [{ message: 'the table is full', extensions: { code: 'TABLE_FULL' } }],
+      }),
     )
 
-    await expect(graphqlRequest('mutation { playAgain(matchId: "m") { seated } }')).rejects.toMatchObject({
+    await expect(
+      graphqlRequest('mutation { playAgain(matchId: "m") { seated } }'),
+    ).rejects.toMatchObject({
       message: 'the table is full',
       code: 'TABLE_FULL',
     })
@@ -73,10 +77,16 @@ describe('graphqlRequest', () => {
   it('carries the code through an HTTP-level failure too', async () => {
     vi.stubGlobal(
       'fetch',
-      respondWith({ errors: [{ message: 'nope', extensions: { code: 'TABLE_FULL' } }] }, false, 500),
+      respondWith(
+        { errors: [{ message: 'nope', extensions: { code: 'TABLE_FULL' } }] },
+        false,
+        500,
+      ),
     )
 
-    await expect(graphqlRequest('mutation { playAgain(matchId: "m") { seated } }')).rejects.toMatchObject({
+    await expect(
+      graphqlRequest('mutation { playAgain(matchId: "m") { seated } }'),
+    ).rejects.toMatchObject({
       code: 'TABLE_FULL',
     })
   })
@@ -84,9 +94,9 @@ describe('graphqlRequest', () => {
   it('leaves the code undefined when the server sends none', async () => {
     vi.stubGlobal('fetch', respondWith({ errors: [{ message: 'could not start another round' }] }))
 
-    await expect(graphqlRequest('mutation { playAgain(matchId: "m") { seated } }')).rejects.toSatisfy(
-      (error) => error.code === undefined,
-    )
+    await expect(
+      graphqlRequest('mutation { playAgain(matchId: "m") { seated } }'),
+    ).rejects.toSatisfy((error) => error.code === undefined)
   })
 
   it('stops notifying once unsubscribed', async () => {

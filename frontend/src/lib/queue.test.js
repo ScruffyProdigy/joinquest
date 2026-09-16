@@ -9,8 +9,9 @@ import { QUEUE_RECONNECT_ATTEMPTS, queueReconnectWaitMs } from './queue'
 // it in the queue pay for every second of that (JQ-283).
 describe('queue reconnect budget', () => {
   const budgetMs = () =>
-    Array.from({ length: QUEUE_RECONNECT_ATTEMPTS }, (_, retries) => queueReconnectWaitMs(retries))
-      .reduce((total, wait) => total + wait, 0)
+    Array.from({ length: QUEUE_RECONNECT_ATTEMPTS }, (_, retries) =>
+      queueReconnectWaitMs(retries),
+    ).reduce((total, wait) => total + wait, 0)
 
   const QUEUE_DISCONNECT_GRACE_MS = 90 * 1000
 

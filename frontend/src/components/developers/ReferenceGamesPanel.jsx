@@ -18,7 +18,10 @@ const REFERENCE_GAMES = [
 
 export default function ReferenceGamesPanel() {
   return (
-    <section className="panel-card developer-reference-games" aria-labelledby="reference-games-heading">
+    <section
+      className="panel-card developer-reference-games"
+      aria-labelledby="reference-games-heading"
+    >
       <h2 id="reference-games-heading">See working examples</h2>
       <p className="panel-copy">
         These games run on {APP_NAME} today. Play them, then browse the source on GitHub — same

@@ -14,8 +14,8 @@ export default function PrivacyPage() {
       <ul>
         <li>
           <strong>Account information</strong> — such as your email address, display name, and
-          sign-in identifiers when you use email magic links or sign in with a provider (for
-          example Discord or Google).
+          sign-in identifiers when you use email magic links or sign in with a provider (for example
+          Discord or Google).
         </li>
         <li>
           <strong>Usage information</strong> — such as games you view, rooms you join, and basic
@@ -40,8 +40,8 @@ export default function PrivacyPage() {
 
       <h2>Sharing</h2>
       <p>
-        We may share data with service providers that help us host and operate the site (for
-        example cloud hosting or email delivery). When you play a third-party game, its developer may
+        We may share data with service providers that help us host and operate the site (for example
+        cloud hosting or email delivery). When you play a third-party game, its developer may
         receive information needed to provision a match — such as a player identifier or seat token
         — according to their own practices.
       </p>
@@ -86,10 +86,7 @@ export default function PrivacyPage() {
       <h2>Contact</h2>
       <p>
         Privacy questions? Email{' '}
-        <Link href="mailto:support@joinquest.cc">
-          support@joinquest.cc
-        </Link>
-        .
+        <Link href="mailto:support@joinquest.cc">support@joinquest.cc</Link>.
       </p>
     </LegalPage>
   )

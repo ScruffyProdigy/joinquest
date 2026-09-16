@@ -15,7 +15,16 @@ describe('parseHex', () => {
   })
 
   it('returns null for unusable input', () => {
-    for (const bad of ['', 'nope', '#12345', '#gggggg', 'rebeccapurple', 'rgb(1,2,3)', null, undefined]) {
+    for (const bad of [
+      '',
+      'nope',
+      '#12345',
+      '#gggggg',
+      'rebeccapurple',
+      'rgb(1,2,3)',
+      null,
+      undefined,
+    ]) {
       expect(parseHex(bad)).toBeNull()
     }
   })
@@ -60,9 +69,18 @@ describe('accentColorFor', () => {
 
   it('distributes across multiple families for a varied set of slugs', () => {
     const slugs = [
-      'trivia-blitz', 'word-hunt', 'card-clash', 'social-deduction',
-      'fighting-fury', 'strategy-siege', 'party-pack', 'quick-draw',
-      'co-op-quest', 'solo-run', 'team-trivia', 'duel-arena',
+      'trivia-blitz',
+      'word-hunt',
+      'card-clash',
+      'social-deduction',
+      'fighting-fury',
+      'strategy-siege',
+      'party-pack',
+      'quick-draw',
+      'co-op-quest',
+      'solo-run',
+      'team-trivia',
+      'duel-arena',
     ]
     const distinctNames = new Set(slugs.map((slug) => accentColorFor(slug).name))
     expect(distinctNames.size).toBeGreaterThanOrEqual(5)
@@ -73,9 +91,10 @@ describe('accentColorFor', () => {
     expect(result.badge).toMatch(/^linear-gradient\(135deg, #[0-9a-f]{6}, #[0-9a-f]{6}\)$/)
     expect(result.cardBg).toMatch(/^linear-gradient\(160deg, color-mix\(/)
     expect(result.border).toMatch(/^#[0-9a-f]{6}40$/)
-    expect(result.headerBg).toMatch(/^linear-gradient\(135deg, color-mix\(in oklab, .+ var\(--background\)\), color-mix\(in oklab, .+ var\(--background\)\)\)$/)
+    expect(result.headerBg).toMatch(
+      /^linear-gradient\(135deg, color-mix\(in oklab, .+ var\(--background\)\), color-mix\(in oklab, .+ var\(--background\)\)\)$/,
+    )
   })
-
 
   it('does not throw for an empty slug', () => {
     expect(() => accentColorFor('')).not.toThrow()
@@ -140,8 +159,16 @@ describe('listAccentColors', () => {
   it('returns exactly the 10 fixed palette families', () => {
     const names = listAccentColors().map((c) => c.name)
     expect(names).toEqual([
-      'amber', 'orange', 'lime', 'emerald', 'cyan',
-      'blue', 'indigo', 'violet', 'fuchsia', 'rose',
+      'amber',
+      'orange',
+      'lime',
+      'emerald',
+      'cyan',
+      'blue',
+      'indigo',
+      'violet',
+      'fuchsia',
+      'rose',
     ])
   })
 

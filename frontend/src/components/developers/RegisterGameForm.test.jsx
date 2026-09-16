@@ -3,7 +3,11 @@ import userEvent from '@testing-library/user-event'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { AuthProvider } from '../auth/AuthProvider'
 import RegisterGameForm from './RegisterGameForm'
-import { DEVELOPER_DRAFT_KEY, readRegistrationDraft, saveRegistrationDraft } from '../../lib/developerDraft'
+import {
+  DEVELOPER_DRAFT_KEY,
+  readRegistrationDraft,
+  saveRegistrationDraft,
+} from '../../lib/developerDraft'
 import { registerMyGame } from '../../lib/developers'
 import { mockAuthenticatedSession, mockUnauthenticatedSession } from '../../test/setup'
 

@@ -400,21 +400,38 @@ export default function AccountPage() {
                 Add email
               </h2>
               {linkMessage ? (
-                <p className={linkStatus === 'error' ? 'status-message status-message-error' : 'status-message'} role="status">
+                <p
+                  className={
+                    linkStatus === 'error'
+                      ? 'status-message status-message-error'
+                      : 'status-message'
+                  }
+                  role="status"
+                >
                   {linkMessage}
                 </p>
               ) : null}
 
               {linkStep === 'merge-confirm' && mergePreview ? (
-                <div className="flex flex-col gap-3 rounded-lg border border-amber-500/25 bg-amber-500/10 p-3" role="alert">
+                <div
+                  className="flex flex-col gap-3 rounded-lg border border-amber-500/25 bg-amber-500/10 p-3"
+                  role="alert"
+                >
                   <p className="text-sm text-amber-100">
                     {formatMergeWarning(mergePreview.mergeSourceDisplayName, user.displayName)}
                   </p>
                   <div className="flex flex-wrap gap-3">
-                    <Button onClick={() => void handleConfirmMerge()} disabled={linkStatus === 'loading'}>
+                    <Button
+                      onClick={() => void handleConfirmMerge()}
+                      disabled={linkStatus === 'loading'}
+                    >
                       {linkStatus === 'loading' ? 'Sending…' : MERGE_CONFIRM}
                     </Button>
-                    <Button variant="secondary" onClick={handleCancelMerge} disabled={linkStatus === 'loading'}>
+                    <Button
+                      variant="secondary"
+                      onClick={handleCancelMerge}
+                      disabled={linkStatus === 'loading'}
+                    >
                       {MERGE_CANCEL}
                     </Button>
                   </div>
@@ -436,7 +453,10 @@ export default function AccountPage() {
                     value={code}
                     onChange={(event) => setCode(normalizeCode(event.target.value))}
                   />
-                  <Button type="submit" disabled={linkStatus === 'loading' || normalizeCode(code).length !== 6}>
+                  <Button
+                    type="submit"
+                    disabled={linkStatus === 'loading' || normalizeCode(code).length !== 6}
+                  >
                     {linkStatus === 'loading' ? 'Verifying…' : 'Verify email'}
                   </Button>
                 </form>
@@ -472,7 +492,10 @@ export default function AccountPage() {
               ) : null}
 
               {oauthMergePreview ? (
-                <div className="flex flex-col gap-3 rounded-lg border border-amber-500/25 bg-amber-500/10 p-3" role="alert">
+                <div
+                  className="flex flex-col gap-3 rounded-lg border border-amber-500/25 bg-amber-500/10 p-3"
+                  role="alert"
+                >
                   <p className="text-sm text-amber-100">
                     {formatMergeWarning(oauthMergePreview.mergeSourceDisplayName, user.displayName)}
                   </p>
@@ -495,9 +518,13 @@ export default function AccountPage() {
                       className="flex items-center justify-between gap-3 rounded-lg border border-border bg-muted/40 px-3 py-2"
                     >
                       <div>
-                        <strong className="text-sm text-foreground">{providerLabel(item.provider)}</strong>
+                        <strong className="text-sm text-foreground">
+                          {providerLabel(item.provider)}
+                        </strong>
                         {item.email ? (
-                          <span className="ml-2 block text-xs text-muted-foreground">{item.email}</span>
+                          <span className="ml-2 block text-xs text-muted-foreground">
+                            {item.email}
+                          </span>
                         ) : null}
                       </div>
                       {canRemove ? (

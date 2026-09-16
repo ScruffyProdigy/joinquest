@@ -173,7 +173,7 @@
 
      This is the vertical twin of the `box-border` note in ui/dialog.jsx: same
      missing preflight, other axis. */
-  [data-slot='dialog-content'][data-takeover] :is(h1, h2, h3, h4, h5, h6, p, ul, ol) {
+  [data-slot="dialog-content"][data-takeover] :is(h1, h2, h3, h4, h5, h6, p, ul, ol) {
     margin: 0;
   }
 }

@@ -44,7 +44,7 @@ describe('Environment Configuration', () => {
   it('should handle missing environment gracefully', () => {
     // Temporarily remove window.env
     delete window.env
-    
+
     // The app should not crash
     expect(() => {
       // Simulate accessing window.env in the app
@@ -58,11 +58,11 @@ describe('Environment Configuration', () => {
     const getApiBaseUrl = () => {
       return window.env?.REACT_APP_API_BASE_URL || ''
     }
-    
+
     const getEnvironment = () => {
       return window.env?.REACT_APP_ENV || 'development'
     }
-    
+
     expect(getApiBaseUrl()).toBeDefined()
     expect(getEnvironment()).toBeDefined()
   })
@@ -70,18 +70,18 @@ describe('Environment Configuration', () => {
   it('should have consistent environment configuration', () => {
     const env1 = window.env
     const env2 = window.env
-    
+
     expect(env1).toEqual(env2)
   })
 
   it('should allow environment variables to be overridden', () => {
     const originalApiUrl = window.env.REACT_APP_API_BASE_URL
-    
+
     // Test overriding environment variables
     window.env.REACT_APP_API_BASE_URL = 'https://test-api.example.com'
-    
+
     expect(window.env.REACT_APP_API_BASE_URL).toBe('https://test-api.example.com')
-    
+
     // Restore original value
     window.env.REACT_APP_API_BASE_URL = originalApiUrl
   })
@@ -104,7 +104,7 @@ describe('Environment Configuration Integration', () => {
   it('should be able to make API requests', async () => {
     const apiBaseUrl = window.env.REACT_APP_API_BASE_URL
     const healthUrl = `${apiBaseUrl}/healthz`
-    
+
     try {
       const response = await fetch(healthUrl)
       if (response.ok) {
@@ -119,7 +119,7 @@ describe('Environment Configuration Integration', () => {
   it('should handle different environment configurations', () => {
     const environments = ['local', 'staging', 'production', 'test']
     const currentEnv = window.env.REACT_APP_ENV
-    
+
     expect(environments).toContain(currentEnv)
   })
 })

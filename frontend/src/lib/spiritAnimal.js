@@ -237,7 +237,10 @@ export function friendlySpiritAnimalError(message) {
   return text || 'Something went wrong while summoning your mascots.'
 }
 
-export async function pollSpiritAnimalReading(fetchReading, { intervalMs = 2000, timeoutMs = 600000 } = {}) {
+export async function pollSpiritAnimalReading(
+  fetchReading,
+  { intervalMs = 2000, timeoutMs = 600000 } = {},
+) {
   const started = Date.now()
   for (;;) {
     if (Date.now() - started > timeoutMs) {

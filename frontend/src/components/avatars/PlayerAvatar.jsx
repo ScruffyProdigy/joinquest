@@ -21,7 +21,14 @@ const SIZE_MAP = { xs: 'xs', sm: 'sm', md: 'md' }
  * on its own — same reason `ring === 'king'` names the king in the label instead of relying
  * on the ring.
  */
-export default function PlayerAvatar({ user, size = 'md', className = '', title, ring, away = false }) {
+export default function PlayerAvatar({
+  user,
+  size = 'md',
+  className = '',
+  title,
+  ring,
+  away = false,
+}) {
   const baseLabel = title ?? displayName(user)
   const ringLabel = ring === 'king' ? `${baseLabel} (${KING_LABEL})` : baseLabel
   const label = away ? `${ringLabel} (away)` : ringLabel

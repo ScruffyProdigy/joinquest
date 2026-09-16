@@ -25,15 +25,15 @@ function applyJoinResponse(result, handlers) {
     return true
   }
   if (result?.queued) {
-    return applyQueueUpdate(
-      { status: 'WAITING', queuedCount: result.queuedCount ?? 1 },
-      handlers,
-    )
+    return applyQueueUpdate({ status: 'WAITING', queuedCount: result.queuedCount ?? 1 }, handlers)
   }
   return false
 }
 
-function applyQueueUpdate(update, { setQueueState, setJoinUrl, setQueuedCount, setError, setSelectedQueuePath }) {
+function applyQueueUpdate(
+  update,
+  { setQueueState, setJoinUrl, setQueuedCount, setError, setSelectedQueuePath },
+) {
   if (update.status === 'MATCHED') {
     setQueueState('matched')
     if (update.joinUrl) {
@@ -83,10 +83,7 @@ function applyMyQueueStatus(result, handlers) {
       handlers,
     )
   }
-  return applyQueueUpdate(
-    { status: 'WAITING', queuedCount: result.queuedCount ?? 0 },
-    handlers,
-  )
+  return applyQueueUpdate({ status: 'WAITING', queuedCount: result.queuedCount ?? 0 }, handlers)
 }
 
 function syncSelectedQueuePath(result, setSelectedQueuePath) {

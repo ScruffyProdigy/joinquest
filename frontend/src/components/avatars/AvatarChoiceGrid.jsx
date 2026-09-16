@@ -27,7 +27,14 @@ import { OptionButton } from '../ui/option-button'
  * pick-then-confirm gate needs too. A selected row carries the prototype's
  * check badge, so the choice is not resting on the border colour alone.
  */
-export default function AvatarChoiceGrid({ choices, selectedKey, busyKey, busyLabel = 'Starting…', disabled = false, onPick }) {
+export default function AvatarChoiceGrid({
+  choices,
+  selectedKey,
+  busyKey,
+  busyLabel = 'Starting…',
+  disabled = false,
+  onPick,
+}) {
   return (
     <ul className="m-0 grid list-none grid-cols-2 gap-2 p-0" role="list">
       {choices.map((choice) => {

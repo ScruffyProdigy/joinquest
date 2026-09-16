@@ -97,8 +97,13 @@ export default function LinkEmailPage() {
         </CardHeader>
         <CardContent className="flex flex-col gap-4">
           {status === 'merge' ? (
-            <div className="flex flex-col gap-3 rounded-lg border border-amber-500/25 bg-amber-500/10 p-3" role="alert">
-              <p className="text-sm text-amber-100">{formatMergeWarning(null, user?.displayName)}</p>
+            <div
+              className="flex flex-col gap-3 rounded-lg border border-amber-500/25 bg-amber-500/10 p-3"
+              role="alert"
+            >
+              <p className="text-sm text-amber-100">
+                {formatMergeWarning(null, user?.displayName)}
+              </p>
               <div className="flex flex-wrap gap-3">
                 <Button onClick={() => void handleConfirmMerge()}>{MERGE_CONFIRM}</Button>
                 <Button variant="secondary" asChild>
@@ -107,7 +112,13 @@ export default function LinkEmailPage() {
               </div>
             </div>
           ) : (
-            <p className={status === 'error' ? 'status-message status-message-error' : 'status-message'}>{message}</p>
+            <p
+              className={
+                status === 'error' ? 'status-message status-message-error' : 'status-message'
+              }
+            >
+              {message}
+            </p>
           )}
           {status === 'error' ? (
             <Link className="self-start" href="/account">

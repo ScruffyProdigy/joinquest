@@ -4,11 +4,7 @@ import { describe, it, expect, afterEach, beforeEach, vi } from 'vitest'
 import WaitingPage from './WaitingPage'
 import { useLeaveQueueOnExit } from './useLeaveQueueOnExit'
 import { LEAVE_GAME_FAILED, NOTIFY_ME } from '../../lib/playerCopy'
-import {
-  mockAuthenticatedSession,
-  mockPushSupported,
-  mockPushUnsupported,
-} from '../../test/setup'
+import { mockAuthenticatedSession, mockPushSupported, mockPushUnsupported } from '../../test/setup'
 
 const authState = { user: { id: 'u1' }, loading: false }
 const intentState = {}
@@ -30,7 +26,6 @@ vi.mock('../../lib/tables', async (importOriginal) => ({
   leaveTable: (...args) => leaveTable(...args),
   discardTable: (...args) => discardTable(...args),
 }))
-
 
 function setIntentState(overrides = {}) {
   Object.assign(intentState, {
@@ -86,7 +81,9 @@ describe('WaitingPage', () => {
     expect(screen.getByRole('heading', { name: 'Finding players…' })).toBeInTheDocument()
     expect(screen.getByText('Word Hunt · Arena')).toBeInTheDocument()
     expect(screen.getByText('Looking for players… (3 players looking)')).toBeInTheDocument()
-    expect(screen.getByText('We will notify you here when your group is ready.')).toBeInTheDocument()
+    expect(
+      screen.getByText('We will notify you here when your group is ready.'),
+    ).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Stop' })).toBeInTheDocument()
   })
 
@@ -143,7 +140,7 @@ describe('WaitingPage', () => {
       expect(screen.getByRole('button', { name: 'Leave the group' })).toBeInTheDocument()
     })
 
-    it('offers no way to leave on a wait of the player\'s own', () => {
+    it("offers no way to leave on a wait of the player's own", () => {
       setIntentState({ activeIntent: waitingIntent, activeTableSeat: null })
       render(<WaitingPage intent={intentState} />)
 
@@ -170,7 +167,7 @@ describe('WaitingPage', () => {
       expect(vi.mocked(useLeaveQueueOnExit).mock.calls.at(-1)?.[0]).toBeNull()
     })
 
-    it('still leaves the queue normally for a wait of the player\'s own', () => {
+    it("still leaves the queue normally for a wait of the player's own", () => {
       setIntentState({ activeIntent: waitingIntent, activeTableSeat: null })
       render(<WaitingPage intent={intentState} />)
 
@@ -281,7 +278,9 @@ describe('WaitingPage', () => {
     setIntentState({ activeIntent: waitingIntent, queueWsConnected: false })
     render(<WaitingPage intent={intentState} />)
 
-    expect(screen.getByText('Live updates paused — refreshing every few seconds.')).toBeInTheDocument()
+    expect(
+      screen.getByText('Live updates paused — refreshing every few seconds.'),
+    ).toBeInTheDocument()
   })
 
   it('surfaces a leave failure without routing away', () => {
@@ -301,9 +300,7 @@ describe('WaitingPage', () => {
     await user.click(screen.getByRole('button', { name: 'Stop' }))
     expect(handleLeave).not.toHaveBeenCalled()
     expect(await screen.findByText('Leave the queue?')).toBeInTheDocument()
-    expect(
-      screen.getByText("You'll lose your spot and have to start over."),
-    ).toBeInTheDocument()
+    expect(screen.getByText("You'll lose your spot and have to start over.")).toBeInTheDocument()
 
     await user.click(screen.getByRole('button', { name: 'Leave queue' }))
     expect(handleLeave).toHaveBeenCalledTimes(1)

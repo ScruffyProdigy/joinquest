@@ -38,14 +38,17 @@ describe('App Component', () => {
     mockUnauthenticatedSession({ games: mockDemoGames })
     render(<App />)
 
-    expect(await screen.findByRole('heading', { level: 1, name: 'Solo or squad, just join.' })).toBeInTheDocument()
+    expect(
+      await screen.findByRole('heading', { level: 1, name: 'Solo or squad, just join.' }),
+    ).toBeInTheDocument()
     expect(
       await screen.findByRole('heading', { name: 'Rock Paper Scissors Lizard Robot' }),
     ).toBeInTheDocument()
     // Browsing is open to guests; the account prompt lives on the game page.
-    expect(
-      screen.getByRole('link', { name: /Rock Paper Scissors Lizard Robot/ }),
-    ).toHaveAttribute('href', '/games/rock-paper-scissors-lizard-robot')
+    expect(screen.getByRole('link', { name: /Rock Paper Scissors Lizard Robot/ })).toHaveAttribute(
+      'href',
+      '/games/rock-paper-scissors-lizard-robot',
+    )
     expect(screen.queryByRole('heading', { name: IDENTITY_GATE_HEADING })).not.toBeInTheDocument()
   })
 
@@ -57,12 +60,18 @@ describe('App Component', () => {
     expect(await screen.findByRole('link', { name: /player/ })).toHaveAttribute('href', '/account')
     expect(screen.queryByText('Welcome back')).not.toBeInTheDocument()
     expect(screen.queryByRole('button', { name: 'Log out' })).not.toBeInTheDocument()
-    expect(await screen.findByRole('heading', { level: 1, name: 'Solo or squad, just join.' })).toBeInTheDocument()
+    expect(
+      await screen.findByRole('heading', { level: 1, name: 'Solo or squad, just join.' }),
+    ).toBeInTheDocument()
     // The promo card sits inside the catalog list, so it only exists once the
     // games fetch resolves — the heading above it is static and arrives first.
-    expect(await screen.findByRole('link', { name: /building a game\? get started/i })).toBeInTheDocument()
+    expect(
+      await screen.findByRole('link', { name: /building a game\? get started/i }),
+    ).toBeInTheDocument()
     expect(screen.queryByRole('button', { name: 'Create room' })).not.toBeInTheDocument()
-    expect(await screen.findByRole('heading', { name: 'Rock Paper Scissors Lizard Robot' })).toBeInTheDocument()
+    expect(
+      await screen.findByRole('heading', { name: 'Rock Paper Scissors Lizard Robot' }),
+    ).toBeInTheDocument()
   })
 
   it('renders the sign-in link completion page on /auth/complete', async () => {
@@ -70,7 +79,12 @@ describe('App Component', () => {
     const assign = vi.fn()
     Object.defineProperty(window, 'location', {
       configurable: true,
-      value: { ...window.location, assign, pathname: '/auth/complete', search: '?token=test-token' },
+      value: {
+        ...window.location,
+        assign,
+        pathname: '/auth/complete',
+        search: '?token=test-token',
+      },
     })
 
     global.fetch = vi.fn().mockResolvedValue({

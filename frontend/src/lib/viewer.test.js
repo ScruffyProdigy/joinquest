@@ -48,7 +48,9 @@ describe('hasChosenDisplayName', () => {
 describe('hasChosenAvatar', () => {
   it('accepts a key, a url, or a spirit animal', () => {
     expect(hasChosenAvatar({ avatarKey: 'compass' })).toBe(true)
-    expect(hasChosenAvatar({ avatarUrl: 'https://joinquest.cc/avatars/spirit/wolf.png' })).toBe(true)
+    expect(hasChosenAvatar({ avatarUrl: 'https://joinquest.cc/avatars/spirit/wolf.png' })).toBe(
+      true,
+    )
     expect(hasChosenAvatar({ avatarSource: 'SPIRIT_ANIMAL' })).toBe(true)
     expect(hasChosenAvatar({ displayName: 'Pat' })).toBe(false)
     expect(hasChosenAvatar({ avatarKey: '   ' })).toBe(false)
@@ -100,7 +102,12 @@ describe('identityGap', () => {
   it('asks only for the name when a spirit animal is already on file', () => {
     // The state migration 000045 left every derived name in: an avatar, no name.
     expect(
-      identityGap({ displayName: null, avatarKey: null, avatarUrl: '/avatars/fox.png', avatarSource: 'SPIRIT_ANIMAL' }),
+      identityGap({
+        displayName: null,
+        avatarKey: null,
+        avatarUrl: '/avatars/fox.png',
+        avatarSource: 'SPIRIT_ANIMAL',
+      }),
     ).toBe(IDENTITY_GAP_NAME)
   })
 
@@ -109,7 +116,9 @@ describe('identityGap', () => {
   })
 
   it('asks only for the avatar when the name is chosen', () => {
-    expect(identityGap({ displayName: 'Ryan', avatarKey: '', avatarUrl: '' })).toBe(IDENTITY_GAP_AVATAR)
+    expect(identityGap({ displayName: 'Ryan', avatarKey: '', avatarUrl: '' })).toBe(
+      IDENTITY_GAP_AVATAR,
+    )
   })
 
   it('is null once both halves are on file', () => {
