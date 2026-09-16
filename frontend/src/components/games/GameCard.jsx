@@ -27,7 +27,14 @@ function CardPill({ icon, children }) {
   return (
     <span className={PILL_CLASS}>
       {icon ? (
-        <svg width="12" height="12" viewBox="0 0 12 12" fill="white" aria-hidden="true" className="shrink-0">
+        <svg
+          width="12"
+          height="12"
+          viewBox="0 0 12 12"
+          fill="white"
+          aria-hidden="true"
+          className="shrink-0"
+        >
           {PILL_ICONS[icon]}
         </svg>
       ) : null}
@@ -60,7 +67,13 @@ export default function GameCard({ game }) {
           where a mark sits is the artwork's decision and the next pass on this card
           may well uncover it. */}
       {titleArtUrl && titleArtStyle ? (
-        <img className="pointer-events-none" src={titleArtUrl} alt="" style={titleArtStyle} aria-hidden="true" />
+        <img
+          className="pointer-events-none"
+          src={titleArtUrl}
+          alt=""
+          style={titleArtStyle}
+          aria-hidden="true"
+        />
       ) : null}
 
       {/* Who is on the game right now. Kept opposite the metadata row rather than in
@@ -101,7 +114,9 @@ export default function GameCard({ game }) {
           ) : null}
           <h3 className="text-2xl font-bold leading-[30px] text-white m-0">{game.name}</h3>
           {game.shortDescription ? (
-            <p className="text-[15px] leading-[21px] text-white m-0 line-clamp-2">{game.shortDescription}</p>
+            <p className="text-[15px] leading-[21px] text-white m-0 line-clamp-2">
+              {game.shortDescription}
+            </p>
           ) : null}
         </div>
       </div>
@@ -123,11 +138,21 @@ export default function GameCard({ game }) {
         aria-hidden="true"
         style={{ filter: 'blur(12px)', transform: 'scale(1.02)', opacity: 0.4 }}
       >
-        <img className="absolute inset-0 w-full h-full object-cover" src={heroUrl} alt="" loading="lazy" />
+        <img
+          className="absolute inset-0 w-full h-full object-cover"
+          src={heroUrl}
+          alt=""
+          loading="lazy"
+        />
       </div>
 
       {detailPath ? (
-        <CatalogGameLink slug={game.slug} href={detailPath} className={shellClassName} style={shellStyle}>
+        <CatalogGameLink
+          slug={game.slug}
+          href={detailPath}
+          className={shellClassName}
+          style={shellStyle}
+        >
           {content}
         </CatalogGameLink>
       ) : (

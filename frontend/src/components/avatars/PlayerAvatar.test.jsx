@@ -16,7 +16,9 @@ describe('PlayerAvatar', () => {
   })
 
   it('renders image from avatarKey when avatarUrl is missing', () => {
-    const { container } = render(<PlayerAvatar user={{ displayName: 'River', avatarKey: 'storm' }} />)
+    const { container } = render(
+      <PlayerAvatar user={{ displayName: 'River', avatarKey: 'storm' }} />,
+    )
     const img = container.querySelector('[data-slot="avatar-image"]')
     expect(img?.getAttribute('src')).toBe('/avatars/storm.png')
   })
@@ -45,9 +47,7 @@ describe('PlayerAvatar', () => {
   // The king ring and the away dim are independent readings of the same person, so a
   // king whose phone died has to keep both.
   it('keeps the king ring on an away king and names both', () => {
-    const { container } = render(
-      <PlayerAvatar user={{ displayName: 'Pat' }} ring="king" away />,
-    )
+    const { container } = render(<PlayerAvatar user={{ displayName: 'Pat' }} ring="king" away />)
     const avatar = container.querySelector('[data-slot="avatar"][data-away="true"]')
     expect(avatar.getAttribute('data-ring')).toBe('king')
     expect(avatar.getAttribute('title')).toContain('(away)')

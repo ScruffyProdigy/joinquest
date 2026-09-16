@@ -15,7 +15,9 @@ describe('App Integration Tests', () => {
       render(<App />)
 
       await waitFor(() => {
-        expect(screen.getByRole('heading', { name: 'Rock Paper Scissors Lizard Robot' })).toBeInTheDocument()
+        expect(
+          screen.getByRole('heading', { name: 'Rock Paper Scissors Lizard Robot' }),
+        ).toBeInTheDocument()
       })
       expect(screen.queryByRole('heading', { name: IDENTITY_GATE_HEADING })).not.toBeInTheDocument()
     })
@@ -24,8 +26,13 @@ describe('App Integration Tests', () => {
       mockAuthenticatedSession()
       render(<App />)
 
-      expect(await screen.findByRole('link', { name: /player/ })).toHaveAttribute('href', '/account')
-      expect(await screen.findByRole('heading', { level: 1, name: 'Solo or squad, just join.' })).toBeInTheDocument()
+      expect(await screen.findByRole('link', { name: /player/ })).toHaveAttribute(
+        'href',
+        '/account',
+      )
+      expect(
+        await screen.findByRole('heading', { level: 1, name: 'Solo or squad, just join.' }),
+      ).toBeInTheDocument()
       expect(
         await screen.findByRole('heading', { name: 'Rock Paper Scissors Lizard Robot' }),
       ).toBeInTheDocument()

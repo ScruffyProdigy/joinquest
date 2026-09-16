@@ -30,7 +30,9 @@ function toAccent(entry) {
 
 /** Accept `#rgb` or `#rrggbb` in any case; return a normalized `#rrggbb`, or null if unusable. */
 export function parseHex(value) {
-  const raw = String(value ?? '').trim().toLowerCase()
+  const raw = String(value ?? '')
+    .trim()
+    .toLowerCase()
   const short = /^#([0-9a-f])([0-9a-f])([0-9a-f])$/.exec(raw)
   if (short) {
     return `#${short[1]}${short[1]}${short[2]}${short[2]}${short[3]}${short[3]}`

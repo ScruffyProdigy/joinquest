@@ -56,7 +56,13 @@ function DialogOverlay({ className, ...props }) {
 const TAKEOVER_CLASSES =
   'inset-0 flex max-w-none translate-x-0 translate-y-0 flex-col items-start justify-between gap-0 overflow-hidden rounded-none border-0 bg-background p-0 px-5 shadow-none [&>*]:mx-auto [&>*]:w-full [&>*]:max-w-sm pt-[max(env(safe-area-inset-top,0px),56px)] pb-[calc(env(safe-area-inset-bottom,0px)+24px)] data-[state=closed]:zoom-out-100 data-[state=open]:zoom-in-100 data-[state=closed]:slide-out-to-bottom data-[state=open]:slide-in-from-bottom sm:max-w-none'
 
-function DialogContent({ className, children, showCloseButton = true, takeover = false, ...props }) {
+function DialogContent({
+  className,
+  children,
+  showCloseButton = true,
+  takeover = false,
+  ...props
+}) {
   return (
     <DialogPortal>
       <DialogOverlay />
@@ -122,7 +128,13 @@ function DialogTakeoverBody({ className, children, ...props }) {
 }
 
 function DialogHeader({ className, ...props }) {
-  return <div data-slot="dialog-header" className={cn('flex flex-col gap-2 text-center sm:text-left', className)} {...props} />
+  return (
+    <div
+      data-slot="dialog-header"
+      className={cn('flex flex-col gap-2 text-center sm:text-left', className)}
+      {...props}
+    />
+  )
 }
 
 function DialogFooter({ className, ...props }) {

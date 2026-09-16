@@ -73,8 +73,6 @@ describe('DeveloperCatalogMetadata accent color', () => {
 
     await user.click(screen.getByRole('button', { name: 'Save listing' }))
 
-    expect(updateMyGameMetadata).toHaveBeenCalledWith(
-      expect.objectContaining({ accentColor: '' }),
-    )
+    expect(updateMyGameMetadata).toHaveBeenCalledWith(expect.objectContaining({ accentColor: '' }))
   })
 })

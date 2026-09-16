@@ -108,13 +108,20 @@ export function playingIntentTitle(activeIntent, activeTableSeat) {
   }
   if (hasStartedTableSession(activeTableSeat)) {
     const roleLabel = activeTableSeat.seatDisplayName?.trim()
-    return bannerIntentPlayingLine(activeTableSeat.gameName, activeTableSeat.modeName, roleLabel || null)
+    return bannerIntentPlayingLine(
+      activeTableSeat.gameName,
+      activeTableSeat.modeName,
+      roleLabel || null,
+    )
   }
   return ''
 }
 
 /** Catalog play intent plus table seat, for a one-shot read of both. */
 export async function fetchPlayerIntentState() {
-  const [activeIntent, activeTableSeat] = await Promise.all([fetchMyActiveIntent(), fetchMyTableSeat()])
+  const [activeIntent, activeTableSeat] = await Promise.all([
+    fetchMyActiveIntent(),
+    fetchMyTableSeat(),
+  ])
   return { activeIntent, activeTableSeat }
 }

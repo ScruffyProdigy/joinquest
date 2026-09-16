@@ -78,7 +78,9 @@ export default function GuestIdentityPicker({ user, onSaved, onBusyChange, signI
     <>
       <DialogTakeoverBody>
         <div className="flex flex-col items-center gap-1 text-center">
-          <p className="font-heading text-base font-bold text-muted-foreground">{IDENTITY_GATE_PROMPT}</p>
+          <p className="font-heading text-base font-bold text-muted-foreground">
+            {IDENTITY_GATE_PROMPT}
+          </p>
           <p className="text-2xs text-muted-foreground">{IDENTITY_GATE_SCOPE_HINT}</p>
         </div>
 

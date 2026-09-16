@@ -160,7 +160,9 @@ export default function PreQueueOptionsSheet({
                 <section key={group.key} className="pre-queue-group">
                   <div className="pre-queue-group__head">
                     <h3 className="pre-queue-group__label">{group.label}</h3>
-                    <span className="pre-queue-group__count">{groupCounter(group, picked.length)}</span>
+                    <span className="pre-queue-group__count">
+                      {groupCounter(group, picked.length)}
+                    </span>
                   </div>
                   <div className="pre-queue-group__grid">
                     {(rosterByGroup[group.key] ?? []).map((choice) => (

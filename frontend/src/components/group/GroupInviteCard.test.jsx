@@ -145,9 +145,7 @@ describe('GroupInviteCard', () => {
     // ...but a player who has already decided outranks the default that arrives late.
     it('keeps the player’s own choice when the default changes under it', async () => {
       const user = userEvent.setup()
-      const { rerender } = render(
-        <GroupInviteCard room={room} game={game} defaultOpen={false} />,
-      )
+      const { rerender } = render(<GroupInviteCard room={room} game={game} defaultOpen={false} />)
 
       await user.click(screen.getByRole('button', { name: /invite friends/i }))
       await screen.findByRole('img', { name: /qr code to join/i })

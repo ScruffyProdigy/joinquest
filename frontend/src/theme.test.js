@@ -59,8 +59,7 @@ function hue(hex) {
   const min = Math.min(r, g, b)
   if (max === min) return 0
   const d = max - min
-  const deg =
-    max === r ? ((g - b) / d) % 6 : max === g ? (b - r) / d + 2 : (r - g) / d + 4
+  const deg = max === r ? ((g - b) / d) % 6 : max === g ? (b - r) / d + 2 : (r - g) / d + 4
   return (deg * 60 + 360) % 360
 }
 
@@ -96,7 +95,9 @@ describe('accent legibility', () => {
   })
 
   it('--destructive-foreground reads on a --destructive fill', () => {
-    expect(contrast(tokens['--destructive-foreground'], tokens['--destructive'])).toBeGreaterThanOrEqual(AA)
+    expect(
+      contrast(tokens['--destructive-foreground'], tokens['--destructive']),
+    ).toBeGreaterThanOrEqual(AA)
   })
 })
 

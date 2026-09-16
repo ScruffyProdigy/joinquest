@@ -12,8 +12,18 @@ const base = {
   complete: true,
   groupPlay: true,
   participants: [
-    { user: { id: 'a', displayName: 'Ada' }, regroup: 'IN', reason: 'COMPLETED', arrivalParty: true },
-    { user: { id: 'b', displayName: 'Bo' }, regroup: 'PENDING', reason: 'COMPLETED', arrivalParty: true },
+    {
+      user: { id: 'a', displayName: 'Ada' },
+      regroup: 'IN',
+      reason: 'COMPLETED',
+      arrivalParty: true,
+    },
+    {
+      user: { id: 'b', displayName: 'Bo' },
+      regroup: 'PENDING',
+      reason: 'COMPLETED',
+      arrivalParty: true,
+    },
   ],
 }
 
@@ -42,15 +52,27 @@ describe('RegroupCard', () => {
 
   it('reports the count', () => {
     render(<RegroupCard result={allPending} viewerId="a" minPlayers={2} />)
-    expect(screen.getByTestId('regroup-count')).toHaveTextContent('0 of 2 back and in · needs 2 to start')
+    expect(screen.getByTestId('regroup-count')).toHaveTextContent(
+      '0 of 2 back and in · needs 2 to start',
+    )
   })
 
   it('counts only IN', () => {
     const outAndIn = {
       ...base,
       participants: [
-        { user: { id: 'a', displayName: 'Ada' }, regroup: 'IN', reason: 'COMPLETED', arrivalParty: true },
-        { user: { id: 'b', displayName: 'Bo' }, regroup: 'OUT', reason: 'COMPLETED', arrivalParty: true },
+        {
+          user: { id: 'a', displayName: 'Ada' },
+          regroup: 'IN',
+          reason: 'COMPLETED',
+          arrivalParty: true,
+        },
+        {
+          user: { id: 'b', displayName: 'Bo' },
+          regroup: 'OUT',
+          reason: 'COMPLETED',
+          arrivalParty: true,
+        },
       ],
     }
     render(<RegroupCard result={outAndIn} viewerId="b" minPlayers={2} />)
@@ -72,12 +94,42 @@ describe('RegroupCard', () => {
     const threeVthree = {
       ...base,
       participants: [
-        { user: { id: 'a', displayName: 'Ada' }, regroup: 'IN', reason: 'COMPLETED', arrivalParty: true },
-        { user: { id: 'b', displayName: 'Bo' }, regroup: 'PENDING', reason: 'COMPLETED', arrivalParty: true },
-        { user: { id: 'c', displayName: 'Cy' }, regroup: 'PENDING', reason: 'COMPLETED', arrivalParty: true },
-        { user: { id: 'x', displayName: 'Xan' }, regroup: 'IN', reason: 'COMPLETED', arrivalParty: false },
-        { user: { id: 'y', displayName: 'Yuri' }, regroup: 'IN', reason: 'COMPLETED', arrivalParty: false },
-        { user: { id: 'z', displayName: 'Zed' }, regroup: 'IN', reason: 'COMPLETED', arrivalParty: false },
+        {
+          user: { id: 'a', displayName: 'Ada' },
+          regroup: 'IN',
+          reason: 'COMPLETED',
+          arrivalParty: true,
+        },
+        {
+          user: { id: 'b', displayName: 'Bo' },
+          regroup: 'PENDING',
+          reason: 'COMPLETED',
+          arrivalParty: true,
+        },
+        {
+          user: { id: 'c', displayName: 'Cy' },
+          regroup: 'PENDING',
+          reason: 'COMPLETED',
+          arrivalParty: true,
+        },
+        {
+          user: { id: 'x', displayName: 'Xan' },
+          regroup: 'IN',
+          reason: 'COMPLETED',
+          arrivalParty: false,
+        },
+        {
+          user: { id: 'y', displayName: 'Yuri' },
+          regroup: 'IN',
+          reason: 'COMPLETED',
+          arrivalParty: false,
+        },
+        {
+          user: { id: 'z', displayName: 'Zed' },
+          regroup: 'IN',
+          reason: 'COMPLETED',
+          arrivalParty: false,
+        },
       ],
     }
     render(<RegroupCard result={threeVthree} viewerId="a" minPlayers={6} />)
@@ -88,7 +140,9 @@ describe('RegroupCard', () => {
     for (const opponent of ['Xan', 'Yuri', 'Zed']) {
       expect(screen.queryByText(opponent)).not.toBeInTheDocument()
     }
-    expect(screen.getByTestId('regroup-count')).toHaveTextContent('1 of 3 back and in · needs 6 to start')
+    expect(screen.getByTestId('regroup-count')).toHaveTextContent(
+      '1 of 3 back and in · needs 6 to start',
+    )
   })
 
   /**
@@ -160,12 +214,12 @@ describe('RegroupCard', () => {
     // A drop is usually an accident. Losing the roster as well as the match would be a
     // second punishment for it. A null reason means the game never reported this player,
     // which is not evidence of anything.
-    it.each([['a disconnect', 'DISCONNECT'], ['no reported reason', null]])(
-      'keeps the roster for %s',
-      (_label, reason) => {
-        renderCard(withViewerReason(group, reason))
-        expect(screen.getByText('Who’s playing again?')).toBeInTheDocument()
-      },
-    )
+    it.each([
+      ['a disconnect', 'DISCONNECT'],
+      ['no reported reason', null],
+    ])('keeps the roster for %s', (_label, reason) => {
+      renderCard(withViewerReason(group, reason))
+      expect(screen.getByText('Who’s playing again?')).toBeInTheDocument()
+    })
   })
 })

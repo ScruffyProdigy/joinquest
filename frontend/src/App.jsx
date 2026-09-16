@@ -11,7 +11,10 @@ import WaitingPage from './components/games/WaitingPage'
 import { ActiveRoomProvider } from './components/rooms/ActiveRoomProvider'
 import { AuthProvider } from './components/auth/AuthProvider'
 import ActiveMatchDialog from './components/games/ActiveMatchDialog'
-import { ActiveIntentProvider, useActiveIntentContext } from './components/games/ActiveIntentProvider'
+import {
+  ActiveIntentProvider,
+  useActiveIntentContext,
+} from './components/games/ActiveIntentProvider'
 import { APP_NAME } from './lib/brand'
 import { parseRoomInviteCode } from './lib/rooms'
 import { parseGroupRoute } from './lib/group'
@@ -27,7 +30,9 @@ import DeveloperLandingPage from './components/developers/DeveloperLandingPage'
 import DeveloperWelcomePage from './components/developers/DeveloperWelcomePage'
 import YourGamesStrip from './components/developers/YourGamesStrip'
 import HomeHeader from './components/home/HomeHeader'
-import IdentityPromptProvider, { useIdentityPromptOnMount } from './components/avatars/IdentityPromptProvider'
+import IdentityPromptProvider, {
+  useIdentityPromptOnMount,
+} from './components/avatars/IdentityPromptProvider'
 import AppFooter from './components/legal/AppFooter'
 import TermsPage from './components/legal/TermsPage'
 import PrivacyPage from './components/legal/PrivacyPage'
@@ -64,10 +69,10 @@ function GameDetailShell({ slug, intent }) {
 
   return (
     <GameDetailPage
-        slug={slug}
-        activeIntent={activeIntent}
-        activeTableSeat={activeTableSeat}
-        onQueueChange={refresh}
+      slug={slug}
+      activeIntent={activeIntent}
+      activeTableSeat={activeTableSeat}
+      onQueueChange={refresh}
       onQueueJoined={handleQueueJoined}
       onTableChange={refresh}
     />
@@ -101,15 +106,19 @@ function MainLayout() {
   // The service worker cannot route or re-register on its own, so the shell
   // listens for the whole session rather than only while on /waiting -- a push
   // can land after the player has navigated away.
-  useEffect(() => listenForPushMessages({
-    // The worker navigates the tab itself where it can; this covers the case
-    // where it could not.
-    onNotificationClick: (url) => {
-      if (url && url !== window.location.pathname) {
-        window.location.assign(url)
-      }
-    },
-  }), [])
+  useEffect(
+    () =>
+      listenForPushMessages({
+        // The worker navigates the tab itself where it can; this covers the case
+        // where it could not.
+        onNotificationClick: (url) => {
+          if (url && url !== window.location.pathname) {
+            window.location.assign(url)
+          }
+        },
+      }),
+    [],
+  )
 
   return onGroup ? (
     // The group screen needs the intent for the same reason the waiting page does:

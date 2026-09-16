@@ -1,9 +1,6 @@
 import { useEffect, useState } from 'react'
 import { Button } from '../ui/button'
-import {
-  fetchCatalogAxisTaxonomy,
-  updateMyGameMetadata,
-} from '../../lib/developers'
+import { fetchCatalogAxisTaxonomy, updateMyGameMetadata } from '../../lib/developers'
 import { accentBaseFor } from '../../lib/gameAccent'
 
 export default function DeveloperCatalogMetadata({ game, onSaved }) {
@@ -175,7 +172,11 @@ export default function DeveloperCatalogMetadata({ game, onSaved }) {
         {taxonomy.genre.length > 0 ? (
           <div className="developer-form__field">
             <label htmlFor="dev-game-genre">Genre</label>
-            <select id="dev-game-genre" value={genre} onChange={(event) => setGenre(event.target.value)}>
+            <select
+              id="dev-game-genre"
+              value={genre}
+              onChange={(event) => setGenre(event.target.value)}
+            >
               <option value="">No genre</option>
               {taxonomy.genre.map((option) => (
                 <option key={option.id} value={option.id}>

@@ -15,7 +15,12 @@ import {
 } from '../../lib/queue'
 import { subscribeToMyTableSeat, TABLE_UPDATED_EVENT, fetchMyTableSeat } from '../../lib/tables'
 import { lobbyDebug } from '../../lib/lobbyDebug'
-import { LEAVE_GAME_FAILED, LEAVE_GAME_NOT_FOUND, REJOIN_FAILED, REJOIN_OVER } from '../../lib/playerCopy'
+import {
+  LEAVE_GAME_FAILED,
+  LEAVE_GAME_NOT_FOUND,
+  REJOIN_FAILED,
+  REJOIN_OVER,
+} from '../../lib/playerCopy'
 import { onTabVisible } from '../../lib/tabVisibility'
 import { useActiveTableSeat } from './useActiveTableSeat'
 
@@ -68,50 +73,53 @@ export function useActiveIntent() {
     return intent
   }, [])
 
-  const refreshIntent = useCallback(async (reason = 'unknown') => {
-    if (!user) {
-      setActiveIntent(null)
-      return
-    }
-    const startedAt = Date.now()
-    lobbyDebug('intent:refresh:start', { reason, queueId: activeIntent?.queueId ?? null })
-    setLoading(true)
-    try {
-      const [intentResult, tableResult] = await Promise.allSettled([
-        fetchMyActiveIntent(),
-        fetchMyTableSeat(),
-      ])
-      if (intentResult.status === 'rejected') {
-        lobbyDebug('intent:refresh:failed', {
-          reason,
-          error: intentResult.reason?.message || String(intentResult.reason),
-          ms: Date.now() - startedAt,
-        })
+  const refreshIntent = useCallback(
+    async (reason = 'unknown') => {
+      if (!user) {
+        setActiveIntent(null)
         return
       }
-      const tableSeat = tableResult.status === 'fulfilled' ? tableResult.value : null
-      const next = await enrichMatchedJoinUrl(intentResult.value, tableSeat)
-      if (next) {
-        lobbyDebug('intent:refresh:done', {
-          reason,
-          status: next.status,
-          queueId: next.queueId ?? null,
-          hasJoinUrl: Boolean(next.joinUrl),
-          ms: Date.now() - startedAt,
-        })
-        setActiveIntent(next)
-        return
+      const startedAt = Date.now()
+      lobbyDebug('intent:refresh:start', { reason, queueId: activeIntent?.queueId ?? null })
+      setLoading(true)
+      try {
+        const [intentResult, tableResult] = await Promise.allSettled([
+          fetchMyActiveIntent(),
+          fetchMyTableSeat(),
+        ])
+        if (intentResult.status === 'rejected') {
+          lobbyDebug('intent:refresh:failed', {
+            reason,
+            error: intentResult.reason?.message || String(intentResult.reason),
+            ms: Date.now() - startedAt,
+          })
+          return
+        }
+        const tableSeat = tableResult.status === 'fulfilled' ? tableResult.value : null
+        const next = await enrichMatchedJoinUrl(intentResult.value, tableSeat)
+        if (next) {
+          lobbyDebug('intent:refresh:done', {
+            reason,
+            status: next.status,
+            queueId: next.queueId ?? null,
+            hasJoinUrl: Boolean(next.joinUrl),
+            ms: Date.now() - startedAt,
+          })
+          setActiveIntent(next)
+          return
+        }
+        if (intentResult.value === null && Date.now() < joinGraceUntilRef.current) {
+          lobbyDebug('intent:refresh:grace', { reason, ms: Date.now() - startedAt })
+          return
+        }
+        lobbyDebug('intent:refresh:cleared', { reason, ms: Date.now() - startedAt })
+        setActiveIntent(null)
+      } finally {
+        setLoading(false)
       }
-      if (intentResult.value === null && Date.now() < joinGraceUntilRef.current) {
-        lobbyDebug('intent:refresh:grace', { reason, ms: Date.now() - startedAt })
-        return
-      }
-      lobbyDebug('intent:refresh:cleared', { reason, ms: Date.now() - startedAt })
-      setActiveIntent(null)
-    } finally {
-      setLoading(false)
-    }
-  }, [enrichMatchedJoinUrl, user, activeIntent?.queueId])
+    },
+    [enrichMatchedJoinUrl, user, activeIntent?.queueId],
+  )
 
   const refresh = useCallback(async () => {
     await Promise.all([refreshIntent(), refreshTable()])
@@ -170,7 +178,10 @@ export function useActiveIntent() {
             if (update?.status === 'MATCHED') {
               setActiveIntent((prev) => {
                 if (!prev) {
-                  lobbyDebug('intent:queue:ws-update-skipped', { queueId, reason: 'no-prev-intent' })
+                  lobbyDebug('intent:queue:ws-update-skipped', {
+                    queueId,
+                    reason: 'no-prev-intent',
+                  })
                   return prev
                 }
                 return {
@@ -182,7 +193,10 @@ export function useActiveIntent() {
             } else if (update?.status === 'WAITING') {
               setActiveIntent((prev) => {
                 if (!prev) {
-                  lobbyDebug('intent:queue:ws-update-skipped', { queueId, reason: 'no-prev-intent' })
+                  lobbyDebug('intent:queue:ws-update-skipped', {
+                    queueId,
+                    reason: 'no-prev-intent',
+                  })
                   return prev
                 }
                 return {
@@ -275,7 +289,10 @@ export function useActiveIntent() {
   }, [authLoading, user, refresh])
 
   useEffect(() => {
-    if (activeIntent?.status !== 'MATCHED' || resolveIntentLaunchUrl(activeIntent, activeTableSeat)) {
+    if (
+      activeIntent?.status !== 'MATCHED' ||
+      resolveIntentLaunchUrl(activeIntent, activeTableSeat)
+    ) {
       return undefined
     }
     const timer = window.setInterval(() => {
@@ -367,41 +384,44 @@ export function useActiveIntent() {
     }
   }, [refresh])
 
-  const notifyQueueJoined = useCallback((queueId, result, { gameId, gameName, modeName, queuePathDisplayName } = {}) => {
-    if (!result) {
-      return
-    }
-    joinGraceUntilRef.current = Date.now() + 3000
-    lobbyDebug('intent:queue-joined', {
-      queueId,
-      queued: Boolean(result.queued),
-      sessionId: result.sessionId ?? null,
-    })
-    if (result.queued) {
-      setActiveIntent({
+  const notifyQueueJoined = useCallback(
+    (queueId, result, { gameId, gameName, modeName, queuePathDisplayName } = {}) => {
+      if (!result) {
+        return
+      }
+      joinGraceUntilRef.current = Date.now() + 3000
+      lobbyDebug('intent:queue-joined', {
         queueId,
-        gameId,
-        gameName,
-        modeName,
-        status: 'WAITING',
-        queuedCount: result.queuedCount ?? 1,
-        queuePath: result.queuePath ?? null,
-        queuePathDisplayName: queuePathDisplayName ?? null,
-        formingGaps: [],
+        queued: Boolean(result.queued),
+        sessionId: result.sessionId ?? null,
       })
-      return
-    }
-    if (result.sessionId) {
-      setActiveIntent({
-        queueId,
-        gameId,
-        gameName,
-        modeName,
-        status: 'MATCHED',
-        joinUrl: result.joinUrl ?? null,
-      })
-    }
-  }, [])
+      if (result.queued) {
+        setActiveIntent({
+          queueId,
+          gameId,
+          gameName,
+          modeName,
+          status: 'WAITING',
+          queuedCount: result.queuedCount ?? 1,
+          queuePath: result.queuePath ?? null,
+          queuePathDisplayName: queuePathDisplayName ?? null,
+          formingGaps: [],
+        })
+        return
+      }
+      if (result.sessionId) {
+        setActiveIntent({
+          queueId,
+          gameId,
+          gameName,
+          modeName,
+          status: 'MATCHED',
+          joinUrl: result.joinUrl ?? null,
+        })
+      }
+    },
+    [],
+  )
 
   return {
     activeIntent,

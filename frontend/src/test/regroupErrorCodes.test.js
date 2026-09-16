@@ -43,7 +43,10 @@ describe('regroup error codes', () => {
   })
 
   it('declares every code the client switches on', () => {
-    const schemaCodes = enumType.getValues().map((value) => value.name).sort()
+    const schemaCodes = enumType
+      .getValues()
+      .map((value) => value.name)
+      .sort()
     expect(schemaCodes).toEqual(clientCodes)
   })
 })

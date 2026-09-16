@@ -102,7 +102,9 @@ describe('urlBase64ToUint8Array', () => {
   it('matches a key against itself and rejects a different one', () => {
     const bytes = urlBase64ToUint8Array(TEST_PUBLIC_KEY)
     expect(applicationServerKeyMatches(bytes.buffer, TEST_PUBLIC_KEY)).toBe(true)
-    expect(applicationServerKeyMatches(new Uint8Array([1, 2, 3]).buffer, TEST_PUBLIC_KEY)).toBe(false)
+    expect(applicationServerKeyMatches(new Uint8Array([1, 2, 3]).buffer, TEST_PUBLIC_KEY)).toBe(
+      false,
+    )
   })
 })
 

@@ -56,7 +56,9 @@ describe('GameLobby', () => {
     mockUnauthenticatedSession()
     renderGameLobby()
 
-    expect(await screen.findByRole('heading', { name: 'Rock Paper Scissors Lizard Robot' })).toBeInTheDocument()
+    expect(
+      await screen.findByRole('heading', { name: 'Rock Paper Scissors Lizard Robot' }),
+    ).toBeInTheDocument()
   })
 
   it('queries the catalog without a player id when signed out', async () => {
@@ -74,7 +76,9 @@ describe('GameLobby', () => {
     mockAuthenticatedSession()
     renderGameLobby()
 
-    expect(await screen.findByRole('heading', { name: 'Rock Paper Scissors Lizard Robot' })).toBeInTheDocument()
+    expect(
+      await screen.findByRole('heading', { name: 'Rock Paper Scissors Lizard Robot' }),
+    ).toBeInTheDocument()
     expect(games.fetchGames).toHaveBeenCalledTimes(1)
     expect(games.fetchGames).toHaveBeenCalledWith('user-1')
   })

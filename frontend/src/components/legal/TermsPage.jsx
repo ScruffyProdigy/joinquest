@@ -60,10 +60,7 @@ export default function TermsPage() {
       <h2>Contact</h2>
       <p>
         Questions about these terms? Email{' '}
-        <Link href="mailto:support@joinquest.cc">
-          support@joinquest.cc
-        </Link>
-        .
+        <Link href="mailto:support@joinquest.cc">support@joinquest.cc</Link>.
       </p>
     </LegalPage>
   )

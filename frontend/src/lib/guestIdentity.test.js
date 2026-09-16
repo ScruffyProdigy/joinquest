@@ -62,9 +62,7 @@ describe('generateTint', () => {
     // of a shape sitting on it. The contrast itself is the renderer's guarantee and
     // is covered in backend/internal/avatars/sigil_test.go.
     const FLIP = 0.1833
-    const lums = Array.from({ length: 800 }, () =>
-      relativeLuminance(hexToRgb(generateTint().hex)),
-    )
+    const lums = Array.from({ length: 800 }, () => relativeLuminance(hexToRgb(generateTint().hex)))
     expect(Math.max(...lums)).toBeLessThan(FLIP)
     // It should still use the room it has rather than bunching at one depth.
     expect(Math.min(...lums)).toBeLessThan(0.07)
@@ -112,7 +110,9 @@ describe('generateTint', () => {
     )
     expect(mean).toBeGreaterThan(0.5)
     expect(spread).toBeGreaterThan(0.08)
-    expect(saturations.filter((value) => value > 0.99).length / saturations.length).toBeLessThan(0.1)
+    expect(saturations.filter((value) => value > 0.99).length / saturations.length).toBeLessThan(
+      0.1,
+    )
   })
 })
 
@@ -173,8 +173,8 @@ describe('generateGuestIdentities', () => {
     const draws = 60
     let distinct = 0
     for (let i = 0; i < draws; i += 1) {
-      const words = generateGuestIdentities().map(
-        (item) => SIGIL_HUE_WORDS.find((word) => item.name.startsWith(word)),
+      const words = generateGuestIdentities().map((item) =>
+        SIGIL_HUE_WORDS.find((word) => item.name.startsWith(word)),
       )
       expect(words.every(Boolean)).toBe(true)
       expect(new Set(words).size).toBeGreaterThan(GUEST_IDENTITY_CHOICES / 2)

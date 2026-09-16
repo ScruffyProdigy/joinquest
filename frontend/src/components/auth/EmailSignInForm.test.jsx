@@ -136,7 +136,9 @@ describe('EmailSignInForm', () => {
     await userEvent.type(codeInput, '123456')
 
     expect(
-      await screen.findByText('Invalid or expired code. Try again or use the sign-in link in your email.'),
+      await screen.findByText(
+        'Invalid or expired code. Try again or use the sign-in link in your email.',
+      ),
     ).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Continue' })).toBeInTheDocument()
   })

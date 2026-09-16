@@ -67,7 +67,9 @@ describe('DeveloperLandingPage', () => {
     renderLandingPage()
 
     expect(screen.getByRole('heading', { name: /register your game/i })).toBeInTheDocument()
-    expect(screen.queryByRole('heading', { name: /how do you want to get started/i })).not.toBeInTheDocument()
+    expect(
+      screen.queryByRole('heading', { name: /how do you want to get started/i }),
+    ).not.toBeInTheDocument()
   })
 
   it('opens AI assistant setup when ?path=ai is in the URL', () => {
@@ -76,7 +78,9 @@ describe('DeveloperLandingPage', () => {
     renderLandingPage()
 
     expect(screen.getByRole('heading', { name: /connect an ai assistant/i })).toBeInTheDocument()
-    expect(screen.queryByRole('heading', { name: /how do you want to get started/i })).not.toBeInTheDocument()
+    expect(
+      screen.queryByRole('heading', { name: /how do you want to get started/i }),
+    ).not.toBeInTheDocument()
   })
 
   it('navigates to manual registration from route picker', async () => {
@@ -107,7 +111,9 @@ describe('DeveloperLandingPage', () => {
     await user.click(screen.getByRole('button', { name: /connect an ai assistant/i }))
 
     expect(screen.getByRole('heading', { name: /build on joinquest/i })).toBeInTheDocument()
-    expect(screen.queryByRole('heading', { name: /connect an ai assistant/i })).not.toBeInTheDocument()
+    expect(
+      screen.queryByRole('heading', { name: /connect an ai assistant/i }),
+    ).not.toBeInTheDocument()
   })
 
   it('prompts a guest to sign up before the AI wizard', async () => {

@@ -14,7 +14,9 @@ export default function DeveloperProvisionExample({ game, credentials }) {
     }
     try {
       const graphqlUrl = getGraphQLUrl()
-      const resolvedGraphql = graphqlUrl.startsWith('/') ? 'http://localhost:8080/graphql' : graphqlUrl
+      const resolvedGraphql = graphqlUrl.startsWith('/')
+        ? 'http://localhost:8080/graphql'
+        : graphqlUrl
       const urls = lobbyUrlsFromGraphQL(resolvedGraphql)
       const payload = buildExampleProvisionPayload({
         game,
@@ -46,8 +48,8 @@ export default function DeveloperProvisionExample({ game, credentials }) {
     <section className="panel-card developer-provision" aria-labelledby="provision-heading">
       <h2 id="provision-heading">Example provision request</h2>
       <p className="panel-copy">
-        POST this JSON to <code>{game.apiBaseUrl}/api/v1/matches</code> while debugging. JoinQuest uses
-        similar payloads when starting matches.
+        POST this JSON to <code>{game.apiBaseUrl}/api/v1/matches</code> while debugging. JoinQuest
+        uses similar payloads when starting matches.
       </p>
       <pre className="developer-provision__body">{payloadText}</pre>
       <div className="developer-actions__row">

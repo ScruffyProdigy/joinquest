@@ -4,11 +4,11 @@ import { notifyIdentityRequired } from './identityPrompt'
 export function isTransientServerError(message) {
   const text = (message || '').toLowerCase()
   return (
-    text.includes('load failed')
-    || text.includes('failed to fetch')
-    || text.includes('networkerror')
-    || text.includes('network request failed')
-    || /api request failed \(502\)|api request failed \(503\)|api request failed \(504\)/.test(text)
+    text.includes('load failed') ||
+    text.includes('failed to fetch') ||
+    text.includes('networkerror') ||
+    text.includes('network request failed') ||
+    /api request failed \(502\)|api request failed \(503\)|api request failed \(504\)/.test(text)
   )
 }
 

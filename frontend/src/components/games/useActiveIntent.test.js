@@ -2,7 +2,12 @@ import { renderHook, act, waitFor } from '@testing-library/react'
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { useActiveIntent } from './useActiveIntent'
 import * as intent from '../../lib/intent'
-import { LEAVE_GAME_FAILED, LEAVE_GAME_NOT_FOUND, REJOIN_FAILED, REJOIN_OVER } from '../../lib/playerCopy'
+import {
+  LEAVE_GAME_FAILED,
+  LEAVE_GAME_NOT_FOUND,
+  REJOIN_FAILED,
+  REJOIN_OVER,
+} from '../../lib/playerCopy'
 
 // One stable auth object for the whole file: the hooks key their callbacks on
 // `user` identity, so a fresh object per render re-runs every effect forever.

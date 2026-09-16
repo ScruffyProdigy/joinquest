@@ -9,8 +9,13 @@ function oauthBaseUrl() {
   return ''
 }
 
-export function buildOAuthStartUrl(provider, { mode = 'signin', confirmMerge = false, next = null } = {}) {
-  const slug = String(provider || '').trim().toLowerCase()
+export function buildOAuthStartUrl(
+  provider,
+  { mode = 'signin', confirmMerge = false, next = null } = {},
+) {
+  const slug = String(provider || '')
+    .trim()
+    .toLowerCase()
   const params = new URLSearchParams()
   if (mode === 'link') {
     params.set('mode', 'link')

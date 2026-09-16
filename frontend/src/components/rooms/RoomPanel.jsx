@@ -3,7 +3,14 @@ import SignInPanel from '../auth/SignInPanel'
 import { useAuth } from '../auth/AuthProvider'
 import { useActiveRoom } from './ActiveRoomProvider'
 import { sendRoomMessage } from '../../lib/rooms'
-import { discardTable, displayName, leaveTable, sitAtTable, startTable, startTableBackfill } from '../../lib/tables'
+import {
+  discardTable,
+  displayName,
+  leaveTable,
+  sitAtTable,
+  startTable,
+  startTableBackfill,
+} from '../../lib/tables'
 import { accentColorFor } from '../../lib/gameAccent'
 import { IconClose } from '../icons/ShareIcons'
 import RoomShareToolbar from './RoomShareToolbar'
@@ -70,16 +77,19 @@ export default function RoomPanel({ compact = false }) {
     }
   }, [markRead])
 
-  const scrollChatToBottom = useCallback((behavior = 'smooth') => {
-    const log = chatLogRef.current
-    if (!log) {
-      return
-    }
-    log.scrollTo({ top: log.scrollHeight, behavior })
-    chatAtBottomRef.current = true
-    setChatAtBottom(true)
-    markRead()
-  }, [markRead])
+  const scrollChatToBottom = useCallback(
+    (behavior = 'smooth') => {
+      const log = chatLogRef.current
+      if (!log) {
+        return
+      }
+      log.scrollTo({ top: log.scrollHeight, behavior })
+      chatAtBottomRef.current = true
+      setChatAtBottom(true)
+      markRead()
+    },
+    [markRead],
+  )
 
   useEffect(() => {
     chatAtBottomRef.current = true
@@ -318,11 +328,15 @@ export default function RoomPanel({ compact = false }) {
                 onScroll={syncChatScrollState}
               >
                 {messages.length === 0 ? (
-                  <p className="panel-copy">Say hello — messages appear here for everyone in the room.</p>
+                  <p className="panel-copy">
+                    Say hello — messages appear here for everyone in the room.
+                  </p>
                 ) : (
                   messages.map((msg) => (
                     <article key={msg.id} className="rounded-lg bg-secondary/60 px-3 py-2">
-                      <p className="text-xs font-semibold text-muted-foreground">{displayName(msg.author)}</p>
+                      <p className="text-xs font-semibold text-muted-foreground">
+                        {displayName(msg.author)}
+                      </p>
                       <p className="text-sm text-foreground">{msg.body}</p>
                     </article>
                   ))

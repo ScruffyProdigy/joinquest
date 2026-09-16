@@ -1,0 +1,19 @@
+# Prettier walks up from each file to find .prettierrc.json, so this ignore
+# file lives at the root alongside it and applies wherever prettier is run
+# from (JQ-257).
+
+node_modules/
+dist/
+*/dist/
+build/
+coverage/
+playwright-report/
+playwright/.cache/
+test-results/
+
+# Generated at build time by frontend/scripts/generate-env.js.
+frontend/public/env.js
+
+# Lockfiles and vendored data are not ours to reformat.
+package-lock.json
+go.sum

@@ -32,7 +32,12 @@ vi.mock('../../lib/developers', () => ({
               command: 'npx',
               args:
                 clientId === 'cursor'
-                  ? ['--yes', '--package', '@joinquest/mcp-integration', 'joinquest-integration-mcp-cursor']
+                  ? [
+                      '--yes',
+                      '--package',
+                      '@joinquest/mcp-integration',
+                      'joinquest-integration-mcp-cursor',
+                    ]
                   : ['-y', '@joinquest/mcp-integration'],
               env: { JOINQUEST_API_KEY: apiKey },
             },
@@ -58,16 +63,18 @@ vi.mock('../../lib/developers', () => ({
       `JOINQUEST_API_KEY=${apiKey || 'lq_dev_PASTE_YOUR_KEY'}\nnpx -y joinquest install ${client === 'skill-only' ? 'skill' : client}`,
   ),
   buildInstallDevInspectCommand: vi.fn(
-    ({ apiKey }) => `npx -y joinquest install cursor --dry-run\nJOINQUEST_API_KEY=${apiKey || 'lq_dev_PASTE_YOUR_KEY'}`,
+    ({ apiKey }) =>
+      `npx -y joinquest install cursor --dry-run\nJOINQUEST_API_KEY=${apiKey || 'lq_dev_PASTE_YOUR_KEY'}`,
   ),
   JOINQUEST_CLI_GITHUB: 'https://github.com/example/joinquest',
   INSTALL_DEV_SCRIPT_GITHUB: 'https://github.com/example/install-joinquest-dev.sh',
   INSTALL_SETUP_MANIFEST_GITHUB: 'https://github.com/example/joinquest-setup/README.md',
-  INSTALL_CURSOR_PLUGIN_SCRIPT_GITHUB: 'https://github.com/example/install-joinquest-cursor-plugin.sh',
-  INSTALL_CLAUDE_PLUGIN_SCRIPT_GITHUB: 'https://github.com/example/install-joinquest-claude-plugin.sh',
+  INSTALL_CURSOR_PLUGIN_SCRIPT_GITHUB:
+    'https://github.com/example/install-joinquest-cursor-plugin.sh',
+  INSTALL_CLAUDE_PLUGIN_SCRIPT_GITHUB:
+    'https://github.com/example/install-joinquest-claude-plugin.sh',
   CURSOR_PLUGIN_GITHUB: 'https://github.com/example/plugins/joinquest',
-  developerLandingHref: (path) =>
-    path === 'manual' ? '/developers?path=manual' : '/developers',
+  developerLandingHref: (path) => (path === 'manual' ? '/developers?path=manual' : '/developers'),
 }))
 
 describe('DeveloperMcpWizard', () => {

@@ -85,10 +85,10 @@ export const VERIFICATION_POLL_MS = 1000
 /** True when this browser has the APIs Web Push needs at all. */
 export function isPushSupported() {
   return (
-    typeof window !== 'undefined'
-    && 'serviceWorker' in navigator
-    && 'PushManager' in window
-    && typeof Notification !== 'undefined'
+    typeof window !== 'undefined' &&
+    'serviceWorker' in navigator &&
+    'PushManager' in window &&
+    typeof Notification !== 'undefined'
   )
 }
 
@@ -103,8 +103,8 @@ export function isStandalone() {
   }
   // navigator.standalone is iOS-only; the media query covers everything else.
   return (
-    window.navigator?.standalone === true
-    || window.matchMedia?.('(display-mode: standalone)')?.matches === true
+    window.navigator?.standalone === true ||
+    window.matchMedia?.('(display-mode: standalone)')?.matches === true
   )
 }
 

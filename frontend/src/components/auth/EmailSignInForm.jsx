@@ -162,12 +162,17 @@ export default function EmailSignInForm() {
           Enter your code
         </h3>
         <p className="text-sm text-muted-foreground">
-          Check <strong className="text-foreground">{email}</strong> for a 6-digit code. Tap the field below to use
-          autofill from Mail or Messages, or paste your code.
+          Check <strong className="text-foreground">{email}</strong> for a 6-digit code. Tap the
+          field below to use autofill from Mail or Messages, or paste your code.
         </p>
 
         {message ? (
-          <p className={status === 'error' ? 'status-message status-message-error' : 'status-message'} role="status">
+          <p
+            className={
+              status === 'error' ? 'status-message status-message-error' : 'status-message'
+            }
+            role="status"
+          >
             {message}
           </p>
         ) : null}
@@ -195,7 +200,10 @@ export default function EmailSignInForm() {
             onChange={handleCodeChange}
             disabled={isSigningIn}
           />
-          <Button type="submit" disabled={isSigningIn || status === 'loading' || normalizeCode(code).length !== 6}>
+          <Button
+            type="submit"
+            disabled={isSigningIn || status === 'loading' || normalizeCode(code).length !== 6}
+          >
             {isSigningIn ? 'Signing in…' : 'Continue'}
           </Button>
         </form>
@@ -210,7 +218,10 @@ export default function EmailSignInForm() {
   return (
     <div className="flex flex-col gap-3">
       {message ? (
-        <p className={status === 'error' ? 'status-message status-message-error' : 'status-message'} role="status">
+        <p
+          className={status === 'error' ? 'status-message status-message-error' : 'status-message'}
+          role="status"
+        >
           {message}
         </p>
       ) : null}

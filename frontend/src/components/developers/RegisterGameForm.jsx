@@ -1,11 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Button } from '../ui/button'
 import { useAuth } from '../auth/AuthProvider'
-import {
-  developerWelcomePath,
-  registerMyGame,
-  suggestSlugFromName,
-} from '../../lib/developers'
+import { developerWelcomePath, registerMyGame, suggestSlugFromName } from '../../lib/developers'
 import {
   clearRegistrationDraft,
   readRegistrationDraft,
@@ -149,7 +145,9 @@ export default function RegisterGameForm({ onAccountRequired }) {
           value={apiBaseUrl}
           onChange={(event) => setApiBaseUrl(event.target.value)}
         />
-        <p className="developer-form__hint">Must be a public HTTPS URL — localhost will not work.</p>
+        <p className="developer-form__hint">
+          Must be a public HTTPS URL — localhost will not work.
+        </p>
       </div>
 
       <div className="developer-form__field">

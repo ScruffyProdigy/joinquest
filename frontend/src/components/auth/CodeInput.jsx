@@ -6,7 +6,10 @@ const BOX_INDICES = Array.from({ length: BOX_COUNT })
 export default function CodeInput({ className, value = '', ref, ...props }) {
   return (
     <div className="relative h-11 w-full">
-      <div className="pointer-events-none absolute inset-0 grid grid-cols-6 gap-2" aria-hidden="true">
+      <div
+        className="pointer-events-none absolute inset-0 grid grid-cols-6 gap-2"
+        aria-hidden="true"
+      >
         {BOX_INDICES.map((_, index) => (
           <div
             key={index}

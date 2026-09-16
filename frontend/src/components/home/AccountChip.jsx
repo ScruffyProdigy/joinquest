@@ -38,7 +38,9 @@ export default function AccountChip() {
         <PlayerAvatar user={user} size="sm" />
         {/* Without a fallback the link would have no accessible name at all
             for someone who signed in but has not picked a name yet. */}
-        <span className="max-w-32 truncate">{chosenDisplayName(user) || ACCOUNT_CHIP_FALLBACK}</span>
+        <span className="max-w-32 truncate">
+          {chosenDisplayName(user) || ACCOUNT_CHIP_FALLBACK}
+        </span>
       </a>
     </Button>
   )

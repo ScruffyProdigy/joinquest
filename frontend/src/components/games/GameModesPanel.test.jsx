@@ -54,7 +54,18 @@ function baseGame(mode) {
   return {
     id: 'game-1',
     slug: 'legendary-quest',
-    modes: [{ id: 'mode-1', modeKey: 'legendary', displayName: 'Legendary', status: 'active', queues: [], seats: [], queuePaths: [], ...mode }],
+    modes: [
+      {
+        id: 'mode-1',
+        modeKey: 'legendary',
+        displayName: 'Legendary',
+        status: 'active',
+        queues: [],
+        seats: [],
+        queuePaths: [],
+        ...mode,
+      },
+    ],
   }
 }
 
@@ -72,7 +83,12 @@ describe('GameModesPanel locked mode', () => {
             accessible: false,
             reason: 'Complete 50 Ranked matches to unlock.',
             unlockModeKey: null,
-            requirement: { __typename: 'RequirementLeaf', label: 'Ranked matches', current: 12, target: 50 },
+            requirement: {
+              __typename: 'RequirementLeaf',
+              label: 'Ranked matches',
+              current: 12,
+              target: 50,
+            },
           },
         })}
       />,
@@ -85,7 +101,12 @@ describe('GameModesPanel locked mode', () => {
     render(
       <GameModesPanel
         game={baseGame({
-          eligibility: { accessible: false, reason: 'Complete the tutorial to unlock.', unlockModeKey: null, requirement: null },
+          eligibility: {
+            accessible: false,
+            reason: 'Complete the tutorial to unlock.',
+            unlockModeKey: null,
+            requirement: null,
+          },
         })}
       />,
     )
@@ -102,7 +123,12 @@ describe('GameModesPanel locked mode', () => {
             accessible: false,
             reason: 'You have no Standard-legal decks.',
             unlockModeKey: 'deck-builder',
-            requirement: { __typename: 'RequirementLeaf', label: 'Standard-legal decks', current: 0, target: 1 },
+            requirement: {
+              __typename: 'RequirementLeaf',
+              label: 'Standard-legal decks',
+              current: 0,
+              target: 1,
+            },
           },
         })}
         onNavigateToMode={onNavigateToMode}
@@ -131,7 +157,12 @@ describe('GameModesPanel locked mode', () => {
             accessible: false,
             reason: 'You have no Standard-legal decks.',
             unlockModeKey: 'deck-builder',
-            requirement: { __typename: 'RequirementLeaf', label: 'Standard-legal decks', current: 0, target: 1 },
+            requirement: {
+              __typename: 'RequirementLeaf',
+              label: 'Standard-legal decks',
+              current: 0,
+              target: 1,
+            },
           },
         },
         {
@@ -185,7 +216,12 @@ describe('GameModesPanel locked mode', () => {
               accessible: false,
               reason: 'You have no Standard-legal decks.',
               unlockModeKey: 'deck-builder',
-              requirement: { __typename: 'RequirementLeaf', label: 'Standard-legal decks', current: 0, target: 1 },
+              requirement: {
+                __typename: 'RequirementLeaf',
+                label: 'Standard-legal decks',
+                current: 0,
+                target: 1,
+              },
             },
           },
           {
@@ -212,8 +248,12 @@ describe('GameModesPanel locked mode', () => {
       </>,
     )
 
-    const rowAStandard = screen.getAllByRole('button', { name: 'You have no Standard-legal decks.' })[0]
-    const rowBStandard = screen.getAllByRole('button', { name: 'You have no Standard-legal decks.' })[1]
+    const rowAStandard = screen.getAllByRole('button', {
+      name: 'You have no Standard-legal decks.',
+    })[0]
+    const rowBStandard = screen.getAllByRole('button', {
+      name: 'You have no Standard-legal decks.',
+    })[1]
 
     // Click game B's locked "Standard" reason button.
     await userEvent.click(rowBStandard)
@@ -250,10 +290,7 @@ describe('GameModesPanel prominent mode-card badges', () => {
 
   it('omits the badge when player counts are unknown', () => {
     render(
-      <GameModesPanel
-        game={baseGame({ eligibility: { accessible: true } })}
-        variant="prominent"
-      />,
+      <GameModesPanel game={baseGame({ eligibility: { accessible: true } })} variant="prominent" />,
     )
     expect(screen.queryByLabelText('Mode details')).not.toBeInTheDocument()
   })

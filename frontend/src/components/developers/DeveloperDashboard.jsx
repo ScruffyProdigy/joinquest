@@ -106,7 +106,8 @@ export default function DeveloperDashboard({ gameId }) {
 
   const checkGroups = useMemo(() => groupChecks(game?.integrationChecks), [game?.integrationChecks])
   const defaultMode = useMemo(() => defaultModeForMyGame(game), [game])
-  const canTestTable = game?.visibility === 'PRIVATE_TESTING' || game?.visibility === 'PENDING_REVIEW'
+  const canTestTable =
+    game?.visibility === 'PRIVATE_TESTING' || game?.visibility === 'PENDING_REVIEW'
   const canEditApiUrl = game?.visibility === 'DRAFT' || game?.visibility === 'PRIVATE_TESTING'
   const showRelease = canRequestPublicRelease(game)
   const showCatalog = game?.visibility !== 'DRAFT'
@@ -268,13 +269,9 @@ export default function DeveloperDashboard({ gameId }) {
     <main className="app-shell developer-shell">
       <header className="app-header">
         <p className="developer-back">
-          <Link href="/developers">
-            ← Developers
-          </Link>
+          <Link href="/developers">← Developers</Link>
           {' · '}
-          <Link href="/">
-            {APP_NAME}
-          </Link>
+          <Link href="/">{APP_NAME}</Link>
         </p>
         <h1>{game.name}</h1>
         <p className="tagline">{visibilityLabel(game.visibility)}</p>
@@ -326,7 +323,10 @@ export default function DeveloperDashboard({ gameId }) {
         </div>
 
         {canEditApiUrl ? (
-          <form className="developer-form developer-connect-form" onSubmit={(event) => void handleConnectApi(event)}>
+          <form
+            className="developer-form developer-connect-form"
+            onSubmit={(event) => void handleConnectApi(event)}
+          >
             <h3 className="developer-actions__subheading">Connect / update API URL</h3>
             <p className="panel-copy">
               Public HTTPS origin for your game API. Use this to retry a failed connect or move from
@@ -358,7 +358,8 @@ export default function DeveloperDashboard({ gameId }) {
 
         {game?.visibility === 'PENDING_REVIEW' ? (
           <p className="panel-copy" role="status">
-            Your game is pending review — we&apos;ll email you at {game.contactEmail} when it&apos;s approved.
+            Your game is pending review — we&apos;ll email you at {game.contactEmail} when it&apos;s
+            approved.
           </p>
         ) : null}
         {actionInfo ? (
@@ -380,7 +381,9 @@ export default function DeveloperDashboard({ gameId }) {
       <section className="panel-card" aria-labelledby="checklist-heading">
         <h2 id="checklist-heading">Integration checklist</h2>
         {checkGroups.length === 0 ? (
-          <p className="panel-copy">No checks run yet. Hit &ldquo;Run all checks&rdquo; to start.</p>
+          <p className="panel-copy">
+            No checks run yet. Hit &ldquo;Run all checks&rdquo; to start.
+          </p>
         ) : (
           checkGroups.map(([section, checks]) => (
             <div key={section} className="developer-check-section">
@@ -393,9 +396,13 @@ export default function DeveloperDashboard({ gameId }) {
                   >
                     <div className="developer-check__header">
                       <span className="developer-check__id">{check.checkId}</span>
-                      <span className="developer-check__status">{checkStatusLabel(check.status)}</span>
+                      <span className="developer-check__status">
+                        {checkStatusLabel(check.status)}
+                      </span>
                     </div>
-                    {check.message ? <p className="developer-check__message">{check.message}</p> : null}
+                    {check.message ? (
+                      <p className="developer-check__message">{check.message}</p>
+                    ) : null}
                     {check.status === 'FAIL' ? (
                       <p className="developer-check__fix">{checkFixHint(check.checkId)}</p>
                     ) : null}
@@ -419,8 +426,8 @@ export default function DeveloperDashboard({ gameId }) {
           <CredentialField label="Service token" value={credentials.serviceToken} />
           <CredentialField label="Webhook secret" value={credentials.webhookSecret} />
           <p className="panel-copy">
-            The service token is derived from your game id (not rotatable). Rotate the webhook secret
-            if it leaks — the previous secret stops working immediately.
+            The service token is derived from your game id (not rotatable). Rotate the webhook
+            secret if it leaks — the previous secret stops working immediately.
           </p>
           <Button
             type="button"
@@ -433,9 +440,7 @@ export default function DeveloperDashboard({ gameId }) {
         </section>
       ) : null}
 
-      {showCredentials ? (
-        <DeveloperProvisionExample game={game} credentials={credentials} />
-      ) : null}
+      {showCredentials ? <DeveloperProvisionExample game={game} credentials={credentials} /> : null}
 
       {showCatalog ? <DeveloperCatalogMetadata game={game} onSaved={setGame} /> : null}
 

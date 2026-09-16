@@ -21,7 +21,9 @@ describe('HomeHeader', () => {
     mockUnauthenticatedSession()
     renderHeader()
 
-    expect(await screen.findByRole('heading', { level: 1, name: 'Solo or squad, just join.' })).toBeInTheDocument()
+    expect(
+      await screen.findByRole('heading', { level: 1, name: 'Solo or squad, just join.' }),
+    ).toBeInTheDocument()
   })
 
   it('greets a known player by name', async () => {

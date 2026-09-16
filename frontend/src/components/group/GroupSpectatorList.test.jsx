@@ -50,7 +50,9 @@ describe('GroupSpectatorList', () => {
   // that makes the caption necessary rather than nice: two states in one list, and only
   // one of them carried words.
   it('shows a player who is both awaiting and away as both', () => {
-    const { container } = render(<GroupSpectatorList players={[member, awayAwaiting]} userId="u1" />)
+    const { container } = render(
+      <GroupSpectatorList players={[member, awayAwaiting]} userId="u1" />,
+    )
     expect(screen.getByText('Awaiting')).toBeInTheDocument()
     expect(screen.getByText('Away')).toBeInTheDocument()
     expect(container.querySelector('[data-slot="avatar"][data-away="true"]')).toBeTruthy()

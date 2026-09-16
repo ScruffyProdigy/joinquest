@@ -24,7 +24,11 @@ function SparkleBadge() {
   )
 }
 
-export default function SignInPanel({ heading = SIGN_IN_HEADING, showGuestOption = true, next = null }) {
+export default function SignInPanel({
+  heading = SIGN_IN_HEADING,
+  showGuestOption = true,
+  next = null,
+}) {
   const { acceptSessionUser, refreshSession } = useAuth()
   const [status, setStatus] = useState('idle')
   const [message, setMessage] = useState('')
@@ -62,7 +66,11 @@ export default function SignInPanel({ heading = SIGN_IN_HEADING, showGuestOption
       <CardContent className="flex flex-col gap-4">
         <SocialSignInRow next={next} />
 
-        <div className="flex items-center gap-3 text-2xs uppercase tracking-wide text-muted-foreground" role="separator" aria-label={SIGN_IN_DIVIDER_LABEL}>
+        <div
+          className="flex items-center gap-3 text-2xs uppercase tracking-wide text-muted-foreground"
+          role="separator"
+          aria-label={SIGN_IN_DIVIDER_LABEL}
+        >
           <span className="h-px flex-1 bg-border" />
           {SIGN_IN_DIVIDER}
           <span className="h-px flex-1 bg-border" />
@@ -71,14 +79,23 @@ export default function SignInPanel({ heading = SIGN_IN_HEADING, showGuestOption
         <EmailSignInForm />
 
         {message ? (
-          <p className={status === 'error' ? 'status-message status-message-error' : 'status-message'} role="status">
+          <p
+            className={
+              status === 'error' ? 'status-message status-message-error' : 'status-message'
+            }
+            role="status"
+          >
             {message}
           </p>
         ) : null}
 
         {showGuestOption ? (
           <div className="flex flex-col items-center gap-1 border-t border-border pt-4">
-            <Link variant="quiet" onClick={() => void handlePlayAsGuest()} disabled={status === 'loading'}>
+            <Link
+              variant="quiet"
+              onClick={() => void handlePlayAsGuest()}
+              disabled={status === 'loading'}
+            >
               {status === 'loading' ? 'Starting…' : PLAY_AS_GUEST}
             </Link>
             <p className="text-2xs text-muted-foreground">{PLAY_AS_GUEST_HINT}</p>

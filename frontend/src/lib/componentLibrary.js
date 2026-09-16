@@ -84,7 +84,8 @@ export const PRIMITIVE_GROUPS = [
         name: 'Card',
         status: 'ported',
         prototypeUse: 'Foundation under every composite pattern below',
-        productionUse: 'Ported (JQ-51, JQ-52) — room panel, table card, share toolbar, sign-in/account/avatar screens',
+        productionUse:
+          'Ported (JQ-51, JQ-52) — room panel, table card, share toolbar, sign-in/account/avatar screens',
       },
       {
         name: 'Dialog',
@@ -96,7 +97,8 @@ export const PRIMITIVE_GROUPS = [
         name: 'Sheet',
         status: 'ported',
         prototypeUse: 'Bottom-sheet: filters, game modes, account panel',
-        productionUse: 'Ported (JQ-52) — room drawer, seat picker; filters/account panel still not started',
+        productionUse:
+          'Ported (JQ-52) — room drawer, seat picker; filters/account panel still not started',
       },
       {
         name: 'Tooltip',
@@ -184,7 +186,15 @@ export function statusStyle(status) {
     return { label: 'Ported', badgeClass: 'bg-primary/10 text-primary', dotClass: 'bg-primary' }
   }
   if (status === 'legacy') {
-    return { label: 'Legacy CSS', badgeClass: 'bg-amber-500/10 text-amber-500', dotClass: 'bg-amber-500' }
+    return {
+      label: 'Legacy CSS',
+      badgeClass: 'bg-amber-500/10 text-amber-500',
+      dotClass: 'bg-amber-500',
+    }
   }
-  return { label: 'Not started', badgeClass: 'bg-foreground/5 text-muted-foreground', dotClass: 'bg-muted-foreground' }
+  return {
+    label: 'Not started',
+    badgeClass: 'bg-foreground/5 text-muted-foreground',
+    dotClass: 'bg-muted-foreground',
+  }
 }

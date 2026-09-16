@@ -7,9 +7,7 @@ export default function LegalPage({ title, children }) {
     <main className="app-shell legal-page">
       <header className="legal-page__header">
         <p className="legal-page__back">
-          <Link href="/">
-            ← Back to {APP_NAME}
-          </Link>
+          <Link href="/">← Back to {APP_NAME}</Link>
         </p>
         <h1>{title}</h1>
         <p className="legal-page__updated">Last updated: May 30, 2026</p>

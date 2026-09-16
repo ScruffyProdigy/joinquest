@@ -1,7 +1,13 @@
 const CHECK_USER_ONE = 'a0000000-0000-4000-8000-000000000001'
 const CHECK_USER_TWO = 'a0000000-0000-4000-8000-000000000002'
 
-export function buildExampleProvisionPayload({ game, credentials, lobbyIssuer, lobbyReturnUrl, lobbyGraphqlUrl }) {
+export function buildExampleProvisionPayload({
+  game,
+  credentials,
+  lobbyIssuer,
+  lobbyReturnUrl,
+  lobbyGraphqlUrl,
+}) {
   const mode = game?.modes?.[0]
   if (!mode) {
     throw new Error('Game has no synced modes — connect API and sync manifest first.')

@@ -114,7 +114,10 @@ describe('ReturnPage', () => {
 
   describe('branch 1: the redirect fallback', () => {
     it('redirects with no match id and never looks up a result', async () => {
-      vi.mocked(returnLib.fetchReturnDestination).mockResolvedValue({ path: '/games/word-hunt', kind: 'GAME' })
+      vi.mocked(returnLib.fetchReturnDestination).mockResolvedValue({
+        path: '/games/word-hunt',
+        kind: 'GAME',
+      })
       render(<ReturnPage />)
 
       await waitFor(() => expect(assign).toHaveBeenCalledWith('/games/word-hunt'))
@@ -124,8 +127,13 @@ describe('ReturnPage', () => {
 
     it('still redirects when the result lookup fails', async () => {
       window.location.search = '?match=match-1'
-      vi.mocked(returnLib.fetchReturnDestination).mockResolvedValue({ path: '/games/word-hunt', kind: 'GAME' })
-      vi.mocked(matchResultLib.fetchMatchResult).mockRejectedValue(new Error('you did not play in this match'))
+      vi.mocked(returnLib.fetchReturnDestination).mockResolvedValue({
+        path: '/games/word-hunt',
+        kind: 'GAME',
+      })
+      vi.mocked(matchResultLib.fetchMatchResult).mockRejectedValue(
+        new Error('you did not play in this match'),
+      )
 
       render(<ReturnPage />)
 
@@ -142,8 +150,10 @@ describe('ReturnPage', () => {
       await waitFor(() => expect(assign).toHaveBeenCalledWith('/'))
     })
 
-    it('keeps today\'s error state when the destination itself cannot be resolved', async () => {
-      vi.mocked(returnLib.fetchReturnDestination).mockRejectedValue(new Error('Authentication required'))
+    it("keeps today's error state when the destination itself cannot be resolved", async () => {
+      vi.mocked(returnLib.fetchReturnDestination).mockRejectedValue(
+        new Error('Authentication required'),
+      )
       render(<ReturnPage />)
 
       expect(await screen.findByText('Authentication required')).toBeInTheDocument()
@@ -160,8 +170,20 @@ describe('ReturnPage', () => {
         makeResult({
           complete: false,
           participants: [
-            { user: { id: 'a', displayName: 'Ada' }, finished: true, placement: 1, winner: false, regroup: 'PENDING' },
-            { user: { id: 'b', displayName: 'Bo' }, finished: false, placement: null, winner: false, regroup: 'PENDING' },
+            {
+              user: { id: 'a', displayName: 'Ada' },
+              finished: true,
+              placement: 1,
+              winner: false,
+              regroup: 'PENDING',
+            },
+            {
+              user: { id: 'b', displayName: 'Bo' },
+              finished: false,
+              placement: null,
+              winner: false,
+              regroup: 'PENDING',
+            },
           ],
         }),
       )
@@ -195,7 +217,13 @@ describe('ReturnPage', () => {
               winner: false,
               regroup: 'PENDING',
             },
-            { user: { id: 'b', displayName: 'Bo' }, finished: false, placement: null, winner: false, regroup: 'PENDING' },
+            {
+              user: { id: 'b', displayName: 'Bo' },
+              finished: false,
+              placement: null,
+              winner: false,
+              regroup: 'PENDING',
+            },
           ],
         }),
       )
@@ -213,10 +241,12 @@ describe('ReturnPage', () => {
       vi.mocked(matchResultLib.fetchMatchResult).mockResolvedValue(makeResult({ complete: false }))
 
       let push
-      vi.mocked(matchResultLib.subscribeToMatchResult).mockImplementation(async (_id, { onUpdate }) => {
-        push = onUpdate
-        return unsubscribe
-      })
+      vi.mocked(matchResultLib.subscribeToMatchResult).mockImplementation(
+        async (_id, { onUpdate }) => {
+          push = onUpdate
+          return unsubscribe
+        },
+      )
 
       render(<ReturnPage />)
       // Everyone on this fixture is finished, so no row is marked; the standings title is
@@ -236,7 +266,10 @@ describe('ReturnPage', () => {
     it('offers a way out to the resolved return destination', async () => {
       const user = userEvent.setup()
       window.location.search = '?match=match-1'
-      vi.mocked(returnLib.fetchReturnDestination).mockResolvedValue({ path: '/games/word-hunt', kind: 'GAME' })
+      vi.mocked(returnLib.fetchReturnDestination).mockResolvedValue({
+        path: '/games/word-hunt',
+        kind: 'GAME',
+      })
       vi.mocked(matchResultLib.fetchMatchResult).mockResolvedValue(makeResult({ complete: false }))
 
       render(<ReturnPage />)
@@ -356,7 +389,11 @@ describe('ReturnPage', () => {
     it('routes to the regroup room when another round starts', async () => {
       const user = userEvent.setup()
       await renderComplete()
-      vi.mocked(matchResultLib.playAgain).mockResolvedValue({ inviteCode: 'ABC123', seated: true, table: {} })
+      vi.mocked(matchResultLib.playAgain).mockResolvedValue({
+        inviteCode: 'ABC123',
+        seated: true,
+        table: {},
+      })
 
       await user.click(screen.getByRole('button', { name: 'Another round' }))
 

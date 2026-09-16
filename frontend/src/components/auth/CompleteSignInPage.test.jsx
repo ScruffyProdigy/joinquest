@@ -35,7 +35,9 @@ describe('CompleteSignInPage', () => {
   it('shows an error when the sign-in token is missing', async () => {
     render(<CompleteSignInPage />)
 
-    expect(await screen.findByText('Missing sign-in token. Request a new sign-in email.')).toBeInTheDocument()
+    expect(
+      await screen.findByText('Missing sign-in token. Request a new sign-in email.'),
+    ).toBeInTheDocument()
     expect(screen.getByRole('link', { name: 'Back to home' })).toBeInTheDocument()
     expect(auth.completeAuthLinkOnce).not.toHaveBeenCalled()
   })
@@ -48,7 +50,9 @@ describe('CompleteSignInPage', () => {
 
     render(<CompleteSignInPage />)
 
-    expect(await screen.findByText('Invalid or expired sign-in link. Request a new sign-in email.')).toBeInTheDocument()
+    expect(
+      await screen.findByText('Invalid or expired sign-in link. Request a new sign-in email.'),
+    ).toBeInTheDocument()
     expect(screen.getByRole('link', { name: 'Back to home' })).toBeInTheDocument()
     expect(assign).not.toHaveBeenCalled()
   })

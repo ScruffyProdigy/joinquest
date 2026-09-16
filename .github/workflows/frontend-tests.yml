@@ -16,6 +16,9 @@ on:
       - 'scripts/db.sh'
       - 'scripts/e2e-auth-stack.sh'
       - 'scripts/check-static-asset-permissions.sh'
+      - 'scripts/check-frontend-formatting.sh'
+      - '.prettierrc.json'
+      - '.prettierignore'
       - '.github/workflows/frontend-tests.yml'
   pull_request:
     branches: [ main, develop ]
@@ -32,6 +35,9 @@ on:
       - 'scripts/db.sh'
       - 'scripts/e2e-auth-stack.sh'
       - 'scripts/check-static-asset-permissions.sh'
+      - 'scripts/check-frontend-formatting.sh'
+      - '.prettierrc.json'
+      - '.prettierignore'
       - '.github/workflows/frontend-tests.yml'
 
 jobs:
@@ -55,6 +61,9 @@ jobs:
     
     - name: Check static asset permissions
       run: ./scripts/check-static-asset-permissions.sh
+
+    - name: Check frontend formatting
+      run: ./scripts/check-frontend-formatting.sh
 
     - name: Run linter
       run: |

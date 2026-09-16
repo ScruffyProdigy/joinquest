@@ -42,11 +42,18 @@ function PrimitivePreview({ previewKind, item }) {
           : item.pillStyle === 'segment'
             ? 'bg-primary/10 text-primary border border-primary/30'
             : 'border border-border text-foreground'
-      return <span className={`px-4 py-2 rounded-full text-xs font-semibold ${pillClass}`}>{item.name}</span>
+      return (
+        <span className={`px-4 py-2 rounded-full text-xs font-semibold ${pillClass}`}>
+          {item.name}
+        </span>
+      )
     }
     case 'circle':
       return (
-        <div className="w-10 h-10 rounded-full" style={{ background: accentColorFor('component-preview-avatar').badge }} />
+        <div
+          className="w-10 h-10 rounded-full"
+          style={{ background: accentColorFor('component-preview-avatar').badge }}
+        />
       )
     case 'field':
       return (
@@ -130,16 +137,24 @@ function CompositePreview({ previewKind }) {
       return (
         <div
           className="w-full h-full rounded-2xl p-3 flex flex-col justify-end gap-1"
-          style={{ background: 'linear-gradient(160deg, #241b0f, #191305)', border: '1px solid rgba(245,158,11,0.25)' }}
+          style={{
+            background: 'linear-gradient(160deg, #241b0f, #191305)',
+            border: '1px solid rgba(245,158,11,0.25)',
+          }}
         >
-          <span className="self-start bg-black/40 text-[9px] px-2 py-1 rounded-full mb-auto">Trivia · Party</span>
+          <span className="self-start bg-black/40 text-[9px] px-2 py-1 rounded-full mb-auto">
+            Trivia · Party
+          </span>
           <span className="font-semibold text-sm">Trivia Blitz</span>
           <span className="text-2xs text-muted-foreground">112 playing</span>
         </div>
       )
     case 'hero':
       return (
-        <div className="w-full h-full rounded-2xl flex items-end p-3" style={{ background: 'linear-gradient(135deg, #1e293b, #0f172a)' }}>
+        <div
+          className="w-full h-full rounded-2xl flex items-end p-3"
+          style={{ background: 'linear-gradient(135deg, #1e293b, #0f172a)' }}
+        >
           <span className="font-heading font-bold text-base">Iron Fist Arena</span>
         </div>
       )
@@ -156,16 +171,18 @@ function CompositePreview({ previewKind }) {
     case 'avatarRow':
       return (
         <div className="flex items-center justify-center gap-2 w-full h-full">
-          {['#f59e0b,#b45309', '#22c55e,#15803d', '#8b5cf6,#6d28d9', '#06b6d4,#0e7490'].map((stops, index) => (
-            <div
-              key={stops}
-              className="w-8 h-8 rounded-full"
-              style={{
-                background: `linear-gradient(135deg, ${stops})`,
-                boxShadow: index === 2 ? '0 0 0 2px var(--primary)' : undefined,
-              }}
-            />
-          ))}
+          {['#f59e0b,#b45309', '#22c55e,#15803d', '#8b5cf6,#6d28d9', '#06b6d4,#0e7490'].map(
+            (stops, index) => (
+              <div
+                key={stops}
+                className="w-8 h-8 rounded-full"
+                style={{
+                  background: `linear-gradient(135deg, ${stops})`,
+                  boxShadow: index === 2 ? '0 0 0 2px var(--primary)' : undefined,
+                }}
+              />
+            ),
+          )}
         </div>
       )
     case 'filterList':
@@ -233,8 +250,8 @@ export default function ComponentLibrarySection() {
     <section className="flex flex-col gap-4">
       <h2 className="font-heading text-xl font-semibold">Component library</h2>
       <p className="font-sans text-sm text-muted-foreground">
-        Every primitive and recurring pattern from the Figma prototype, tracked against what actually exists in
-        production.
+        Every primitive and recurring pattern from the Figma prototype, tracked against what
+        actually exists in production.
       </p>
 
       <div className="flex w-fit gap-1 rounded-full bg-muted p-1" role="tablist">

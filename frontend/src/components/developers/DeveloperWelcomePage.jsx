@@ -2,11 +2,7 @@ import { useEffect, useState } from 'react'
 import { Button } from '../ui/button'
 import { Link } from '../ui/link'
 import { APP_NAME } from '../../lib/brand'
-import {
-  developerDashboardPath,
-  fetchMyGame,
-  visibilityLabel,
-} from '../../lib/developers'
+import { developerDashboardPath, fetchMyGame, visibilityLabel } from '../../lib/developers'
 import { navigateTo } from '../../lib/usePathname'
 import DeveloperMcpWizard from './DeveloperMcpWizard'
 
@@ -60,12 +56,12 @@ export default function DeveloperWelcomePage({ gameId }) {
     <main className="app-shell developer-shell">
       <header className="app-header">
         <p className="developer-back">
-          <Link href="/">
-            ← Back to {APP_NAME}
-          </Link>
+          <Link href="/">← Back to {APP_NAME}</Link>
         </p>
         <h1>Nice — your game is registered.</h1>
-        <p className="tagline">{game.name} · {visibilityLabel(game.visibility)}</p>
+        <p className="tagline">
+          {game.name} · {visibilityLabel(game.visibility)}
+        </p>
       </header>
 
       <DeveloperMcpWizard defaultExpanded />

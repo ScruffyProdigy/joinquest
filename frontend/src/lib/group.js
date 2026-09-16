@@ -269,7 +269,9 @@ export function selectGroupTable(room, userId) {
   if (seated) {
     return seated
   }
-  return [...tables].sort((a, b) => String(b.createdAt).localeCompare(String(a.createdAt)))[0] ?? null
+  return (
+    [...tables].sort((a, b) => String(b.createdAt).localeCompare(String(a.createdAt)))[0] ?? null
+  )
 }
 
 /**

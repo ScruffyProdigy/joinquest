@@ -212,7 +212,10 @@ export async function fetchRoom(inviteCode) {
   return data.room
 }
 
-export async function subscribeToRoom(roomId, { onRoomUpdate, onMessage, onTableUpdate, onError } = {}) {
+export async function subscribeToRoom(
+  roomId,
+  { onRoomUpdate, onMessage, onTableUpdate, onError } = {},
+) {
   await loadSubscriptionAuth()
   const client = getWsClient()
 

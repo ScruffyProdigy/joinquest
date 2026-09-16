@@ -20,7 +20,9 @@ describe('parseRoomInviteCode', () => {
 
 describe('roomShareText', () => {
   it('includes join url', () => {
-    expect(roomShareText('https://joinquest.cc/room/ABC123')).toContain('https://joinquest.cc/room/ABC123')
+    expect(roomShareText('https://joinquest.cc/room/ABC123')).toContain(
+      'https://joinquest.cc/room/ABC123',
+    )
   })
 })
 
@@ -31,8 +33,9 @@ describe('roomShareText', () => {
 // held open for a browser that has already given up on it.
 describe('room reconnect budget', () => {
   const budgetMs = () =>
-    Array.from({ length: ROOM_RECONNECT_ATTEMPTS }, (_, retries) => roomReconnectWaitMs(retries))
-      .reduce((total, wait) => total + wait, 0)
+    Array.from({ length: ROOM_RECONNECT_ATTEMPTS }, (_, retries) =>
+      roomReconnectWaitMs(retries),
+    ).reduce((total, wait) => total + wait, 0)
 
   it('keeps asking for just under the server 5 minute grace', () => {
     expect(budgetMs()).toBe(297_500)

@@ -22,7 +22,10 @@ export const SIGIL_FAMILIES = [
   { key: 'serpent', nouns: ['Cobra', 'Viper', 'Python', 'Adder', 'Mamba', 'Krait'] },
   { key: 'cephalopod', nouns: ['Octopus', 'Squid', 'Nautilus', 'Kraken', 'Cuttle', 'Argonaut'] },
   { key: 'cetacean', nouns: ['Whale', 'Orca', 'Narwhal', 'Beluga', 'Dolphin', 'Porpoise'] },
-  { key: 'chelonian', nouns: ['Turtle', 'Tortoise', 'Terrapin', 'Snapper', 'Slider', 'Loggerhead'] },
+  {
+    key: 'chelonian',
+    nouns: ['Turtle', 'Tortoise', 'Terrapin', 'Snapper', 'Slider', 'Loggerhead'],
+  },
   { key: 'equine', nouns: ['Horse', 'Mare', 'Stallion', 'Mustang', 'Bronco', 'Colt'] },
   { key: 'proboscid', nouns: ['Elephant', 'Mammoth', 'Mastodon', 'Tusker', 'Jumbo', 'Behemoth'] },
   { key: 'suid', nouns: ['Boar', 'Hog', 'Warthog', 'Peccary', 'Razorback', 'Sow'] },
@@ -32,7 +35,10 @@ export const SIGIL_FAMILIES = [
   { key: 'arachnid', nouns: ['Spider', 'Tarantula', 'Widow', 'Recluse', 'Orbweaver', 'Weaver'] },
   { key: 'waterfowl', nouns: ['Swan', 'Heron', 'Crane', 'Egret', 'Ibis', 'Stork'] },
   { key: 'lepidopteran', nouns: ['Moth', 'Monarch', 'Swallowtail', 'Luna', 'Admiral', 'Skipper'] },
-  { key: 'echinoderm', nouns: ['Starfish', 'Seastar', 'Sunstar', 'Brittlestar', 'Urchin', 'Cushion'] },
+  {
+    key: 'echinoderm',
+    nouns: ['Starfish', 'Seastar', 'Sunstar', 'Brittlestar', 'Urchin', 'Cushion'],
+  },
   { key: 'gastropod', nouns: ['Snail', 'Whelk', 'Conch', 'Periwinkle', 'Limpet', 'Cowrie'] },
   { key: 'spheniscid', nouns: ['Penguin', 'Emperor', 'Gentoo', 'Adelie', 'Rockhopper', 'Auk'] },
 ]
@@ -66,6 +72,9 @@ export const SIGIL_EXPRESSIONS = ['wide', 'bright', 'squint', 'wink', 'sleepy']
  * own slice actually renders, not from a list of colour words in a plausible
  * order — which is why the teals get four of them and yellow only gets two.
  */
+// The rows are thirds of the hue wheel, so the grouping is load-bearing for
+// reading this list against the comment above — keep it hand-laid.
+// prettier-ignore
 export const SIGIL_HUE_WORDS = [
   'Blaze', 'Ember', 'Copper', 'Rust', 'Amber', 'Solar', 'Fern', 'Ivy',
   'Moss', 'Pine', 'Jade', 'Tide', 'Lagoon', 'Nova', 'Frost', 'Cobalt',
@@ -247,7 +256,7 @@ function rgbToHex([r, g, b]) {
 /** The colour word for a position `offset` degrees around the perceived wheel. */
 export function hueWord(offset) {
   const slice = 360 / SIGIL_HUE_WORDS.length
-  return SIGIL_HUE_WORDS[Math.floor(((((offset % 360) + 360) % 360)) / slice)]
+  return SIGIL_HUE_WORDS[Math.floor((((offset % 360) + 360) % 360) / slice)]
 }
 
 /**
@@ -297,7 +306,11 @@ export function sigilImageUrl(familyKey, hex, expression) {
  * offers the face alone — someone who already has a name still needs to be told
  * which disc they are reaching for.
  */
-export function generateGuestIdentity(family, tint = generateTint(), expression = pickOne(SIGIL_EXPRESSIONS)) {
+export function generateGuestIdentity(
+  family,
+  tint = generateTint(),
+  expression = pickOne(SIGIL_EXPRESSIONS),
+) {
   const number = NUMBER_MIN + randomInt(NUMBER_MAX - NUMBER_MIN + 1)
   const noun = pickOne(family.nouns)
   return {

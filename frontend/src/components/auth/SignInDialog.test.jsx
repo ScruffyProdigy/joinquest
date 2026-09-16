@@ -4,11 +4,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 import SignInDialog from './SignInDialog'
 import { AuthProvider } from './AuthProvider'
 import { mockUnauthenticatedSession } from '../../test/setup'
-import {
-  SIGN_IN_BENEFITS,
-  SIGN_IN_DIALOG_TITLE,
-  SIGN_IN_MAYBE_LATER,
-} from '../../lib/playerCopy'
+import { SIGN_IN_BENEFITS, SIGN_IN_DIALOG_TITLE, SIGN_IN_MAYBE_LATER } from '../../lib/playerCopy'
 
 function renderDialog(onOpenChange = vi.fn()) {
   render(

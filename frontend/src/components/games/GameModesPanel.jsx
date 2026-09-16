@@ -46,8 +46,7 @@ function ModeRow({
     skipSubscription: Boolean(isThisQueue && activeIntent),
   })
 
-  const seatedHere =
-    activeTableSeat?.gameId === game.id && activeTableSeat?.modeId === mode.id
+  const seatedHere = activeTableSeat?.gameId === game.id && activeTableSeat?.modeId === mode.id
   const inActiveGame = activeIntent?.status === 'MATCHED'
 
   async function handleJoin(queuePath, options) {
@@ -62,7 +61,9 @@ function ModeRow({
     const pathLabel =
       joinOptions?.kind === 'composition'
         ? joinOptions.paths
-            .map((path) => (typeof path === 'string' ? { queuePath: path, displayName: path } : path))
+            .map((path) =>
+              typeof path === 'string' ? { queuePath: path, displayName: path } : path,
+            )
             .find((entry) => entry.queuePath === queuePath)?.displayName
         : null
     // The queue, the path, and the options the player picked are the whole
@@ -241,7 +242,9 @@ function ModeRow({
               }
               onJoin={handleJoinRequest}
               onLeave={handleLeave}
-              disabled={!defaultQueue || blockedByMatch || Boolean(activeTableSeat?.tableId && !seatedHere)}
+              disabled={
+                !defaultQueue || blockedByMatch || Boolean(activeTableSeat?.tableId && !seatedHere)
+              }
               prominent={prominent}
               solo={solo}
             />

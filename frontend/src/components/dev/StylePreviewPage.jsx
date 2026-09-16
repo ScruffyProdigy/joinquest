@@ -31,9 +31,9 @@ export default function StylePreviewPage() {
       <section className="flex flex-col gap-4">
         <h2 className="font-heading text-xl font-semibold">Buttons</h2>
         <p className="text-sm text-muted-foreground">
-          One shape, taken from the prototype: a <code>rounded-[99px]</code> pill that owns its
-          row. Full width is the default size, not something a call site asks for. Sizing is
-          padding — there is no fixed height, and nothing above <code>py-4</code>.
+          One shape, taken from the prototype: a <code>rounded-[99px]</code> pill that owns its row.
+          Full width is the default size, not something a call site asks for. Sizing is padding —
+          there is no fixed height, and nothing above <code>py-4</code>.
         </p>
         <div className="flex max-w-xs flex-col gap-2">
           <Button>Default</Button>
@@ -65,8 +65,8 @@ export default function StylePreviewPage() {
         <h2 className="font-heading text-xl font-semibold">Button and Link, side by side</h2>
         <p className="text-sm text-muted-foreground">
           The same geometry at different weights (JQ-223). A filled button and a pill link stacked
-          together should read as one control family — same radius, same vertical padding, same
-          15px bold label — with only the fill telling them apart.
+          together should read as one control family — same radius, same vertical padding, same 15px
+          bold label — with only the fill telling them apart.
         </p>
         <div className="flex max-w-xs flex-col gap-2">
           <Button>Filled button</Button>
@@ -80,10 +80,10 @@ export default function StylePreviewPage() {
       <section className="flex flex-col gap-4">
         <h2 className="font-heading text-xl font-semibold">Links</h2>
         <p className="text-sm text-muted-foreground">
-          Nothing here underlines, in any state. <code>href</code> picks the element: an anchor
-          for navigation, a button for an action that only runs a handler. Only the pill carries
-          the brand colour — it is the option we want clicked. An inline link is navigation, so it
-          takes its own <code>--link</code> colour and its weight, never the brand's.
+          Nothing here underlines, in any state. <code>href</code> picks the element: an anchor for
+          navigation, a button for an action that only runs a handler. Only the pill carries the
+          brand colour — it is the option we want clicked. An inline link is navigation, so it takes
+          its own <code>--link</code> colour and its weight, never the brand's.
         </p>
         <p className="text-sm">
           An <Link href="#links">Inline link</Link> sits inside a sentence.
@@ -118,16 +118,13 @@ export default function StylePreviewPage() {
       <section className="flex flex-col gap-3">
         <h2 className="font-heading text-xl font-semibold">Spacing</h2>
         <p className="font-sans text-sm text-muted-foreground">
-          Spacing intentionally uses Tailwind's default 4px-based scale — not left to accident, just not
-          worth reinventing.
+          Spacing intentionally uses Tailwind's default 4px-based scale — not left to accident, just
+          not worth reinventing.
         </p>
         <div className="flex flex-col gap-2">
           {SPACING_STEPS.map((step) => (
             <div key={step} className="flex items-center gap-4">
-              <div
-                className="bg-primary rounded-sm h-3"
-                style={{ width: `${step * 0.25}rem` }}
-              />
+              <div className="bg-primary rounded-sm h-3" style={{ width: `${step * 0.25}rem` }} />
               <span className="font-mono-display text-2xs text-muted-foreground">
                 {step} / {step * 4}px
               </span>
@@ -140,9 +137,9 @@ export default function StylePreviewPage() {
         <h2 className="font-heading text-xl font-semibold">Outcome colours</h2>
         <p className="font-sans text-sm text-muted-foreground">
           <code className="font-mono-display text-2xs">--success</code> and{' '}
-          <code className="font-mono-display text-2xs">--warning</code> report how something went
-          — a winner, a player who has opted back in, a match still running. Each is used as text
-          on its own surface, so both pairings are contrast-checked in{' '}
+          <code className="font-mono-display text-2xs">--warning</code> report how something went —
+          a winner, a player who has opted back in, a match still running. Each is used as text on
+          its own surface, so both pairings are contrast-checked in{' '}
           <code className="font-mono-display text-2xs">src/theme.test.js</code>.
         </p>
         <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
@@ -155,7 +152,10 @@ export default function StylePreviewPage() {
               className="flex flex-col gap-2 rounded-2xl p-3"
               style={{ backgroundColor: token.surface }}
             >
-              <span className="font-sans text-xs font-bold capitalize" style={{ color: token.color }}>
+              <span
+                className="font-sans text-xs font-bold capitalize"
+                style={{ color: token.color }}
+              >
                 {token.name}
               </span>
               <span className="font-sans text-2xs text-foreground">on its surface</span>

@@ -1,6 +1,10 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { playingIntentTitle, resolveIntentLaunchUrl } from '../../lib/intent'
-import { LAUNCH_COUNTDOWN_SECONDS, MATCH_FOUND_BEAT_MS, navigateToLaunchUrl } from '../../lib/launch'
+import {
+  LAUNCH_COUNTDOWN_SECONDS,
+  MATCH_FOUND_BEAT_MS,
+  navigateToLaunchUrl,
+} from '../../lib/launch'
 import { isTabVisible } from '../../lib/tabVisibility'
 import {
   LAUNCH_AUTO_HINT,
@@ -155,7 +159,9 @@ export default function LaunchStep({
       </span>
 
       <h1 className="waiting-page__title">{title}</h1>
-      <p className="waiting-page__subline">{subline || playingIntentTitle(activeIntent, activeTableSeat)}</p>
+      <p className="waiting-page__subline">
+        {subline || playingIntentTitle(activeIntent, activeTableSeat)}
+      </p>
 
       {counting ? (
         // The seconds change every tick; announcing each one would talk over the
