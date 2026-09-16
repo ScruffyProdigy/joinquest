@@ -14,7 +14,6 @@ import (
 	"github.com/google/uuid"
 	"github.com/scruffyprodigy/joinquest/graph/generated"
 	"github.com/scruffyprodigy/joinquest/graph/model"
-	"github.com/scruffyprodigy/joinquest/internal/auth"
 	"github.com/scruffyprodigy/joinquest/internal/pubsub"
 	"github.com/scruffyprodigy/joinquest/internal/store"
 )
@@ -187,83 +186,6 @@ func (r *mutationResolver) RejoinActiveMatch(ctx context.Context) (string, error
 	return launchURL, nil
 }
 
-// GrantGood is the resolver for the grantGood field.
-func (r *mutationResolver) GrantGood(ctx context.Context, userID string, goodID string, quantity *int) (bool, error) {
-	if _, err := r.requireAdmin(ctx); err != nil {
-		return false, err
-	}
-
-	st, err := r.requireStore()
-	if err != nil {
-		return false, err
-	}
-
-	uid, err := parseUUID(userID, "user id")
-	if err != nil {
-		return false, err
-	}
-	gid, err := parseUUID(goodID, "good id")
-	if err != nil {
-		return false, err
-	}
-
-	qty := 1
-	if quantity != nil {
-		qty = *quantity
-	}
-
-	if err := st.EnsureUserExists(ctx, uid); err != nil {
-		if errors.Is(err, store.ErrNotFound) {
-			return false, fmt.Errorf("user not found")
-		}
-		return false, err
-	}
-	if err := st.EnsureDigitalGoodExists(ctx, gid); err != nil {
-		if errors.Is(err, store.ErrNotFound) {
-			return false, fmt.Errorf("good not found")
-		}
-		return false, err
-	}
-	if err := st.GrantInventoryItem(ctx, uid, gid, qty); err != nil {
-		return false, err
-	}
-	return true, nil
-}
-
-// RevokeGood is the resolver for the revokeGood field.
-func (r *mutationResolver) RevokeGood(ctx context.Context, userID string, goodID string, quantity *int) (bool, error) {
-	if _, err := r.requireAdmin(ctx); err != nil {
-		return false, err
-	}
-
-	st, err := r.requireStore()
-	if err != nil {
-		return false, err
-	}
-
-	uid, err := parseUUID(userID, "user id")
-	if err != nil {
-		return false, err
-	}
-	gid, err := parseUUID(goodID, "good id")
-	if err != nil {
-		return false, err
-	}
-
-	qty := 1
-	if quantity != nil {
-		qty = *quantity
-	}
-
-	if err := st.RevokeInventoryItem(ctx, uid, gid, qty); err != nil {
-		if errors.Is(err, store.ErrNotFound) {
-			return false, fmt.Errorf("insufficient inventory")
-		}
-		return false, err
-	}
-	return true, nil
-}
-
 // Version is the resolver for the version field.
 func (r *queryResolver) Version(ctx context.Context) (string, error) {
 	return "1.0.0", nil
@@ -368,68 +290,6 @@ func (r *queryResolver) Session(ctx context.Context, id string) (*model.Session,
 	}
 
 	return ToGraphQLSession(session, nil), nil
-}
-
-// Goods is the resolver for the goods field.
-func (r *queryResolver) Goods(ctx context.Context, gameID *string) ([]*model.DigitalGood, error) {
-	st, err := r.requireStore()
-	if err != nil {
-		return nil, err
-	}
-
-	var filterGameID *uuid.UUID
-	if gameID != nil {
-		id, err := parseUUID(*gameID, "game id")
-		if err != nil {
-			return nil, err
-		}
-		filterGameID = &id
-	}
-
-	goods, err := st.ListDigitalGoods(ctx, filterGameID)
-	if err != nil {
-		return nil, err
-	}
-	return ToGraphQLDigitalGoods(goods), nil
-}
-
-// MyInventory is the resolver for the myInventory field.
-func (r *queryResolver) MyInventory(ctx context.Context, gameID *string) ([]*model.Entitlement, error) {
-	authService, err := r.requireAuth()
-	if err != nil {
-		return nil, err
-	}
-	st, err := r.requireStore()
-	if err != nil {
-		return nil, err
-	}
-
-	user, err := authService.GetAuthenticatedUser(ctx)
-	if err != nil {
-		return nil, err
-	}
-	if user == nil {
-		return nil, fmt.Errorf("authentication required")
-	}
-	if user.IsGuest {
-		return nil, auth.ErrGuestAccountNotAllowed
-	}
-	userID := user.ID
-
-	var filterGameID *uuid.UUID
-	if gameID != nil {
-		id, err := parseUUID(*gameID, "game id")
-		if err != nil {
-			return nil, err
-		}
-		filterGameID = &id
-	}
-
-	items, err := st.ListUserInventory(ctx, userID, filterGameID)
-	if err != nil {
-		return nil, err
-	}
-	return ToGraphQLEntitlements(items), nil
 }
 
 // MyQueueStatus is the resolver for the myQueueStatus field.

@@ -1,6 +1,6 @@
 # Architecture Overview
 
-JoinQuest is the **player-facing platform** and **integration layer** for third-party web games: accounts, catalog, queues, matchmaking, provision handoff, and digital goods. Game authors keep their own browser origin and game servers; we connect players via game-minted launch URLs and a stable seat contract.
+JoinQuest is the **player-facing platform** and **integration layer** for third-party web games: accounts, catalog, queues, matchmaking, and provision handoff. Game authors keep their own browser origin and game servers; we connect players via game-minted launch URLs and a stable seat contract.
 
 **Why this exists:** [Product vision](./vision.md).
 
@@ -105,16 +105,12 @@ Query {
   games(limit: Int, offset: Int): [Game!]!
   game(id: ID!): Game
   session(id: ID!): Session
-  goods(gameId: ID): [DigitalGood!]!
-  myInventory(gameId: ID): [Entitlement!]!
 }
 
 Mutation {
   registerGame(input: RegisterGameInput!): RegisterGamePayload!
   joinQueue(queueId: ID!): JoinResult!
   leaveQueue(queueId: ID!): Boolean!
-  grantGood(userId: ID!, goodId: ID!, quantity: Int = 1): Boolean!
-  revokeGood(userId: ID!, goodId: ID!, quantity: Int = 1): Boolean!
 }
 ```
 

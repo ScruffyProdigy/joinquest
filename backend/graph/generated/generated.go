@@ -116,24 +116,10 @@ type ComplexityRoot struct {
 		Name       func(childComplexity int) int
 	}
 
-	DigitalGood struct {
-		Code        func(childComplexity int) int
-		Description func(childComplexity int) int
-		Game        func(childComplexity int) int
-		ID          func(childComplexity int) int
-		Name        func(childComplexity int) int
-	}
-
 	EmailLinkPreview struct {
 		Email                  func(childComplexity int) int
 		MergeSourceDisplayName func(childComplexity int) int
 		WillMergeAccounts      func(childComplexity int) int
-	}
-
-	Entitlement struct {
-		Good      func(childComplexity int) int
-		GrantedAt func(childComplexity int) int
-		Quantity  func(childComplexity int) int
 	}
 
 	Game struct {
@@ -289,7 +275,6 @@ type ComplexityRoot struct {
 		DeclinePlayAgain             func(childComplexity int, matchID string) int
 		DeletePushSubscription       func(childComplexity int, endpoint string) int
 		DiscardTable                 func(childComplexity int, tableID string) int
-		GrantGood                    func(childComplexity int, userID string, goodID string, quantity *int) int
 		JoinQueue                    func(childComplexity int, queueID string, queuePath *string, options []*model.QueueOptionSelectionInput, party *model.PartyNodeInput) int
 		JoinRoom                     func(childComplexity int, inviteCode string) int
 		LeaveActiveGame              func(childComplexity int) int
@@ -312,7 +297,6 @@ type ComplexityRoot struct {
 		RequestSignIn                func(childComplexity int, email string) int
 		ReviewGameRelease            func(childComplexity int, gameID string, approve bool, reason *string) int
 		RevokeDeveloperAPIKey        func(childComplexity int, id string) int
-		RevokeGood                   func(childComplexity int, userID string, goodID string, quantity *int) int
 		RotateMyGameWebhookSecret    func(childComplexity int, gameID string) int
 		RunMyGameChecks              func(childComplexity int, gameID string) int
 		SavePushSubscription         func(childComplexity int, input model.SavePushSubscriptionInput) int
@@ -406,7 +390,6 @@ type ComplexityRoot struct {
 		GameBySlug                       func(childComplexity int, slug string) int
 		Games                            func(childComplexity int, limit *int, offset *int) int
 		GenreTaxonomy                    func(childComplexity int) int
-		Goods                            func(childComplexity int, gameID *string) int
 		Healthz                          func(childComplexity int) int
 		MatchResult                      func(childComplexity int, matchID string) int
 		Me                               func(childComplexity int) int
@@ -416,7 +399,6 @@ type ComplexityRoot struct {
 		MyGame                           func(childComplexity int, id string) int
 		MyGameCredentials                func(childComplexity int, id string) int
 		MyGames                          func(childComplexity int) int
-		MyInventory                      func(childComplexity int, gameID *string) int
 		MyQueueStatus                    func(childComplexity int, queueID string) int
 		MyRoom                           func(childComplexity int) int
 		MySpiritAnimalJourneyEligibility func(childComplexity int) int
@@ -749,8 +731,6 @@ type MutationResolver interface {
 	SetDocumentVisibility(ctx context.Context, documentID string, visible bool) (bool, error)
 	LeaveActiveGame(ctx context.Context) (bool, error)
 	RejoinActiveMatch(ctx context.Context) (string, error)
-	GrantGood(ctx context.Context, userID string, goodID string, quantity *int) (bool, error)
-	RevokeGood(ctx context.Context, userID string, goodID string, quantity *int) (bool, error)
 	CreateGuestSession(ctx context.Context) (*model.User, error)
 	RequestLinkEmail(ctx context.Context, email string) (bool, error)
 	CompleteLinkEmailWithCode(ctx context.Context, email string, code string, confirmMerge *bool) (*model.User, error)
@@ -814,8 +794,6 @@ type QueryResolver interface {
 	Game(ctx context.Context, id string) (*model.Game, error)
 	GameBySlug(ctx context.Context, slug string) (*model.Game, error)
 	Session(ctx context.Context, id string) (*model.Session, error)
-	Goods(ctx context.Context, gameID *string) ([]*model.DigitalGood, error)
-	MyInventory(ctx context.Context, gameID *string) ([]*model.Entitlement, error)
 	MyQueueStatus(ctx context.Context, queueID string) (*model.JoinResult, error)
 	MyActiveIntent(ctx context.Context) (*model.ActiveIntent, error)
 	Player(ctx context.Context, id string) (*model.PublicPlayer, error)
@@ -1126,37 +1104,6 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 
 		return e.complexity.DeveloperApiKey.Name(childComplexity), true
 
-	case "DigitalGood.code":
-		if e.complexity.DigitalGood.Code == nil {
-			break
-		}
-
-		return e.complexity.DigitalGood.Code(childComplexity), true
-	case "DigitalGood.description":
-		if e.complexity.DigitalGood.Description == nil {
-			break
-		}
-
-		return e.complexity.DigitalGood.Description(childComplexity), true
-	case "DigitalGood.game":
-		if e.complexity.DigitalGood.Game == nil {
-			break
-		}
-
-		return e.complexity.DigitalGood.Game(childComplexity), true
-	case "DigitalGood.id":
-		if e.complexity.DigitalGood.ID == nil {
-			break
-		}
-
-		return e.complexity.DigitalGood.ID(childComplexity), true
-	case "DigitalGood.name":
-		if e.complexity.DigitalGood.Name == nil {
-			break
-		}
-
-		return e.complexity.DigitalGood.Name(childComplexity), true
-
 	case "EmailLinkPreview.email":
 		if e.complexity.EmailLinkPreview.Email == nil {
 			break
@@ -1175,25 +1122,6 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.EmailLinkPreview.WillMergeAccounts(childComplexity), true
-
-	case "Entitlement.good":
-		if e.complexity.Entitlement.Good == nil {
-			break
-		}
-
-		return e.complexity.Entitlement.Good(childComplexity), true
-	case "Entitlement.grantedAt":
-		if e.complexity.Entitlement.GrantedAt == nil {
-			break
-		}
-
-		return e.complexity.Entitlement.GrantedAt(childComplexity), true
-	case "Entitlement.quantity":
-		if e.complexity.Entitlement.Quantity == nil {
-			break
-		}
-
-		return e.complexity.Entitlement.Quantity(childComplexity), true
 
 	case "Game.apiBaseUrl":
 		if e.complexity.Game.APIBaseURL == nil {
@@ -1988,17 +1916,6 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.Mutation.DiscardTable(childComplexity, args["tableId"].(string)), true
-	case "Mutation.grantGood":
-		if e.complexity.Mutation.GrantGood == nil {
-			break
-		}
-
-		args, err := ec.field_Mutation_grantGood_args(ctx, rawArgs)
-		if err != nil {
-			return 0, false
-		}
-
-		return e.complexity.Mutation.GrantGood(childComplexity, args["userId"].(string), args["goodId"].(string), args["quantity"].(*int)), true
 	case "Mutation.joinQueue":
 		if e.complexity.Mutation.JoinQueue == nil {
 			break
@@ -2216,17 +2133,6 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.Mutation.RevokeDeveloperAPIKey(childComplexity, args["id"].(string)), true
-	case "Mutation.revokeGood":
-		if e.complexity.Mutation.RevokeGood == nil {
-			break
-		}
-
-		args, err := ec.field_Mutation_revokeGood_args(ctx, rawArgs)
-		if err != nil {
-			return 0, false
-		}
-
-		return e.complexity.Mutation.RevokeGood(childComplexity, args["userId"].(string), args["goodId"].(string), args["quantity"].(*int)), true
 	case "Mutation.rotateMyGameWebhookSecret":
 		if e.complexity.Mutation.RotateMyGameWebhookSecret == nil {
 			break
@@ -2710,17 +2616,6 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.Query.GenreTaxonomy(childComplexity), true
-	case "Query.goods":
-		if e.complexity.Query.Goods == nil {
-			break
-		}
-
-		args, err := ec.field_Query_goods_args(ctx, rawArgs)
-		if err != nil {
-			return 0, false
-		}
-
-		return e.complexity.Query.Goods(childComplexity, args["gameId"].(*string)), true
 	case "Query.healthz":
 		if e.complexity.Query.Healthz == nil {
 			break
@@ -2790,17 +2685,6 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.Query.MyGames(childComplexity), true
-	case "Query.myInventory":
-		if e.complexity.Query.MyInventory == nil {
-			break
-		}
-
-		args, err := ec.field_Query_myInventory_args(ctx, rawArgs)
-		if err != nil {
-			return 0, false
-		}
-
-		return e.complexity.Query.MyInventory(childComplexity, args["gameId"].(*string)), true
 	case "Query.myQueueStatus":
 		if e.complexity.Query.MyQueueStatus == nil {
 			break
@@ -4589,8 +4473,6 @@ type Query {
   """Catalog game by URL slug (e.g. word-hunt). Shareable game detail page."""
   gameBySlug(slug: String!): Game
   session(id: ID!): Session
-  goods(gameId: ID): [DigitalGood!]!   # list goods globally or by game
-  myInventory(gameId: ID): [Entitlement!]!
   myQueueStatus(queueId: ID!): JoinResult!
   # Current catalog play intent: waiting or matched queue (at most one).
   myActiveIntent: ActiveIntent
@@ -4627,10 +4509,6 @@ type Mutation {
   the player has finished, so it can never re-open a match someone has left.
   """
   rejoinActiveMatch: String!
-
-  # Digital goods (simple entitlement grant)
-  grantGood(userId: ID!, goodId: ID!, quantity: Int = 1): Boolean!
-  revokeGood(userId: ID!, goodId: ID!, quantity: Int = 1): Boolean!
 }
 `, BuiltIn: false},
 	{Name: "../schema/developer.graphqls", Input: `enum GameVisibility {
@@ -4862,20 +4740,6 @@ type QueueUpdate {
   queuedCount: Int!
   message: String
   formingGaps: [QueuePathGap!]!
-}
-`, BuiltIn: false},
-	{Name: "../schema/goods.graphqls", Input: `type DigitalGood {
-  id: ID!
-  code: String!          # stable code for 3P references
-  name: String!
-  description: String
-  game: Game
-}
-
-type Entitlement {
-  good: DigitalGood!
-  quantity: Int!
-  grantedAt: Time!
 }
 `, BuiltIn: false},
 	{Name: "../schema/match.graphqls", Input: `enum PlayerFinishReason {
@@ -5708,27 +5572,6 @@ func (ec *executionContext) field_Mutation_discardTable_args(ctx context.Context
 	return args, nil
 }
 
-func (ec *executionContext) field_Mutation_grantGood_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
-	var err error
-	args := map[string]any{}
-	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "userId", ec.unmarshalNID2string)
-	if err != nil {
-		return nil, err
-	}
-	args["userId"] = arg0
-	arg1, err := graphql.ProcessArgField(ctx, rawArgs, "goodId", ec.unmarshalNID2string)
-	if err != nil {
-		return nil, err
-	}
-	args["goodId"] = arg1
-	arg2, err := graphql.ProcessArgField(ctx, rawArgs, "quantity", ec.unmarshalOInt2ᚖint)
-	if err != nil {
-		return nil, err
-	}
-	args["quantity"] = arg2
-	return args, nil
-}
-
 func (ec *executionContext) field_Mutation_joinQueue_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
 	var err error
 	args := map[string]any{}
@@ -5973,27 +5816,6 @@ func (ec *executionContext) field_Mutation_revokeDeveloperApiKey_args(ctx contex
 		return nil, err
 	}
 	args["id"] = arg0
-	return args, nil
-}
-
-func (ec *executionContext) field_Mutation_revokeGood_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
-	var err error
-	args := map[string]any{}
-	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "userId", ec.unmarshalNID2string)
-	if err != nil {
-		return nil, err
-	}
-	args["userId"] = arg0
-	arg1, err := graphql.ProcessArgField(ctx, rawArgs, "goodId", ec.unmarshalNID2string)
-	if err != nil {
-		return nil, err
-	}
-	args["goodId"] = arg1
-	arg2, err := graphql.ProcessArgField(ctx, rawArgs, "quantity", ec.unmarshalOInt2ᚖint)
-	if err != nil {
-		return nil, err
-	}
-	args["quantity"] = arg2
 	return args, nil
 }
 
@@ -6252,17 +6074,6 @@ func (ec *executionContext) field_Query_games_args(ctx context.Context, rawArgs 
 	return args, nil
 }
 
-func (ec *executionContext) field_Query_goods_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
-	var err error
-	args := map[string]any{}
-	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "gameId", ec.unmarshalOID2ᚖstring)
-	if err != nil {
-		return nil, err
-	}
-	args["gameId"] = arg0
-	return args, nil
-}
-
 func (ec *executionContext) field_Query_matchResult_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
 	var err error
 	args := map[string]any{}
@@ -6293,17 +6104,6 @@ func (ec *executionContext) field_Query_myGame_args(ctx context.Context, rawArgs
 		return nil, err
 	}
 	args["id"] = arg0
-	return args, nil
-}
-
-func (ec *executionContext) field_Query_myInventory_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
-	var err error
-	args := map[string]any{}
-	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "gameId", ec.unmarshalOID2ᚖstring)
-	if err != nil {
-		return nil, err
-	}
-	args["gameId"] = arg0
 	return args, nil
 }
 
@@ -7618,213 +7418,6 @@ func (ec *executionContext) fieldContext_DeveloperApiKey_lastUsedAt(_ context.Co
 	return fc, nil
 }
 
-func (ec *executionContext) _DigitalGood_id(ctx context.Context, field graphql.CollectedField, obj *model.DigitalGood) (ret graphql.Marshaler) {
-	return graphql.ResolveField(
-		ctx,
-		ec.OperationContext,
-		field,
-		ec.fieldContext_DigitalGood_id,
-		func(ctx context.Context) (any, error) {
-			return obj.ID, nil
-		},
-		nil,
-		ec.marshalNID2string,
-		true,
-		true,
-	)
-}
-
-func (ec *executionContext) fieldContext_DigitalGood_id(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "DigitalGood",
-		Field:      field,
-		IsMethod:   false,
-		IsResolver: false,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return nil, errors.New("field of type ID does not have child fields")
-		},
-	}
-	return fc, nil
-}
-
-func (ec *executionContext) _DigitalGood_code(ctx context.Context, field graphql.CollectedField, obj *model.DigitalGood) (ret graphql.Marshaler) {
-	return graphql.ResolveField(
-		ctx,
-		ec.OperationContext,
-		field,
-		ec.fieldContext_DigitalGood_code,
-		func(ctx context.Context) (any, error) {
-			return obj.Code, nil
-		},
-		nil,
-		ec.marshalNString2string,
-		true,
-		true,
-	)
-}
-
-func (ec *executionContext) fieldContext_DigitalGood_code(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "DigitalGood",
-		Field:      field,
-		IsMethod:   false,
-		IsResolver: false,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return nil, errors.New("field of type String does not have child fields")
-		},
-	}
-	return fc, nil
-}
-
-func (ec *executionContext) _DigitalGood_name(ctx context.Context, field graphql.CollectedField, obj *model.DigitalGood) (ret graphql.Marshaler) {
-	return graphql.ResolveField(
-		ctx,
-		ec.OperationContext,
-		field,
-		ec.fieldContext_DigitalGood_name,
-		func(ctx context.Context) (any, error) {
-			return obj.Name, nil
-		},
-		nil,
-		ec.marshalNString2string,
-		true,
-		true,
-	)
-}
-
-func (ec *executionContext) fieldContext_DigitalGood_name(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "DigitalGood",
-		Field:      field,
-		IsMethod:   false,
-		IsResolver: false,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return nil, errors.New("field of type String does not have child fields")
-		},
-	}
-	return fc, nil
-}
-
-func (ec *executionContext) _DigitalGood_description(ctx context.Context, field graphql.CollectedField, obj *model.DigitalGood) (ret graphql.Marshaler) {
-	return graphql.ResolveField(
-		ctx,
-		ec.OperationContext,
-		field,
-		ec.fieldContext_DigitalGood_description,
-		func(ctx context.Context) (any, error) {
-			return obj.Description, nil
-		},
-		nil,
-		ec.marshalOString2ᚖstring,
-		true,
-		false,
-	)
-}
-
-func (ec *executionContext) fieldContext_DigitalGood_description(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "DigitalGood",
-		Field:      field,
-		IsMethod:   false,
-		IsResolver: false,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return nil, errors.New("field of type String does not have child fields")
-		},
-	}
-	return fc, nil
-}
-
-func (ec *executionContext) _DigitalGood_game(ctx context.Context, field graphql.CollectedField, obj *model.DigitalGood) (ret graphql.Marshaler) {
-	return graphql.ResolveField(
-		ctx,
-		ec.OperationContext,
-		field,
-		ec.fieldContext_DigitalGood_game,
-		func(ctx context.Context) (any, error) {
-			return obj.Game, nil
-		},
-		nil,
-		ec.marshalOGame2ᚖgithubᚗcomᚋscruffyprodigyᚋjoinquestᚋgraphᚋmodelᚐGame,
-		true,
-		false,
-	)
-}
-
-func (ec *executionContext) fieldContext_DigitalGood_game(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "DigitalGood",
-		Field:      field,
-		IsMethod:   false,
-		IsResolver: false,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			switch field.Name {
-			case "id":
-				return ec.fieldContext_Game_id(ctx, field)
-			case "name":
-				return ec.fieldContext_Game_name(ctx, field)
-			case "createdAt":
-				return ec.fieldContext_Game_createdAt(ctx, field)
-			case "activeSessions":
-				return ec.fieldContext_Game_activeSessions(ctx, field)
-			case "slug":
-				return ec.fieldContext_Game_slug(ctx, field)
-			case "apiBaseUrl":
-				return ec.fieldContext_Game_apiBaseUrl(ctx, field)
-			case "manifestSyncedAt":
-				return ec.fieldContext_Game_manifestSyncedAt(ctx, field)
-			case "manifestHash":
-				return ec.fieldContext_Game_manifestHash(ctx, field)
-			case "gameVersion":
-				return ec.fieldContext_Game_gameVersion(ctx, field)
-			case "iconUrl":
-				return ec.fieldContext_Game_iconUrl(ctx, field)
-			case "heroUrl":
-				return ec.fieldContext_Game_heroUrl(ctx, field)
-			case "catalogHeroUrl":
-				return ec.fieldContext_Game_catalogHeroUrl(ctx, field)
-			case "titleArt":
-				return ec.fieldContext_Game_titleArt(ctx, field)
-			case "longDescription":
-				return ec.fieldContext_Game_longDescription(ctx, field)
-			case "shortDescription":
-				return ec.fieldContext_Game_shortDescription(ctx, field)
-			case "howToPlay":
-				return ec.fieldContext_Game_howToPlay(ctx, field)
-			case "tutorialUrl":
-				return ec.fieldContext_Game_tutorialUrl(ctx, field)
-			case "screenshots":
-				return ec.fieldContext_Game_screenshots(ctx, field)
-			case "tags":
-				return ec.fieldContext_Game_tags(ctx, field)
-			case "genre":
-				return ec.fieldContext_Game_genre(ctx, field)
-			case "difficulty":
-				return ec.fieldContext_Game_difficulty(ctx, field)
-			case "accentColor":
-				return ec.fieldContext_Game_accentColor(ctx, field)
-			case "playerActivity":
-				return ec.fieldContext_Game_playerActivity(ctx, field)
-			case "modes":
-				return ec.fieldContext_Game_modes(ctx, field)
-			case "visibility":
-				return ec.fieldContext_Game_visibility(ctx, field)
-			case "contactEmail":
-				return ec.fieldContext_Game_contactEmail(ctx, field)
-			case "websiteUrl":
-				return ec.fieldContext_Game_websiteUrl(ctx, field)
-			case "communityUrl":
-				return ec.fieldContext_Game_communityUrl(ctx, field)
-			case "ownerUserId":
-				return ec.fieldContext_Game_ownerUserId(ctx, field)
-			case "integrationChecks":
-				return ec.fieldContext_Game_integrationChecks(ctx, field)
-			}
-			return nil, fmt.Errorf("no field named %q was found under type Game", field.Name)
-		},
-	}
-	return fc, nil
-}
-
 func (ec *executionContext) _EmailLinkPreview_email(ctx context.Context, field graphql.CollectedField, obj *model.EmailLinkPreview) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
@@ -7907,105 +7500,6 @@ func (ec *executionContext) fieldContext_EmailLinkPreview_mergeSourceDisplayName
 		IsResolver: false,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			return nil, errors.New("field of type String does not have child fields")
-		},
-	}
-	return fc, nil
-}
-
-func (ec *executionContext) _Entitlement_good(ctx context.Context, field graphql.CollectedField, obj *model.Entitlement) (ret graphql.Marshaler) {
-	return graphql.ResolveField(
-		ctx,
-		ec.OperationContext,
-		field,
-		ec.fieldContext_Entitlement_good,
-		func(ctx context.Context) (any, error) {
-			return obj.Good, nil
-		},
-		nil,
-		ec.marshalNDigitalGood2ᚖgithubᚗcomᚋscruffyprodigyᚋjoinquestᚋgraphᚋmodelᚐDigitalGood,
-		true,
-		true,
-	)
-}
-
-func (ec *executionContext) fieldContext_Entitlement_good(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "Entitlement",
-		Field:      field,
-		IsMethod:   false,
-		IsResolver: false,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			switch field.Name {
-			case "id":
-				return ec.fieldContext_DigitalGood_id(ctx, field)
-			case "code":
-				return ec.fieldContext_DigitalGood_code(ctx, field)
-			case "name":
-				return ec.fieldContext_DigitalGood_name(ctx, field)
-			case "description":
-				return ec.fieldContext_DigitalGood_description(ctx, field)
-			case "game":
-				return ec.fieldContext_DigitalGood_game(ctx, field)
-			}
-			return nil, fmt.Errorf("no field named %q was found under type DigitalGood", field.Name)
-		},
-	}
-	return fc, nil
-}
-
-func (ec *executionContext) _Entitlement_quantity(ctx context.Context, field graphql.CollectedField, obj *model.Entitlement) (ret graphql.Marshaler) {
-	return graphql.ResolveField(
-		ctx,
-		ec.OperationContext,
-		field,
-		ec.fieldContext_Entitlement_quantity,
-		func(ctx context.Context) (any, error) {
-			return obj.Quantity, nil
-		},
-		nil,
-		ec.marshalNInt2int,
-		true,
-		true,
-	)
-}
-
-func (ec *executionContext) fieldContext_Entitlement_quantity(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "Entitlement",
-		Field:      field,
-		IsMethod:   false,
-		IsResolver: false,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return nil, errors.New("field of type Int does not have child fields")
-		},
-	}
-	return fc, nil
-}
-
-func (ec *executionContext) _Entitlement_grantedAt(ctx context.Context, field graphql.CollectedField, obj *model.Entitlement) (ret graphql.Marshaler) {
-	return graphql.ResolveField(
-		ctx,
-		ec.OperationContext,
-		field,
-		ec.fieldContext_Entitlement_grantedAt,
-		func(ctx context.Context) (any, error) {
-			return obj.GrantedAt, nil
-		},
-		nil,
-		ec.marshalNTime2timeᚐTime,
-		true,
-		true,
-	)
-}
-
-func (ec *executionContext) fieldContext_Entitlement_grantedAt(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "Entitlement",
-		Field:      field,
-		IsMethod:   false,
-		IsResolver: false,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return nil, errors.New("field of type Time does not have child fields")
 		},
 	}
 	return fc, nil
@@ -11414,88 +10908,6 @@ func (ec *executionContext) fieldContext_Mutation_rejoinActiveMatch(_ context.Co
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			return nil, errors.New("field of type String does not have child fields")
 		},
-	}
-	return fc, nil
-}
-
-func (ec *executionContext) _Mutation_grantGood(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
-	return graphql.ResolveField(
-		ctx,
-		ec.OperationContext,
-		field,
-		ec.fieldContext_Mutation_grantGood,
-		func(ctx context.Context) (any, error) {
-			fc := graphql.GetFieldContext(ctx)
-			return ec.resolvers.Mutation().GrantGood(ctx, fc.Args["userId"].(string), fc.Args["goodId"].(string), fc.Args["quantity"].(*int))
-		},
-		nil,
-		ec.marshalNBoolean2bool,
-		true,
-		true,
-	)
-}
-
-func (ec *executionContext) fieldContext_Mutation_grantGood(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "Mutation",
-		Field:      field,
-		IsMethod:   true,
-		IsResolver: true,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return nil, errors.New("field of type Boolean does not have child fields")
-		},
-	}
-	defer func() {
-		if r := recover(); r != nil {
-			err = ec.Recover(ctx, r)
-			ec.Error(ctx, err)
-		}
-	}()
-	ctx = graphql.WithFieldContext(ctx, fc)
-	if fc.Args, err = ec.field_Mutation_grantGood_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
-		ec.Error(ctx, err)
-		return fc, err
-	}
-	return fc, nil
-}
-
-func (ec *executionContext) _Mutation_revokeGood(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
-	return graphql.ResolveField(
-		ctx,
-		ec.OperationContext,
-		field,
-		ec.fieldContext_Mutation_revokeGood,
-		func(ctx context.Context) (any, error) {
-			fc := graphql.GetFieldContext(ctx)
-			return ec.resolvers.Mutation().RevokeGood(ctx, fc.Args["userId"].(string), fc.Args["goodId"].(string), fc.Args["quantity"].(*int))
-		},
-		nil,
-		ec.marshalNBoolean2bool,
-		true,
-		true,
-	)
-}
-
-func (ec *executionContext) fieldContext_Mutation_revokeGood(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "Mutation",
-		Field:      field,
-		IsMethod:   true,
-		IsResolver: true,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return nil, errors.New("field of type Boolean does not have child fields")
-		},
-	}
-	defer func() {
-		if r := recover(); r != nil {
-			err = ec.Recover(ctx, r)
-			ec.Error(ctx, err)
-		}
-	}()
-	ctx = graphql.WithFieldContext(ctx, fc)
-	if fc.Args, err = ec.field_Mutation_revokeGood_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
-		ec.Error(ctx, err)
-		return fc, err
 	}
 	return fc, nil
 }
@@ -15824,108 +15236,6 @@ func (ec *executionContext) fieldContext_Query_session(ctx context.Context, fiel
 	}()
 	ctx = graphql.WithFieldContext(ctx, fc)
 	if fc.Args, err = ec.field_Query_session_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
-		ec.Error(ctx, err)
-		return fc, err
-	}
-	return fc, nil
-}
-
-func (ec *executionContext) _Query_goods(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
-	return graphql.ResolveField(
-		ctx,
-		ec.OperationContext,
-		field,
-		ec.fieldContext_Query_goods,
-		func(ctx context.Context) (any, error) {
-			fc := graphql.GetFieldContext(ctx)
-			return ec.resolvers.Query().Goods(ctx, fc.Args["gameId"].(*string))
-		},
-		nil,
-		ec.marshalNDigitalGood2ᚕᚖgithubᚗcomᚋscruffyprodigyᚋjoinquestᚋgraphᚋmodelᚐDigitalGoodᚄ,
-		true,
-		true,
-	)
-}
-
-func (ec *executionContext) fieldContext_Query_goods(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "Query",
-		Field:      field,
-		IsMethod:   true,
-		IsResolver: true,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			switch field.Name {
-			case "id":
-				return ec.fieldContext_DigitalGood_id(ctx, field)
-			case "code":
-				return ec.fieldContext_DigitalGood_code(ctx, field)
-			case "name":
-				return ec.fieldContext_DigitalGood_name(ctx, field)
-			case "description":
-				return ec.fieldContext_DigitalGood_description(ctx, field)
-			case "game":
-				return ec.fieldContext_DigitalGood_game(ctx, field)
-			}
-			return nil, fmt.Errorf("no field named %q was found under type DigitalGood", field.Name)
-		},
-	}
-	defer func() {
-		if r := recover(); r != nil {
-			err = ec.Recover(ctx, r)
-			ec.Error(ctx, err)
-		}
-	}()
-	ctx = graphql.WithFieldContext(ctx, fc)
-	if fc.Args, err = ec.field_Query_goods_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
-		ec.Error(ctx, err)
-		return fc, err
-	}
-	return fc, nil
-}
-
-func (ec *executionContext) _Query_myInventory(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
-	return graphql.ResolveField(
-		ctx,
-		ec.OperationContext,
-		field,
-		ec.fieldContext_Query_myInventory,
-		func(ctx context.Context) (any, error) {
-			fc := graphql.GetFieldContext(ctx)
-			return ec.resolvers.Query().MyInventory(ctx, fc.Args["gameId"].(*string))
-		},
-		nil,
-		ec.marshalNEntitlement2ᚕᚖgithubᚗcomᚋscruffyprodigyᚋjoinquestᚋgraphᚋmodelᚐEntitlementᚄ,
-		true,
-		true,
-	)
-}
-
-func (ec *executionContext) fieldContext_Query_myInventory(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "Query",
-		Field:      field,
-		IsMethod:   true,
-		IsResolver: true,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			switch field.Name {
-			case "good":
-				return ec.fieldContext_Entitlement_good(ctx, field)
-			case "quantity":
-				return ec.fieldContext_Entitlement_quantity(ctx, field)
-			case "grantedAt":
-				return ec.fieldContext_Entitlement_grantedAt(ctx, field)
-			}
-			return nil, fmt.Errorf("no field named %q was found under type Entitlement", field.Name)
-		},
-	}
-	defer func() {
-		if r := recover(); r != nil {
-			err = ec.Recover(ctx, r)
-			ec.Error(ctx, err)
-		}
-	}()
-	ctx = graphql.WithFieldContext(ctx, fc)
-	if fc.Args, err = ec.field_Query_myInventory_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
 		ec.Error(ctx, err)
 		return fc, err
 	}
@@ -25773,59 +25083,6 @@ func (ec *executionContext) _DeveloperApiKey(ctx context.Context, sel ast.Select
 	return out
 }
 
-var digitalGoodImplementors = []string{"DigitalGood"}
-
-func (ec *executionContext) _DigitalGood(ctx context.Context, sel ast.SelectionSet, obj *model.DigitalGood) graphql.Marshaler {
-	fields := graphql.CollectFields(ec.OperationContext, sel, digitalGoodImplementors)
-
-	out := graphql.NewFieldSet(fields)
-	deferred := make(map[string]*graphql.FieldSet)
-	for i, field := range fields {
-		switch field.Name {
-		case "__typename":
-			out.Values[i] = graphql.MarshalString("DigitalGood")
-		case "id":
-			out.Values[i] = ec._DigitalGood_id(ctx, field, obj)
-			if out.Values[i] == graphql.Null {
-				out.Invalids++
-			}
-		case "code":
-			out.Values[i] = ec._DigitalGood_code(ctx, field, obj)
-			if out.Values[i] == graphql.Null {
-				out.Invalids++
-			}
-		case "name":
-			out.Values[i] = ec._DigitalGood_name(ctx, field, obj)
-			if out.Values[i] == graphql.Null {
-				out.Invalids++
-			}
-		case "description":
-			out.Values[i] = ec._DigitalGood_description(ctx, field, obj)
-		case "game":
-			out.Values[i] = ec._DigitalGood_game(ctx, field, obj)
-		default:
-			panic("unknown field " + strconv.Quote(field.Name))
-		}
-	}
-	out.Dispatch(ctx)
-	if out.Invalids > 0 {
-		return graphql.Null
-	}
-
-	atomic.AddInt32(&ec.deferred, int32(len(deferred)))
-
-	for label, dfs := range deferred {
-		ec.processDeferredGroup(graphql.DeferredGroup{
-			Label:    label,
-			Path:     graphql.GetPath(ctx),
-			FieldSet: dfs,
-			Context:  ctx,
-		})
-	}
-
-	return out
-}
-
 var emailLinkPreviewImplementors = []string{"EmailLinkPreview"}
 
 func (ec *executionContext) _EmailLinkPreview(ctx context.Context, sel ast.SelectionSet, obj *model.EmailLinkPreview) graphql.Marshaler {
@@ -25849,55 +25106,6 @@ func (ec *executionContext) _EmailLinkPreview(ctx context.Context, sel ast.Selec
 			}
 		case "mergeSourceDisplayName":
 			out.Values[i] = ec._EmailLinkPreview_mergeSourceDisplayName(ctx, field, obj)
-		default:
-			panic("unknown field " + strconv.Quote(field.Name))
-		}
-	}
-	out.Dispatch(ctx)
-	if out.Invalids > 0 {
-		return graphql.Null
-	}
-
-	atomic.AddInt32(&ec.deferred, int32(len(deferred)))
-
-	for label, dfs := range deferred {
-		ec.processDeferredGroup(graphql.DeferredGroup{
-			Label:    label,
-			Path:     graphql.GetPath(ctx),
-			FieldSet: dfs,
-			Context:  ctx,
-		})
-	}
-
-	return out
-}
-
-var entitlementImplementors = []string{"Entitlement"}
-
-func (ec *executionContext) _Entitlement(ctx context.Context, sel ast.SelectionSet, obj *model.Entitlement) graphql.Marshaler {
-	fields := graphql.CollectFields(ec.OperationContext, sel, entitlementImplementors)
-
-	out := graphql.NewFieldSet(fields)
-	deferred := make(map[string]*graphql.FieldSet)
-	for i, field := range fields {
-		switch field.Name {
-		case "__typename":
-			out.Values[i] = graphql.MarshalString("Entitlement")
-		case "good":
-			out.Values[i] = ec._Entitlement_good(ctx, field, obj)
-			if out.Values[i] == graphql.Null {
-				out.Invalids++
-			}
-		case "quantity":
-			out.Values[i] = ec._Entitlement_quantity(ctx, field, obj)
-			if out.Values[i] == graphql.Null {
-				out.Invalids++
-			}
-		case "grantedAt":
-			out.Values[i] = ec._Entitlement_grantedAt(ctx, field, obj)
-			if out.Values[i] == graphql.Null {
-				out.Invalids++
-			}
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}
@@ -27188,20 +26396,6 @@ func (ec *executionContext) _Mutation(ctx context.Context, sel ast.SelectionSet)
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
-		case "grantGood":
-			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
-				return ec._Mutation_grantGood(ctx, field)
-			})
-			if out.Values[i] == graphql.Null {
-				out.Invalids++
-			}
-		case "revokeGood":
-			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
-				return ec._Mutation_revokeGood(ctx, field)
-			})
-			if out.Values[i] == graphql.Null {
-				out.Invalids++
-			}
 		case "createGuestSession":
 			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
 				return ec._Mutation_createGuestSession(ctx, field)
@@ -28265,50 +27459,6 @@ func (ec *executionContext) _Query(ctx context.Context, sel ast.SelectionSet) gr
 					}
 				}()
 				res = ec._Query_session(ctx, field)
-				return res
-			}
-
-			rrm := func(ctx context.Context) graphql.Marshaler {
-				return ec.OperationContext.RootResolverMiddleware(ctx,
-					func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
-			}
-
-			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return rrm(innerCtx) })
-		case "goods":
-			field := field
-
-			innerFunc := func(ctx context.Context, fs *graphql.FieldSet) (res graphql.Marshaler) {
-				defer func() {
-					if r := recover(); r != nil {
-						ec.Error(ctx, ec.Recover(ctx, r))
-					}
-				}()
-				res = ec._Query_goods(ctx, field)
-				if res == graphql.Null {
-					atomic.AddUint32(&fs.Invalids, 1)
-				}
-				return res
-			}
-
-			rrm := func(ctx context.Context) graphql.Marshaler {
-				return ec.OperationContext.RootResolverMiddleware(ctx,
-					func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
-			}
-
-			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return rrm(innerCtx) })
-		case "myInventory":
-			field := field
-
-			innerFunc := func(ctx context.Context, fs *graphql.FieldSet) (res graphql.Marshaler) {
-				defer func() {
-					if r := recover(); r != nil {
-						ec.Error(ctx, ec.Recover(ctx, r))
-					}
-				}()
-				res = ec._Query_myInventory(ctx, field)
-				if res == graphql.Null {
-					atomic.AddUint32(&fs.Invalids, 1)
-				}
 				return res
 			}
 
@@ -32233,60 +31383,6 @@ func (ec *executionContext) marshalNDeveloperApiKey2ᚖgithubᚗcomᚋscruffypro
 	return ec._DeveloperApiKey(ctx, sel, v)
 }
 
-func (ec *executionContext) marshalNDigitalGood2ᚕᚖgithubᚗcomᚋscruffyprodigyᚋjoinquestᚋgraphᚋmodelᚐDigitalGoodᚄ(ctx context.Context, sel ast.SelectionSet, v []*model.DigitalGood) graphql.Marshaler {
-	ret := make(graphql.Array, len(v))
-	var wg sync.WaitGroup
-	isLen1 := len(v) == 1
-	if !isLen1 {
-		wg.Add(len(v))
-	}
-	for i := range v {
-		i := i
-		fc := &graphql.FieldContext{
-			Index:  &i,
-			Result: &v[i],
-		}
-		ctx := graphql.WithFieldContext(ctx, fc)
-		f := func(i int) {
-			defer func() {
-				if r := recover(); r != nil {
-					ec.Error(ctx, ec.Recover(ctx, r))
-					ret = nil
-				}
-			}()
-			if !isLen1 {
-				defer wg.Done()
-			}
-			ret[i] = ec.marshalNDigitalGood2ᚖgithubᚗcomᚋscruffyprodigyᚋjoinquestᚋgraphᚋmodelᚐDigitalGood(ctx, sel, v[i])
-		}
-		if isLen1 {
-			f(i)
-		} else {
-			go f(i)
-		}
-
-	}
-	wg.Wait()
-
-	for _, e := range ret {
-		if e == graphql.Null {
-			return graphql.Null
-		}
-	}
-
-	return ret
-}
-
-func (ec *executionContext) marshalNDigitalGood2ᚖgithubᚗcomᚋscruffyprodigyᚋjoinquestᚋgraphᚋmodelᚐDigitalGood(ctx context.Context, sel ast.SelectionSet, v *model.DigitalGood) graphql.Marshaler {
-	if v == nil {
-		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
-			ec.Errorf(ctx, "the requested element is null which the schema does not allow")
-		}
-		return graphql.Null
-	}
-	return ec._DigitalGood(ctx, sel, v)
-}
-
 func (ec *executionContext) marshalNEmailLinkPreview2githubᚗcomᚋscruffyprodigyᚋjoinquestᚋgraphᚋmodelᚐEmailLinkPreview(ctx context.Context, sel ast.SelectionSet, v model.EmailLinkPreview) graphql.Marshaler {
 	return ec._EmailLinkPreview(ctx, sel, &v)
 }
@@ -32299,60 +31395,6 @@ func (ec *executionContext) marshalNEmailLinkPreview2ᚖgithubᚗcomᚋscruffypr
 		return graphql.Null
 	}
 	return ec._EmailLinkPreview(ctx, sel, v)
-}
-
-func (ec *executionContext) marshalNEntitlement2ᚕᚖgithubᚗcomᚋscruffyprodigyᚋjoinquestᚋgraphᚋmodelᚐEntitlementᚄ(ctx context.Context, sel ast.SelectionSet, v []*model.Entitlement) graphql.Marshaler {
-	ret := make(graphql.Array, len(v))
-	var wg sync.WaitGroup
-	isLen1 := len(v) == 1
-	if !isLen1 {
-		wg.Add(len(v))
-	}
-	for i := range v {
-		i := i
-		fc := &graphql.FieldContext{
-			Index:  &i,
-			Result: &v[i],
-		}
-		ctx := graphql.WithFieldContext(ctx, fc)
-		f := func(i int) {
-			defer func() {
-				if r := recover(); r != nil {
-					ec.Error(ctx, ec.Recover(ctx, r))
-					ret = nil
-				}
-			}()
-			if !isLen1 {
-				defer wg.Done()
-			}
-			ret[i] = ec.marshalNEntitlement2ᚖgithubᚗcomᚋscruffyprodigyᚋjoinquestᚋgraphᚋmodelᚐEntitlement(ctx, sel, v[i])
-		}
-		if isLen1 {
-			f(i)
-		} else {
-			go f(i)
-		}
-
-	}
-	wg.Wait()
-
-	for _, e := range ret {
-		if e == graphql.Null {
-			return graphql.Null
-		}
-	}
-
-	return ret
-}
-
-func (ec *executionContext) marshalNEntitlement2ᚖgithubᚗcomᚋscruffyprodigyᚋjoinquestᚋgraphᚋmodelᚐEntitlement(ctx context.Context, sel ast.SelectionSet, v *model.Entitlement) graphql.Marshaler {
-	if v == nil {
-		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
-			ec.Errorf(ctx, "the requested element is null which the schema does not allow")
-		}
-		return graphql.Null
-	}
-	return ec._Entitlement(ctx, sel, v)
 }
 
 func (ec *executionContext) unmarshalNFloat2float64(ctx context.Context, v any) (float64, error) {

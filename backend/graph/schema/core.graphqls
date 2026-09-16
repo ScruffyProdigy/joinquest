@@ -10,8 +10,6 @@ type Query {
   """Catalog game by URL slug (e.g. word-hunt). Shareable game detail page."""
   gameBySlug(slug: String!): Game
   session(id: ID!): Session
-  goods(gameId: ID): [DigitalGood!]!   # list goods globally or by game
-  myInventory(gameId: ID): [Entitlement!]!
   myQueueStatus(queueId: ID!): JoinResult!
   # Current catalog play intent: waiting or matched queue (at most one).
   myActiveIntent: ActiveIntent
@@ -48,8 +46,4 @@ type Mutation {
   the player has finished, so it can never re-open a match someone has left.
   """
   rejoinActiveMatch: String!
-
-  # Digital goods (simple entitlement grant)
-  grantGood(userId: ID!, goodId: ID!, quantity: Int = 1): Boolean!
-  revokeGood(userId: ID!, goodId: ID!, quantity: Int = 1): Boolean!
 }

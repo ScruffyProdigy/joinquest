@@ -16,7 +16,7 @@ Platform goals and integration overview: [`vision.md`](./vision.md). Game handof
 ### ✅ Implemented
 - **Authentication**: Magic-link sign-in, session cookies, JWT seat tokens
 - **Catalog & matchmaking**: `registerGame`, `seatTemplate` manifest sync, mode queues, `joinQueue(queueId, queuePath)`, handoff to game servers; shareable **`gameBySlug`** detail pages — see [game-catalog-architecture.md](./game-catalog-architecture.md)
-- **Database-backed queries**: `games`, `game`, `session`, `goods`, `myInventory`, `player` (game service)
+- **Database-backed queries**: `games`, `game`, `session`, `player` (game service)
 - **Real-time**: `queueUpdated`, **`myTableSeatUpdated`**, and **`tableUpdated(roomId)`** subscriptions via Redis pub/sub; **`roomUpdated` / `roomMessageAdded`** for chat rooms — see [pubsub.md](./pubsub.md)
 - **Post-game**: `returnDestination`, `reportPlayerFinished`, `reportMatchResult` — see [match-lifecycle-callbacks.md](./match-lifecycle-callbacks.md), [player-return-routing.md](./player-return-routing.md)
 - **Rooms (Step 1)**: `createRoom`, `joinRoom`, `leaveRoom`, `sendRoomMessage`, `room`, `myRoom` — see [rooms-and-tables.md](./rooms-and-tables.md)
@@ -27,7 +27,7 @@ Platform goals and integration overview: [`vision.md`](./vision.md). Game handof
 
 ### 🚧 In Development
 - **Developer self-service (Phase B)**: provision/JWT integration checks (19 required), `updateMyGameMetadata`, `catalogTagTaxonomy`, `requestPublicRelease`, `reviewGameRelease`, [developer-integration-guide.md](./developer-integration-guide.md), JoinQuest integration MCP — see [developer-self-service.md](./developer-self-service.md)
-- **Player-facing goods**: purchase/trade flows
+- **Digital goods**: the `digital_goods` / `user_inventory` store layer exists and is tested; no GraphQL surface is exposed over it yet
 - **Rate limiting**
 
 ### 📋 Planned
@@ -240,39 +240,6 @@ query {
 }
 ```
 
-### Digital Goods Queries
-
-#### `goods` ✅
-List digital goods, optionally filtered by game.
-
-```graphql
-query {
-  goods(gameId: "a1000000-0000-4000-8000-000000000001") {
-    id
-    code
-    name
-    description
-  }
-}
-```
-
-#### `myInventory` ✅
-Get the signed-in user's inventory (requires authentication).
-
-```graphql
-query {
-  myInventory {
-    good {
-      id
-      code
-      name
-    }
-    quantity
-    grantedAt
-  }
-}
-```
-
 ## Mutations
 
 ### Developer (owner)
@@ -378,17 +345,6 @@ Leave a mode queue.
 ```graphql
 mutation {
   leaveQueue(queueId: "a3000000-0000-4000-8000-000000000001")
-}
-```
-
-### Digital goods (admin)
-
-#### `grantGood` / `revokeGood` ✅
-Grant or revoke inventory for a user. Requires admin.
-
-```graphql
-mutation {
-  grantGood(userId: "...", goodId: "...", quantity: 1)
 }
 ```
 

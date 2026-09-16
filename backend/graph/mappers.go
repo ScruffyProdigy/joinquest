@@ -314,50 +314,6 @@ func ToGraphQLSessionStatus(dbStatus string) model.SessionStatus {
 	}
 }
 
-// ToGraphQLDigitalGood maps a store digital good to the GraphQL model.
-func ToGraphQLDigitalGood(good *store.DigitalGood) *model.DigitalGood {
-	if good == nil {
-		return nil
-	}
-	code := good.ID.String()
-	return &model.DigitalGood{
-		ID:          good.ID.String(),
-		Code:        code,
-		Name:        good.Name,
-		Description: good.Description,
-	}
-}
-
-// ToGraphQLDigitalGoods maps a slice of store goods to GraphQL models.
-func ToGraphQLDigitalGoods(goods []store.DigitalGood) []*model.DigitalGood {
-	result := make([]*model.DigitalGood, len(goods))
-	for i := range goods {
-		result[i] = ToGraphQLDigitalGood(&goods[i])
-	}
-	return result
-}
-
-// ToGraphQLEntitlement maps a store inventory item to the GraphQL model.
-func ToGraphQLEntitlement(item *store.InventoryItem) *model.Entitlement {
-	if item == nil {
-		return nil
-	}
-	return &model.Entitlement{
-		Good:      ToGraphQLDigitalGood(&item.Good),
-		Quantity:  item.Quantity,
-		GrantedAt: item.AcquiredAt,
-	}
-}
-
-// ToGraphQLEntitlements maps a slice of inventory items to GraphQL models.
-func ToGraphQLEntitlements(items []store.InventoryItem) []*model.Entitlement {
-	result := make([]*model.Entitlement, len(items))
-	for i := range items {
-		result[i] = ToGraphQLEntitlement(&items[i])
-	}
-	return result
-}
-
 // ToGraphQLUsers maps a slice of store users to GraphQL models.
 func ToGraphQLUsers(users []store.User) []*model.User {
 	result := make([]*model.User, len(users))
