@@ -489,17 +489,32 @@ func clearDemoQueue(t *testing.T, st *store.Store) {
 	}
 }
 
+// flushFormingWorker settles the queue so a test can read it. Draining is what
+// makes the rows safe to read: a join arms a debounce timer, and the goroutine it
+// starts fires the match and provisions it on its own. Cancelling that timer only
+// helps while it is still pending — once it has fired, the caller has to wait for
+// the run or it reads a match the worker has not finished rolling back. Several
+// passes because one reconcile can only fill seats an earlier pass freed.
 func flushFormingWorker(t *testing.T, env *queueIntegrationEnv, ctx context.Context, queueID uuid.UUID) {
 	t.Helper()
-	env.resolver.FormingWorker.CancelPending(queueID)
 	for i := 0; i < 3; i++ {
+		drainFormingWorker(t, env, ctx, queueID)
 		if err := env.resolver.FormingWorker.ReconcileNow(ctx, queueID); err != nil {
 			t.Fatalf("reconcile: %v", err)
 		}
-		if i < 2 {
-			time.Sleep(15 * time.Millisecond)
-			env.resolver.FormingWorker.CancelPending(queueID)
-		}
+	}
+	drainFormingWorker(t, env, ctx, queueID)
+}
+
+// drainFormingWorker waits out whatever the worker started for this queue. The
+// timeout only has to outlast one reconcile; it is generous because a
+// containerised database on a laptop is slow, not because we expect to spend it.
+func drainFormingWorker(t *testing.T, env *queueIntegrationEnv, ctx context.Context, queueID uuid.UUID) {
+	t.Helper()
+	drainCtx, cancel := context.WithTimeout(ctx, 30*time.Second)
+	defer cancel()
+	if err := env.resolver.FormingWorker.DrainPending(drainCtx, queueID); err != nil {
+		t.Fatalf("forming worker still busy: %v", err)
 	}
 }
 

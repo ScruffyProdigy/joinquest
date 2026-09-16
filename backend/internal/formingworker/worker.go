@@ -26,6 +26,8 @@ type Worker struct {
 	tickEvery   time.Duration
 
 	mu              sync.Mutex
+	idle            *sync.Cond
+	running         map[uuid.UUID]int
 	timers          map[uuid.UUID]*time.Timer
 	provisionTimers map[uuid.UUID]*time.Timer
 	provisionRetry  map[uuid.UUID]int
@@ -38,15 +40,18 @@ func New(st *store.Store, hook ReconcileHook, debounce, tickEvery time.Duration)
 	if tickEvery <= 0 {
 		tickEvery = 30 * time.Second
 	}
-	return &Worker{
+	w := &Worker{
 		store:           st,
 		onResult:        hook,
 		debounce:        debounce,
 		tickEvery:       tickEvery,
 		timers:          make(map[uuid.UUID]*time.Timer),
+		running:         make(map[uuid.UUID]int),
 		provisionTimers: make(map[uuid.UUID]*time.Timer),
 		provisionRetry:  make(map[uuid.UUID]int),
 	}
+	w.idle = sync.NewCond(&w.mu)
+	return w
 }
 
 // SetProvisionHook registers the handler for matched sessions awaiting game provision.
@@ -57,17 +62,56 @@ func (w *Worker) SetProvisionHook(hook ProvisionHook) {
 	w.onProvision = hook
 }
 
-// CancelPending stops a debounced reconcile timer without running it.
-func (w *Worker) CancelPending(modeQueueID uuid.UUID) {
+// DrainPending stops a debounced reconcile for this queue and waits for one that
+// has already started. Stopping the timer is not enough on its own: a fired timer
+// is a goroutine mid-reconcile, and that goroutine owns the provision and any
+// rollback that follows it — so a caller about to read those rows has to wait for
+// it rather than reconcile around it. Provision retries are not drained; their
+// backoff is deliberately long. The context bounds the wait, so a worker that
+// never goes quiet surfaces as a deadline instead of a hung test.
+func (w *Worker) DrainPending(ctx context.Context, modeQueueID uuid.UUID) error {
 	if w == nil || modeQueueID == uuid.Nil {
-		return
+		return nil
 	}
+
+	// A cond carries no deadline of its own, so wake the waiter when ctx ends.
+	stopOnDone := context.AfterFunc(ctx, func() {
+		w.mu.Lock()
+		defer w.mu.Unlock()
+		w.idle.Broadcast()
+	})
+	defer stopOnDone()
+
 	w.mu.Lock()
 	defer w.mu.Unlock()
 	if timer, ok := w.timers[modeQueueID]; ok {
 		timer.Stop()
 		delete(w.timers, modeQueueID)
 	}
+	for w.running[modeQueueID] > 0 {
+		if err := ctx.Err(); err != nil {
+			return err
+		}
+		w.idle.Wait()
+	}
+	return nil
+}
+
+// beginRunLocked marks a reconcile as in flight. Call with w.mu held.
+func (w *Worker) beginRunLocked(modeQueueID uuid.UUID) {
+	w.running[modeQueueID]++
+}
+
+// endRun clears that mark and wakes anyone draining.
+func (w *Worker) endRun(modeQueueID uuid.UUID) {
+	w.mu.Lock()
+	defer w.mu.Unlock()
+	if w.running[modeQueueID] > 1 {
+		w.running[modeQueueID]--
+	} else {
+		delete(w.running, modeQueueID)
+	}
+	w.idle.Broadcast()
 }
 
 // Shutdown stops all pending reconcile and provision timers (test cleanup).
@@ -85,6 +129,12 @@ func (w *Worker) Shutdown() {
 		timer.Stop()
 		delete(w.provisionTimers, id)
 	}
+	// A reconcile already running outlives the timer that started it, and in a
+	// test it would go on writing to a shared queue after the test that started
+	// it ended. Each run carries its own 30s timeout, so this cannot wait forever.
+	for len(w.running) > 0 {
+		w.idle.Wait()
+	}
 }
 
 // Schedule coalesces rapid joins on the same queue and reconciles shortly after.
@@ -96,13 +146,24 @@ func (w *Worker) Schedule(modeQueueID uuid.UUID) {
 	w.mu.Lock()
 	defer w.mu.Unlock()
 
-	if timer, ok := w.timers[modeQueueID]; ok {
-		timer.Stop()
+	if existing, ok := w.timers[modeQueueID]; ok {
+		existing.Stop()
 	}
-	w.timers[modeQueueID] = time.AfterFunc(w.debounce, func() {
+	var timer *time.Timer
+	timer = time.AfterFunc(w.debounce, func() {
 		w.mu.Lock()
+		// A timer that had already fired when it was drained or superseded runs
+		// this func anyway; the map says whether the run is still wanted.
+		if w.timers[modeQueueID] != timer {
+			w.mu.Unlock()
+			return
+		}
 		delete(w.timers, modeQueueID)
+		// Marked in flight before the lock drops, so a drain arriving now waits
+		// for this run instead of sailing past it.
+		w.beginRunLocked(modeQueueID)
 		w.mu.Unlock()
+		defer w.endRun(modeQueueID)
 
 		ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 		defer cancel()
@@ -110,6 +171,7 @@ func (w *Worker) Schedule(modeQueueID uuid.UUID) {
 			log.Printf("formingworker: reconcile %s: %v", modeQueueID, err)
 		}
 	})
+	w.timers[modeQueueID] = timer
 }
 
 // ScheduleProvisionRetry re-attempts game provision after a transient failure.
