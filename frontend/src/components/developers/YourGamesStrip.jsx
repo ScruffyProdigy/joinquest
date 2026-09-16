@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
-import { fetchMyGames, developerDashboardPath, visibilityLabel } from '../../lib/developers'
+import { fetchMyGames, developerDashboardPath } from '../../lib/developers'
+import { visibilityLabel } from '../../lib/developerLabels'
 import { navigateTo } from '../../lib/usePathname'
 import { Link } from '../ui/link'
 

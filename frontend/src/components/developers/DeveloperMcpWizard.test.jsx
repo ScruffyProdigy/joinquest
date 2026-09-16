@@ -2,17 +2,22 @@ import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import DeveloperMcpWizard from './DeveloperMcpWizard'
+import { createDeveloperApiKey } from '../../lib/developers'
 import {
   buildInstallClaudePluginCommand,
   buildInstallCursorPluginCommand,
   buildInstallDevCommand,
   buildMcpServerConfig,
-  createDeveloperApiKey,
-} from '../../lib/developers'
+} from '../../lib/developerInstall'
 
 vi.mock('../../lib/developers', () => ({
   fetchMyDeveloperApiKeys: vi.fn().mockResolvedValue([]),
   createDeveloperApiKey: vi.fn(),
+  developerLandingHref: (path) =>
+    path === 'manual' ? '/developers?path=manual' : '/developers',
+}))
+
+vi.mock('../../lib/developerInstall', () => ({
   buildMcpServerConfig: vi.fn(({ clientId, apiKey }) =>
     clientId === 'copilot'
       ? {
@@ -39,6 +44,14 @@ vi.mock('../../lib/developers', () => ({
           },
         },
   ),
+  buildClaudeCodeConfig: (base) => ({
+    mcpServers: {
+      'joinquest-integration': {
+        type: 'stdio',
+        ...base.mcpServers['joinquest-integration'],
+      },
+    },
+  }),
   buildClaudeMcpAddCommand: vi.fn(
     ({ apiKey }) => `claude mcp add --env JOINQUEST_API_KEY=${apiKey} ...`,
   ),
@@ -66,8 +79,6 @@ vi.mock('../../lib/developers', () => ({
   INSTALL_CURSOR_PLUGIN_SCRIPT_GITHUB: 'https://github.com/example/install-joinquest-cursor-plugin.sh',
   INSTALL_CLAUDE_PLUGIN_SCRIPT_GITHUB: 'https://github.com/example/install-joinquest-claude-plugin.sh',
   CURSOR_PLUGIN_GITHUB: 'https://github.com/example/plugins/joinquest',
-  developerLandingHref: (path) =>
-    path === 'manual' ? '/developers?path=manual' : '/developers',
 }))
 
 describe('DeveloperMcpWizard', () => {

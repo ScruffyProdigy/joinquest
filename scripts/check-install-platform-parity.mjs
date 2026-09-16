@@ -28,7 +28,7 @@ function read(file) {
 }
 
 const wizardSource = read('frontend/src/components/developers/DeveloperMcpWizard.jsx')
-const developersSource = read('frontend/src/lib/developers.js')
+const installSource = read('frontend/src/lib/developerInstall.js')
 
 const dashboardClients = parseDashboardInstallClients(wizardSource)
 
@@ -82,8 +82,8 @@ for (const file of assetFiles) {
   }
 }
 
-if (!developersSource.includes('npx -y ${JOINQUEST_CLI_PACKAGE} install')) {
-  fail('developers.js install commands should use npx joinquest install')
+if (!installSource.includes('npx -y ${JOINQUEST_CLI_PACKAGE} install')) {
+  fail('developerInstall.js install commands should use npx joinquest install')
 }
 
 console.log(
