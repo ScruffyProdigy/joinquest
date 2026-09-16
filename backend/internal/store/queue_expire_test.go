@@ -44,7 +44,7 @@ func TestExpireStaleMatchedModeQueueClearsOldMatch(t *testing.T) {
 		t.Fatalf("backdate matched_at: %v", err)
 	}
 
-	if err := st.expireStaleMatchedModeQueue(ctx, queueID, userA.ID); err != nil {
+	if err := expireStaleMatchedModeQueue(ctx, st.db, queueID, userA.ID); err != nil {
 		t.Fatalf("expire stale: %v", err)
 	}
 
