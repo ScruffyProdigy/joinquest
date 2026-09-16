@@ -287,6 +287,11 @@ func tableCanDiscard(ctx context.Context, q sqlQueryRowContext, table *RoomTable
 		FROM room_tables
 		WHERE id = $1
 	`, table.ID, staleEmptyTableAge.Microseconds()).Scan(&stale); err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			// sweepStaleEmptyTablesTx can delete the table between the caller loading
+			// it and this read, so a missing row means gone, not broken.
+			return false, ErrNotFound
+		}
 		return false, fmt.Errorf("store: empty table stale check: %w", err)
 	}
 	return stale, nil
