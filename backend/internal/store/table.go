@@ -267,14 +267,34 @@ func tableCanStart(mode *GameMode, modeSeats []GameModeSeat, seated []TableSeat,
 	return true, nil
 }
 
-func tableCanDiscard(table *RoomTable, seatedCount int, callerID uuid.UUID, kingID *uuid.UUID) bool {
+// tableCanDiscard reports whether this caller may discard the table. Its king can
+// discard an empty one at once; anyone else has to wait for it to go stale.
+//
+// The database answers the staleness question because the database stamped
+// created_at. Measuring that stamp with this process's clock subtracts two clocks
+// that drift apart on a container, and the answer is wrong by the drift -- a table
+// past the window still reading as too young to discard.
+func tableCanDiscard(ctx context.Context, q sqlQueryRowContext, table *RoomTable, seatedCount int, callerID uuid.UUID, kingID *uuid.UUID) (bool, error) {
 	if table.Status != TableStatusForming || seatedCount > 0 {
-		return false
+		return false, nil
 	}
 	if kingID != nil && *kingID == callerID {
-		return true
+		return true, nil
 	}
-	return time.Since(table.CreatedAt) >= staleEmptyTableAge
+	var stale bool
+	if err := q.QueryRowContext(ctx, `
+		SELECT NOW() - created_at >= ($2 * INTERVAL '1 microsecond')
+		FROM room_tables
+		WHERE id = $1
+	`, table.ID, staleEmptyTableAge.Microseconds()).Scan(&stale); err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			// sweepStaleEmptyTablesTx can delete the table between the caller loading
+			// it and this read, so a missing row means gone, not broken.
+			return false, ErrNotFound
+		}
+		return false, fmt.Errorf("store: empty table stale check: %w", err)
+	}
+	return stale, nil
 }
 
 func teamPrefixFromSeatKey(seatKey string) string {
@@ -337,9 +357,9 @@ func (s *Store) sweepStaleEmptyTablesTx(ctx context.Context, tx *sql.Tx, roomID 
 		DELETE FROM room_tables rt
 		WHERE rt.room_id = $1
 		  AND rt.status = $2
-		  AND rt.created_at < NOW() - ($3 * INTERVAL '1 second')
+		  AND rt.created_at < NOW() - ($3 * INTERVAL '1 microsecond')
 		  AND NOT EXISTS (SELECT 1 FROM table_seats ts WHERE ts.table_id = rt.id)
-	`, roomID, TableStatusForming, int(staleEmptyTableAge.Seconds()))
+	`, roomID, TableStatusForming, staleEmptyTableAge.Microseconds())
 	return err
 }
 
@@ -949,7 +969,11 @@ func (s *Store) DiscardTable(ctx context.Context, tableID, userID uuid.UUID) (bo
 	if err != nil {
 		return false, err
 	}
-	if !tableCanDiscard(table, len(seated), userID, tableKingUserID(table, seated)) {
+	canDiscard, err := tableCanDiscard(ctx, s.db, table, len(seated), userID, tableKingUserID(table, seated))
+	if err != nil {
+		return false, err
+	}
+	if !canDiscard {
 		return false, fmt.Errorf("store: table cannot be discarded")
 	}
 
@@ -1099,5 +1123,5 @@ func (s *Store) TableCanDiscard(ctx context.Context, tableID, userID uuid.UUID) 
 	if err != nil {
 		return false, err
 	}
-	return tableCanDiscard(table, len(seated), userID, tableKingUserID(table, seated)), nil
+	return tableCanDiscard(ctx, s.db, table, len(seated), userID, tableKingUserID(table, seated))
 }
