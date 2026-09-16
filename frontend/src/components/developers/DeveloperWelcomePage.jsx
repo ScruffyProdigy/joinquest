@@ -2,11 +2,8 @@ import { useEffect, useState } from 'react'
 import { Button } from '../ui/button'
 import { Link } from '../ui/link'
 import { APP_NAME } from '../../lib/brand'
-import {
-  developerDashboardPath,
-  fetchMyGame,
-  visibilityLabel,
-} from '../../lib/developers'
+import { developerDashboardPath, fetchMyGame } from '../../lib/developers'
+import { visibilityLabel } from '../../lib/developerLabels'
 import { navigateTo } from '../../lib/usePathname'
 import DeveloperMcpWizard from './DeveloperMcpWizard'
 

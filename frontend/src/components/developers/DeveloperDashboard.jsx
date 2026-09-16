@@ -4,9 +4,6 @@ import { Link } from '../ui/link'
 import { APP_NAME } from '../../lib/brand'
 import {
   canRequestPublicRelease,
-  checkFixHint,
-  checkSectionTitle,
-  checkStatusLabel,
   connectMyGame,
   defaultModeForMyGame,
   fetchDeveloperIntegrationGuide,
@@ -16,8 +13,13 @@ import {
   rotateMyGameWebhookSecret,
   runMyGameChecks,
   syncMyGameManifest,
-  visibilityLabel,
 } from '../../lib/developers'
+import {
+  checkFixHint,
+  checkSectionTitle,
+  checkStatusLabel,
+  visibilityLabel,
+} from '../../lib/developerLabels'
 import { createPrivateTable } from '../../lib/tables'
 import { useIdentityPrompt } from '../avatars/IdentityPromptProvider'
 import { useActiveRoom } from '../rooms/ActiveRoomProvider'

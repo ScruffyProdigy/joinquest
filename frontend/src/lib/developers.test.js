@@ -10,7 +10,6 @@ import {
   parseDeveloperLandingPath,
   parseDeveloperRoute,
   suggestSlugFromName,
-  visibilityLabel,
 } from './developers'
 
 const repoRoot = join(dirname(fileURLToPath(import.meta.url)), '../../..')
@@ -20,65 +19,6 @@ function parseGoRequiredChecks(source) {
   if (!match) throw new Error('requiredPassChecks block not found')
   return [...match[1].matchAll(/"([^"]+)"/g)].map((m) => m[1])
 }
-
-describe('buildMcpServerConfig', () => {
-  it('uses mcpServers for Cursor', async () => {
-    const { buildMcpServerConfig } = await import('./developers')
-    const config = buildMcpServerConfig({ apiKey: 'lq_dev_test', clientId: 'cursor' })
-    expect(config.mcpServers['joinquest-integration'].args).toContain('joinquest-integration-mcp-cursor')
-  })
-
-  it('uses servers for Copilot', async () => {
-    const { buildMcpServerConfig } = await import('./developers')
-    const config = buildMcpServerConfig({ apiKey: 'lq_dev_test', clientId: 'copilot' })
-    expect(config.servers['joinquest-integration'].env.JOINQUEST_API_KEY).toBe('lq_dev_test')
-    expect(config.mcpServers).toBeUndefined()
-  })
-
-  it('uses env interpolation for Windsurf', async () => {
-    const { buildMcpServerConfig } = await import('./developers')
-    const config = buildMcpServerConfig({ apiKey: 'lq_dev_test', clientId: 'windsurf' })
-    expect(config.mcpServers['joinquest-integration'].env.JOINQUEST_API_KEY).toBe('${env:JOINQUEST_API_KEY}')
-  })
-})
-
-describe('buildInstallDevCommand', () => {
-  it('maps platform flags', async () => {
-    const { buildInstallDevCommand } = await import('./developers')
-    expect(buildInstallDevCommand({ apiKey: 'k', client: 'copilot' })).toContain('install copilot')
-    expect(buildInstallDevCommand({ apiKey: 'k', client: 'roo' })).toContain('install roo')
-    expect(buildInstallDevCommand({ apiKey: 'k', client: 'gemini' })).toContain('install gemini')
-  })
-})
-
-describe('buildGeminiMcpAddCommand', () => {
-  it('uses gemini mcp add with project scope', async () => {
-    const { buildGeminiMcpAddCommand } = await import('./developers')
-    const cmd = buildGeminiMcpAddCommand({ apiKey: 'lq_dev_test' })
-    expect(cmd).toContain('gemini mcp add -s project -t stdio')
-    expect(cmd).toContain('JOINQUEST_API_KEY=lq_dev_test')
-    expect(cmd).toContain('joinquest-integration')
-  })
-})
-
-describe('buildInstallDevInspectCommand', () => {
-  it('uses npx joinquest dry-run and install', async () => {
-    const { buildInstallDevInspectCommand, JOINQUEST_CLI_PACKAGE } = await import('./developers')
-    const cmd = buildInstallDevInspectCommand({ apiKey: 'lq_dev_test', client: 'copilot' })
-    expect(cmd).toContain(`npx -y ${JOINQUEST_CLI_PACKAGE} install copilot --dry-run`)
-    expect(cmd).toContain('JOINQUEST_API_KEY=lq_dev_test')
-    expect(cmd).toContain('install copilot')
-  })
-})
-
-describe('buildInstallDevDryRunCommand', () => {
-  it('uses npx joinquest install --dry-run', async () => {
-    const { buildInstallDevDryRunCommand, JOINQUEST_CLI_PACKAGE } = await import('./developers')
-    expect(buildInstallDevDryRunCommand({ client: 'cursor' })).toBe(
-      `npx -y ${JOINQUEST_CLI_PACKAGE} install cursor --dry-run`,
-    )
-  })
-})
 
 describe('REQUIRED_INTEGRATION_CHECKS', () => {
   it('matches backend requiredPassChecks', () => {
@@ -120,13 +60,6 @@ describe('parseDeveloperRoute', () => {
 describe('suggestSlugFromName', () => {
   it('slugifies game names', () => {
     expect(suggestSlugFromName('My Cool Game!')).toBe('my-cool-game')
-  })
-})
-
-describe('visibilityLabel', () => {
-  it('maps visibility enums', () => {
-    expect(visibilityLabel('PRIVATE_TESTING')).toBe('Private testing')
-    expect(visibilityLabel('DRAFT')).toBe('Draft')
   })
 })
 

@@ -2,6 +2,12 @@ import { useEffect, useMemo, useState } from 'react'
 import { Button } from '../ui/button'
 import { Link } from '../ui/link'
 import {
+  createDeveloperApiKey,
+  developerLandingHref,
+  fetchMyDeveloperApiKeys,
+} from '../../lib/developers'
+import {
+  buildClaudeCodeConfig,
   buildClaudeMcpAddCommand,
   buildGeminiMcpAddCommand,
   buildInstallClaudePluginCommand,
@@ -9,16 +15,13 @@ import {
   buildInstallDevCommand,
   buildInstallDevInspectCommand,
   buildMcpServerConfig,
-  createDeveloperApiKey,
-  fetchMyDeveloperApiKeys,
   INSTALL_CLAUDE_PLUGIN_SCRIPT_GITHUB,
   INSTALL_CURSOR_PLUGIN_SCRIPT_GITHUB,
   INSTALL_DEV_SCRIPT_GITHUB,
   INSTALL_SETUP_MANIFEST_GITHUB,
   JOINQUEST_CLI_GITHUB,
   CURSOR_PLUGIN_GITHUB,
-  developerLandingHref,
-} from '../../lib/developers'
+} from '../../lib/developerInstall'
 import { navigateTo } from '../../lib/usePathname'
 
 const CLIENTS = [
@@ -167,18 +170,6 @@ const PLATFORM_INSTALL_NOTES = {
 
 const INSTALL_GLOBAL_MCP =
   'curl -fsSL https://raw.githubusercontent.com/scruffyprodigy/joinquest/main/scripts/install-joinquest-mcp.sh | sh'
-
-function buildClaudeCodeConfig(base) {
-  const server = base.mcpServers['joinquest-integration']
-  return {
-    mcpServers: {
-      'joinquest-integration': {
-        type: 'stdio',
-        ...server,
-      },
-    },
-  }
-}
 
 function manualConfigCopyLabel(clientId) {
   if (clientId === 'claude-desktop') return 'Copy MCP config'
